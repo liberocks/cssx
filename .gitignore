@@ -1,0 +1,16 @@
+node_modules/
+packages/*/dist/
+examples/*/dist/
+examples/*/.astro/
+examples/*/.next/
+examples/*/build/
+examples/*/.cache/
+examples/*/public/
+examples/next/next-env.d.ts
+examples/next/tsconfig.json
+packages/intellisense/*.vsix
+benchmarks/node_modules/
+coverage/
+.opencode/
+TODO.md
+.impeccable.md
