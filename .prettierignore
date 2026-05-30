@@ -1,0 +1,10 @@
+node_modules/
+coverage/
+**/dist/
+**/.astro/
+**/.next/
+**/build/
+**/.cache/
+examples/gatsby/public/
+examples/next/next-env.d.ts
+examples/next/tsconfig.json
