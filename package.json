@@ -1,0 +1,26 @@
+{
+  "name": "cssx-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm --recursive run build",
+    "benchmark": "pnpm --dir benchmarks benchmark",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "lint": "eslint . --max-warnings 0",
+    "test": "pnpm test:unit && pnpm test:package-contract",
+    "test:unit": "vitest run --exclude packages/cssx/test/package-contract.test.ts",
+    "test:package-contract": "pnpm build && vitest run packages/cssx/test/package-contract.test.ts",
+    "test:visual": "pnpm --dir tests test",
+    "test:visual:update": "pnpm --dir tests test:update",
+    "test:release": "pnpm format:check && pnpm lint && pnpm test:coverage && pnpm test:package-contract && pnpm typecheck",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --exclude packages/cssx/test/package-contract.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.4",
