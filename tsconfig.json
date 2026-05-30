@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "verbatimModuleSyntax": false,
+    "baseUrl": ".",
+    "paths": {
+      "@cssxio/cssx": ["packages/cssx/src/index.ts"],
+      "@cssxio/compiler": ["packages/compiler/src/index.ts"],
+      "@cssxio/babel-plugin": ["packages/babel-plugin/src/index.ts"]
+    }
+  },
+  "include": ["packages/**/*.ts", "vitest.config.ts"],
+  "exclude": ["packages/compiler/src/vendor/**"]
+}
