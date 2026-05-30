@@ -1,0 +1,42 @@
+name: Release
+run-name: Release ${{ inputs.package }} by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package to publish
+        required: true
+        type: choice
+        options:
+          - '@cssxio/babel-plugin'
+          - '@cssxio/compiler'
+          - '@cssxio/cssx'
+          - cssx-intellisense
+          - '@cssxio/unplugin'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 10.17.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:release
+      - name: Publish selected package
+        run: pnpm --filter "$PACKAGE" publish --access public --no-git-checks --provenance
+        env:
+          PACKAGE: ${{ inputs.package }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
