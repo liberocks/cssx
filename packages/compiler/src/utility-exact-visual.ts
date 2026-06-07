@@ -1,0 +1,129 @@
+import type { UtilityDeclaration } from './utility-types';
+
+/** Shared box-shadow value that combines shadow and ring channels. */
+const CSSX_SHADOW_SINK =
+  'var(--cssx-shadow, 0 0 #0000), var(--cssx-ring-offset-shadow, 0 0 #0000), var(--cssx-ring-shadow, 0 0 #0000)';
+
+/**
+ * Builds the custom-property and sink declarations for one shadow value.
+ *
+ * @param value CSS shadow value.
+ * @returns Shadow declarations that remain compatible with ring utilities.
+ */
+function shadowDeclarations(value: string): readonly UtilityDeclaration[] {
+  return [
+    { property: '--cssx-shadow', value, semanticGroup: 'shadow' },
+    { property: 'box-shadow', value: CSSX_SHADOW_SINK, semanticGroup: 'shadow' },
+  ];
+}
+
+/** Exact visual utility declarations that need no runtime value resolution. */
+export const EXACT_VISUAL_DECLARATIONS: Readonly<Record<string, readonly UtilityDeclaration[]>> = {
+  underline: [{ property: 'text-decoration-line', value: 'underline' }],
+  overline: [{ property: 'text-decoration-line', value: 'overline' }],
+  'line-through': [{ property: 'text-decoration-line', value: 'line-through' }],
+  'no-underline': [{ property: 'text-decoration-line', value: 'none' }],
+  'pointer-events-none': [{ property: 'pointer-events', value: 'none' }],
+  'pointer-events-auto': [{ property: 'pointer-events', value: 'auto' }],
+  'select-none': [{ property: 'user-select', value: 'none' }],
+  'select-text': [{ property: 'user-select', value: 'text' }],
+  'select-all': [{ property: 'user-select', value: 'all' }],
+  'select-auto': [{ property: 'user-select', value: 'auto' }],
+  'appearance-none': [{ property: 'appearance', value: 'none' }],
+  'appearance-auto': [{ property: 'appearance', value: 'auto' }],
+  'field-sizing-content': [{ property: 'field-sizing', value: 'content' }],
+  'resize-none': [{ property: 'resize', value: 'none' }],
+  'resize-x': [{ property: 'resize', value: 'horizontal' }],
+  'resize-y': [{ property: 'resize', value: 'vertical' }],
+  resize: [{ property: 'resize', value: 'both' }],
+  'scroll-auto': [{ property: 'scroll-behavior', value: 'auto' }],
+  'scroll-smooth': [{ property: 'scroll-behavior', value: 'smooth' }],
+  'scrollbar-auto': [{ property: 'scrollbar-width', value: 'auto' }],
+  'scrollbar-thin': [{ property: 'scrollbar-width', value: 'thin' }],
+  'scrollbar-none': [{ property: 'scrollbar-width', value: 'none' }],
+  'scrollbar-gutter-auto': [{ property: 'scrollbar-gutter', value: 'auto' }],
+  'scrollbar-gutter-stable': [{ property: 'scrollbar-gutter', value: 'stable' }],
+  'scrollbar-gutter-both': [{ property: 'scrollbar-gutter', value: 'stable both-edges' }],
+  'border-collapse': [{ property: 'border-collapse', value: 'collapse' }],
+  'border-separate': [{ property: 'border-collapse', value: 'separate' }],
+  'table-auto': [{ property: 'table-layout', value: 'auto' }],
+  'table-fixed': [{ property: 'table-layout', value: 'fixed' }],
+  'caption-top': [{ property: 'caption-side', value: 'top' }],
+  'caption-bottom': [{ property: 'caption-side', value: 'bottom' }],
+  'snap-none': [{ property: 'scroll-snap-type', value: 'none' }],
+  'snap-x': [{ property: 'scroll-snap-type', value: 'x var(--cssx-scroll-snap-strictness, proximity)' }],
+  'snap-y': [{ property: 'scroll-snap-type', value: 'y var(--cssx-scroll-snap-strictness, proximity)' }],
+  'snap-both': [{ property: 'scroll-snap-type', value: 'both var(--cssx-scroll-snap-strictness, proximity)' }],
+  'snap-mandatory': [{ property: '--cssx-scroll-snap-strictness', value: 'mandatory' }],
+  'snap-proximity': [{ property: '--cssx-scroll-snap-strictness', value: 'proximity' }],
+  'snap-normal': [{ property: 'scroll-snap-stop', value: 'normal' }],
+  'snap-always': [{ property: 'scroll-snap-stop', value: 'always' }],
+  'snap-start': [{ property: 'scroll-snap-align', value: 'start' }],
+  'snap-end': [{ property: 'scroll-snap-align', value: 'end' }],
+  'snap-center': [{ property: 'scroll-snap-align', value: 'center' }],
+  'snap-align-none': [{ property: 'scroll-snap-align', value: 'none' }],
+  'forced-color-adjust-auto': [{ property: 'forced-color-adjust', value: 'auto' }],
+  'forced-color-adjust-none': [{ property: 'forced-color-adjust', value: 'none' }],
+  'accent-auto': [{ property: 'accent-color', value: 'auto' }],
+  'caret-auto': [{ property: 'caret-color', value: 'auto' }],
+  'fill-none': [{ property: 'fill', value: 'none' }],
+  'stroke-none': [{ property: 'stroke', value: 'none' }],
+  'scheme-normal': [{ property: 'color-scheme', value: 'normal' }],
+  'scheme-dark': [{ property: 'color-scheme', value: 'dark' }],
+  'scheme-light': [{ property: 'color-scheme', value: 'light' }],
+  'scheme-light-dark': [{ property: 'color-scheme', value: 'light dark' }],
+  'scheme-only-dark': [{ property: 'color-scheme', value: 'only dark' }],
+  'scheme-only-light': [{ property: 'color-scheme', value: 'only light' }],
+  'rounded-none': [{ property: 'border-radius', value: '0' }],
+  rounded: [{ property: 'border-radius', value: '0.25rem' }],
+  'rounded-sm': [{ property: 'border-radius', value: '0.125rem' }],
+  'rounded-md': [{ property: 'border-radius', value: '0.375rem' }],
+  'rounded-lg': [{ property: 'border-radius', value: '0.5rem' }],
+  'rounded-xl': [{ property: 'border-radius', value: '0.75rem' }],
+  'rounded-2xl': [{ property: 'border-radius', value: '1rem' }],
+  'rounded-full': [{ property: 'border-radius', value: '9999px' }],
+  border: [{ property: 'border-width', value: '1px' }],
+  'border-0': [{ property: 'border-width', value: '0' }],
+  'border-2': [{ property: 'border-width', value: '2px' }],
+  'border-4': [{ property: 'border-width', value: '4px' }],
+  'border-8': [{ property: 'border-width', value: '8px' }],
+  'border-x': [
+    { property: 'border-left-width', value: '1px' },
+    { property: 'border-right-width', value: '1px' },
+  ],
+  'border-y': [
+    { property: 'border-top-width', value: '1px' },
+    { property: 'border-bottom-width', value: '1px' },
+  ],
+  'border-t': [{ property: 'border-top-width', value: '1px' }],
+  'border-r': [{ property: 'border-right-width', value: '1px' }],
+  'border-b': [{ property: 'border-bottom-width', value: '1px' }],
+  'border-l': [{ property: 'border-left-width', value: '1px' }],
+  shadow: shadowDeclarations('0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1)'),
+  'shadow-none': shadowDeclarations('0 0 #0000'),
+  'shadow-sm': shadowDeclarations('0 1px 2px 0 rgb(0 0 0 / .05)'),
+  'shadow-md': shadowDeclarations('0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1)'),
+  'shadow-lg': shadowDeclarations('0 10px 15px -3px rgb(0 0 0 / .1), 0 4px 6px -4px rgb(0 0 0 / .1)'),
+  'shadow-xl': shadowDeclarations('0 20px 25px -5px rgb(0 0 0 / .1), 0 8px 10px -6px rgb(0 0 0 / .1)'),
+  'shadow-2xl': shadowDeclarations('0 25px 50px -12px rgb(0 0 0 / .25)'),
+  'transition-none': [{ property: 'transition-property', value: 'none' }],
+  'transition-normal': [{ property: 'transition-behavior', value: 'normal' }],
+  'transition-discrete': [{ property: 'transition-behavior', value: 'allow-discrete' }],
+  transition: [
+    {
+      property: 'transition-property',
+      value:
+        'color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter',
+    },
+    { property: 'transition-duration', value: '150ms' },
+    { property: 'transition-timing-function', value: 'cubic-bezier(.4, 0, .2, 1)' },
+  ],
+  'transition-all': [
+    { property: 'transition-property', value: 'all' },
+    { property: 'transition-duration', value: '150ms' },
+    { property: 'transition-timing-function', value: 'cubic-bezier(.4, 0, .2, 1)' },
+  ],
+  'transition-colors': [
+    {
+      property: 'transition-property',
+      value: 'color, background-color, border-color, outline-color, text-decoration-color, fill, stroke',
