@@ -1,0 +1,25 @@
+{
+  "name": "@cssxio/compiler",
+  "version": "0.2.0",
+  "description": "Standalone utility compiler for CSSX.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup && node ../../scripts/write-build-manifest.mjs"
+  }
+}
