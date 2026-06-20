@@ -1,0 +1,30 @@
+{
+  "name": "@cssxio/babel-plugin",
+  "version": "0.2.0",
+  "description": "Babel compiler transform for CSSX.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "peerDependencies": {
+    "@babel/core": "^7.28.0"
+  },
+  "dependencies": {
+    "@cssxio/compiler": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --external @babel/core --clean"
+  }
+}
