@@ -1,0 +1,186 @@
+import { describe, expect, it } from 'vitest';
+import { serializeCss } from '@cssxio/compiler';
+import { compileCssxStylesheet, transformCssxModule } from '../src/index';
+import { sourceMapFromContext } from '../src/transform';
+import { decodeFirstMapping, pluginFor, source, transformRequired } from './transform-helpers';
+
+describe('CSSX unplugin transform', () => {
+  it('returns transformed code and standalone CSS metadata', async () => {
+    const result = await transformCssxModule(source, '/project/styles.ts');
+
+    expect(result?.code).not.toContain('@cssxio/cssx');
+    expect(serializeCss(result?.rules ?? [])).toContain('padding:calc(0.25rem * 5)');
+    expect(result?.map?.sources).toEqual(['styles.ts']);
+  });
+
+  it('composes an incoming JavaScript source map through the CSSX transform', async () => {
+    const result = await transformRequired(
+      source,
+      '/project/generated.ts',
+      {},
+      {
+        version: 3,
+        file: 'generated.ts',
+        sources: ['original.ts'],
+        names: [],
+        sourcesContent: [source],
+        mappings: 'AAAA',
+      },
+    );
+    expect(result.map?.sources).toEqual(['original.ts']);
+  });
+
+  it('accepts only complete incoming source maps from bundler contexts', () => {
+    expect(sourceMapFromContext(undefined, '/project/input.ts')).toBeUndefined();
+    expect(sourceMapFromContext({}, '/project/input.ts')).toBeUndefined();
+    expect(sourceMapFromContext({ getCombinedSourcemap: () => ({ version: 2 }) }, '/project/input.ts')).toBeUndefined();
+    expect(
+      sourceMapFromContext(
+        {
+          getCombinedSourcemap: () => ({
+            version: 3,
+            sources: ['original.ts'],
+            names: ['value'],
+            mappings: 'AAAA',
+            sourceRoot: '/source',
+            sourcesContent: [source],
+          }),
+        },
+        '/project/input.ts',
+      ),
+    ).toMatchObject({ file: '/project/input.ts', sourceRoot: '/source', names: ['value'] });
+  });
+
+  it('maps final utility fragments to their originating modules', async () => {
+    const stylesheet = await compileCssxStylesheet([
+      { id: '/project/button.ts', candidates: { 'p-4': 'cssx-padding' } },
+      { id: '/project/title.ts', candidates: { 'text-white': 'cssx-color' } },
+    ]);
+
+    expect(stylesheet.css).toContain('.cssx-padding');
+    expect(stylesheet.css).toContain('.cssx-color');
+    expect(stylesheet.map?.sources).toEqual(['/project/button.ts', '/project/title.ts']);
+    expect(stylesheet.map?.mappings).not.toBe('');
+  });
+
+  it('can compile a stylesheet without a CSS source map', async () => {
+    const stylesheet = await compileCssxStylesheet(
+      [{ id: '/project/button.ts', candidates: { 'p-4': 'cssx-padding' } }],
+      undefined,
+      undefined,
+      false,
+    );
+
+    expect(stylesheet.css).toContain('.cssx-padding');
+    expect(stylesheet.map).toBeUndefined();
+  });
+
+  it('retains candidate source locations in final CSS mappings', async () => {
+    const transformed = await transformRequired(
+      "import * as cssx from '@cssxio/cssx';\nexport const styles = cssx.create({ root: 'p-4' });",
+      '/project/located.ts',
+    );
+    expect(transformed.origins['p-4']).toEqual({ line: 1, column: 22 });
+
+    const stylesheet = await compileCssxStylesheet([
+      { id: '/project/located.ts', candidates: transformed.candidates, origins: transformed.origins },
+    ]);
+    expect(decodeFirstMapping(stylesheet.map?.mappings ?? '')).toEqual([0, 0, 1, 22]);
+  });
+
+  it('extracts static sx literals while retaining dynamic conditional class joining', async () => {
+    const result = await transformRequired(
+      `import { sx } from '@cssxio/cssx'; export const className = sx('p-4', disabled && 'opacity-50');`,
+      '/project/inline.ts',
+    );
+    const css = serializeCss(result.rules);
+
+    expect(result.code).toContain('sx("');
+    expect(result.code).toContain('disabled && "');
+    expect(css).toContain('padding:calc(0.25rem * 4)');
+    expect(css).toContain('opacity:0.5');
+  });
+
+  it('folds static props without a runtime import and emits only its hashed rules', async () => {
+    const result = await transformRequired(
+      `import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ root: 'p-5 bg-red-500' }); export const rootProps = cssx.props(styles.root);`,
+      '/project/static.ts',
+    );
+    const css = serializeCss(result.rules);
+    const classNames = [...result.code.matchAll(/className: "([^"]+)"/g)].flatMap(
+      (match) => match[1]?.split(' ') ?? [],
+    );
+
+    expect(result.code).not.toMatch(/from\s+['"]@cssxio\/cssx['"]/);
+    expect(result.rules).toHaveLength(1);
+    expect(classNames).toHaveLength(1);
+    expect(css).toContain(`.${classNames[0]}`);
+    expect(result.atomicClasses).toEqual([]);
+    expect(
+      Object.values(result.candidates)
+        .flatMap((className) => className.split(' '))
+        .every((className) => !css.includes(`.${className}`)),
+    ).toBe(true);
+    expect(css).not.toContain('p-5');
+    expect(css).not.toContain('bg-red-500');
+  });
+
+  it('extracts variant and arbitrary-property candidates through the CSSX compiler', async () => {
+    const result = await transformRequired(
+      `import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'sm:hover:bg-red-500 [mask-type:luminance]' });`,
+      '/project/variants.ts',
+    );
+    const css = serializeCss(result.rules);
+
+    expect(css).toContain('mask-type:luminance');
+    expect(css).toContain('@media (width >= 40rem)');
+    expect(css).toContain('@media (hover: hover)');
+    expect(css).not.toContain('sm\\:hover\\:bg-red-500');
+  });
+
+  it('keeps hashes and CSS ordering stable across repeated and reordered module transforms', async () => {
+    const modules = [
+      [
+        `import * as cssx from '@cssxio/cssx'; export const first = cssx.create({ root: 'p-5 hover:bg-red-500' });`,
+        '/project/first.ts',
+      ],
+      [
+        `import * as cssx from '@cssxio/cssx'; export const second = cssx.create({ root: 'text-white gap-2' });`,
+        '/project/second.ts',
+      ],
+    ] as const;
+    const forward = await Promise.all(modules.map(([code, id]) => transformRequired(code, id)));
+    const reverse = await Promise.all([...modules].reverse().map(([code, id]) => transformRequired(code, id)));
+    const repeat = await Promise.all(modules.map(([code, id]) => transformRequired(code, id)));
+
+    expect(serializeCss(forward.flatMap((result) => result.rules))).toBe(
+      serializeCss(reverse.flatMap((result) => result.rules)),
+    );
+    expect(serializeCss(forward.flatMap((result) => result.rules))).toBe(
+      serializeCss(repeat.flatMap((result) => result.rules)),
+    );
+  });
+
+  it('emits Vite and Rollup CSS from the final module graph, including cached metadata', async () => {
+    const plugin = pluginFor('vite');
+    const transformed = await plugin.transform.handler(source, '/project/styles.ts');
+    const additional = await plugin.transform.handler(
+      `import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'text-white' });`,
+      '/project/additional.ts',
+    );
+    const emitted: any[] = [];
+    const context = {
+      emitFile(asset: unknown) {
+        emitted.push(asset);
+      },
+      getModuleInfo(id: string) {
+        if (id === '/project/styles.ts') {
+          return { meta: transformed.meta };
+        }
+        if (id === '/project/additional.ts') {
+          return { meta: additional.meta };
+        }
+        return null;
+      },
+    };
+    const bundle = {
