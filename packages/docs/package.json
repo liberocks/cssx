@@ -1,0 +1,19 @@
+{
+  "name": "@cssxio/docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build",
+    "deploy": "pnpm --dir ../.. build && wrangler deploy",
+    "dev": "astro dev"
+  },
+  "dependencies": {
+    "@cssxio/cssx": "workspace:*"
+  },
+  "devDependencies": {
+    "@cssxio/unplugin": "workspace:*",
+    "astro": "^6.3.1",
+    "wrangler": "^4.0.0"
+  }
+}
