@@ -1,0 +1,24 @@
+---
+import { navigation } from '../data/navigation.js';
+import { classes } from '../styles.js';
+
+interface Props {
+  currentPath: string;
+  mobile?: boolean;
+}
+
+const { currentPath, mobile = false } = Astro.props;
+---
+
+<nav aria-label={mobile ? 'Documentation navigation' : 'Documentation sections'}>
+  {navigation.map((group) => (
+    <section class={classes.navGroup} aria-labelledby={`nav-${group.label.toLowerCase().replaceAll(' ', '-')}`}>
+      <h2 class={classes.navLabel} id={`nav-${group.label.toLowerCase().replaceAll(' ', '-')}`}>{group.label}</h2>
+      <div class={classes.navList}>
+        {group.items.map((item) => (
+          <a class:list={[classes.navLink, currentPath === item.href && classes.navLinkCurrent]} href={item.href}>{item.label}</a>
+        ))}
+      </div>
+    </section>
+  ))}
+</nav>
