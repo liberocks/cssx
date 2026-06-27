@@ -1,0 +1,53 @@
+{
+  "name": "cssx-intellisense",
+  "displayName": "CSSX IntelliSense",
+  "description": "Completion and hover documentation for CSSX static utility strings.",
+  "version": "0.1.0",
+  "publisher": "cssxio",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "cssx",
+    "utility"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact",
+    "onLanguage:html",
+    "onLanguage:astro",
+    "onLanguage:vue",
+    "onLanguage:svelte"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "CSSX IntelliSense",
+      "properties": {
+        "cssxIntelliSense.classFunctions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "sx",
+            "cssx.sx"
+          ],
+          "markdownDescription": "Additional function names whose quoted arguments should receive CSSX utility completions."
+        },
+        "cssxIntelliSense.suggestions": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Enable CSSX utility-string completion suggestions."
+        }
+      }
+    }
+  }
+}
