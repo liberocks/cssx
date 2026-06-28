@@ -1,0 +1,8 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { classes } from '../../styles';
+---
+
+<DocsLayout title="Styling with CSSX" description="Create static styles, combine them, and join inline utility strings.">
+  <header><p class={classes.eyebrow}>Core concept</p><h1 class={classes.title}>Styling with CSSX</h1><p class={classes.lead}>Create static styles, combine them, and join inline utility strings.</p></header>
+  <section class={classes.section}><h2 class={classes.heading}>Create static styles</h2><p class={classes.copy}>create accepts one plain object. Values must be string literals or local constants that hold string literals. Every style key compiles to one composite class.</p><pre class={classes.code}><code>const styles = cssx.create({`{`}
