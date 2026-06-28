@@ -1,0 +1,30 @@
+---
+import Navigation from '../components/Navigation.astro';
+import { navigation } from '../data/navigation.js';
+import { classes } from '../styles.js';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const currentPath = Astro.url.pathname;
+const currentItem = navigation.flatMap((group) => group.items).find((item) => item.href === currentPath);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <link rel="stylesheet" href="/assets/cssx.css" />
+    <title>{title} | CSSX</title>
+  </head>
+  <body class={classes.page}>
+    <a class={classes.skipLink} href="#content">Skip to content</a>
+    <header class={classes.header}>
+      <div class={classes.headerInner}>
+        <a class={classes.brand} href="/"><span class={classes.brandMark}>CX</span>CSSX</a>
+        <p class={classes.headerTagline}>Compile-time utility styling</p>
