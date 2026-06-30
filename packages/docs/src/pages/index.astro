@@ -1,0 +1,24 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import { classes } from '../styles';
+const utilityCategories = [
+  ['layout', 'Layout', 'Display, position, flow, media, and container utilities.'], ['flexbox-grid', 'Flexbox and grid', 'Flex and grid containers, items, placement, and alignment.'], ['spacing-sizing', 'Spacing and sizing', 'Spacing, size, inset, and scroll utilities.'], ['typography', 'Typography', 'Font, text, list, and content utilities.'], ['backgrounds-gradients', 'Backgrounds and gradients', 'Background, color, and gradient utilities.'], ['borders-effects', 'Borders and effects', 'Border, outline, ring, shadow, and opacity utilities.'], ['filters-masks', 'Filters and masks', 'Filter, backdrop filter, and mask utilities.'], ['motion-transforms', 'Motion and transforms', 'Transition, animation, and transform utilities.'], ['interactivity-scrolling', 'Interactivity and scrolling', 'Control, cursor, scrolling, snap, and scrollbar utilities.'], ['tables-svg-accessibility', 'Tables, SVG, accessibility', 'Table, SVG, and accessibility utilities.'],
+] as const;
+---
+
+<DocsLayout title="Documentation" description="CSSX documentation for compile-time utility styling.">
+  <header class={classes.homeHero}>
+    <p class={classes.eyebrow}>CSSX documentation</p>
+    <h1 class={classes.homeTitle}>Compile utility styling at build time.</h1>
+    <p class={classes.homeLead}>CSSX turns static utility strings into class names and CSS. Use this guide to set up CSSX, combine styles, and find supported utilities.</p>
+    <div class={classes.homeActions}>
+      <a class={classes.primaryLink} href="/docs/installation">Install CSSX</a>
+      <a class={classes.secondaryLink} href="/docs/utilities/layout">Browse utilities</a>
+    </div>
+  </header>
+
+  <section class={classes.section}>
+    <h2 class={classes.heading}>Reference by category</h2>
+    <p class={classes.copy}>Each category shows supported class patterns and the CSS they create. Patterns with a value describe every supported form in that family.</p>
+    <div class={classes.utilityIndex}>
+      {utilityCategories.map(([slug, title, description]) => (
