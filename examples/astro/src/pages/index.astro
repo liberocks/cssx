@@ -1,0 +1,38 @@
+---
+import astroLogo from '../assets/astro.svg';
+import background from '../assets/background.svg';
+import { styleProps } from '../styles';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="stylesheet" href="/assets/cssx.css" />
+    <title>Astro + CSSX</title>
+  </head>
+  <body>
+    <main {...styleProps.page}>
+      <img {...styleProps.background} src={background.src} alt="" />
+      <section {...styleProps.hero}>
+        <a href="https://astro.build"><img src={astroLogo.src} width="115" height="48" alt="Astro Homepage" /></a>
+        <h1 {...styleProps.title}>
+          To get started, open the <code {...styleProps.code}>src/pages</code> directory in your project.
+        </h1>
+        <div {...styleProps.links}>
+          <a {...styleProps.primaryLink} href="https://docs.astro.build">Read our docs</a>
+          <a {...styleProps.secondaryLink} href="https://astro.build/chat">Join the community</a>
+        </div>
+        <p {...styleProps.note}>CSSX theme: brand color and display font tokens.</p>
+      </section>
+    </main>
+    <style is:global>
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+    </style>
+  </body>
+</html>
