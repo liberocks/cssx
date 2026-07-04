@@ -1,0 +1,17 @@
+{
+  "name": "cssx-astro-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@cssxio/cssx": "^0.2.0",
+    "astro": "^6.0.0"
+  },
+  "devDependencies": {
+    "@cssxio/unplugin": "^0.2.0"
+  }
+}
