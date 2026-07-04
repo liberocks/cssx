@@ -1,0 +1,22 @@
+{
+  "name": "cssx-gatsby-example",
+  "private": true,
+  "scripts": {
+    "dev": "gatsby develop",
+    "prebuild": "gatsby clean",
+    "build": "gatsby build",
+    "serve": "gatsby serve"
+  },
+  "dependencies": {
+    "@cssxio/cssx": "^0.2.0",
+    "gatsby": "^5.14.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@cssxio/babel-plugin": "^0.2.0",
+    "@cssxio/unplugin": "^0.2.0",
+    "@types/react": "^18.3.12",
+    "typescript": "^5.9.0"
+  }
+}
