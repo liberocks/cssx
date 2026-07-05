@@ -1,0 +1,21 @@
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  max-width: 100vw;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+body {
+  --font-display: var(--font-geist-sans);
+  color: var(--foreground);
+  background: var(--background);
+}
