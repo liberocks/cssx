@@ -1,0 +1,4 @@
+overrides:
+  '@cssxio/babel-plugin': link:../../packages/babel-plugin
+  '@cssxio/cssx': link:../../packages/cssx
+  '@cssxio/unplugin': link:../../packages/unplugin
