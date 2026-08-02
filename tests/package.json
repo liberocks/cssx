@@ -1,0 +1,13 @@
+{
+  "name": "cssx-visual-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node ./scripts/run-matrix.mjs",
+    "test:update": "CSSX_UPDATE_SNAPSHOTS=1 node ./scripts/run-matrix.mjs",
+    "test:coverage": "playwright test coverage --config playwright.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}
