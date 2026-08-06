@@ -40,3 +40,31 @@ layer without preflight or base CSS.
 Reported output consists of separate JavaScript and CSS artifacts. Gzip size is
 the sum of independently compressed artifacts, matching normal delivery rather
 than compressing JavaScript and CSS together.
+
+### Pre-extracted utility candidate compilation
+
+The individual CSSX utility runner remains available for compiler profiling.
+It compares CSSX and Tailwind only after candidate extraction. Both receive
+the same deduplicated candidate list and report final CSS only. Tailwind imports
+its utilities layer without preflight or base CSS, so resets are not charged to
+only one implementation.
+
+## Measurement protocol
+
+- Each runner rebuilds CSSX compiler and Babel artifacts, then verifies source
+  and artifact hashes before the benchmark starts.
+- Every runner performs one untimed validation warmup and 15 timed samples.
+- Six isolated child-process trials are collected per framework and scale.
+- Runner order rotates across trials.
+- Every timed output must equal the warmup output and every process trial must
+  produce identical artifact byte counts.
+- The table reports the median of all 90 timed samples per runner.
+
+Individual runners default to `large`:
+
+```sh
+pnpm --dir benchmarks benchmark:cssx
+pnpm --dir benchmarks benchmark:stylex
+pnpm --dir benchmarks benchmark:cssx-utilities
+pnpm --dir benchmarks benchmark:tailwind
+```
