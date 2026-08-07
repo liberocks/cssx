@@ -16,3 +16,15 @@
     "prebenchmark:cssx-utilities": "pnpm --dir ../packages/compiler build && node scripts/assert-compiler-build.mjs",
     "benchmark:cssx-utilities": "node scripts/cssx-utilities.mjs",
     "prebenchmark:tailwind": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && node scripts/assert-compiler-build.mjs",
+    "benchmark:tailwind": "node scripts/tailwind.mjs",
+    "prebenchmark:stylex": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && node scripts/assert-compiler-build.mjs",
+    "benchmark:stylex": "node scripts/stylex.mjs"
+  },
+  "dependencies": {
+    "@babel/core": "^7.29.0",
+    "@cssxio/compiler": "file:../packages/compiler",
+    "@stylexjs/babel-plugin": "^0.19.0",
+    "@stylexjs/stylex": "^0.19.0",
+    "tailwindcss": "^4.3.3"
+  }
+}
