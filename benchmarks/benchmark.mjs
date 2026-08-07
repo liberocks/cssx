@@ -49,3 +49,38 @@ for (const variant of variants) {
 console.log('Final build size summary');
 console.table(finalBuildRows);
 
+function runInChild(path, variant) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      process.execPath,
+      [fileURLToPath(new URL(path, import.meta.url)), variant, '--json'],
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr || error.message));
+          return;
+        }
+        try {
+          resolve(JSON.parse(stdout));
+        } catch {
+          reject(new Error(`Benchmark runner returned invalid JSON: ${stdout}`));
+        }
+      },
+    );
+  });
+}
+
+function summarize(results) {
+  const first = results[0];
+  if (!first) {
+    throw new Error('Benchmark runner produced no trials.');
+  }
+  if (results.some((result) => result.js.bytes !== first.js.bytes || result.css.bytes !== first.css.bytes)) {
+    throw new Error(`${first.name} produced non-deterministic artifacts across processes.`);
+  }
+  const samples = results.flatMap((result) => result.samples).sort((left, right) => left - right);
+  return { ...first, median: samples[Math.floor(samples.length / 2)] ?? 0, samples };
+}
+
+function capitalize(value) {
+  return value[0]?.toUpperCase() + value.slice(1);
+}
