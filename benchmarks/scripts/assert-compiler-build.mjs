@@ -24,3 +24,21 @@ async function filesIn(directory) {
   return (
     await Promise.all(
       entries.map((entry) =>
+        entry.isDirectory() ? filesIn(join(directory, entry.name)) : [join(directory, entry.name)],
+      ),
+    )
+  )
+    .flat()
+    .sort();
+}
+
+async function hashFiles(root, files) {
+  const hash = createHash('sha256');
+  for (const file of files) {
+    hash.update(relative(root, file));
+    hash.update('\0');
+    hash.update(await readFile(file));
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
