@@ -53,3 +53,40 @@ function validateCssxOutput(artifacts, workload) {
 
 /** Checks final CSS contains every canonical per-component declaration. */
 export function validateCss(css, workload) {
+  if (!css) {
+    throw new Error('Benchmark CSS must not be empty.');
+  }
+  const compactCss = css.replaceAll(/\s+/g, '');
+  for (const component of workload.components) {
+    const width = component.stylex.width;
+    if (!compactCss.includes(`width:${width}`)) {
+      throw new Error(`Benchmark CSS is missing width ${width}.`);
+    }
+  }
+  for (const declaration of [
+    'display:inline-flex',
+    'line-height:1.25rem',
+    'font-weight:600',
+    'color:#fff',
+    'padding-left:',
+    'padding-right:',
+  ]) {
+    if (!compactCss.includes(declaration)) {
+      throw new Error(`Benchmark CSS is missing ${declaration}.`);
+    }
+  }
+  for (const color of new Set(workload.components.map((component) => component.stylex.backgroundColor))) {
+    if (!compactCss.includes(`background-color:${color}`)) {
+      throw new Error(`Benchmark CSS is missing background color ${color}.`);
+    }
+  }
+}
+
+if (isDirectExecution(import.meta.url)) {
+  const result = await runCssxBenchmark(readVariantArgument(process.argv.slice(2)));
+  if (process.argv.includes('--json')) {
+    process.stdout.write(JSON.stringify(result));
+  } else {
+    printResults([result]);
+  }
+}
