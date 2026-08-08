@@ -116,3 +116,82 @@ export async function compileStyleMap(
   );
   return {
     styles: records.styles,
+    classes: records.classes,
+    candidates: records.candidates,
+    classNames: records.classNames,
+    composites: records.composites,
+    rules: [{ className: cssId(compiled.css), css: compiled.css }],
+  };
+}
+
+/**
+ * Compiles several style maps as one set of CSS.
+ *
+ * @param inputs Map names and their static utility maps.
+ * @param options Compiler options.
+ * @returns A compiled map for each input and the shared CSS rules.
+ *
+ * Shared resources, such as keyframes, are added once. The function rejects
+ * invalid utilities and invalid theme input.
+ */
+export async function compileStyleMaps(
+  inputs: Readonly<Record<string, Readonly<Record<string, string>>>>,
+  options: CompilerOptions = {},
+): Promise<CompileMapsResult> {
+  const records = compileStyleRecordMaps(inputs, options);
+  const candidates = Object.keys(records.classes);
+  if (candidates.length === 0) {
+    return { styleMaps: records.styleMaps, rules: [] };
+  }
+  const compiled = await compileUtilities(
+    candidates,
+    (candidate) => records.classes[candidate] ?? candidate,
+    options.theme,
+    createSelectorAliases(records.composites),
+  );
+  return {
+    styleMaps: records.styleMaps,
+    rules: [{ className: cssId(compiled.css), css: compiled.css }],
+  };
+}
+
+/**
+ * Joins unique CSS rules in a stable order.
+ *
+ * @param rules Generated CSS rules.
+ * @param options Optional CSS layer settings.
+ * @param options.layer CSS layer that wraps the generated rules.
+ * @returns The final CSS string.
+ */
+export function serializeCss(rules: readonly CssxRule[], options: { readonly layer?: string } = {}): string {
+  const css = [...new Set(rules.map((rule) => rule.css))].sort().join('');
+  return css && options.layer ? `@layer ${options.layer}{${css}}` : css;
+}
+
+/**
+ * Creates a stable compact identifier for one complete CSS payload.
+ *
+ * @param value CSS used as the identifier input.
+ * @returns A deterministic CSSX class name.
+ */
+function cssId(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `cssx-${(hash >>> 0).toString(36)}`;
+}
+
+/** Inverts composite-to-atom metadata for selector serialization. */
+export function createSelectorAliases(
+  composites: Readonly<Record<string, readonly string[]>>,
+): Readonly<Record<string, readonly string[]>> {
+  const aliases: Record<string, string[]> = Object.create(null) as Record<string, string[]>;
+  for (const [composite, atomicClasses] of Object.entries(composites)) {
+    for (const atomicClass of atomicClasses) {
+      (aliases[atomicClass] ??= []).push(composite);
+    }
+  }
+  return aliases;
+}
