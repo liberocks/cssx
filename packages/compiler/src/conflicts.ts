@@ -523,3 +523,353 @@ function allocateClassNames(
           .map(
             (declaration) =>
               `${declaration.property}:${declaration.value}:${declaration.selectorSuffix ?? ''}${declaration.atRule ? `:${declaration.atRule}` : ''}`,
+          )
+          .join(';');
+        const identity = `${COMPILER_ABI}\u0000${themeSignature}\u0000${classification.scope}\u0000${payload}`;
+        return identity;
+      }),
+    );
+  }
+  const allocated = allocator.allocate([...atomIdentities.values()].flat());
+  for (const [candidate, identities] of atomIdentities) {
+    classNames[candidate] = identities.map((identity) => allocated.get(identity) ?? '');
+  }
+  return { classNames };
+}
+
+/** Fully validated options used while allocating generated classes. */
+interface NormalizedClassNameOptions {
+  readonly variant: 'random' | 'serial';
+  readonly prefix: string;
+  readonly suffix: string;
+  readonly length?: number;
+}
+
+/**
+ * Validates and supplies defaults for class-name options.
+ *
+ * @param options User-supplied naming options.
+ * @returns Validated naming options.
+ */
+function normalizeClassNameOptions(options: ClassNameOptions | undefined): NormalizedClassNameOptions {
+  const variant = options?.variant ?? 'serial';
+  const prefix = options?.prefix ?? 's';
+  const suffix = options?.suffix ?? 'x';
+  const length = options?.length;
+  if (variant !== 'random' && variant !== 'serial') {
+    throw new Error('CSSX className.variant must be "random" or "serial".');
+  }
+  if (!/^[A-Za-z_-][A-Za-z0-9_-]*$/.test(prefix)) {
+    throw new Error('CSSX className.prefix must be a non-empty safe CSS identifier prefix.');
+  }
+  if (!/^[A-Za-z0-9_-]*$/.test(suffix)) {
+    throw new Error('CSSX className.suffix must contain only letters, digits, hyphens, or underscores.');
+  }
+  if (length !== undefined && (!Number.isSafeInteger(length) || length < 1 || length > 64)) {
+    throw new Error('CSSX className.length must be an integer from 1 through 64.');
+  }
+  if (variant === 'serial' && length !== undefined) {
+    throw new Error('CSSX className.length is only supported by the random naming variant.');
+  }
+  return { variant, prefix, suffix, ...(length === undefined ? {} : { length }) };
+}
+
+/**
+ * Assigns unique names to identities in one compilation namespace.
+ *
+ * Serial names use a compact case-sensitive base-62 counter. Random names use
+ * a stable hash and deterministic probing, so choosing a shorter hash cannot
+ * silently collide.
+ *
+ * @param options User-supplied naming options.
+ * @returns A stateful class-name allocator.
+ */
+export function createClassNameAllocator(options: ClassNameOptions = {}): ClassNameAllocator {
+  return new GeneratedClassNameAllocator(normalizeClassNameOptions(options));
+}
+
+/** Allocates generated class names while preserving previous identity assignments. */
+class GeneratedClassNameAllocator implements ClassNameAllocator {
+  private readonly classNames = new Map<string, string>();
+  private readonly allocated = new Set<string>();
+  private serialCounter = 0n;
+
+  constructor(private readonly naming: NormalizedClassNameOptions) {}
+
+  allocate(identities: readonly string[]): ReadonlyMap<string, string> {
+    const newIdentities = [...new Set(identities)].filter((identity) => !this.classNames.has(identity)).sort();
+    if (this.naming.variant === 'random' && this.naming.length !== undefined) {
+      const capacity = 36n ** BigInt(this.naming.length);
+      if (BigInt(newIdentities.length + this.allocated.size) > capacity) {
+        throw new Error(
+          `CSSX className.length ${this.naming.length} cannot name every generated class without a collision.`,
+        );
+      }
+    }
+    for (const identity of newIdentities) {
+      let attempt = 0;
+      let className = '';
+      do {
+        const core =
+          this.naming.variant === 'serial'
+            ? serialClassFragment(this.serialCounter++)
+            : randomClassFragment(identity, this.naming.length, attempt);
+        className = `${this.naming.prefix}${core}${this.naming.suffix}`;
+        attempt++;
+      } while (this.allocated.has(className));
+      this.allocated.add(className);
+      this.classNames.set(identity, className);
+    }
+    return new Map(identities.map((identity) => [identity, this.classNames.get(identity) ?? ''] as const));
+  }
+
+  reserve(classNames: readonly string[]): void {
+    for (const className of classNames) {
+      this.allocated.add(className);
+    }
+  }
+}
+
+/** Case-sensitive digits used for compact serial class names. */
+const SERIAL_CLASS_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+/**
+ * Encodes a non-negative counter value in the serial class-name alphabet.
+ *
+ * @param value Counter value to encode.
+ * @returns A base-62 serial fragment, where `10` follows uppercase `Z`.
+ */
+function serialClassFragment(value: bigint): string {
+  let remaining = value;
+  let fragment = '';
+  const base = BigInt(SERIAL_CLASS_ALPHABET.length);
+  do {
+    fragment = `${SERIAL_CLASS_ALPHABET[Number(remaining % base)] ?? ''}${fragment}`;
+    remaining /= base;
+  } while (remaining > 0n);
+  return fragment;
+}
+
+/**
+ * Creates a stable base-36 hash fragment, expanding deterministically when needed.
+ *
+ * @param identity Full declaration or composition identity.
+ * @param length Requested fixed fragment length, when configured.
+ * @param attempt Collision-resolution attempt.
+ * @returns A stable hash fragment.
+ */
+function randomClassFragment(identity: string, length: number | undefined, attempt: number): string {
+  if (length === undefined) {
+    return attempt === 0 ? hash(identity) : `${hash(identity)}-${hash(`${identity}\u0000${attempt}`)}`;
+  }
+  let fragment = '';
+  for (let part = 0; fragment.length < length; part++) {
+    fragment += hash(`${identity}\u0000${attempt}\u0000${part}`).padStart(13, '0');
+  }
+  return fragment.slice(0, length);
+}
+
+/**
+ * Finds the conflict record for one atom, preferring explicit semantic metadata.
+ *
+ * Atomization can split a shorthand utility into independent properties. This
+ * function preserves the exact reset behavior for those properties so runtime
+ * composition matches the CSS cascade instead of treating every atom as a whole.
+ *
+ * @param atom Declaration atom to classify.
+ * @param fallback Candidate-level semantic record.
+ * @returns Semantic record used by the compiled runtime style.
+ */
+function atomSemantics(
+  atom: readonly {
+    readonly property: string;
+    readonly semanticGroup?: string;
+    readonly semanticConflicts?: readonly string[];
+  }[],
+  fallback: UtilityConflictRecord,
+): UtilityConflictRecord {
+  const semanticGroup = atom[0]?.semanticGroup;
+  if (semanticGroup) {
+    return { scope: fallback.scope, group: semanticGroup, conflicts: atom[0]?.semanticConflicts ?? [semanticGroup] };
+  }
+  const property = atom[0]?.property;
+  const slot = property ? (ATOM_SEMANTIC_SLOTS[property] ?? SHORTHAND_SEMANTIC_SLOTS[property]) : undefined;
+  return property
+    ? slot
+      ? { scope: fallback.scope, ...slot }
+      : { scope: fallback.scope, group: property, conflicts: [property] }
+    : fallback;
+}
+
+/** Semantic data reused by every atom with a known emitted property. */
+const ATOM_SEMANTIC_SLOTS: Readonly<Record<string, Omit<UtilityConflictRecord, 'scope'>>> = {
+  padding: { group: 'p', conflicts: ['p', 'px', 'py', 'pt', 'pr', 'pb', 'pl'] },
+  'padding-left': { group: 'pl', conflicts: ['pl'] },
+  'padding-right': { group: 'pr', conflicts: ['pr'] },
+  'padding-top': { group: 'pt', conflicts: ['pt'] },
+  'padding-bottom': { group: 'pb', conflicts: ['pb'] },
+  margin: { group: 'm', conflicts: ['m', 'mx', 'my', 'mt', 'mr', 'mb', 'ml'] },
+  'margin-left': { group: 'ml', conflicts: ['ml'] },
+  'margin-right': { group: 'mr', conflicts: ['mr'] },
+  'margin-top': { group: 'mt', conflicts: ['mt'] },
+  'margin-bottom': { group: 'mb', conflicts: ['mb'] },
+  'border-width': {
+    group: 'border-width',
+    conflicts: [
+      'border',
+      'border-width',
+      'border-x',
+      'border-y',
+      'border-top',
+      'border-right',
+      'border-bottom',
+      'border-left',
+    ],
+  },
+  'border-top-width': { group: 'border-top', conflicts: ['border-top', 'border'] },
+  'border-right-width': { group: 'border-right', conflicts: ['border-right', 'border'] },
+  'border-bottom-width': { group: 'border-bottom', conflicts: ['border-bottom', 'border'] },
+  'border-left-width': { group: 'border-left', conflicts: ['border-left', 'border'] },
+  'border-color': { group: 'border-color', conflicts: ['border-color', 'border'] },
+  '--cssx-translate-x': { group: 'translate-x', conflicts: ['translate-x'] },
+  '--cssx-translate-y': { group: 'translate-y', conflicts: ['translate-y'] },
+  '--cssx-scale-x': { group: 'scale-x', conflicts: ['scale-x'] },
+  '--cssx-scale-y': { group: 'scale-y', conflicts: ['scale-y'] },
+  '--cssx-skew-x': { group: 'skew-x', conflicts: ['skew-x'] },
+  '--cssx-skew-y': { group: 'skew-y', conflicts: ['skew-y'] },
+};
+
+/** Semantic data for shorthand declarations and their independently writable parts. */
+const SHORTHAND_SEMANTIC_SLOTS: Readonly<Record<string, Omit<UtilityConflictRecord, 'scope'>>> = Object.fromEntries(
+  Object.entries(SHORTHAND_WRITE_SETS).flatMap(([shorthand, components]) => [
+    [shorthand, { group: shorthand, conflicts: [shorthand, ...components] }],
+    ...components.map((property) => [property, { group: property, conflicts: [property, shorthand] }]),
+  ]),
+);
+
+/**
+ * Serializes resolved theme values into the class-name namespace.
+ *
+ * @param theme Parsed theme used for the signature.
+ * @returns Stable theme signature for hashing.
+ */
+function serializeThemeSignature(theme: ReturnType<typeof parseTheme>): string {
+  const outputSignature = theme.mode === 'inline' && !theme.prefix ? '' : `${theme.mode}:${theme.prefix}|`;
+  return `${outputSignature}${Object.keys(theme.tokens)
+    .sort()
+    .map((name) => `${name}:${resolveThemeValue(theme, name) ?? 'initial'}`)
+    .join('|')}`;
+}
+
+/**
+ * Merges compiled styles from left to right.
+ *
+ * @param styles Compiled styles to merge.
+ * @returns The final class string.
+ */
+export function mergeCompiledStyles(styles: readonly CompiledStyle[]): string {
+  return reducePackedUtilities(styles.flatMap((style) => style._))
+    .map((record) => record[0])
+    .filter((className): className is string => className !== null)
+    .join(' ');
+}
+
+/** A composite class and the atomic classes that implement it. */
+export interface StyleComposition {
+  /** Stable class for the complete reduced style. */
+  readonly className: string;
+  /** Winning atomic classes in their source order. */
+  readonly atomicClasses: readonly string[];
+}
+
+/**
+ * Creates one composite class for a list of compiled styles.
+ *
+ * @param styles Compiled styles to compose from left to right.
+ * @param classNameAllocator Optional allocator shared with the styles' compilation.
+ * @returns The composite class and its winning atomic classes.
+ */
+export function composeCompiledStyles(
+  styles: readonly CompiledStyle[],
+  classNameAllocator: ClassNameAllocator = createClassNameAllocator(),
+): StyleComposition {
+  return composePackedUtilities(
+    styles.flatMap((style) => style._),
+    classNameAllocator,
+  );
+}
+
+/** Reduces compiled utility records without projecting their class names. */
+function reducePackedUtilities(records: readonly CompiledUtility[]): readonly CompiledUtility[] {
+  const blockedByScope = new Map<string, Set<string>>();
+  const output: CompiledUtility[] = [];
+  for (let index = records.length - 1; index >= 0; index--) {
+    const record = records[index];
+    if (!record) {
+      continue;
+    }
+    const blocked = blockedByScope.get(record[1]) ?? new Set<string>();
+    blockedByScope.set(record[1], blocked);
+    if (record[0] !== null && blocked.has(record[2])) {
+      continue;
+    }
+    for (let conflictIndex = 2; conflictIndex < record.length; conflictIndex++) {
+      const conflict = record[conflictIndex];
+      if (conflict) {
+        blocked.add(conflict);
+      }
+    }
+    if (record[0]) {
+      output.push(record);
+    }
+  }
+  return output.reverse();
+}
+
+/** Creates a stable composite identity from reduced atomic records. */
+function composePackedUtilities(
+  records: readonly CompiledUtility[],
+  classNameAllocator: ClassNameAllocator,
+): StyleComposition {
+  const atomicClasses = packedAtomicClasses(records);
+  const identity = compositeIdentity(atomicClasses);
+  classNameAllocator.reserve(atomicClasses);
+  return {
+    className: identity
+      ? (classNameAllocator.allocate([compositeNameIdentity(identity)]).get(compositeNameIdentity(identity)) ?? '')
+      : '',
+    atomicClasses,
+  };
+}
+
+/** Extracts the atomic classes that survive a runtime composition. */
+function packedAtomicClasses(records: readonly CompiledUtility[]): readonly string[] {
+  return reducePackedUtilities(records)
+    .map((record) => record[0])
+    .filter((className): className is string => className !== null);
+}
+
+/** Creates the stable identity of a composite class from its atomic classes. */
+function compositeIdentity(atomicClasses: readonly string[]): string {
+  return [...new Set(atomicClasses)].sort().join('\u0000');
+}
+
+/** Adds the compiler namespace to a composite identity before it receives a name. */
+function compositeNameIdentity(identity: string): string {
+  return `${COMPILER_ABI}\u0000composite\u0000${identity}`;
+}
+
+/**
+ * Computes a compact deterministic 64-bit hash for generated class names.
+ *
+ * @param value Full class-name identity.
+ * @returns Base-36 hash text.
+ */
+function hash(value: string): string {
+  let result = 0xcbf29ce484222325n;
+  for (let index = 0; index < value.length; index++) {
+    result ^= BigInt(value.charCodeAt(index));
+    result = BigInt.asUintN(64, result * 0x100000001b3n);
+  }
+  return result.toString(36);
+}
