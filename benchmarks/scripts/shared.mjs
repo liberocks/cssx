@@ -48,3 +48,37 @@ export async function bundleJavaScript(source) {
     stdin: {
       contents: source,
       sourcefile: 'components.js',
+      resolveDir: process.cwd(),
+    },
+    bundle: true,
+    format: 'esm',
+    minify: true,
+    write: false,
+  });
+  const output = result.outputFiles[0];
+  if (!output) {
+    throw new Error('Bundler produced no JavaScript output.');
+  }
+  return output.text;
+}
+
+/** Serializes named build artifacts in a stable form for equality checks. */
+function serializeArtifacts(artifacts) {
+  return JSON.stringify(artifacts);
+}
+
+/** Measures each artifact independently because applications serve them separately. */
+function artifactSizes(artifacts) {
+  const js = artifacts.js ?? '';
+  const css = artifacts.css ?? '';
+  return {
+    js: { bytes: Buffer.byteLength(js), gzip: gzipSync(js).byteLength },
+    css: { bytes: Buffer.byteLength(css), gzip: gzipSync(css).byteLength },
+    gzip: gzipSync(js).byteLength + gzipSync(css).byteLength,
+  };
+}
+
+/** Runs an individual benchmark when its module is executed directly. */
+export function isDirectExecution(moduleUrl) {
+  return process.argv[1] === new URL(moduleUrl).pathname;
+}
