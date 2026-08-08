@@ -28,3 +28,23 @@ export async function runStylexBenchmark(variant = 'large') {
           ],
         ],
       });
+      if (!result?.code || !Array.isArray(result.metadata?.stylex)) {
+        throw new Error('StyleX Babel transform returned incomplete output.');
+      }
+      return {
+        js: await bundleJavaScript(result.code),
+        css: stylexPlugin.processStylexRules(result.metadata.stylex),
+      };
+    },
+    (artifacts) => validateCss(artifacts.css, workload),
+  );
+}
+
+if (isDirectExecution(import.meta.url)) {
+  const result = await runStylexBenchmark(readVariantArgument(process.argv.slice(2)));
+  if (process.argv.includes('--json')) {
+    process.stdout.write(JSON.stringify(result));
+  } else {
+    printResults([result]);
+  }
+}
