@@ -23,3 +23,21 @@ async function filesIn(directory) {
     ),
   );
   return files.flat().sort();
+}
+
+async function hashFiles(root, files) {
+  const hash = createHash('sha256');
+  for (const file of files) {
+    hash.update(relative(root, file));
+    hash.update('\0');
+    hash.update(await readFile(file));
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+
+async function hashFile(file) {
+  return createHash('sha256')
+    .update(await readFile(file))
+    .digest('hex');
+}
