@@ -83,3 +83,61 @@ export function createWorkload(variant = 'large') {
       "import * as stylex from '@stylexjs/stylex';",
       'const styles = stylex.create({',
       ...components.map((component) => `  ${component.name}: ${JSON.stringify(component.stylex)},`),
+      '});',
+      'export const props = {',
+      ...components.map((component) => `  ${component.name}: stylex.props(styles.${component.name}),`),
+      '};',
+    ].join('\n'),
+  };
+}
+
+/** Builds one canonical declaration set and its framework-specific source forms. */
+function createComponent(index) {
+  const background = BACKGROUNDS[index % BACKGROUNDS.length];
+  const gap = GAPS[index % GAPS.length];
+  const paddingX = PADDING_X[index % PADDING_X.length];
+  const paddingY = PADDING_Y[index % PADDING_Y.length];
+  const radius = RADIUS[index % RADIUS.length];
+  const disabled = index % 5 === 0;
+  const width = 160 + index;
+
+  return {
+    name: `component${index}`,
+    candidates: [
+      '[display:inline-flex]',
+      '[align-items:center]',
+      '[justify-content:center]',
+      `[gap:${gap[1]}]`,
+      `[border-radius:${radius[1]}]`,
+      `[background-color:${background[2]}]`,
+      `[padding-left:${paddingX[1]}]`,
+      `[padding-right:${paddingX[1]}]`,
+      `[padding-top:${paddingY[1]}]`,
+      `[padding-bottom:${paddingY[1]}]`,
+      '[font-size:0.875rem]',
+      '[line-height:1.25rem]',
+      '[font-weight:600]',
+      '[color:#fff]',
+      `[width:${width}px]`,
+      ...(disabled ? ['[opacity:0.5]'] : []),
+    ],
+    stylex: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: gap[1],
+      borderRadius: radius[1],
+      backgroundColor: background[2],
+      paddingLeft: paddingX[1],
+      paddingRight: paddingX[1],
+      paddingTop: paddingY[1],
+      paddingBottom: paddingY[1],
+      fontSize: '0.875rem',
+      lineHeight: '1.25rem',
+      fontWeight: 600,
+      color: '#fff',
+      width: `${width}px`,
+      ...(disabled ? { opacity: 0.5 } : {}),
+    },
+  };
+}
