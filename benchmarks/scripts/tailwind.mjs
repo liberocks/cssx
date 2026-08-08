@@ -23,3 +23,21 @@ export async function runTailwindBenchmark(variant = 'large') {
         loadStylesheet: async (id) => {
           if (id !== 'tailwindcss/utilities.css') {
             throw new Error(`Unexpected Tailwind stylesheet request: ${id}`);
+          }
+          return { content: tailwindCss, base: dirname(tailwindCssPath) };
+        },
+      });
+      return { js: await bundleJavaScript(workload.tailwindSource), css: compiler.build(candidates) };
+    },
+    (artifacts) => validateCss(artifacts.css, workload),
+  );
+}
+
+if (isDirectExecution(import.meta.url)) {
+  const result = await runTailwindBenchmark(readVariantArgument(process.argv.slice(2)));
+  if (process.argv.includes('--json')) {
+    process.stdout.write(JSON.stringify(result));
+  } else {
+    printResults([result]);
+  }
+}
