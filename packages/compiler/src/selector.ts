@@ -82,3 +82,59 @@ function parseSelector(selector: string): SelectorAst {
     }
     text += character;
   }
+  pushText();
+  return { nodes, hasNesting };
+}
+
+/**
+ * Finds the matching end of an attribute selector.
+ *
+ * @param selector Selector source.
+ * @param start Opening bracket position.
+ * @returns Closing bracket position.
+ */
+function readAttributeEnd(selector: string, start: number): number {
+  let depth = 1;
+  for (let index = start + 1; index < selector.length; index++) {
+    const character = selector[index] ?? '';
+    if (character === '\\') {
+      index++;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      index = readStringEnd(selector, index, character);
+      continue;
+    }
+    if (character === '[') {
+      depth++;
+    }
+    if (character === ']') {
+      depth--;
+    }
+    if (depth === 0) {
+      return index;
+    }
+  }
+  throw new Error('Invalid CSSX arbitrary selector attribute.');
+}
+
+/**
+ * Finds the end of an escaped CSS string.
+ *
+ * @param selector Selector source.
+ * @param start Opening quote position.
+ * @param quote Opening quote character.
+ * @returns Closing quote position.
+ */
+function readStringEnd(selector: string, start: number, quote: string): number {
+  for (let index = start + 1; index < selector.length; index++) {
+    if (selector[index] === '\\') {
+      index++;
+      continue;
+    }
+    if (selector[index] === quote) {
+      return index;
+    }
+  }
+  throw new Error('Invalid CSSX arbitrary selector string.');
+}
