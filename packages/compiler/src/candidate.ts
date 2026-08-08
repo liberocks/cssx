@@ -222,3 +222,153 @@ function splitTopLevel(source: string, separator: string): string[] {
     if (character === '"' || character === "'") {
       quote = character;
       token += character;
+      continue;
+    }
+    if (character === '[') {
+      bracketDepth++;
+    }
+    if (character === ']') {
+      bracketDepth--;
+    }
+    if (character === '(') {
+      parenthesisDepth++;
+    }
+    if (character === ')') {
+      parenthesisDepth--;
+    }
+    if (
+      bracketDepth < 0 ||
+      parenthesisDepth < 0 ||
+      bracketDepth > MAX_NESTING_DEPTH ||
+      parenthesisDepth > MAX_NESTING_DEPTH
+    ) {
+      throw new Error(`Invalid utility "${source}".`);
+    }
+    if (character === separator && bracketDepth === 0 && parenthesisDepth === 0) {
+      if (!token) {
+        throw new Error(`Invalid utility "${source}".`);
+      }
+      parts.push(token);
+      token = '';
+      continue;
+    }
+    token += character;
+  }
+
+  if (escaped || quote || bracketDepth !== 0 || parenthesisDepth !== 0) {
+    throw new Error(`Invalid utility "${source}".`);
+  }
+  if (!token) {
+    throw new Error(`Invalid utility "${source}".`);
+  }
+  parts.push(token);
+  return parts;
+}
+
+/**
+ * Gives commutative variants one canonical order so equivalent candidates share CSS.
+ *
+ * @param variants Parsed variant names.
+ * @param raw Original candidate used in validation errors.
+ * @returns Original or canonically ordered variants.
+ */
+function normalizeVariants(variants: readonly string[], raw: string): readonly string[] {
+  for (const variant of variants) {
+    if (!variant || containsUnsafeTopLevelSyntax(variant) || containsUnsafeArbitrarySyntax(variant)) {
+      throw new Error(`Invalid utility "${raw}".`);
+    }
+  }
+  const sortable = variants.every((variant) => COMMUTATIVE_VARIANTS.has(variant) || VARIANT_ORDER.has(variant));
+  if (!sortable) {
+    return variants;
+  }
+  return [...variants].sort((left, right) => {
+    const leftOrder = VARIANT_ORDER.get(left) ?? 100;
+    const rightOrder = VARIANT_ORDER.get(right) ?? 100;
+    return leftOrder - rightOrder || left.localeCompare(right);
+  });
+}
+
+/**
+ * Detects block and declaration delimiters that escape a nested value.
+ *
+ * @param value Candidate part to inspect.
+ * @returns Whether the part contains unsafe top-level syntax.
+ */
+function containsUnsafeTopLevelSyntax(value: string): boolean {
+  let bracketDepth = 0;
+  let parenthesisDepth = 0;
+  let quote = '';
+  let escaped = false;
+  for (const character of value) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) {
+        quote = '';
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '[') {
+      bracketDepth++;
+    }
+    if (character === ']') {
+      bracketDepth--;
+    }
+    if (character === '(') {
+      parenthesisDepth++;
+    }
+    if (character === ')') {
+      parenthesisDepth--;
+    }
+    if (bracketDepth === 0 && parenthesisDepth === 0 && (character === ';' || character === '{' || character === '}')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Detects delimiters that are forbidden anywhere in a value-only arbitrary input.
+ *
+ * @param value Arbitrary candidate part to inspect.
+ * @returns Whether the part contains unsafe arbitrary syntax.
+ */
+function containsUnsafeArbitrarySyntax(value: string): boolean {
+  let quote = '';
+  let escaped = false;
+  for (const character of value) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) {
+        quote = '';
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === ';' || character === '{' || character === '}') {
+      return true;
+    }
+  }
+  return false;
+}
