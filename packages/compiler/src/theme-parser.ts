@@ -279,3 +279,191 @@ function themeTokenName(theme: CssxTheme, name: string): string {
 
 /**
  * Parses declarations and namespace resets from one theme block.
+ *
+ * @param block Theme declaration source.
+ * @param tokens Mutable token store to update.
+ * @returns Nothing.
+ */
+function parseThemeDeclarations(block: string, tokens: Record<string, string>): void {
+  for (const declaration of splitDeclarations(block)) {
+    const separator = declaration.indexOf(':');
+    if (separator === -1) {
+      throw new Error(`Invalid CSSX @theme declaration "${declaration}".`);
+    }
+    const name = declaration.slice(0, separator).trim();
+    const value = declaration.slice(separator + 1).trim();
+    if (name === '--*' || /^--[a-z0-9-]+-\*$/i.test(name)) {
+      if (value !== 'initial') {
+        throw new Error(`CSSX theme namespace reset "${name}" must use initial.`);
+      }
+      const prefix = name === '--*' ? '--' : name.slice(0, -1);
+      for (const token of Object.keys(tokens)) {
+        if (token.startsWith(prefix)) {
+          delete tokens[token];
+        }
+      }
+      continue;
+    }
+    if (!/^--[a-z0-9-]+$/i.test(name) || !value || /[{};]/.test(value)) {
+      throw new Error(`Invalid CSSX @theme declaration "${declaration}".`);
+    }
+    tokens[name] = value;
+  }
+}
+
+/**
+ * Recursively inlines token references while detecting missing and circular values.
+ *
+ * @param tokens Available theme tokens.
+ * @param value Token value to resolve.
+ * @param seen Tokens already visited on this resolution path.
+ * @returns Fully resolved token value.
+ */
+function resolveTokenValue(tokens: Readonly<Record<string, string>>, value: string, seen: ReadonlySet<string>): string {
+  return value.replace(/var\((--[a-z0-9-]+)\)/gi, (_match, reference: string) => {
+    if (seen.has(reference)) {
+      throw new Error(`Circular CSSX theme reference involving ${reference}.`);
+    }
+    const referenced = tokens[reference];
+    if (referenced === undefined || referenced === 'initial') {
+      throw new Error(`Unknown CSSX theme token ${reference}.`);
+    }
+    return resolveTokenValue(tokens, referenced, new Set([...seen, reference]));
+  });
+}
+
+/**
+ * Splits declarations without treating semicolons in strings or functions as separators.
+ *
+ * @param block Declaration source to scan.
+ * @returns Trimmed non-empty declarations.
+ */
+function splitDeclarations(block: string): readonly string[] {
+  const declarations: string[] = [];
+  let token = '';
+  let quote = '';
+  let escaped = false;
+  let parenthesisDepth = 0;
+  for (const character of block) {
+    if (escaped) {
+      token += character;
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      token += character;
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      token += character;
+      if (character === quote) {
+        quote = '';
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      token += character;
+      continue;
+    }
+    if (character === '(') {
+      parenthesisDepth++;
+    }
+    if (character === ')') {
+      parenthesisDepth--;
+    }
+    if (parenthesisDepth < 0) {
+      throw new Error('Invalid CSSX @theme declaration.');
+    }
+    if (character === ';' && parenthesisDepth === 0) {
+      if (token.trim()) {
+        declarations.push(token.trim());
+      }
+      token = '';
+      continue;
+    }
+    token += character;
+  }
+  if (quote || escaped || parenthesisDepth !== 0) {
+    throw new Error('Invalid CSSX @theme declaration.');
+  }
+  if (token.trim()) {
+    declarations.push(token.trim());
+  }
+  return declarations;
+}
+
+/**
+ * Advances over CSS whitespace and complete comments.
+ *
+ * @param source Source to scan.
+ * @param start Start position.
+ * @returns First non-whitespace, non-comment position.
+ */
+function skipWhitespaceAndComments(source: string, start: number): number {
+  let index = start;
+  while (index < source.length) {
+    if (/\s/.test(source[index] ?? '')) {
+      index++;
+      continue;
+    }
+    if (source.startsWith('/*', index)) {
+      const end = source.indexOf('*/', index + 2);
+      if (end === -1) {
+        throw new Error('Unterminated CSSX theme comment.');
+      }
+      index = end + 2;
+      continue;
+    }
+    break;
+  }
+  return index;
+}
+
+/**
+ * Reads one brace-delimited block while honoring quoted strings and escapes.
+ *
+ * @param source Source containing the opening brace.
+ * @param start Position of the opening brace.
+ * @returns Block content and the first position after its closing brace.
+ */
+function readBalancedBlock(source: string, start: number): { readonly content: string; readonly end: number } {
+  let depth = 0;
+  let quote = '';
+  let escaped = false;
+  for (let index = start; index < source.length; index++) {
+    const character = source[index] ?? '';
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) {
+        quote = '';
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '{') {
+      depth++;
+    }
+    if (character === '}') {
+      depth--;
+    }
+    if (depth === 0) {
+      return { content: source.slice(start + 1, index), end: index + 1 };
+    }
+    if (depth < 0) {
+      break;
+    }
+  }
+  throw new Error('Unterminated CSSX @theme block.');
+}
