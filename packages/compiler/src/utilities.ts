@@ -263,3 +263,180 @@ function compileCandidate(
       const selectors = classSelectors(className, selectorAliases, includedClasses);
       if (selectors.length === 0) {
         return null;
+      }
+      return {
+        candidate: candidateSource,
+        className,
+        css: applyVariants(selectors, declarations, candidate.variants, theme),
+        order: `${cssOrder(candidate, semantics.group)}\u0000${index}`,
+      };
+    })
+    .filter((entry): entry is CompiledUtility => entry !== null);
+}
+
+/** Returns the required atomic selector and stable composite aliases. */
+function classSelectors(
+  className: string,
+  selectorAliases: Readonly<Record<string, readonly string[]>>,
+  includedClasses: ReadonlySet<string> | undefined,
+): readonly string[] {
+  const names = new Set(selectorAliases[className] ?? []);
+  if (!includedClasses || includedClasses.has(className)) {
+    names.add(className);
+  }
+  return [...names].sort().map((name) => `.${name}`);
+}
+
+/**
+ * Explicit ordering for groups where broad declarations must precede narrow ones.
+ *
+ * The same order is used for all output so generated CSS remains deterministic
+ * and directional utilities retain normal CSS cascade behavior after atomization.
+ */
+const CASCADE_GROUP_ORDER: Readonly<Record<string, number>> = {
+  p: 100,
+  px: 110,
+  py: 110,
+  pt: 120,
+  pr: 120,
+  pb: 120,
+  pl: 120,
+  ps: 120,
+  pe: 120,
+  m: 200,
+  mx: 210,
+  my: 210,
+  mt: 220,
+  mr: 220,
+  mb: 220,
+  ml: 220,
+  ms: 220,
+  me: 220,
+  inset: 300,
+  'inset-x': 310,
+  'inset-y': 310,
+  top: 320,
+  right: 320,
+  bottom: 320,
+  left: 320,
+  start: 320,
+  end: 320,
+  size: 400,
+  width: 410,
+  height: 410,
+  'min-width': 410,
+  'max-width': 410,
+  'min-height': 410,
+  'max-height': 410,
+  gap: 500,
+  'row-gap': 510,
+  'column-gap': 510,
+  border: 600,
+  'border-width': 600,
+  'border-x': 610,
+  'border-y': 610,
+  'border-top': 620,
+  'border-right': 620,
+  'border-bottom': 620,
+  'border-left': 620,
+};
+
+/**
+ * Builds a lexical sort key for variants, semantic groups, and atom position.
+ *
+ * @param candidate Parsed utility candidate.
+ * @param group Semantic group written by the candidate.
+ * @returns Stable CSS ordering key.
+ */
+function cssOrder(candidate: ReturnType<typeof parseCandidate>, group: string): string {
+  const variantOrder = candidate.variants
+    .map((variant) => {
+      const known = ['sm', 'md', 'lg', 'xl', '2xl', 'dark', 'print'].indexOf(variant);
+      return `${String(known === -1 ? 99 : known).padStart(2, '0')}:${variant}`;
+    })
+    .join(':');
+  const groupOrder = String(CASCADE_GROUP_ORDER[group] ?? 900).padStart(3, '0');
+  return `${variantOrder}\u0000${groupOrder}\u0000${group}`;
+}
+
+/**
+ * Resolves one utility name through exact declarations and compiler families.
+ *
+ * @param utility Utility name without variants or modifiers.
+ * @param negative Whether the candidate uses negative value syntax.
+ * @param theme Active resolved theme.
+ * @returns Mutable declarations for the utility.
+ */
+function compileDeclarations(utility: string, negative: boolean, theme: CssxTheme): UtilityDeclaration[] {
+  const exact = EXACT_DECLARATIONS[utility];
+  if (exact) {
+    return cloneDeclarations(exact);
+  }
+  if (utility.startsWith('[') && utility.endsWith(']')) {
+    return [compileArbitraryProperty(utility)];
+  }
+
+  const space = compileSpaceUtility(utility, negative, theme);
+  if (space) {
+    return space;
+  }
+  const divide = compileDivideUtility(utility, theme);
+  if (divide) {
+    return divide;
+  }
+  const placeholder = compilePlaceholderUtility(utility, theme);
+  if (placeholder) {
+    return placeholder;
+  }
+  const outline = compileOutlineUtility(utility, negative, theme);
+  if (outline) {
+    return outline;
+  }
+  const container = compileContainerUtility(utility, theme);
+  if (container) {
+    return container;
+  }
+  const layout = compileCoreLayoutUtility(utility, negative, theme);
+  if (layout) {
+    return Array.isArray(layout) ? layout : [layout];
+  }
+  const declaration = compilePrefixedUtility(utility, negative, theme);
+  if (!declaration) {
+    throw new Error(`CSSX cannot compile utility "${negative ? '-' : ''}${utility}".`);
+  }
+  return Array.isArray(declaration) ? declaration : [declaration];
+}
+
+/**
+ * Finds the keyframe resource requested by an animation utility.
+ *
+ * @param candidateSource Source utility candidate.
+ * @returns Keyframe name, or null when none is needed.
+ */
+function animationKeyframeName(candidateSource: string): string | null {
+  const candidate = parseCandidate(candidateSource);
+  const match = /^animate-([a-z_][a-z0-9_-]*)$/i.exec(candidate.utility);
+  return match?.[1] && match[1] !== 'none' ? match[1] : null;
+}
+
+/**
+ * Finds custom properties that need CSS property registration.
+ *
+ * @param candidateSource Source utility candidate.
+ * @returns Required property names.
+ */
+function requiredPropertyNames(candidateSource: string): readonly string[] {
+  const candidate = parseCandidate(candidateSource);
+  const part = /^scrollbar-(thumb|track)-/.exec(candidate.utility)?.[1];
+  return part ? [`--cssx-scrollbar-${part}`] : [];
+}
+
+/**
+ * Creates the registration rule for a generated color custom property.
+ *
+ * @param name Custom-property name.
+ * @returns CSS property registration rule.
+ */
+function propertyRegistration(name: string): string {
+  return `@property ${name}{syntax:"<color>";inherits:true;initial-value:#0000;}`;
+}
