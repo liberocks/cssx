@@ -34,3 +34,28 @@ export const DEFAULT_THEME: Readonly<Record<string, string>> = {
   '--color-red-900': '#7f1d1d',
   '--color-blue-50': '#eff6ff',
   '--color-blue-100': '#dbeafe',
+  '--color-blue-200': '#bfdbfe',
+  '--color-blue-300': '#93c5fd',
+  '--color-blue-400': '#60a5fa',
+  '--color-blue-500': '#3b82f6',
+  '--color-blue-600': '#2563eb',
+  '--color-blue-700': '#1d4ed8',
+  '--color-blue-800': '#1e40af',
+  '--color-blue-900': '#1e3a8a',
+  '--color-green-500': '#22c55e',
+  '--color-yellow-500': '#eab308',
+  '--color-purple-500': '#a855f7',
+  '--animate-spin': 'spin 1s linear infinite',
+  '--animate-ping': 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
+  '--animate-pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+  '--animate-bounce': 'bounce 1s infinite',
+};
+
+/** Built-in keyframe rules available to animation utilities. */
+export const DEFAULT_KEYFRAMES: Readonly<Record<string, string>> = {
+  spin: '@keyframes spin{to{transform:rotate(360deg);}}',
+  ping: '@keyframes ping{75%,100%{transform:scale(2);opacity:0;}}',
+  pulse: '@keyframes pulse{50%{opacity:.5;}}',
+  bounce:
+    '@keyframes bounce{0%,100%{transform:translateY(-25%);animation-timing-function:cubic-bezier(.8,0,1,1);}50%{transform:none;animation-timing-function:cubic-bezier(0,0,.2,1);}}',
+};
