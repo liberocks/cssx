@@ -161,3 +161,113 @@ export function compileDivideUtility(utility: string, theme: CssxTheme): Utility
       { property: reverseProperty, value: '0', selectorSuffix, semanticGroup },
       { property: start, value: `calc(${value} * calc(1 - var(${reverseProperty})))`, selectorSuffix, semanticGroup },
       { property: end, value: `calc(${value} * var(${reverseProperty}))`, selectorSuffix, semanticGroup },
+    ];
+  }
+
+  const colorMatch = /^divide-(.+)$/.exec(utility);
+  if (!colorMatch) {
+    return null;
+  }
+  const modifier = splitColorModifier(colorMatch[1] ?? '');
+  const resolved = resolveColorValue(modifier.value, theme);
+  if (!resolved) {
+    return null;
+  }
+  const opacity = modifier.opacity === undefined ? null : resolveOpacityModifier(modifier.opacity);
+  if (modifier.opacity !== undefined && opacity === null) {
+    return null;
+  }
+  const value = opacity === null ? resolved : `color-mix(in srgb, ${resolved} ${opacity}%, transparent)`;
+  return [{ property: 'border-color', value, selectorSuffix, semanticGroup: 'divide-color' }];
+}
+
+/**
+ * Compiles placeholder color utilities.
+ *
+ * @param utility Utility name without variants.
+ * @param theme Active resolved theme.
+ * @returns Placeholder declarations, or null when unsupported.
+ */
+export function compilePlaceholderUtility(utility: string, theme: CssxTheme): UtilityDeclaration[] | null {
+  const match = /^placeholder-(.+)$/.exec(utility);
+  if (!match) {
+    return null;
+  }
+  const modifier = splitColorModifier(match[1] ?? '');
+  const resolved = resolveColorValue(modifier.value, theme);
+  if (!resolved) {
+    return null;
+  }
+  const opacity = modifier.opacity === undefined ? null : resolveOpacityModifier(modifier.opacity);
+  if (modifier.opacity !== undefined && opacity === null) {
+    return null;
+  }
+  const value = opacity === null ? resolved : `color-mix(in srgb, ${resolved} ${opacity}%, transparent)`;
+  return [{ property: 'color', value, selectorSuffix: '::placeholder', semanticGroup: 'placeholder-color' }];
+}
+
+/**
+ * Compiles outline style, width, offset, and color utilities.
+ *
+ * @param utility Utility name without variants.
+ * @param negative Whether the value is negated.
+ * @param theme Active resolved theme.
+ * @returns Outline declarations, or null when unsupported.
+ */
+export function compileOutlineUtility(
+  utility: string,
+  negative: boolean,
+  theme: CssxTheme,
+): UtilityDeclaration[] | null {
+  const exact: Readonly<Record<string, readonly UtilityDeclaration[]>> = {
+    outline: [
+      { property: 'outline-style', value: 'solid' },
+      { property: 'outline-width', value: '1px' },
+    ],
+    'outline-none': [{ property: 'outline-style', value: 'none' }],
+    'outline-hidden': [
+      { property: 'outline', value: '2px solid transparent' },
+      { property: 'outline-offset', value: '2px' },
+    ],
+    'outline-solid': [{ property: 'outline-style', value: 'solid' }],
+    'outline-dashed': [{ property: 'outline-style', value: 'dashed' }],
+    'outline-dotted': [{ property: 'outline-style', value: 'dotted' }],
+    'outline-double': [{ property: 'outline-style', value: 'double' }],
+  };
+  const declaration = exact[utility];
+  if (declaration) {
+    return cloneDeclarations(declaration);
+  }
+
+  const offset = /^outline-offset-(.+)$/.exec(utility);
+  if (offset) {
+    const value = resolveSpacingValue(offset[1] ?? '', negative, theme);
+    return value ? [{ property: 'outline-offset', value }] : null;
+  }
+  const width = /^outline-(0|1|2|4|8|\[[^\]]+\])$/.exec(utility);
+  if (width) {
+    const raw = width[1] ?? '';
+    return [
+      { property: 'outline-width', value: raw.startsWith('[') ? raw.slice(1, -1) : `${raw}px`.replace('0px', '0') },
+    ];
+  }
+  const color = /^outline-(.+)$/.exec(utility);
+  if (!color) {
+    return null;
+  }
+  const modifier = splitColorModifier(color[1] ?? '');
+  const resolved = resolveColorValue(modifier.value, theme);
+  if (!resolved) {
+    return null;
+  }
+  const opacity = modifier.opacity === undefined ? null : resolveOpacityModifier(modifier.opacity);
+  if (modifier.opacity !== undefined && opacity === null) {
+    return null;
+  }
+  return [
+    {
+      property: 'outline-color',
+      value: opacity === null ? resolved : `color-mix(in srgb, ${resolved} ${opacity}%, transparent)`,
+    },
+  ];
+}
