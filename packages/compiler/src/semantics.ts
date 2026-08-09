@@ -81,3 +81,59 @@ function classifyArbitraryProperty(utility: string): string | null {
  * @returns Most precise semantic group for the utility.
  */
 function refineAmbiguousGroup(prefix: string, group: string, utility: string): string {
+  if (prefix === 'border-') {
+    return isBorderColorValue(utility.slice(prefix.length)) ? 'border-color' : group;
+  }
+  if (prefix === 'outline-') {
+    return isBorderColorValue(utility.slice(prefix.length)) ? 'outline-color' : group;
+  }
+  if (prefix === 'decoration-') {
+    const value = utility.slice(prefix.length);
+    if (/^(solid|double|dotted|dashed|wavy)$/.test(value)) {
+      return 'text-decoration-style';
+    }
+    return isBorderColorValue(value) ? 'text-decoration-color' : group;
+  }
+  if (prefix !== 'text-') {
+    return group;
+  }
+  const value = utility.slice(prefix.length);
+  if (/^(xs|sm|base|lg|xl|\d+xl)$/.test(value)) {
+    return 'font-size';
+  }
+  if (value.startsWith('[') && value.endsWith(']') && isLengthArbitraryValue(value.slice(1, -1))) {
+    return 'font-size';
+  }
+  if (/^(left|center|right|justify|start|end)$/.test(value)) {
+    return 'text-align';
+  }
+  if (/^(ellipsis|clip|wrap|nowrap|balance|pretty)$/.test(value)) {
+    return 'text-overflow';
+  }
+  return 'text-color';
+}
+
+/**
+ * Checks whether a value has the supported color forms.
+ *
+ * @param value Utility value without its property prefix.
+ * @returns Whether the value represents a color.
+ */
+function isBorderColorValue(value: string): boolean {
+  const color = value.split('/', 1)[0] ?? value;
+  return color.startsWith('[') || /^(?:transparent|current|black|white|[a-z-]+-\d{1,3})$/i.test(color);
+}
+
+/**
+ * Checks whether an arbitrary text value is safe to treat as a length.
+ *
+ * @param value Arbitrary value without brackets.
+ * @returns Whether the value is a supported length expression.
+ */
+function isLengthArbitraryValue(value: string): boolean {
+  const normalized = value.replace(/^(?:length|size):/, '');
+  return (
+    /^-?(?:\d+(?:\.\d+)?)(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|%|cm|mm|in|pt|pc)$/i.test(normalized) ||
+    normalized.startsWith('calc(')
+  );
+}
