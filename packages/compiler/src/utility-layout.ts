@@ -112,3 +112,79 @@ export function compileCoreLayoutUtility(
   if (cursor) {
     return { property: 'cursor', value: cursor[1] ?? '' };
   }
+  const willChange = /^will-change-(auto|scroll|contents|transform)$/.exec(utility);
+  if (willChange) {
+    return { property: 'will-change', value: willChange[1] ?? '' };
+  }
+  const gridFlow = /^grid-flow-(row|col|row-dense|col-dense)$/.exec(utility);
+  if (gridFlow) {
+    return { property: 'grid-auto-flow', value: (gridFlow[1] ?? '').replace('-', ' ') };
+  }
+  const autoTracks = /^auto-(cols|rows)-(auto|min|max|fr)$/.exec(utility);
+  if (autoTracks) {
+    const values: Readonly<Record<string, string>> = {
+      auto: 'auto',
+      min: 'min-content',
+      max: 'max-content',
+      fr: 'minmax(0, 1fr)',
+    };
+    return {
+      property: autoTracks[1] === 'cols' ? 'grid-auto-columns' : 'grid-auto-rows',
+      value: values[autoTracks[2] ?? ''] ?? '',
+    };
+  }
+  const scroll = /^scroll-(mx|my|mt|mr|mb|ml|m|px|py|pt|pr|pb|pl|p)-(.+)$/.exec(utility);
+  if (scroll) {
+    const prefix = scroll[1] ?? '';
+    const value = resolveSpacingValue(scroll[2] ?? '', negative, theme);
+    if (!value) {
+      return null;
+    }
+    const properties: Readonly<Record<string, readonly string[]>> = {
+      m: ['scroll-margin'],
+      mx: ['scroll-margin-left', 'scroll-margin-right'],
+      my: ['scroll-margin-top', 'scroll-margin-bottom'],
+      mt: ['scroll-margin-top'],
+      mr: ['scroll-margin-right'],
+      mb: ['scroll-margin-bottom'],
+      ml: ['scroll-margin-left'],
+      p: ['scroll-padding'],
+      px: ['scroll-padding-left', 'scroll-padding-right'],
+      py: ['scroll-padding-top', 'scroll-padding-bottom'],
+      pt: ['scroll-padding-top'],
+      pr: ['scroll-padding-right'],
+      pb: ['scroll-padding-bottom'],
+      pl: ['scroll-padding-left'],
+    };
+    return (properties[prefix] ?? []).map((property) => ({ property, value }));
+  }
+  const strokeWidth = /^stroke-(\d+|\[[^\]]+\])$/.exec(utility);
+  if (strokeWidth) {
+    const raw = strokeWidth[1] ?? '';
+    return { property: 'stroke-width', value: raw.startsWith('[') ? raw.slice(1, -1) : raw };
+  }
+  const scrollbarColor = /^scrollbar-(thumb|track)-(.+)$/.exec(utility);
+  if (scrollbarColor) {
+    const part = scrollbarColor[1] ?? '';
+    const modifier = splitColorModifier(scrollbarColor[2] ?? '');
+    const resolved = resolveColorValue(modifier.value, theme);
+    if (!resolved) {
+      return null;
+    }
+    const opacity = modifier.opacity === undefined ? null : resolveOpacityModifier(modifier.opacity);
+    if (modifier.opacity !== undefined && opacity === null) {
+      return null;
+    }
+    const value = opacity === null ? resolved : `color-mix(in srgb, ${resolved} ${opacity}%, transparent)`;
+    const semanticGroup = `scrollbar-${part}`;
+    return [
+      { property: `--cssx-scrollbar-${part}`, value, semanticGroup },
+      {
+        property: 'scrollbar-color',
+        value: 'var(--cssx-scrollbar-thumb, #0000) var(--cssx-scrollbar-track, #0000)',
+        semanticGroup,
+      },
+    ];
+  }
+  return null;
+}
