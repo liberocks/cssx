@@ -120,3 +120,85 @@ export function compileModernUtility(utility: string, theme: CssxTheme): Utility
     return { property: 'contain', value: resolveArbitraryCssValue(`[${contain[1] ?? ''}]`) };
   }
 
+  const intrinsic = /^contain-intrinsic-(size|inline-size|block-size)-(.+)$/.exec(utility);
+  if (intrinsic) {
+    const suffix = intrinsic[1] ?? '';
+    const raw = intrinsic[2] ?? '';
+    const property = `contain-intrinsic-${suffix}`;
+    const value = resolveIntrinsicSize(raw, property, theme);
+    return value ? { property, value } : null;
+  }
+
+  const svgNumeric = /^stroke-(miterlimit|dasharray|dashoffset)-(.+)$/.exec(utility);
+  if (svgNumeric) {
+    const property = `stroke-${svgNumeric[1] ?? ''}`;
+    const raw = svgNumeric[2] ?? '';
+    const value = resolveNumericSvgValue(raw);
+    return value ? { property, value } : null;
+  }
+  return null;
+}
+
+/**
+ * Resolves a numeric animation time or named theme value.
+ *
+ * @param raw Utility value.
+ * @param token Theme token name.
+ * @param theme Active resolved theme.
+ * @returns CSS time, or null when unknown.
+ */
+function resolveAnimationTime(raw: string, token: string, theme: CssxTheme): string | null {
+  if (/^\d+$/.test(raw)) {
+    return `${raw}ms`;
+  }
+  return resolveNamedValue(raw, token, theme);
+}
+
+/**
+ * Resolves an intrinsic-size utility value.
+ *
+ * @param raw Utility value.
+ * @param property CSS property used to derive the theme token.
+ * @param theme Active resolved theme.
+ * @returns CSS size, or null when unknown.
+ */
+function resolveIntrinsicSize(raw: string, property: string, theme: CssxTheme): string | null {
+  if (raw === 'none') {
+    return 'none';
+  }
+  if (/^\d+(?:\.\d+)?$/.test(raw)) {
+    return resolveSpacingValue(raw, false, theme);
+  }
+  return resolveNamedValue(raw, `--${property}-${raw}`, theme);
+}
+
+/**
+ * Resolves a numeric or arbitrary SVG value.
+ *
+ * @param raw Utility value.
+ * @returns CSS value, or null when unsupported.
+ */
+function resolveNumericSvgValue(raw: string): string | null {
+  if (/^\d+(?:\.\d+)?$/.test(raw)) {
+    return raw;
+  }
+  if (raw.startsWith('[') || raw.startsWith('(')) {
+    return resolveArbitraryCssValue(raw);
+  }
+  return null;
+}
+
+/**
+ * Resolves arbitrary syntax first, then a named theme token.
+ *
+ * @param raw Utility value.
+ * @param token Theme token name.
+ * @param theme Active resolved theme.
+ * @returns CSS value, or null when unknown.
+ */
+function resolveNamedValue(raw: string, token: string, theme: CssxTheme): string | null {
+  if ((raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('(') && raw.endsWith(')'))) {
+    return resolveArbitraryCssValue(raw);
+  }
+  return resolveThemeToken(theme, token) ?? null;
+}
