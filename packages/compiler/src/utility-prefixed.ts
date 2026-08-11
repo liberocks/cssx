@@ -141,3 +141,99 @@ export function compilePrefixedUtility(
           { property: 'overflow', value: 'visible', semanticGroup: 'line-clamp' },
           { property: 'display', value: 'block', semanticGroup: 'line-clamp' },
           { property: '-webkit-box-orient', value: 'horizontal', semanticGroup: 'line-clamp' },
+          { property: '-webkit-line-clamp', value: 'unset', semanticGroup: 'line-clamp' },
+        ]
+      : [
+          { property: 'overflow', value: 'hidden', semanticGroup: 'line-clamp' },
+          { property: 'display', value: '-webkit-box', semanticGroup: 'line-clamp' },
+          { property: '-webkit-box-orient', value: 'vertical', semanticGroup: 'line-clamp' },
+          { property: '-webkit-line-clamp', value: clamp[1] ?? '', semanticGroup: 'line-clamp' },
+        ];
+  }
+
+  const grid = /^grid-cols-(\d+)$/.exec(utility);
+  if (grid) {
+    return { property: 'grid-template-columns', value: `repeat(${grid[1]}, minmax(0, 1fr))` };
+  }
+  if (utility === 'grid-cols-subgrid') {
+    return { property: 'grid-template-columns', value: 'subgrid' };
+  }
+  const gridRows = /^grid-rows-(\d+)$/.exec(utility);
+  if (gridRows) {
+    return { property: 'grid-template-rows', value: `repeat(${gridRows[1]}, minmax(0, 1fr))` };
+  }
+  if (utility === 'grid-rows-subgrid') {
+    return { property: 'grid-template-rows', value: 'subgrid' };
+  }
+  const span = /^(col|row)-span-(\d+|full)$/.exec(utility);
+  if (span) {
+    return {
+      property: span[1] === 'col' ? 'grid-column' : 'grid-row',
+      value: span[2] === 'full' ? '1 / -1' : `span ${span[2]} / span ${span[2]}`,
+    };
+  }
+  const gridLine = /^(col|row)-(start|end)-(\d+|auto)$/.exec(utility);
+  if (gridLine) {
+    return {
+      property: `grid-${gridLine[1] === 'col' ? 'column' : 'row'}-${gridLine[2]}`,
+      value: gridLine[3] === 'auto' ? 'auto' : (gridLine[3] ?? ''),
+    };
+  }
+  const order = /^order-(first|last|none|\d+)$/.exec(utility);
+  if (order) {
+    const values: Readonly<Record<string, string>> = { first: '-9999', last: '9999', none: '0' };
+    const value = values[order[1] ?? ''] ?? order[1] ?? '';
+    return {
+      property: 'order',
+      value: negative && value !== '0' ? (value.startsWith('-') ? value.slice(1) : `-${value}`) : value,
+    };
+  }
+  const basis = /^basis-(.+)$/.exec(utility);
+  if (basis) {
+    const value = resolveDimensionValue(basis[1] ?? '', negative, theme, 'basis');
+    return value ? { property: 'flex-basis', value } : null;
+  }
+  const flex = /^flex-(\d+(?:\/\d+)?|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
+  if (flex) {
+    const raw = flex[1] ?? '';
+    const value = raw.startsWith('[') || raw.startsWith('(') ? resolveArbitraryCssValue(raw) : flexValue(raw);
+    return value ? { property: 'flex', value } : null;
+  }
+  const opacity = /^opacity-(\d{1,3})$/.exec(utility);
+  if (opacity) {
+    return { property: 'opacity', value: String(Number(opacity[1]) / 100) };
+  }
+  const zIndex = /^z-(\d+|auto)$/.exec(utility);
+  if (zIndex) {
+    return { property: 'z-index', value: zIndex[1] ?? 'auto' };
+  }
+  const leading = /^leading-(none|tight|snug|normal|relaxed|loose|\[[^\]]+\])$/.exec(utility);
+  if (leading) {
+    return { property: 'line-height', value: leadingValue(leading[1] ?? '') };
+  }
+  const font = /^font-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
+  if (font) {
+    return { property: 'font-family', value: resolveArbitraryCssValue(font[1] ?? '') };
+  }
+  const tracking = /^tracking-(tighter|tight|normal|wide|wider|widest)$/.exec(utility);
+  if (tracking) {
+    return { property: 'letter-spacing', value: trackingValue(tracking[1] ?? '') };
+  }
+  const animation = /^animate-(.+)$/.exec(utility);
+  if (animation) {
+    return compileAnimationUtility(animation[1] ?? '', theme);
+  }
+  const transitionDuration = /^duration-(\d+|\[[^\]]+\])$/.exec(utility);
+  if (transitionDuration) {
+    return { property: 'transition-duration', value: millisecondsValue(transitionDuration[1] ?? '') };
+  }
+  const transitionDelay = /^delay-(\d+|\[[^\]]+\])$/.exec(utility);
+  if (transitionDelay) {
+    return { property: 'transition-delay', value: millisecondsValue(transitionDelay[1] ?? '') };
+  }
+  const transform = compileTransformUtility(utility, negative, theme);
+  if (transform) {
+    return transform;
+  }
+  return null;
+}
