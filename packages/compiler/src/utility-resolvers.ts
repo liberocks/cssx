@@ -140,3 +140,98 @@ export function resolveColorValue(raw: string, theme: CssxTheme): string | null 
     return raw.slice(1, -1);
   }
   return resolveThemeToken(theme, `--color-${raw}`) ?? null;
+}
+
+/**
+ * Splits a color value from a top-level opacity modifier.
+ *
+ * @param value Color utility value.
+ * @returns Color value and optional opacity text.
+ */
+export function splitColorModifier(value: string): { readonly value: string; readonly opacity?: string } {
+  let bracketDepth = 0;
+  let parenthesisDepth = 0;
+  let quote = '';
+  let escaped = false;
+  for (let index = 0; index < value.length; index++) {
+    const character = value[index] ?? '';
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) {
+        quote = '';
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '[') {
+      bracketDepth++;
+    }
+    if (character === ']') {
+      bracketDepth--;
+    }
+    if (character === '(') {
+      parenthesisDepth++;
+    }
+    if (character === ')') {
+      parenthesisDepth--;
+    }
+    if (character === '/' && bracketDepth === 0 && parenthesisDepth === 0) {
+      return { value: value.slice(0, index), opacity: value.slice(index + 1) };
+    }
+  }
+  return { value };
+}
+
+/**
+ * Validates and normalizes an opacity percentage.
+ *
+ * @param value Opacity utility value.
+ * @returns Percentage text, or null when invalid.
+ */
+export function resolveOpacityModifier(value: string): string | null {
+  const raw = value.startsWith('[') && value.endsWith(']') ? value.slice(1, -1) : value;
+  if (!/^\d+(?:\.\d+)?$/.test(raw)) {
+    return null;
+  }
+  const opacity = Number(raw);
+  if (opacity < 0 || opacity > 100) {
+    return null;
+  }
+  return String(opacity);
+}
+
+/**
+ * Checks whether arbitrary text is a supported length expression.
+ *
+ * @param value Arbitrary value without brackets.
+ * @returns Whether the value is a length.
+ */
+export function isLengthArbitraryValue(value: string): boolean {
+  const normalized = value.replace(/^(?:length|size):/, '');
+  return (
+    /^-?(?:\d+(?:\.\d+)?)(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|%|cm|mm|in|pt|pc)$/i.test(normalized) ||
+    normalized.startsWith('calc(')
+  );
+}
+
+/**
+ * Checks whether arbitrary text is a supported background image.
+ *
+ * @param value Arbitrary value without brackets.
+ * @returns Whether the value is an image expression.
+ */
+export function isBackgroundImageValue(value: string): boolean {
+  return (
+    value.startsWith('image:') || /^(?:url|linear-gradient|radial-gradient|conic-gradient|image-set)\(/.test(value)
+  );
+}
