@@ -89,3 +89,64 @@ export function compileAnimationUtility(name: string, theme: CssxTheme): Utility
  * @param theme Active resolved theme.
  * @returns Transform declarations, or null when the utility is unsupported.
  */
+export function compileTransformUtility(
+  utility: string,
+  negative: boolean,
+  theme: CssxTheme,
+): UtilityDeclaration[] | null {
+  const translate = /^(translate-x|translate-y)-(.+)$/.exec(utility);
+  if (translate) {
+    const axis = translate[1] === 'translate-x' ? '--cssx-translate-x' : '--cssx-translate-y';
+    const value = resolveSpacingValue(translate[2] ?? '', negative, theme);
+    if (!value) {
+      return null;
+    }
+    return [
+      { property: axis, value },
+      { property: 'translate', value: 'var(--cssx-translate-x, 0) var(--cssx-translate-y, 0)' },
+    ];
+  }
+  const rotate = /^rotate-(.+)$/.exec(utility);
+  if (rotate) {
+    const value = resolveAngleValue(rotate[1] ?? '', negative);
+    return value ? [{ property: 'rotate', value }] : null;
+  }
+  const scale = /^(scale-x|scale-y|scale)-(.+)$/.exec(utility);
+  if (scale) {
+    const axis = scale[1] ?? '';
+    const value = resolveScaleValue(scale[2] ?? '', negative);
+    if (!value) {
+      return null;
+    }
+    if (axis === 'scale-x') {
+      return [
+        { property: '--cssx-scale-x', value },
+        { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1)' },
+      ];
+    }
+    if (axis === 'scale-y') {
+      return [
+        { property: '--cssx-scale-y', value },
+        { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1)' },
+      ];
+    }
+    return [
+      { property: '--cssx-scale-x', value },
+      { property: '--cssx-scale-y', value },
+      { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1)' },
+    ];
+  }
+  const skew = /^skew-(x|y)-(.+)$/.exec(utility);
+  if (skew) {
+    const axis = skew[1] ?? '';
+    const value = resolveAngleValue(skew[2] ?? '', negative);
+    if (!value) {
+      return null;
+    }
+    return [
+      { property: `--cssx-skew-${axis}`, value },
+      { property: 'transform', value: 'skewX(var(--cssx-skew-x, 0deg)) skewY(var(--cssx-skew-y, 0deg))' },
+    ];
+  }
+  return null;
+}
