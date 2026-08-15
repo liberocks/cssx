@@ -43,3 +43,34 @@ describe('CSSX candidate parsing', () => {
     expect(() => splitCandidateList('p-4 '.repeat(4_097))).toThrow('16 KiB limit');
     expect(() => parseCandidate(`${'['.repeat(33)}value${']'.repeat(33)}`)).toThrow('Invalid utility');
   });
+
+  it('uses one CSSX-owned semantic description for utility composition', () => {
+    expect(classifyCandidate('p-4')).toMatchObject({ group: 'p', conflicts: expect.arrayContaining(['px', 'pr']) });
+    expect(classifyCandidate('[paint-order:markers]')).toMatchObject({ group: 'arbitrary..paint-order' });
+  });
+
+  it('preserves quoted delimiters while rejecting incomplete syntax', () => {
+    expect(splitCandidateList('content-["a b"] before:content-["a b"] p-4')).toEqual([
+      'content-["a b"]',
+      'before:content-["a b"]',
+      'p-4',
+    ]);
+    expect(parseCandidate('print:focus:!p-4').variants).toEqual(['print', 'focus']);
+    expect(candidateScope(parseCandidate('print:!p-4'))).toBe('print!');
+    expect(candidateScope(parseCandidate('!p-4'))).toBe('!');
+
+    for (const source of ['p-4:', ':p-4', 'p-[value', 'p-(value', 'p-["value]', 'p-[value\\']) {
+      expect(() => parseCandidate(source)).toThrow('Invalid utility');
+    }
+    expect(() => splitCandidateList('p-4]')).toThrow('Invalid utility list');
+    expect(() => splitCandidateList('p-4)')).toThrow('Invalid utility list');
+  });
+
+  it('accepts escaped characters inside quoted arbitrary values', () => {
+    expect(splitCandidateList('content-["a\\" b"] bg-[url("a\\ b.svg")]')).toEqual([
+      'content-["a\\" b"]',
+      'bg-[url("a\\ b.svg")]',
+    ]);
+    expect(parseCandidate('before:content-["a\\" b"]').utility).toBe('content-["a\\" b"]');
+  });
+});
