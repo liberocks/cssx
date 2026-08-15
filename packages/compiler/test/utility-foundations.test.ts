@@ -161,3 +161,112 @@ describe('CSSX utility compiler', () => {
 
     expect(result.css).toContain('.x-state--open--shadow-xl:state(open)');
     expect(result.css).toContain('.group:state(open) .x-group-state--open--text-white');
+    expect(result.css).toContain('.peer:state(selected) ~ .x-peer-state--selected--opacity-100');
+    await expect(compileUtilities(['state-[]:block'], () => 'x-invalid')).rejects.toThrow('Invalid CSSX custom state');
+    await expect(compileUtilities(['state-[initial]:block'], () => 'x-invalid')).rejects.toThrow(
+      'Invalid CSSX custom state',
+    );
+  });
+
+  it('compiles direct structural, form-state, and pseudo-element variants', async () => {
+    const result = await compileUtilities(
+      [
+        'checked:bg-blue-500',
+        'group-checked:text-white',
+        'group-first:text-white',
+        'first:pt-0',
+        'odd:bg-slate-50',
+        'not-first:opacity-50',
+        'required:border-red-500',
+        'before:bg-blue-500',
+        'selection:text-white',
+        'file:mr-4',
+        'hover:before:block',
+      ],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('.x-checked-bg-blue-500:checked');
+    expect(result.css).toContain('.group:checked .x-group-checked-text-white');
+    expect(result.css).toContain('.group:first-child .x-group-first-text-white');
+    expect(result.css).toContain('.x-first-pt-0:first-child');
+    expect(result.css).toContain('.x-odd-bg-slate-50:nth-child(odd)');
+    expect(result.css).toContain('.x-not-first-opacity-50:not(*:first-child)');
+    expect(result.css).toContain('.x-required-border-red-500:required');
+    expect(result.css).toContain(
+      '.x-before-bg-blue-500::before{content:var(--cssx-content, "");background-color:#3b82f6;}',
+    );
+    expect(result.css).toContain('.x-selection-text-white::selection{color:#fff;}');
+    expect(result.css).toContain('.x-file-mr-4::file-selector-button{margin-right:calc(0.25rem * 4);}');
+    expect(result.css).toContain('.x-hover-before-block:hover::before{content:var(--cssx-content, "");display:block;}');
+  });
+
+  it('compiles descendant, relational, presence, negated-feature, and arbitrary responsive variants', async () => {
+    const result = await compileUtilities(
+      [
+        '*:p-2',
+        '**:text-white',
+        'has-checked:ring-2',
+        'in-focus:bg-blue-500',
+        'data-active:opacity-50',
+        'not-supports-[display:grid]:flex',
+        'max-md:hidden',
+        'min-[900px]:grid',
+      ],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain(':is(.x---p-2 > *){padding:calc(0.25rem * 2);}');
+    expect(result.css).toContain(':is(.x----text-white *){color:#fff;}');
+    expect(result.css).toContain('.x-has-checked-ring-2:has(*:checked)');
+    expect(result.css).toContain(':where(*:focus) .x-in-focus-bg-blue-500');
+    expect(result.css).toContain('.x-data-active-opacity-50[data-active]');
+    expect(result.css).toContain('@supports not (display: grid)');
+    expect(result.css).toContain('@media (width < 48rem)');
+    expect(result.css).toContain('@media (width >= 900px)');
+  });
+
+  it('compiles safe arbitrary selector and at-rule variants', async () => {
+    const result = await compileUtilities(
+      ['[&>svg]:block', '[&.is-active]:bg-orange-500', "[&[data-label='&']]:block", '[@supports(display:grid)]:grid'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('.x----svg--block>svg');
+    expect(result.css).toContain('.x----is-active--bg-orange-500.is-active');
+    expect(result.css).toContain("[data-label='&']{display:block;}");
+    expect(result.css).toContain('@supports (display:grid){.x---supports-display-grid---grid{display:grid;}}');
+  });
+
+  it('rejects arbitrary selector variants without an anchor', async () => {
+    await expect(compileUtilities(['[.is-active]:block'], () => 'x-test')).rejects.toThrow('must contain "&"');
+  });
+
+  it('emits only keyframes referenced by animation utilities', async () => {
+    const result = await compileUtilities(['animate-spin', 'p-4'], (candidate) => `x-${candidate}`);
+    expect(result.css).toContain('@keyframes spin');
+    expect(result.css).not.toContain('@keyframes ping');
+
+    const custom = await compileUtilities(
+      ['animate-wiggle'],
+      (candidate) => `x-${candidate}`,
+      '@theme { --animate-wiggle: wiggle 1s linear infinite; @keyframes wiggle { from { opacity: 0; } to { opacity: 1; } } }',
+    );
+    expect(custom.css).toContain('@keyframes wiggle');
+    expect(custom.css).toContain('animation:wiggle 1s linear infinite');
+  });
+
+  it('emits non-inline theme variables while retaining concrete media query values', async () => {
+    const result = await compileUtilities(
+      ['bg-brand', 'p-4', 'tablet:block'],
+      (candidate) => `x-${candidate.replaceAll(':', '-')}`,
+      '@theme reference { --color-brand: #123456; --spacing: 2px; --breakpoint-tablet: 50rem; }',
+    );
+
+    expect(result.css).toContain(':root{--color-brand:#123456;--spacing:2px}');
+    expect(result.css).toContain('background-color:var(--color-brand)');
+    expect(result.css).toContain('padding:calc(var(--spacing) * 4)');
+    expect(result.css).toContain('@media (width >= 50rem)');
+    expect(result.css).not.toContain('--breakpoint-tablet:50rem');
+  });
+});
