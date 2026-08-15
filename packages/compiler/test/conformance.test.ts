@@ -106,3 +106,76 @@ const CANDIDATES = [
   'snap-always',
   'scrollbar-gutter-stable',
   'scrollbar-thumb-red-500',
+  'will-change-transform',
+  'accent-blue-500',
+  'caret-red-500',
+  'scheme-dark',
+  'fill-green-500',
+  'stroke-[3px]',
+  'stroke-cap-round',
+  'stroke-dasharray-[4_8]',
+  'vector-effect-non-scaling-stroke',
+  'writing-vertical-rl',
+  'image-render-pixelated',
+  'font-optical-auto',
+  'content-visibility-auto',
+  'contain-[layout_paint]',
+  'contain-intrinsic-size-[auto_800px]',
+  'forced-color-adjust-none',
+  '[mask-type:luminance]',
+  'sm:hover:bg-red-500',
+  'group-focus:text-white',
+  'state-[open]:shadow-xl',
+  'has-checked:ring-2',
+  'not-supports-[display:grid]:flex',
+  '*:p-2',
+] as const;
+
+const INVALID_CANDIDATES = [
+  ['columns', 'columns-fluid'],
+  ['breaks', 'break-inside-page'],
+  ['object position', 'object-middle'],
+  ['dimension', 'w-enormous'],
+  ['flex', 'flex-stretch'],
+  ['grid', 'grid-cols-many'],
+  ['spacing', 'p-comfortable'],
+  ['table', 'border-spacing-z-2'],
+  ['typography', 'font-strongest'],
+  ['content', 'content-label'],
+  ['background', 'bg-spotlight'],
+  ['gradient', 'from-101%'],
+  ['border', 'border-z-2'],
+  ['outline', 'outline-dottedly'],
+  ['ring', 'ring-3'],
+  ['filter', 'blur-ultra'],
+  ['mask', 'mask-repeat-diagonal'],
+  ['transition', 'duration-slow'],
+  ['animation', 'animate-unknown'],
+  ['animation longhand', 'animation-duration-slow'],
+  ['containment', 'contain-layout-paint'],
+  ['SVG rendering', 'stroke-cap-rounded'],
+  ['writing mode', 'writing-vertical'],
+  ['transform', 'translate-z-4'],
+  ['interaction', 'touch-pan-z'],
+  ['scrolling', 'snap-forever'],
+  ['SVG', 'stroke-width-2'],
+  ['arbitrary property', '[mask-type:luminance;display:block]'],
+] as const;
+
+describe('CSSX compiler/conformance matrix', () => {
+  it('classifies and emits each supported utility family through the same owned recipes', async () => {
+    const source = Object.fromEntries(CANDIDATES.map((candidate, index) => [`style${index}`, candidate]));
+    const packed = compileStyleRecords(source);
+    const compiled = await compileUtilities(CANDIDATES, (candidate) => packed.classes[candidate] ?? '');
+
+    expect(Object.values(packed.styles).flatMap((style) => style._)).not.toHaveLength(0);
+    expect(Object.keys(compiled.classes).sort()).toEqual([...CANDIDATES].sort());
+    expect(compiled.css).toContain('padding:calc(0.25rem * 4)');
+    expect(compiled.css).toContain('mask-image:url("/mask.svg")');
+    expect(compiled.css).toContain('@media (width >= 40rem)');
+  });
+
+  it.each(INVALID_CANDIDATES)('rejects invalid %s candidates', (_family, candidate) => {
+    expect(() => compileStyleRecords({ root: candidate })).toThrow();
+  });
+});
