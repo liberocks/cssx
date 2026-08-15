@@ -120,3 +120,85 @@ describe('CSSX semantic conflict classifier', () => {
     const duration = result.styles.duration;
     if (!animation || !duration) {
       throw new Error('Expected animation styles.');
+    }
+
+    expect(mergeCompiledStyles([animation, duration])).toBe(result.classes['animation-duration-500']);
+    expect(mergeCompiledStyles([duration, animation])).toBe(result.classes['animate-spin']);
+  });
+
+  it.each([
+    ['[border:0]', 'border-red-500'],
+    ['[animation:none]', '[animation-duration:1s]'],
+    ['[grid:none]', 'grid-cols-3'],
+    ['[mask:none]', 'mask-repeat-x'],
+    ['[container:layout]', '[container-type:inline-size]'],
+  ])('lets the %s shorthand reset %s', (shorthandCandidate, componentCandidate) => {
+    const result = compileStyleRecords({ shorthand: shorthandCandidate, component: componentCandidate });
+    const shorthand = result.styles.shorthand;
+    const component = result.styles.component;
+    if (!shorthand || !component) {
+      throw new Error('Expected shorthand and component compiled styles.');
+    }
+
+    expect(mergeCompiledStyles([component, shorthand])).toBe(result.classes[shorthandCandidate]);
+    expect(mergeCompiledStyles([shorthand, component])).toBe(result.classes[componentCandidate]);
+  });
+
+  it('keeps vendor fallback declarations in one composable atom', () => {
+    const result = compileStyleRecords({ clip: 'bg-clip-text', hyphenation: 'hyphens-auto' });
+    const clip = result.styles.clip;
+    const hyphenation = result.styles.hyphenation;
+    if (!clip || !hyphenation) {
+      throw new Error('Expected fallback compiled styles.');
+    }
+
+    expect(clip._).toHaveLength(1);
+    expect(hyphenation._).toHaveLength(1);
+    expect(mergeCompiledStyles([clip, hyphenation])).toBe(
+      `${result.classes['bg-clip-text']} ${result.classes['hyphens-auto']}`,
+    );
+  });
+
+  it('keeps independent background channels while replacing a matching channel', () => {
+    const result = compileStyleRecords({
+      image: 'bg-cover bg-top-left bg-no-repeat',
+      replacement: 'bg-contain bg-center',
+    });
+    const image = result.styles.image;
+    const replacement = result.styles.replacement;
+    if (!image || !replacement) {
+      throw new Error('Expected compiled background styles.');
+    }
+
+    expect(mergeCompiledStyles([image, replacement])).toBe(
+      `${result.classes['bg-no-repeat']} ${result.classes['bg-contain']} ${result.classes['bg-center']}`,
+    );
+  });
+
+  it('replaces only competing font stacks and font smoothing modes', () => {
+    const result = compileStyleRecords({ sans: 'font-sans antialiased', mono: 'font-mono subpixel-antialiased' });
+    const sans = result.styles.sans;
+    const mono = result.styles.mono;
+    if (!sans || !mono) {
+      throw new Error('Expected compiled font styles.');
+    }
+
+    expect(mergeCompiledStyles([sans, mono])).toBe(
+      `${result.classes['font-mono']} ${result.classes['subpixel-antialiased']}`,
+    );
+  });
+
+  it('stacks numeric variants while letting normal-nums reset the whole set', () => {
+    const result = compileStyleRecords({ formatted: 'slashed-zero tabular-nums', reset: 'normal-nums' });
+    const formatted = result.styles.formatted;
+    const reset = result.styles.reset;
+    if (!formatted || !reset) {
+      throw new Error('Expected compiled numeric styles.');
+    }
+
+    expect(mergeCompiledStyles([formatted])).toBe(
+      `${result.classes['slashed-zero']} ${result.classes['tabular-nums']}`,
+    );
+    expect(mergeCompiledStyles([formatted, reset])).toBe(result.classes['normal-nums']);
+  });
+});
