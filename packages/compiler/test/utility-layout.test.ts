@@ -206,3 +206,142 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain(
       'scrollbar-color:var(--cssx-scrollbar-thumb, #0000) var(--cssx-scrollbar-track, #0000)',
     );
+    expect(result.css.match(/@property --cssx-scrollbar-(?:thumb|track)/g)).toHaveLength(2);
+    expect(result.css).toContain('scroll-snap-type:x var(--cssx-scroll-snap-strictness, proximity)');
+    expect(result.css).toContain('--cssx-scroll-snap-strictness:mandatory');
+    expect(result.css).toContain('scroll-snap-stop:normal');
+    expect(result.css).toContain('scroll-snap-stop:always');
+    expect(result.css).toContain('scroll-snap-align:center');
+    expect(result.css).toContain('fill:#22c55e');
+    expect(result.css).toContain('stroke:#3b82f6');
+    expect(result.css).toContain('stroke-width:3px');
+    expect(result.css).toContain('forced-color-adjust:none');
+  });
+
+  it('compiles SVG stroke, fill, vector, paint, and rendering utilities', async () => {
+    const result = await compileUtilities(
+      [
+        'fill-current',
+        'stroke-current',
+        'stroke-cap-round',
+        'stroke-join-bevel',
+        'stroke-miterlimit-4',
+        'stroke-dasharray-[4_8]',
+        'stroke-dashoffset-[12]',
+        'fill-rule-evenodd',
+        'clip-rule-nonzero',
+        'vector-effect-non-scaling-stroke',
+        'paint-order-stroke',
+        'shape-rendering-crisp-edges',
+      ],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('fill:currentColor');
+    expect(result.css).toContain('stroke:currentColor');
+    expect(result.css).toContain('stroke-linecap:round');
+    expect(result.css).toContain('stroke-linejoin:bevel');
+    expect(result.css).toContain('stroke-miterlimit:4');
+    expect(result.css).toContain('stroke-dasharray:4 8');
+    expect(result.css).toContain('stroke-dashoffset:12');
+    expect(result.css).toContain('fill-rule:evenodd');
+    expect(result.css).toContain('clip-rule:nonzero');
+    expect(result.css).toContain('vector-effect:non-scaling-stroke');
+    expect(result.css).toContain('paint-order:stroke');
+    expect(result.css).toContain('shape-rendering:crispEdges');
+  });
+
+  it('compiles writing-mode, text orientation, and bidi utilities', async () => {
+    const result = await compileUtilities(
+      ['writing-vertical-rl', 'text-orientation-upright', 'text-combine-upright-all', 'unicode-bidi-isolate-override'],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(result.css).toContain('writing-mode:vertical-rl');
+    expect(result.css).toContain('text-orientation:upright');
+    expect(result.css).toContain('text-combine-upright:all');
+    expect(result.css).toContain('unicode-bidi:isolate-override');
+  });
+
+  it('compiles logical sizing and flex shorthand utilities', async () => {
+    const result = await compileUtilities(
+      [
+        'inline-full',
+        'min-inline-0',
+        'max-inline-lg',
+        'block-4',
+        'max-block-screen',
+        'flex-1',
+        'flex-1/2',
+        'flex-auto',
+      ],
+      (candidate) => `x-${candidate.replaceAll('/', '-')}`,
+    );
+
+    expect(result.css).toContain('inline-size:100%');
+    expect(result.css).toContain('min-inline-size:calc(0.25rem * 0)');
+    expect(result.css).toContain('max-inline-size:32rem');
+    expect(result.css).toContain('block-size:calc(0.25rem * 4)');
+    expect(result.css).toContain('max-block-size:100vb');
+    expect(result.css).toContain('flex:1;');
+    expect(result.css).toContain('flex:calc(1 / 2 * 100%);');
+    expect(result.css).toContain('flex:1 1 auto;');
+  });
+
+  it('compiles text decoration color, style, thickness, and offset utilities', async () => {
+    const result = await compileUtilities(
+      ['decoration-red-500', 'decoration-wavy', 'decoration-2', 'underline-offset-4'],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(result.css).toContain('text-decoration-color:#ef4444');
+    expect(result.css).toContain('text-decoration-style:wavy');
+    expect(result.css).toContain('text-decoration-thickness:2px');
+    expect(result.css).toContain('text-underline-offset:calc(0.25rem * 4)');
+  });
+
+  it('compiles pseudo-element content values', async () => {
+    const result = await compileUtilities(
+      ["before:content-['required']", 'after:content-(--label)', 'content-none'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('content:var(--cssx-content, "");content:\'required\'');
+    expect(result.css).toContain('content:var(--cssx-content, "");content:var(--label)');
+    expect(result.css).toContain('content:none');
+  });
+
+  it('compiles table border, spacing, layout, and caption utilities', async () => {
+    const result = await compileUtilities(
+      [
+        'border-separate',
+        'border-spacing-2',
+        'border-spacing-x-4',
+        'border-spacing-y-px',
+        'table-fixed',
+        'caption-bottom',
+      ],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(result.css).toContain('border-collapse:separate');
+    expect(result.css).toContain('border-spacing:calc(0.25rem * 2)');
+    expect(result.css).toContain('--cssx-border-spacing-x:calc(0.25rem * 4)');
+    expect(result.css).toContain('--cssx-border-spacing-y:1px');
+    expect(result.css).toContain('table-layout:fixed');
+    expect(result.css).toContain('caption-side:bottom');
+  });
+
+  it('orders broad generated declarations before narrower cascade overrides', async () => {
+    const result = await compileUtilities(['border-t-2', 'border-4', 'pr-2', 'p-4'], (candidate) => `x-${candidate}`);
+
+    expect(result.css.indexOf('.x-p-4')).toBeLessThan(result.css.indexOf('.x-pr-2'));
+    expect(result.css.indexOf('.x-border-4')).toBeLessThan(result.css.indexOf('.x-border-t-2'));
+  });
+
+  it('rejects unsafe generated CSS class names from the public compiler callback', async () => {
+    await expect(compileUtilities(['p-4'], () => 'x-safe}body{display:none')).rejects.toThrow(
+      'unsafe generated class name',
+    );
+  });
+});
