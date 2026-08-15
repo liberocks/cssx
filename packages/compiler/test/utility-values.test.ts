@@ -35,3 +35,28 @@ describe('utility value helpers', () => {
       { property: '--cssx-skew-y', value: '2deg' },
       { property: 'transform', value: 'skewY(var(--cssx-skew-y))' },
     ];
+
+    expect(atomizeDeclarations(declarations)).toEqual([
+      [declarations[0], declarations[2]],
+      [declarations[1], declarations[2]],
+      [declarations[3], declarations[4]],
+      [declarations[5], declarations[6]],
+    ]);
+  });
+
+  it('resolves named and arbitrary text, transition, angle, and scale values', () => {
+    expect(leadingValue('tight')).toBe('1.25');
+    expect(leadingValue('[1.1]')).toBe('1.1');
+    expect(leadingValue('3')).toBe('3');
+    expect(trackingValue('wide')).toBe('0.025em');
+    expect(trackingValue('custom')).toBe('custom');
+    expect(millisecondsValue('150')).toBe('150ms');
+    expect(millisecondsValue('[.2s]')).toBe('.2s');
+    expect(resolveAngleValue('45', false)).toBe('45deg');
+    expect(resolveAngleValue('[.25turn]', true)).toBe('-.25turn');
+    expect(resolveAngleValue('bad', false)).toBeNull();
+    expect(resolveScaleValue('125', false)).toBe('1.25');
+    expect(resolveScaleValue('[.8]', true)).toBe('-.8');
+    expect(resolveScaleValue('bad', false)).toBeNull();
+  });
+});
