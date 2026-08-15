@@ -84,3 +84,61 @@ export function compileBackgroundUtility(utility: string): UtilityDeclaration | 
       { property: 'background-clip', value: 'text', semanticGroup: 'background-clip' },
       { property: 'color', value: 'transparent', semanticGroup: 'background-clip' },
     ],
+    'bg-origin-border': { property: 'background-origin', value: 'border-box' },
+    'bg-origin-padding': { property: 'background-origin', value: 'padding-box' },
+    'bg-origin-content': { property: 'background-origin', value: 'content-box' },
+  };
+  const direct = exact[utility];
+  if (direct) {
+    if (Array.isArray(direct)) {
+      return cloneDeclarations(direct);
+    }
+    return direct;
+  }
+  const position = /^bg-position-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
+  if (position) {
+    return { property: 'background-position', value: resolveArbitraryCssValue(position[1] ?? '') };
+  }
+  const size = /^bg-size-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
+  return size ? { property: 'background-size', value: resolveArbitraryCssValue(size[1] ?? '') } : null;
+}
+
+/**
+ * Compiles fixed and arbitrary mask utilities.
+ *
+ * @param utility Utility name without variants.
+ * @returns Mask declaration, or null when unsupported.
+ */
+export function compileMaskUtility(utility: string): UtilityDeclaration | null {
+  const exact: Readonly<Record<string, readonly [property: string, value: string]>> = {
+    'mask-none': ['mask-image', 'none'],
+    'mask-cover': ['mask-size', 'cover'],
+    'mask-contain': ['mask-size', 'contain'],
+    'mask-repeat': ['mask-repeat', 'repeat'],
+    'mask-no-repeat': ['mask-repeat', 'no-repeat'],
+    'mask-repeat-x': ['mask-repeat', 'repeat-x'],
+    'mask-repeat-y': ['mask-repeat', 'repeat-y'],
+    'mask-repeat-round': ['mask-repeat', 'round'],
+    'mask-repeat-space': ['mask-repeat', 'space'],
+    'mask-clip-border': ['mask-clip', 'border-box'],
+    'mask-clip-padding': ['mask-clip', 'padding-box'],
+    'mask-clip-content': ['mask-clip', 'content-box'],
+    'mask-no-clip': ['mask-clip', 'no-clip'],
+    'mask-origin-border': ['mask-origin', 'border-box'],
+    'mask-origin-padding': ['mask-origin', 'padding-box'],
+    'mask-origin-content': ['mask-origin', 'content-box'],
+  };
+  const declaration = exact[utility];
+  if (declaration) {
+    return { property: declaration[0], value: declaration[1] };
+  }
+  const match = /^mask-(position|size)-(.+)$/.exec(utility);
+  if (match) {
+    return { property: `mask-${match[1]}`, value: resolveArbitraryCssValue(match[2] ?? '') };
+  }
+  const image = /^mask-(\[.+\]|\(.+\))$/.exec(utility);
+  if (image) {
+    return { property: 'mask-image', value: resolveArbitraryCssValue(image[1] ?? '') };
+  }
+  return null;
+}
