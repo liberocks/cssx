@@ -172,3 +172,120 @@ const PSEUDO_CLASS_VARIANTS: Readonly<Record<string, string>> = {
   optional: 'optional',
   open: 'open',
   target: 'target',
+  empty: 'empty',
+  enabled: 'enabled',
+  first: 'first-child',
+  last: 'last-child',
+  only: 'only-child',
+  odd: 'nth-child(odd)',
+  even: 'nth-child(even)',
+  'first-of-type': 'first-of-type',
+  'last-of-type': 'last-of-type',
+  'only-of-type': 'only-of-type',
+};
+
+/** Supported pseudo-element variants and their selector fragments. */
+const PSEUDO_ELEMENT_VARIANTS: Readonly<Record<string, string>> = {
+  before: 'before',
+  after: 'after',
+  selection: 'selection',
+  marker: 'marker',
+  file: 'file-selector-button',
+  'first-letter': 'first-letter',
+  'first-line': 'first-line',
+  placeholder: 'placeholder',
+};
+
+/**
+ * Checks whether a name is a supported pseudo-class state.
+ *
+ * @param value Variant name.
+ * @returns Whether the name is a supported state.
+ */
+function isStateVariant(value: string): boolean {
+  return PSEUDO_CLASS_VARIANTS[value] !== undefined;
+}
+
+/**
+ * Checks whether a name is a supported group state variant.
+ *
+ * @param value Variant name.
+ * @returns Whether the name is a group state variant.
+ */
+function isGroupStateVariant(value: string): boolean {
+  return value.startsWith('group-') && isStateVariant(value.slice('group-'.length));
+}
+
+/**
+ * Checks whether a name is a supported peer state variant.
+ *
+ * @param value Variant name.
+ * @returns Whether the name is a peer state variant.
+ */
+function isPeerStateVariant(value: string): boolean {
+  return value.startsWith('peer-') && isStateVariant(value.slice('peer-'.length));
+}
+
+/**
+ * Reads a custom state variant name.
+ *
+ * @param value Variant name.
+ * @returns Custom state name, or null when the prefix does not match.
+ */
+function stateVariantName(value: string): string | null {
+  return customStateName(value, 'state-');
+}
+
+/**
+ * Reads a custom group state variant name.
+ *
+ * @param value Variant name.
+ * @returns Custom state name, or null when the prefix does not match.
+ */
+function groupStateVariantName(value: string): string | null {
+  return customStateName(value, 'group-state-');
+}
+
+/**
+ * Reads a custom peer state variant name.
+ *
+ * @param value Variant name.
+ * @returns Custom state name, or null when the prefix does not match.
+ */
+function peerStateVariantName(value: string): string | null {
+  return customStateName(value, 'peer-state-');
+}
+
+/**
+ * Validates and extracts a bracketed custom state name.
+ *
+ * @param value Variant name.
+ * @param prefix Required variant prefix.
+ * @returns Custom state name, or null when the prefix does not match.
+ */
+function customStateName(value: string, prefix: string): string | null {
+  if (!value.startsWith(`${prefix}[`) || !value.endsWith(']')) {
+    return null;
+  }
+  const name = value.slice(prefix.length + 1, -1);
+  if (!/^[a-z_][a-z0-9_-]*$/i.test(name) || /^(?:inherit|initial|revert|revert-layer|unset)$/i.test(name)) {
+    throw new Error(`Invalid CSSX custom state variant "${value}".`);
+  }
+  return name;
+}
+
+/**
+ * Validates and normalizes a supported arbitrary media or supports rule.
+ *
+ * @param value Arbitrary at-rule text without brackets.
+ * @returns Normalized at-rule.
+ */
+function normalizeArbitraryAtRule(value: string): string {
+  const match = /^@(supports|media)\s*(.*)$/.exec(value);
+  const kind = match?.[1];
+  const condition = match?.[2]?.trim();
+  if (!kind || !condition) {
+    throw new Error(`Invalid CSSX arbitrary at-rule variant "[${value}]".`);
+  }
+  return `@${kind} ${condition}`;
+}
