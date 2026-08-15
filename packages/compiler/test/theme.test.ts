@@ -104,3 +104,74 @@ describe('CSSX theme parsing', () => {
       'Invalid CSSX @keyframes selector',
     );
   });
+
+  it('is deterministic across equivalent source-order theme definitions', () => {
+    const first = parseTheme('@theme { --spacing: 1px; } @theme { --spacing: 2px; }');
+    const second = parseTheme('@theme { --spacing: 1px; } @theme { --spacing: 2px; }');
+    expect(first).toEqual(second);
+    expect(resolveThemeToken(first, '--spacing')).toBe('2px');
+  });
+
+  it('supports explicit inline, reference, static, and prefixed theme output modes', () => {
+    const inline = parseTheme('@theme inline { --color-brand: #123456; }');
+    expect(resolveThemeToken(inline, '--color-brand')).toBe('#123456');
+    expect(serializeThemeTokens(inline, '.x{color:#123456;}')).toBe('');
+
+    const reference = parseTheme('@theme reference { --color-brand: var(--color-base); --color-base: #123456; }');
+    expect(resolveThemeToken(reference, '--color-brand')).toBe('var(--color-brand)');
+    expect(serializeThemeTokens(reference, '.x{color:var(--color-brand);}')).toBe(
+      ':root{--color-base:#123456;--color-brand:var(--color-base)}',
+    );
+
+    const staticTheme = parseTheme('@theme static { --color-brand: #123456; }');
+    expect(serializeThemeTokens(staticTheme, '')).toContain('--color-brand:#123456');
+
+    const prefixed = parseTheme('@theme prefix(app) { --color-brand: #123456; }');
+    expect(resolveThemeToken(prefixed, '--color-brand')).toBe('var(--app-color-brand)');
+    expect(serializeThemeTokens(prefixed, '.x{color:var(--app-color-brand);}')).toBe(
+      ':root{--app-color-brand:#123456}',
+    );
+    expect(() => parseTheme('@theme reference { --color-brand: #123456; } @theme static { --spacing: 2px; }')).toThrow(
+      'conflicting output modes',
+    );
+  });
+
+  it('accepts balanced values and rejects malformed comments, blocks, and keyframes', () => {
+    const theme = parseTheme(
+      `/* before */ @theme { --font-demo: "Example Sans"; --shadow-demo: rgb(0 0 0 / .2); @keyframes fade { from { opacity: 0; } to { opacity: 1; } } }`,
+    );
+    expect(resolveThemeToken(theme, '--font-demo')).toBe('"Example Sans"');
+    expect(theme.keyframes.fade).toContain('@keyframes fade');
+
+    expect(() => parseTheme('/* unfinished')).toThrow('Unterminated CSSX theme comment');
+    expect(() => parseTheme('@theme { --color-brand: #123456;')).toThrow('Unterminated CSSX @theme block');
+    expect(() => parseTheme('@theme prefix(123) { --color-brand: #123456; }')).toThrow('Expected "{"');
+    expect(() => parseTheme('@theme { @keyframes 123 { to { opacity: 1; } } }')).toThrow(
+      'Invalid CSSX @keyframes name',
+    );
+    expect(() => parseTheme('@theme { @keyframes fade { to opacity: 1; } }')).toThrow(
+      'Invalid CSSX @keyframes selector',
+    );
+    expect(() => parseTheme('@theme { --color-brand: var(--color-base)); }')).toThrow(
+      'Invalid CSSX @theme declaration',
+    );
+  });
+
+  it('handles trailing comments, escaped values, and remaining validation edges', () => {
+    const escaped = parseTheme('@theme { --font-demo: "a\\"b"; } /* trailing */');
+    expect(resolveThemeToken(escaped, '--font-demo')).toBe('"a\\"b"');
+
+    const reference = parseTheme('@theme reference { --color-brand: #123456; }');
+    expect(serializeThemeTokens(reference, '')).toBe('');
+    expect(serializeThemeTokens(reference, '.x{color:var(--unknown);}')).toBe('');
+
+    expect(() => parseTheme('@theme { invalid }')).toThrow('Invalid CSSX @theme declaration');
+    expect(() => parseTheme('@theme { @keyframes fade }')).toThrow('Expected "{" after @keyframes fade');
+    expect(() => parseTheme('@theme { @keyframes fade { to } }')).toThrow('Unterminated CSSX @keyframes fade');
+    expect(() => parseTheme('@theme { @keyframes fade { to { opacity:; } } }')).toThrow(
+      'Invalid CSSX @keyframes declaration',
+    );
+    expect(() => parseTheme('@theme { --font-demo: "open; }')).toThrow('Unterminated CSSX @theme block');
+    expect(() => parseTheme('@theme { --font-demo: calc(1px; }')).toThrow('Invalid CSSX @theme declaration');
+  });
+});
