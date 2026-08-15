@@ -115,3 +115,82 @@ describe('CSSX semantic conflict classifier', () => {
     if (!wide || !narrow || !reverse || !color) {
       throw new Error('Expected compiled compiled styles.');
     }
+
+    expect(mergeCompiledStyles([wide, narrow, reverse, color])).toBe(
+      `${result.classes['divide-x-2']} ${result.classes['divide-x-reverse']} ${result.classes['divide-red-500']}`,
+    );
+  });
+
+  it('treats placeholder colors as a pseudo-element write group', () => {
+    const result = compileStyleRecords({ muted: 'placeholder-slate-500', alert: 'placeholder-red-500' });
+    const muted = result.styles.muted;
+    const alert = result.styles.alert;
+    if (!muted || !alert) {
+      throw new Error('Expected compiled compiled styles.');
+    }
+
+    expect(mergeCompiledStyles([muted, alert])).toBe(result.classes['placeholder-red-500']);
+  });
+
+  it('replaces outline width while preserving independently writable style, offset, and color', () => {
+    const result = compileStyleRecords({
+      wide: 'outline-4',
+      narrow: 'outline-2',
+      dashed: 'outline-dashed',
+      offset: 'outline-offset-2',
+      color: 'outline-blue-500',
+    });
+    const wide = result.styles.wide;
+    const narrow = result.styles.narrow;
+    const dashed = result.styles.dashed;
+    const offset = result.styles.offset;
+    const color = result.styles.color;
+    if (!wide || !narrow || !dashed || !offset || !color) {
+      throw new Error('Expected compiled compiled styles.');
+    }
+
+    expect(mergeCompiledStyles([wide, narrow, dashed, offset, color])).toBe(
+      `${result.classes['outline-2']} ${result.classes['outline-dashed']} ${result.classes['outline-offset-2']} ${result.classes['outline-blue-500']}`,
+    );
+  });
+
+  it('keeps logical and physical spacing writes independent across writing modes', () => {
+    const result = compileStyleRecords({ physical: 'pl-4', logical: 'ps-2' });
+    const physical = result.styles.physical;
+    const logical = result.styles.logical;
+    if (!physical || !logical) {
+      throw new Error('Expected compiled compiled styles.');
+    }
+
+    expect(mergeCompiledStyles([physical, logical])).toBe(`${result.classes['pl-4']} ${result.classes['ps-2']}`);
+  });
+
+  it('partially overrides the width channel of size utilities', () => {
+    const result = compileStyleRecords({ square: 'size-4', wide: 'w-8' });
+    const square = result.styles.square;
+    const wide = result.styles.wide;
+    if (!square || !wide) {
+      throw new Error('Expected compiled compiled styles.');
+    }
+
+    expect(mergeCompiledStyles([square, wide]).split(' ')).toHaveLength(2);
+  });
+
+  it('replaces gradient stops by channel while preserving direction and other stops', () => {
+    const result = compileStyleRecords({
+      direction: 'bg-linear-to-r',
+      cool: 'from-blue-500 via-cyan-500',
+      warm: 'from-red-500 to-transparent',
+    });
+    const direction = result.styles.direction;
+    const cool = result.styles.cool;
+    const warm = result.styles.warm;
+    if (!direction || !cool || !warm) {
+      throw new Error('Expected compiled gradient styles.');
+    }
+
+    expect(mergeCompiledStyles([direction, cool, warm])).toBe(
+      `${result.classes['bg-linear-to-r']} ${result.classes['via-cyan-500']} ${result.classes['from-red-500']} ${result.classes['to-transparent']}`,
+    );
+  });
+});
