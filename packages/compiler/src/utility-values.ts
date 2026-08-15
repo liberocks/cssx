@@ -95,3 +95,68 @@ export function leadingValue(value: string): string {
     relaxed: '1.625',
     loose: '2',
   };
+  return value.startsWith('[') ? value.slice(1, -1) : (values[value] ?? value);
+}
+
+/**
+ * Resolves a supported letter-spacing name.
+ *
+ * @param value Utility value.
+ * @returns CSS letter-spacing value.
+ */
+export function trackingValue(value: string): string {
+  const values: Readonly<Record<string, string>> = {
+    tighter: '-0.05em',
+    tight: '-0.025em',
+    normal: '0em',
+    wide: '0.025em',
+    wider: '0.05em',
+    widest: '0.1em',
+  };
+  return values[value] ?? value;
+}
+
+/**
+ * Converts a duration utility value to milliseconds when needed.
+ *
+ * @param value Utility value.
+ * @returns CSS duration value.
+ */
+export function millisecondsValue(value: string): string {
+  return value.startsWith('[') ? value.slice(1, -1) : `${value}ms`;
+}
+
+/**
+ * Resolves a degree or arbitrary angle value.
+ *
+ * @param value Utility value.
+ * @param negative Whether to negate the value.
+ * @returns CSS angle, or null when unsupported.
+ */
+export function resolveAngleValue(value: string, negative: boolean): string | null {
+  if (value.startsWith('[') && value.endsWith(']')) {
+    return `${negative ? '-' : ''}${value.slice(1, -1)}`;
+  }
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+  return `${negative ? '-' : ''}${value}deg`;
+}
+
+/**
+ * Resolves a percentage scale utility value.
+ *
+ * @param value Utility value.
+ * @param negative Whether to negate the value.
+ * @returns CSS scale number, or null when unsupported.
+ */
+export function resolveScaleValue(value: string, negative: boolean): string | null {
+  if (value.startsWith('[') && value.endsWith(']')) {
+    return `${negative ? '-' : ''}${value.slice(1, -1)}`;
+  }
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+  const fraction = Number(value) / 100;
+  return negative ? `-${fraction}` : String(fraction);
+}
