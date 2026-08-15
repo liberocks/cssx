@@ -198,3 +198,137 @@ describe('CSSX utility compiler', () => {
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
     );
 
+    expect(result.css).toContain('--cssx-filter-blur:blur(8px)');
+    expect(result.css).toContain('--cssx-filter-brightness:brightness(1.25)');
+    expect(result.css).toContain('--cssx-filter-grayscale:grayscale(1)');
+    expect(result.css).toContain('--cssx-filter-hue-rotate:hue-rotate(-45deg)');
+    expect(result.css).toContain('--cssx-filter-drop-shadow:drop-shadow(0 4px 4px rgb(0 0 0 / .15))');
+    expect(result.css).toContain('filter:var(--cssx-filter-blur,) var(--cssx-filter-brightness,)');
+  });
+
+  it('composes backdrop filters, including opacity and WebKit output', async () => {
+    const result = await compileUtilities(
+      ['backdrop-blur-xs', 'backdrop-brightness-50', 'backdrop-opacity-75', '-backdrop-hue-rotate-45'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('--cssx-backdrop-blur:blur(4px)');
+    expect(result.css).toContain('--cssx-backdrop-brightness:brightness(.5)');
+    expect(result.css).toContain('--cssx-backdrop-opacity:opacity(.75)');
+    expect(result.css).toContain('--cssx-backdrop-hue-rotate:hue-rotate(-45deg)');
+    expect(result.css).toContain('-webkit-backdrop-filter:var(--cssx-backdrop-blur,)');
+    expect(result.css).toContain('backdrop-filter:var(--cssx-backdrop-blur,)');
+  });
+
+  it('compiles documented color families across backgrounds, text, and borders', async () => {
+    const result = await compileUtilities(
+      ['bg-orange-500', 'text-mauve-950', 'border-mist-200'],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(result.css).toContain('background-color:oklch(70.49% 0.213 47.604)');
+    expect(result.css).toContain('color:oklch(14.53% 0.008 326)');
+    expect(result.css).toContain('border-color:oklch(92.49% 0.005 214.3)');
+
+    const addedFamilies = await compileUtilities(
+      ['bg-deep-orange-500', 'text-blue-gray-950', 'border-light-green-200'],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(addedFamilies.css).toContain('background-color:oklch(67.93% 0.213 36.532)');
+    expect(addedFamilies.css).toContain('color:oklch(23.03% 0.014 229.775)');
+    expect(addedFamilies.css).toContain('border-color:oklch(87.45% 0.085 128.378)');
+  });
+
+  it('compiles default font stacks and font smoothing controls', async () => {
+    const result = await compileUtilities(
+      ['font-sans', 'font-serif', 'font-mono', 'antialiased', 'subpixel-antialiased'],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(result.css).toContain('font-family:ui-sans-serif, system-ui, sans-serif');
+    expect(result.css).toContain('font-family:ui-serif, Georgia, Cambria');
+    expect(result.css).toContain('font-family:ui-monospace, SFMono-Regular, Menlo');
+    expect(result.css).toContain(
+      '.x-antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}',
+    );
+    expect(result.css).toContain('.x-subpixel-antialiased{-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto;}');
+  });
+
+  it('compiles image and advanced font rendering controls', async () => {
+    const result = await compileUtilities(
+      [
+        'image-render-pixelated',
+        'image-render-crisp-edges',
+        'font-optical-auto',
+        'font-kerning-none',
+        'font-synthesis-small-caps',
+      ],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(result.css).toContain('image-rendering:pixelated');
+    expect(result.css).toContain('image-rendering:crisp-edges');
+    expect(result.css).toContain('font-optical-sizing:auto');
+    expect(result.css).toContain('font-kerning:none');
+    expect(result.css).toContain('font-synthesis:small-caps');
+  });
+
+  it('composes numeric font variants', async () => {
+    const result = await compileUtilities(
+      ['slashed-zero', 'tabular-nums', 'normal-nums'],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(result.css).toContain('--cssx-numeric-slashed-zero:slashed-zero');
+    expect(result.css).toContain('--cssx-numeric-tabular-nums:tabular-nums');
+    expect(result.css).toContain('font-variant-numeric:var(--cssx-numeric-ordinal,)');
+    expect(result.css).toContain('.x-normal-nums{font-variant-numeric:normal;}');
+  });
+
+  it('supports common layout dimensions and automatic horizontal margins', async () => {
+    const result = await compileUtilities(['mx-auto', 'max-w-4xl', 'min-h-screen'], (candidate) => `x-${candidate}`);
+    expect(result.css).toContain('margin-left:auto');
+    expect(result.css).toContain('margin-right:auto');
+    expect(result.css).toContain('max-width:56rem');
+    expect(result.css).toContain('min-height:100vh');
+  });
+
+  it('compiles the responsive container utility from the active breakpoint theme', async () => {
+    const result = await compileUtilities(['container'], () => 'x-container');
+
+    expect(result.classes.container).toBe('x-container');
+    expect(result.css).toContain('.x-container{width:100%;}');
+    expect(result.css).toContain('@media (width >= 40rem){.x-container{max-width:40rem;}}');
+    expect(result.css).toContain('@media (width >= 96rem){.x-container{max-width:96rem;}}');
+  });
+
+  it('compiles flex and grid sizing, span, line, and ordering utilities', async () => {
+    const result = await compileUtilities(
+      [
+        'grow',
+        'shrink-0',
+        'basis-1/2',
+        '-order-2',
+        'grid-rows-3',
+        'grid-cols-subgrid',
+        'col-span-full',
+        'row-span-2',
+        'col-start-3',
+        'row-end-auto',
+      ],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('flex-grow:1');
+    expect(result.css).toContain('flex-shrink:0');
+    expect(result.css).toContain('flex-basis:');
+    expect(result.css).toContain('order:-2');
+    expect(result.css).toContain('grid-template-rows:repeat(3, minmax(0, 1fr))');
+    expect(result.css).toContain('grid-template-columns:subgrid');
+    expect(result.css).toContain('grid-column:1 / -1');
+    expect(result.css).toContain('grid-row:span 2 / span 2');
+    expect(result.css).toContain('grid-column-start:3');
+    expect(result.css).toContain('grid-row-end:auto');
+  });
+});
