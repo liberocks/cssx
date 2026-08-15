@@ -23,3 +23,20 @@ describe('utility helper edge cases', () => {
     expect(resolveDimensionValue('1/0', false, theme, 'w')).toBeNull();
     expect(splitColorModifier('[url("a/b")]/50')).toEqual({ value: '[url("a/b")]', opacity: '50' });
     expect(splitColorModifier('red\\/blue/50')).toEqual({ value: 'red\\/blue', opacity: '50' });
+    expect(resolveOpacityModifier('none')).toBeNull();
+    expect(resolveOpacityModifier('101')).toBeNull();
+  });
+
+  it('keeps special colors and rejects invalid transform and arbitrary-property input', () => {
+    expect(resolveUtilityColor('current', theme)).toBe('currentColor');
+    expect(resolveUtilityColor('inherit', theme)).toBe('inherit');
+    expect(compileGradientUtility('from-red-500/none', false, theme)).toBeNull();
+    expect(compileColorUtility('text-xs', theme)).toBeNull();
+    expect(compileColorUtility('bg-red-500/101', theme)).toBeNull();
+    expect(compileAnimationUtility('none', theme)).toEqual({ property: 'animation', value: 'none' });
+    expect(compileTransformUtility('translate-x-invalid', false, theme)).toBeNull();
+    expect(compileTransformUtility('scale-invalid', false, theme)).toBeNull();
+    expect(compileTransformUtility('skew-x-invalid', false, theme)).toBeNull();
+    expect(() => compileArbitraryProperty('[123:unsafe]')).toThrow('Invalid arbitrary CSSX utility');
+  });
+});
