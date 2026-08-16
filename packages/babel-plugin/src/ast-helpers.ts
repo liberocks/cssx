@@ -173,3 +173,120 @@ export function readStaticString(path: NodePath): string | null {
 export function propertyKey(
   key: string,
   t: typeof import('@babel/types'),
+): import('@babel/types').Identifier | import('@babel/types').StringLiteral {
+  return t.isValidIdentifier(key) ? t.identifier(key) : t.stringLiteral(key);
+}
+
+/**
+ * Converts a compiled style value into an object expression.
+ *
+ * @param style Compiled style emitted by the compiler.
+ * @param t Babel node helpers.
+ * @returns An object expression that represents the compiled style.
+ */
+export function packedStyleExpression(
+  style: CompiledStyle,
+  t: typeof import('@babel/types'),
+): import('@babel/types').ObjectExpression {
+  return t.valueToNode(style) as import('@babel/types').ObjectExpression;
+}
+
+/**
+ * Reads a supported non-computed object property name.
+ *
+ * It accepts identifier, string literal, and numeric literal keys. Other key forms return null.
+ *
+ * @param property Object property to inspect.
+ * @param t Babel node helpers.
+ * @returns The property name, or null when the key is unsupported.
+ */
+export function objectPropertyName(
+  property: import('@babel/types').ObjectProperty,
+  t: typeof import('@babel/types'),
+): string | null {
+  if (t.isIdentifier(property.key)) {
+    return property.key.name;
+  }
+  if (t.isStringLiteral(property.key) || t.isNumericLiteral(property.key)) {
+    return String(property.key.value);
+  }
+  return null;
+}
+
+/**
+ * Checks whether a call invokes the CSSX create API.
+ *
+ * @param path Call expression to inspect.
+ * @param t Babel node helpers.
+ * @param importSource Module specifier that exports CSSX.
+ * @returns True when the call uses a supported create import form.
+ */
+export function isCreateCall(
+  path: NodePath<import('@babel/types').CallExpression>,
+  t: typeof babelTypes,
+  importSource: string,
+): boolean {
+  return isCssxApiCall(path, t, importSource, 'create');
+}
+
+/**
+ * Checks whether a call invokes the CSSX props API.
+ *
+ * @param path Call expression to inspect.
+ * @param t Babel node helpers.
+ * @param importSource Module specifier that exports CSSX.
+ * @returns True when the call uses a supported props import form.
+ */
+export function isPropsCall(
+  path: NodePath<import('@babel/types').CallExpression>,
+  t: typeof babelTypes,
+  importSource: string,
+): boolean {
+  return isCssxApiCall(path, t, importSource, 'props');
+}
+
+/**
+ * Checks whether a call invokes the CSSX sx API.
+ *
+ * @param path Call expression to inspect.
+ * @param t Babel node helpers.
+ * @param importSource Module specifier that exports CSSX.
+ * @returns True when the call uses a supported sx import form.
+ */
+export function isSxCall(
+  path: NodePath<import('@babel/types').CallExpression>,
+  t: typeof babelTypes,
+  importSource: string,
+): boolean {
+  return isCssxApiCall(path, t, importSource, 'sx');
+}
+
+/**
+ * Checks whether a call invokes one supported CSSX API form.
+ *
+ * Named imports are called directly. Namespace and default imports must use dot notation.
+ *
+ * @param path Call expression to inspect.
+ * @param t Babel node helpers.
+ * @param importSource Module specifier that exports CSSX.
+ * @param api CSSX API name to match.
+ * @returns True when the call is bound to the requested CSSX API.
+ */
+function isCssxApiCall(
+  path: NodePath<import('@babel/types').CallExpression>,
+  t: typeof babelTypes,
+  importSource: string,
+  api: 'create' | 'props' | 'sx',
+): boolean {
+  const callee = path.node.callee;
+  if (t.isIdentifier(callee)) {
+    return importedFunctionBinding(path, callee.name, api, t, importSource);
+  }
+  return (
+    t.isMemberExpression(callee) &&
+    !callee.computed &&
+    t.isIdentifier(callee.object) &&
+    t.isIdentifier(callee.property, { name: api }) &&
+    importedNamespaceBinding(path, callee.object.name, importSource)
+  );
+}
