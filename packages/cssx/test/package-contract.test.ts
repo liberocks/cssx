@@ -203,3 +203,141 @@ void props;
     }
   }, 20_000);
 
+  it('records reproducible compiler source and artifact checksums in the published build', async () => {
+    const manifest = JSON.parse(
+      await readFile(join(workspaceRoot, 'packages/compiler/dist/BUILD_MANIFEST.json'), 'utf8'),
+    ) as {
+      readonly format: number;
+      readonly sourceHash: string;
+      readonly artifacts: Readonly<Record<string, string>>;
+    };
+    expect(manifest.format).toBe(1);
+    expect(manifest.sourceHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(Object.keys(manifest.artifacts)).toEqual(
+      expect.arrayContaining(['dist/index.js', 'dist/index.cjs', 'dist/index.d.ts']),
+    );
+    for (const [artifact, expectedHash] of Object.entries(manifest.artifacts)) {
+      const actualHash = createHash('sha256')
+        .update(await readFile(join(workspaceRoot, 'packages/compiler', artifact)))
+        .digest('hex');
+      expect(actualHash).toBe(expectedHash);
+    }
+  });
+
+  it('keeps published CSSX package graphs within the approved dependency set', async () => {
+    for (const packageDirectory of packageDirectories) {
+      const manifest = await readManifest(packageDirectory);
+      const dependencies = {
+        ...(manifest.dependencies ?? {}),
+        ...(manifest.optionalDependencies ?? {}),
+        ...(manifest.peerDependencies ?? {}),
+      };
+      expect(Object.keys(dependencies).every((dependency) => approvedDependencies.has(dependency))).toBe(true);
+    }
+  });
+
+  it('pins all GitHub Actions workflow dependencies to immutable commit revisions', async () => {
+    for (const workflow of ['.github/workflows/ci.yml', '.github/workflows/release.yml']) {
+      const content = await readFile(join(workspaceRoot, workflow), 'utf8');
+      const actions = [...content.matchAll(/^\s*- uses:\s+[^@\s]+@([^\s#]+)/gm)].map((match) => match[1]);
+      expect(actions.length, `${workflow} has no actions`).toBeGreaterThan(0);
+      expect(actions.every((revision) => /^[a-f0-9]{40}$/i.test(revision ?? ''))).toBe(true);
+    }
+  });
+
+  it('keeps the built runtime and a fixed generated-CSS fixture within budget', async () => {
+    await expectArtifactWithinBudget('packages/cssx/dist/index.js', { raw: 1_800, gzip: 750, brotli: 650 });
+    await expectArtifactWithinBudget('packages/cssx/dist/index.cjs', { raw: 3_000, gzip: 1_200, brotli: 1_000 });
+
+    const runnerPath = join(fixtureDirectory, 'compile-fixture.mjs');
+    await writeFile(
+      runnerPath,
+      `import { compileStyleMap, serializeCss } from '@cssxio/compiler';\nconst result = await compileStyleMap({ button: 'inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700', disabled: 'opacity-50' });\nprocess.stdout.write(JSON.stringify({ css: serializeCss(result.rules), ruleCount: result.rules.length }));\n`,
+    );
+
+    const result = await runNode(runnerPath);
+    const output = JSON.parse(result.stdout) as { css: string; ruleCount: number };
+    const css = Buffer.from(output.css);
+
+    expect(output.ruleCount).toBe(1);
+    expect(css.byteLength).toBeLessThanOrEqual(2_000);
+    expect(gzipSync(css).byteLength).toBeLessThanOrEqual(750);
+    expect(
+      brotliCompressSync(css, { params: { [constants.BROTLI_PARAM_QUALITY]: 11 } }).byteLength,
+    ).toBeLessThanOrEqual(650);
+  });
+
+  it('keeps the Astro example composite-class output below the previous shipped-size baseline', async () => {
+    await runCommand('pnpm', ['--dir', 'examples/astro', 'build'], workspaceRoot);
+    const html = await readFile(join(workspaceRoot, 'examples/astro/dist/index.html'));
+    const css = await readFile(join(workspaceRoot, 'examples/astro/dist/assets/cssx.css'));
+    const htmlText = html.toString('utf8');
+    const cssxClassValues = [...htmlText.matchAll(/class="(s[0-9A-Za-z]+x)"/g)].map((match) => match[1] ?? '');
+
+    expect(cssxClassValues.length).toBeGreaterThan(0);
+    expect(cssxClassValues.every((className) => !className.includes(' '))).toBe(true);
+    expect(htmlText).not.toContain('class="rounded-md');
+    expect(gzipSync(html).byteLength + gzipSync(css).byteLength).toBeLessThan(1_955);
+  });
+
+  it('keeps compiler, transform, and adapter artifacts within their release budgets', async () => {
+    const adapterChunk = (await readdir(join(workspaceRoot, 'packages/unplugin/dist'))).find((file) =>
+      /^chunk-[A-Z0-9]+\.js$/.test(file),
+    );
+    if (!adapterChunk) {
+      throw new Error('Expected the unplugin shared adapter chunk.');
+    }
+    await expectArtifactWithinBudget('packages/compiler/dist/index.js', { raw: 116_000, gzip: 32_000, brotli: 26_500 });
+    await expectArtifactWithinBudget('packages/compiler/dist/index.cjs', {
+      raw: 117_000,
+      gzip: 32_300,
+      brotli: 26_700,
+    });
+    await expectArtifactWithinBudget('packages/babel-plugin/dist/index.js', {
+      raw: 24_000,
+      gzip: 5_500,
+      brotli: 4_900,
+    });
+    await expectArtifactWithinBudget('packages/babel-plugin/dist/index.cjs', {
+      raw: 25_000,
+      gzip: 5_800,
+      brotli: 5_200,
+    });
+    await expectArtifactWithinBudget(`packages/unplugin/dist/${adapterChunk}`, {
+      raw: 18_000,
+      gzip: 6_400,
+      brotli: 5_800,
+    });
+    await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', { raw: 19_000, gzip: 6_750, brotli: 6_100 });
+  });
+
+  it('cold-imports compiler, transform, and adapter packages within the release ceiling', async () => {
+    const runnerPath = join(fixtureDirectory, 'cold-import.mjs');
+    await writeFile(
+      runnerPath,
+      `const started = performance.now();\nawait Promise.all([import('@cssxio/compiler'), import('@cssxio/babel-plugin'), import('@cssxio/unplugin')]);\nprocess.stdout.write(String(performance.now() - started));\n`,
+    );
+    const result = await runNode(runnerPath);
+    const elapsed = Number(result.stdout);
+
+    expect(Number.isFinite(elapsed)).toBe(true);
+    expect(elapsed).toBeLessThan(2_000);
+  });
+
+  it('builds the Astro documentation with its CSSX stylesheet', async () => {
+    const html = await readFile(join(workspaceRoot, 'packages/docs/dist/index.html'), 'utf8');
+    const css = await readFile(join(workspaceRoot, 'packages/docs/dist/assets/cssx.css'), 'utf8');
+    const installation = await readFile(join(workspaceRoot, 'packages/docs/dist/docs/installation/index.html'), 'utf8');
+    const flexbox = await readFile(
+      join(workspaceRoot, 'packages/docs/dist/docs/utilities/flexbox-grid/index.html'),
+      'utf8',
+    );
+
+    expect(html).toContain('href="/assets/cssx.css"');
+    expect(html).toContain('Reference by category');
+    expect(installation).toContain('Configure the adapter');
+    expect(flexbox).toContain('Flexbox and grid');
+    expect(css).toContain('background-color:');
+    expect(css).toContain('padding:');
+  });
+});
