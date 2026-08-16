@@ -133,3 +133,93 @@ async function compileCss(
  * @param id Source file path.
  * @returns The esbuild JavaScript or TypeScript loader.
  */
+function loaderFor(id: string): Loader {
+  if (/\.tsx?$/.test(id)) {
+    return 'ts';
+  }
+  if (/\.jsx?$/.test(id)) {
+    return 'js';
+  }
+  return 'js';
+}
+
+/**
+ * Resolves a CSS output template and replaces each `[hash]` marker.
+ *
+ * @param template Relative CSS output path template.
+ * @param css Generated CSS used to calculate the hash.
+ * @returns A validated relative CSS output path.
+ */
+function resolveCssFileName(template: string, css: string): string {
+  const fileName = validateCssFileName(template);
+  return fileName.replaceAll('[hash]', stableId(css));
+}
+
+/**
+ * Validates a relative CSS output path.
+ *
+ * @param fileName CSS output path to validate.
+ * @returns The normalized relative CSS path.
+ */
+function validateCssFileName(fileName: string): string {
+  if (!fileName || isAbsolute(fileName)) {
+    throw new Error('cssFileName must be a non-empty relative path.');
+  }
+  const normalized = normalize(fileName);
+  if (normalized === '..' || normalized.startsWith(`..${sep}`) || normalized.includes(`${sep}..${sep}`)) {
+    throw new Error('cssFileName must not escape the bundler output directory.');
+  }
+  if (!normalized.endsWith('.css')) {
+    throw new Error('cssFileName must end in .css.');
+  }
+  return normalized;
+}
+
+/**
+ * Resolves the absolute CSS asset path for an esbuild build.
+ *
+ * @param workingDirectory esbuild's working directory.
+ * @param options esbuild output path options.
+ * @param options.outdir Optional esbuild output directory.
+ * @param options.outfile Optional esbuild output file.
+ * @param fileName Validated relative CSS output path.
+ * @returns The absolute path where the CSS asset belongs.
+ */
+function resolveAssetPath(
+  workingDirectory: string,
+  options: { readonly outdir?: string; readonly outfile?: string },
+  fileName: string,
+): string {
+  if (options.outdir) {
+    return resolve(workingDirectory, options.outdir, fileName);
+  }
+  if (options.outfile) {
+    return resolve(dirname(resolve(workingDirectory, options.outfile)), fileName);
+  }
+  return resolve(workingDirectory, fileName);
+}
+
+/**
+ * Creates a stable short identifier from a string.
+ *
+ * @param value String to hash.
+ * @returns A base-36 hash suitable for a generated output file name.
+ */
+function stableId(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+/**
+ * Resolves a source path through symlinks when the file exists.
+ *
+ * @param path Source file path to canonicalize.
+ * @returns The real path, or an absolute path when the file no longer exists.
+ */
+async function canonicalPath(path: string): Promise<string> {
+  return realpath(path).catch(() => resolve(path));
+}
