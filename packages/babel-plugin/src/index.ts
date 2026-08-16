@@ -418,3 +418,284 @@ export default function cssxBabelPlugin(
       const styles = binding.path.node.init;
       if (!styles || !t.isObjectExpression(styles)) {
         continue;
+      }
+      for (const property of styles.properties) {
+        if (!t.isObjectProperty(property) || !t.isObjectExpression(property.value)) {
+          continue;
+        }
+        const records = property.value.properties.find(
+          (styleProperty) =>
+            t.isObjectProperty(styleProperty) &&
+            ((t.isIdentifier(styleProperty.key) && styleProperty.key.name === '_') ||
+              (t.isStringLiteral(styleProperty.key) && styleProperty.key.value === '_')),
+        );
+        if (!records || !t.isObjectProperty(records) || !t.isArrayExpression(records.value)) {
+          continue;
+        }
+        for (let index = 0; index < records.value.elements.length; index++) {
+          const record = records.value.elements[index];
+          if (!record || !t.isArrayExpression(record)) {
+            continue;
+          }
+          const key = packedRecordKey(record);
+          if (key === null) {
+            continue;
+          }
+          const entry = entries.get(key) ?? { record, uses: 0 };
+          entry.uses++;
+          entries.set(key, entry);
+          recordArrays.push({ records: records.value, index, record });
+        }
+      }
+      const interned = new Map<string, import('@babel/types').Identifier>();
+      const declarations: import('@babel/types').VariableDeclarator[] = [];
+      for (const [key, entry] of entries) {
+        if (entry.uses < 2) {
+          continue;
+        }
+        const identifier = program.scope.generateUidIdentifier('c');
+        interned.set(key, identifier);
+        declarations.push(t.variableDeclarator(identifier, entry.record));
+      }
+      if (declarations.length === 0) {
+        continue;
+      }
+      for (const { records, index, record } of recordArrays) {
+        const identifier = interned.get(packedRecordKey(record) ?? '');
+        if (!identifier) {
+          continue;
+        }
+        records.elements[index] = t.identifier(identifier.name);
+      }
+      const declaration = binding.path.parentPath;
+      const statement = declaration.parentPath?.isExportNamedDeclaration() ? declaration.parentPath : declaration;
+      statement.insertBefore(t.variableDeclaration('const', declarations));
+    }
+  }
+
+  /** Returns a stable key for the compact runtime tuple representation. */
+  function packedRecordKey(record: import('@babel/types').ArrayExpression): string | null {
+    const values: Array<string | null> = [];
+    for (const value of record.elements) {
+      if (t.isStringLiteral(value)) {
+        values.push(value.value);
+      } else if (t.isNullLiteral(value)) {
+        values.push(null);
+      } else {
+        return null;
+      }
+    }
+    return JSON.stringify(values);
+  }
+
+  /**
+   * Reads the static utility map accepted by a create call.
+   *
+   * It accepts plain non-computed properties with static string values. Unsupported properties cause
+   * a source diagnostic.
+   *
+   * @param path Object argument from a create call.
+   * @param types Babel node helpers.
+   * @returns The style names and their static utility strings.
+   */
+  function readStyleMap(path: NodePath<ObjectExpression>, types: typeof t): Record<string, string> {
+    const result: Record<string, string> = Object.create(null) as Record<string, string>;
+    for (const property of path.get('properties')) {
+      if (!property.isObjectProperty() || property.node.computed) {
+        throw diagnosticError(property, 'cssx.create() only supports plain object properties.');
+      }
+      const key = objectPropertyName(property.node, types);
+      const value = property.get('value');
+      const utilityString = readStaticString(value);
+      if (!key || utilityString === null) {
+        throw diagnosticError(property, 'Each cssx.create() value must be a static utility string.');
+      }
+      if (typeof value.node.start === 'number' && typeof value.node.end === 'number') {
+        state.cssRanges.push({ start: value.node.start, end: value.node.end });
+      }
+      result[key] = utilityString;
+    }
+    return result;
+  }
+
+  /**
+   * Resolves one props argument to compiled styles that can be folded.
+   *
+   * It accepts null, false, nested arrays without holes or spreads, and non-computed dot access to a
+   * style created in this module. It returns null for ignored null and false values. All unsupported
+   * forms, including undefined, return undefined as a sentinel that leaves the props call at runtime.
+   *
+   * @param node Props argument or nested array element to resolve.
+   * @param types Babel node helpers.
+   * @returns Compiled styles, null for an ignored input, or undefined when folding must stop.
+   */
+  function resolveStyleArgument(
+    node:
+      | import('@babel/types').Expression
+      | import('@babel/types').JSXNamespacedName
+      | import('@babel/types').SpreadElement
+      | import('@babel/types').ArgumentPlaceholder,
+    types: typeof t,
+  ): readonly CompiledStyle[] | null | undefined {
+    if (types.isNullLiteral(node) || types.isBooleanLiteral(node, { value: false })) {
+      return null;
+    }
+    if (types.isArrayExpression(node)) {
+      const styles: CompiledStyle[] = [];
+      for (const element of node.elements) {
+        if (!element || types.isSpreadElement(element)) {
+          return undefined;
+        }
+        const resolved = resolveStyleArgument(element, types);
+        if (resolved === undefined) {
+          return undefined;
+        }
+        if (resolved) {
+          styles.push(...resolved);
+        }
+      }
+      return styles;
+    }
+    if (
+      !types.isMemberExpression(node) ||
+      node.computed ||
+      !types.isIdentifier(node.object) ||
+      !types.isIdentifier(node.property)
+    ) {
+      return undefined;
+    }
+    const map = state.styles.get(node.object.name);
+    const style = map?.[node.property.name];
+    const candidates = state.styleCandidates.get(node.object.name);
+    if (style && candidates) {
+      markStyleKeyCandidates(state, candidates, node.property.name);
+    }
+    return style ? [style] : undefined;
+  }
+
+  /** Marks one composite class from a local style map as reachable. */
+  function markStyleClass(styleName: string, key: string): void {
+    const className = state.styleClasses.get(styleName)?.[key];
+    if (className) {
+      markEmittedClassNames(className);
+    }
+  }
+
+  /** Marks every composite class from a local style map as reachable. */
+  function markAllStyleClasses(styleName: string): void {
+    for (const className of Object.values(state.styleClasses.get(styleName) ?? {})) {
+      markEmittedClassNames(className);
+    }
+  }
+
+  /** Retains every alias or direct atom written into a generated class string. */
+  function markEmittedClassNames(classNames: string): void {
+    for (const className of classNames.split(/\s+/).filter(Boolean)) {
+      if (state.composites.has(className)) {
+        state.liveComposites.add(className);
+      } else {
+        state.liveFallbackClasses.add(className);
+      }
+    }
+  }
+
+  /** Marks atomic fallback classes for one compiled style that survives at runtime. */
+  function markFallbackClasses(styleName: string, key: string): void {
+    for (const record of state.styles.get(styleName)?.[key]?._ ?? []) {
+      if (record[0]) {
+        state.liveFallbackClasses.add(record[0]);
+      }
+    }
+  }
+
+  /** Marks atomic fallback classes for every surviving style in one map. */
+  function markAllFallbackClasses(styleName: string): void {
+    for (const key of Object.keys(state.styles.get(styleName) ?? {})) {
+      markFallbackClasses(styleName, key);
+    }
+  }
+
+  /** Reads a fully static sx input as one utility source. */
+  function readStaticSxSource(
+    nodes: readonly (
+      | import('@babel/types').Expression
+      | import('@babel/types').JSXNamespacedName
+      | import('@babel/types').SpreadElement
+      | import('@babel/types').ArgumentPlaceholder
+    )[],
+    types: typeof t,
+  ): string | null {
+    const values: string[] = [];
+    for (const node of nodes) {
+      if (types.isStringLiteral(node)) {
+        values.push(node.value);
+      } else if (types.isNullLiteral(node) || types.isBooleanLiteral(node, { value: false })) {
+        continue;
+      } else if (types.isArrayExpression(node) && node.elements.every((element) => element !== null)) {
+        const nested = readStaticSxSource(
+          node.elements.filter((element): element is Exclude<typeof element, null> => element !== null),
+          types,
+        );
+        if (nested === null) {
+          return null;
+        }
+        values.push(nested);
+      } else {
+        return null;
+      }
+    }
+    return values.filter(Boolean).join(' ');
+  }
+}
+
+/** Replaces content-addressed composites with source-addressed development names. */
+function withStableCompositeNames(
+  result: CompiledStyleRecordMap,
+  fileName: string,
+  anchor: string,
+): CompiledStyleRecordMap {
+  const styles: Record<string, CompiledStyle> = Object.create(null) as Record<string, CompiledStyle>;
+  const classNames: Record<string, string> = Object.create(null) as Record<string, string>;
+  const composites: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
+  for (const [name, style] of Object.entries(result.styles)) {
+    const className = stableCompositeName(fileName, undefined, `${anchor}:style:${name}`);
+    styles[name] = { ...style, c: className };
+    classNames[name] = className;
+    composites[className] = atomicClassesForStyle(style);
+  }
+  return { ...result, styles, classNames, composites };
+}
+
+/** Extracts every winning atom from one compiled style for an alias selector. */
+function atomicClassesForStyle(style: CompiledStyle | undefined): readonly string[] {
+  return [
+    ...new Set((style?._ ?? []).map((record) => record[0]).filter((className): className is string => !!className)),
+  ];
+}
+
+/** Creates a deterministic CSS-safe class name from a source anchor. */
+function stableCompositeName(
+  fileName: string,
+  location: { readonly line: number; readonly column: number } | undefined,
+  kind: string,
+): string {
+  const anchor = `${fileName}\u0000${location?.line ?? 0}\u0000${location?.column ?? 0}\u0000${kind}`;
+  let hash = 0xcbf29ce484222325n;
+  for (let index = 0; index < anchor.length; index++) {
+    hash ^= BigInt(anchor.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+  }
+  return `d${hash.toString(36)}`;
+}
+
+/** Masks CSSX utility literals so an adapter can identify CSS-only source edits. */
+function cssOnlySignature(source: string, ranges: readonly { readonly start: number; readonly end: number }[]): string {
+  const chunks: string[] = [];
+  let position = 0;
+  for (const { start, end } of [...ranges].sort((left, right) => left.start - right.start)) {
+    chunks.push(source.slice(position, start));
+    position = end;
+  }
+  chunks.push(source.slice(position));
+  return chunks.join('');
+}
