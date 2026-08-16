@@ -381,3 +381,259 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         order: 'pre',
         async handler(this: any, context: any): Promise<any> {
           const environment = this.environment;
+          if (!environment || environment.name === 'client') {
+            return;
+          }
+          const handled = (context.modules as ViteHotUpdateModule[]).filter((module) => {
+            const data = rollupDataById.get(moduleId(module.id ?? ''));
+            return Boolean(data && data.cssOnlySignature && data.atomicClasses?.length === 0);
+          });
+          if (handled.length === 0) {
+            return;
+          }
+
+          const previous = new Map(
+            handled.map((module: ViteHotUpdateModule) => [
+              module,
+              rollupDataById.get(moduleId(module.id ?? ''))?.cssOnlySignature ?? '',
+            ]),
+          );
+          for (const module of handled) {
+            if (module.url) {
+              await environment.transformRequest(module.url);
+            }
+          }
+          const cssOnly = handled.every((module: ViteHotUpdateModule) => {
+            const data = rollupDataById.get(moduleId(module.id ?? ''));
+            return Boolean(data && data.atomicClasses?.length === 0 && data.cssOnlySignature === previous.get(module));
+          });
+          if (!cssOnly) {
+            return;
+          }
+
+          invalidateViteRunner(environment, handled, context.timestamp);
+          return (context.modules as ViteHotUpdateModule[]).filter((module) => !handled.includes(module));
+        },
+      },
+    },
+    ...(meta.framework === 'webpack'
+      ? {
+          webpack(compiler) {
+            configureCompilationAsset(
+              compiler as unknown as NativeCompiler,
+              cssFileName,
+              getTheme,
+              options.layer,
+              sourceMap,
+              RULES_METADATA_KEY,
+              rollupDataById,
+            );
+          },
+        }
+      : {}),
+    ...(meta.framework === 'rspack'
+      ? {
+          rspack(compiler) {
+            configureCompilationAsset(
+              compiler as unknown as NativeCompiler,
+              cssFileName,
+              getTheme,
+              options.layer,
+              sourceMap,
+              RULES_METADATA_KEY,
+              rollupDataById,
+            );
+          },
+        }
+      : {}),
+    ...(meta.framework === 'esbuild'
+      ? {
+          esbuild: {
+            config(buildOptions) {
+              buildOptions.metafile = true;
+            },
+            setup(build) {
+              const workingDirectory = build.initialOptions.absWorkingDir ?? process.cwd();
+              esbuildWorkingDirectory = workingDirectory;
+              build.onEnd(async (result) => {
+                if (!result.metafile) {
+                  return;
+                }
+                const liveIds = new Set(Object.keys(result.metafile.inputs).map((id) => resolve(workingDirectory, id)));
+                for (const id of esbuildDataById.keys()) {
+                  if (!liveIds.has(id)) {
+                    esbuildDataById.delete(id);
+                  }
+                }
+
+                const compiled = await compileCssxStylesheet(
+                  [...esbuildDataById.values()],
+                  await getTheme(),
+                  options.layer,
+                  sourceMap,
+                );
+                const assetPath = resolveEsbuildAssetPath(
+                  workingDirectory,
+                  build.initialOptions,
+                  resolveCssFileName(cssFileName, compiled.css),
+                );
+                if (!compiled.css) {
+                  if (emittedEsbuildAsset) {
+                    await unlink(emittedEsbuildAsset).catch(() => undefined);
+                  }
+                  emittedEsbuildAsset = undefined;
+                  return;
+                }
+                const css = cssWithSourceMapComment(compiled, basename(assetPath));
+                if (build.initialOptions.write === false) {
+                  const outputFiles = result.outputFiles;
+                  if (!outputFiles) {
+                    return;
+                  }
+                  const output = { path: assetPath, contents: Buffer.from(css), hash: '', text: css };
+                  const existing = outputFiles.findIndex((file) => file.path === assetPath);
+                  if (existing !== -1) {
+                    throw new Error(`CSSX CSS asset collision at "${assetPath}".`);
+                  }
+                  outputFiles.push(output);
+                  return;
+                }
+
+                await mkdir(dirname(assetPath), { recursive: true });
+                await writeFile(assetPath, css);
+                emittedEsbuildAsset = assetPath;
+              });
+            },
+          },
+        }
+      : {}),
+  };
+};
+
+/** Universal adapter instance that exposes factories for every supported build tool. */
+export const unplugin = /* #__PURE__ */ createUnplugin(unpluginFactory);
+
+/** Creates a browser-only Webpack/Rspack HMR bridge for manually linked CSSX assets. */
+function nativeStylesheetHmr(cssFileName: string): string {
+  return `if (typeof document !== "undefined" && typeof module !== "undefined" && module.hot) {
+  const key = "__cssxStylesheetHmr";
+  const state = globalThis[key] || (globalThis[key] = { revision: 0, staged: [], replacements: [] });
+  const stylesheetLink = [...document.querySelectorAll('link[rel="stylesheet"]')].find((link) =>
+    new URL(link.href, document.baseURI).pathname.endsWith(${JSON.stringify(`/${cssFileName}`)}),
+  );
+  const nextLink = stylesheetLink && (() => {
+    const path = new URL(stylesheetLink.href, document.baseURI).pathname;
+    return path.includes("/_next/");
+  })();
+  if (!state.installed) {
+    state.installed = true;
+    state.stage = () => {
+      const revision = ++state.revision;
+      state.staged = [];
+      state.replacements = [];
+      const links = [...document.querySelectorAll('link[rel="stylesheet"]')].filter((link) =>
+        new URL(link.href, document.baseURI).pathname.endsWith(${JSON.stringify(`/${cssFileName}`)}),
+      );
+      return Promise.all(
+        links.map(
+          (link) =>
+            new Promise((resolve) => {
+              const replacement = link.cloneNode();
+              const url = new URL(link.href, document.baseURI);
+              url.searchParams.set("cssx", String(revision));
+              replacement.href = url.href;
+              const finish = (loaded) => {
+                replacement.removeEventListener("load", onLoad);
+                replacement.removeEventListener("error", onError);
+                if (loaded) {
+                  state.staged.push(link);
+                  if (state.removeOnLoad) link.remove();
+                }
+                else replacement.remove();
+                resolve();
+              };
+              const onLoad = () => finish(true);
+              const onError = () => finish(false);
+              replacement.addEventListener("load", onLoad);
+              replacement.addEventListener("error", onError);
+              state.replacements.push(replacement);
+              link.after(replacement);
+            }),
+        ),
+      );
+    };
+    module.hot.addStatusHandler((status) => {
+      if (status === "prepare" || status === "dispose") {
+        return state.stage();
+      }
+      if (status === "idle") {
+        for (const link of state.staged) link.remove();
+        state.staged = [];
+        state.replacements = [];
+      }
+      if (status === "abort" || status === "fail") {
+        for (const replacement of state.replacements) replacement.remove();
+        state.staged = [];
+        state.replacements = [];
+      }
+    });
+    if (nextLink) module.hot.accept(() => void state.stage());
+    for (const updateKey of Object.getOwnPropertyNames(globalThis).filter((name) => name.startsWith("webpackHotUpdate"))) {
+      const update = globalThis[updateKey];
+      if (typeof update !== "function") continue;
+      globalThis[updateKey] = function (...args) {
+        void state.stage();
+        return update.apply(this, args);
+      };
+    }
+    if (stylesheetLink) {
+      state.removeOnLoad = Boolean(nextLink);
+      const refresh = async () => {
+        try {
+          const url = new URL(stylesheetLink.href, document.baseURI);
+          url.searchParams.set("cssx-probe", String(Date.now()));
+          const css = await fetch(url.href, { cache: "no-store" }).then((response) => response.text());
+          if (state.css && state.css !== css) void state.stage();
+          state.css = css;
+        } catch {
+        }
+      };
+      void refresh();
+      state.poll = setInterval(() => void refresh(), 500);
+    }
+  }
+}`;
+}
+
+/**
+ * Callable factory that creates the CSSX adapter for Vite.
+ *
+ * @param options CSSX adapter options.
+ * @returns The Vite plugin.
+ */
+export const vite = unplugin.vite;
+/**
+ * Callable factory that creates the CSSX adapter for Rollup.
+ *
+ * @param options CSSX adapter options.
+ * @returns The Rollup plugin.
+ */
+export const rollup = unplugin.rollup;
+/**
+ * Callable factory that creates the CSSX adapter for webpack.
+ *
+ * @param options CSSX adapter options.
+ * @returns The webpack plugin.
+ */
+export const webpack = unplugin.webpack;
+/**
+ * Callable factory that creates the CSSX adapter for Rspack.
+ *
+ * @param options CSSX adapter options.
+ * @returns The Rspack plugin.
+ */
+export const rspack = unplugin.rspack;
+/** Callable factory that creates the CSSX adapter for esbuild. */
+export { default as esbuild } from './esbuild';
+
+export default unplugin;
