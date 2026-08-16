@@ -34,3 +34,28 @@ export function recordCandidateOrigin(
  */
 export function markStyleKeyCandidates(
   state: FileState,
+  candidatesByKey: Readonly<Record<string, readonly string[]>>,
+  key: string,
+): void {
+  for (const candidate of candidatesByKey[key] ?? []) {
+    state.liveCandidates.add(candidate);
+  }
+}
+
+/**
+ * Marks every candidate in a style map as reachable.
+ *
+ * @param state Data collected for the current source module.
+ * @param candidatesByKey Candidates grouped by style key.
+ * @returns Nothing.
+ */
+export function markAllCandidates(
+  state: FileState,
+  candidatesByKey: Readonly<Record<string, readonly string[]>>,
+): void {
+  for (const candidates of Object.values(candidatesByKey)) {
+    for (const candidate of candidates) {
+      state.liveCandidates.add(candidate);
+    }
+  }
+}
