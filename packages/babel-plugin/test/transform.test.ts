@@ -189,3 +189,131 @@ describe('CSSX Babel plugin', () => {
 
     expect(result?.code).toContain('export const staticClass = "');
     const staticClass = (result?.code ?? '').match(/staticClass = "([^"]+)"/)?.[1] ?? '';
+    expect(staticClass.split(' ')).toHaveLength(1);
+    expect(result?.code).toContain('sx("');
+    expect(result?.code).toContain('disabled && "');
+    expect(Object.keys(metadata.candidates).sort()).toEqual(['bg-red-500', 'inline-flex', 'opacity-50', 'p-4']);
+  });
+
+  it('handles static edge forms while leaving unsupported dynamic calls intact', () => {
+    const staticResult = transformSync(
+      `import { create, sx } from '@cssxio/cssx'; const styles = create({ 1: 'p-4' }); export const value = sx(false, null, active ? 'bg-red-500' : 'bg-blue-500');`,
+      { babelrc: false, configFile: false, plugins: [cssxBabelPlugin] },
+    );
+    expect(staticResult?.code).not.toContain('$$css: 2');
+    expect(staticResult?.code).toContain('active ? "');
+
+    const dynamicResult = transformSync(
+      `import { props } from '@cssxio/cssx'; export const output = props(...items);`,
+      { babelrc: false, configFile: false, plugins: [cssxBabelPlugin] },
+    );
+    expect(dynamicResult?.code).toContain('props(...items)');
+
+    expect(() =>
+      transformSync(
+        `import { create } from '@cssxio/cssx'; let value = 'p-4'; value = 'p-5'; create({ root: value });`,
+        {
+          babelrc: false,
+          configFile: false,
+          plugins: [cssxBabelPlugin],
+        },
+      ),
+    ).toThrow('static utility string');
+
+    expect(() =>
+      transformSync(`import { create } from '@cssxio/cssx'; create({ root() { return 'p-4'; } });`, {
+        babelrc: false,
+        configFile: false,
+        plugins: [cssxBabelPlugin],
+      }),
+    ).toThrow('only supports plain object properties');
+  });
+
+  it('folds nested static props while preserving unsupported props arguments', () => {
+    const folded = transformSync(
+      `import { create, props } from '@cssxio/cssx'; const styles = create({ first: 'p-4', second: 'bg-red-500' }); export const value = props([styles.first, false, styles.second]);`,
+      { babelrc: false, configFile: false, plugins: [cssxBabelPlugin] },
+    );
+    expect(folded?.code).toContain('className');
+
+    const preserved = transformSync(
+      `import { create, props } from '@cssxio/cssx'; const styles = create({ first: 'p-4' }); export const value = props(styles['first']);`,
+      { babelrc: false, configFile: false, plugins: [cssxBabelPlugin] },
+    );
+    expect(preserved?.code).toContain("props(styles['first'])");
+  });
+
+  it('retains reusable fragments and direct atomic classes in extracted metadata', async () => {
+    const result = transformSync(
+      `import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ first: 'flex items-center justify-center font-semibold text-white w-[100px]', second: 'flex items-center justify-center font-semibold text-white w-[200px]', third: 'flex items-center justify-center font-semibold text-white w-[300px]', fourth: 'flex items-center justify-center font-semibold text-white w-[400px]' }); export { styles };`,
+      { babelrc: false, configFile: false, plugins: [[cssxBabelPlugin, { reusabilityBudget: 'auto' }]] },
+    );
+    const metadata = (
+      result?.metadata as unknown as {
+        readonly cssx: {
+          readonly candidates: Readonly<Record<string, string>>;
+          readonly composites: Readonly<Record<string, readonly string[]>>;
+          readonly atomicClasses: readonly string[];
+        };
+      }
+    ).cssx;
+    const css = (
+      await compileUtilities(
+        Object.keys(metadata.candidates),
+        (candidate) => metadata.candidates[candidate] ?? candidate,
+        '',
+        createSelectorAliases(metadata.composites),
+        new Set(metadata.atomicClasses),
+      )
+    ).css;
+
+    expect(Object.keys(metadata.composites)).toHaveLength(5);
+    expect(metadata.atomicClasses.length).toBeGreaterThan(0);
+    expect(css).toContain(`.${Object.keys(metadata.composites)[0]}`);
+  });
+
+  it('snapshots transformed JavaScript and extracted CSS metadata for custom themes, variants, and arbitrary properties', async () => {
+    const theme = '@theme { --spacing: 2px; --color-brand: #123456; --breakpoint-tablet: 50rem; }';
+    const result = transformSync(
+      `import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ root: 'tablet:hover:bg-brand px-4 [mask-type:luminance]' }); export const props = cssx.props(styles.root);`,
+      { babelrc: false, configFile: false, plugins: [[cssxBabelPlugin, { theme }]] },
+    );
+    if (!result) {
+      throw new Error('Babel did not return a transform result.');
+    }
+    const metadata = (
+      result.metadata as unknown as {
+        readonly cssx: {
+          readonly candidates: Readonly<Record<string, string>>;
+          readonly composites: Readonly<Record<string, readonly string[]>>;
+          readonly atomicClasses: readonly string[];
+        };
+      }
+    ).cssx;
+    const candidates = metadata.candidates;
+    const css = (
+      await compileUtilities(
+        Object.keys(candidates),
+        (candidate) => candidates[candidate] ?? candidate,
+        theme,
+        createSelectorAliases(metadata.composites),
+        new Set(metadata.atomicClasses),
+      )
+    ).css;
+
+    const foldedClass = (result.code ?? '').match(/className: "([^"]+)"/)?.[1] ?? '';
+    const atomicClasses = Object.values(candidates).flatMap((className) => className.split(' '));
+    expect(foldedClass.split(' ')).toHaveLength(1);
+    expect(result.code).not.toContain('$$css: 2');
+    expect(Object.keys(metadata.composites)).toEqual([foldedClass]);
+    expect(metadata.atomicClasses).toEqual([]);
+    expect(css).toContain(`.${foldedClass}`);
+    expect(atomicClasses.every((className) => !css.includes(`.${className}`))).toBe(true);
+    expect(css).toContain('padding-left:calc(2px * 4)');
+    expect(css).toContain('padding-right:calc(2px * 4)');
+    expect(css).toContain('mask-type:luminance');
+    expect(css).toContain('@media (width >= 50rem)');
+    expect(css).toContain('@media (hover: hover)');
+    expect(css).toContain('background-color:#123456');
+  });
+});
