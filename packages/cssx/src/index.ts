@@ -114,3 +114,81 @@ export function props(...inputs: readonly StyleInput[]): { readonly className: s
         .join(' '),
     };
   }
+  const winners = new Set(
+    reduceCompiledUtilities(records)
+      .map((record) => record[0])
+      .filter((className): className is string => className !== null),
+  );
+  const flattenedParts: Array<string | CompiledUtility> = [];
+  for (const part of parts) {
+    if (typeof part === 'string') {
+      flattenedParts.push(part);
+    } else {
+      flattenedParts.push(...part._);
+    }
+  }
+  const emitted = new Set<string>();
+  return {
+    className: flattenedParts
+      .filter((part) => {
+        if (typeof part === 'string') {
+          return true;
+        }
+        if (part[0] === null || !winners.has(part[0]) || emitted.has(part[0])) {
+          return false;
+        }
+        emitted.add(part[0]);
+        return true;
+      })
+      .map((part) => (typeof part === 'string' ? part : part[0]))
+      .join(' '),
+  };
+}
+
+/** Checks whether a style input is a nested list of style inputs. */
+function isStyleArray(input: StyleInput): input is readonly StyleInput[] {
+  return Array.isArray(input);
+}
+
+/** Checks whether a style input was created by the CSSX compiler. */
+function isCompiledStyle(input: Exclude<StyleInput, readonly StyleInput[]>): input is CompiledStyle {
+  return (
+    typeof input === 'object' &&
+    input !== null &&
+    input.$$css === 2 &&
+    typeof input.c === 'string' &&
+    Array.isArray(input._)
+  );
+}
+
+/**
+ * Removes records replaced by later records in the same style group.
+ *
+ * @param records Compiler-created utility records.
+ * @returns The records that should remain, in their original order.
+ */
+export function reduceCompiledUtilities(records: readonly CompiledUtility[]): readonly CompiledUtility[] {
+  const blocked = new Map<string, Set<string>>();
+  const output: CompiledUtility[] = [];
+  for (let index = records.length - 1; index >= 0; index--) {
+    const record = records[index];
+    if (!record) {
+      continue;
+    }
+    const scope = blocked.get(record[1]) ?? new Set<string>();
+    blocked.set(record[1], scope);
+    if (record[0] !== null && scope.has(record[2])) {
+      continue;
+    }
+    for (let conflict = 2; conflict < record.length; conflict++) {
+      const group = record[conflict];
+      if (group) {
+        scope.add(group);
+      }
+    }
+    if (record[0] !== null) {
+      output.push(record);
+    }
+  }
+  return output.reverse();
+}
