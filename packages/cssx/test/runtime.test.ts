@@ -29,3 +29,24 @@ describe('CSSX runtime', () => {
     expect(props({ $$css: 2, c: 'x-composite', _: [record] })).toEqual({ className: 'x-composite' });
     expect(() => props({ $$css: 1, _: [record] } as never)).toThrow('not compiled by CSSX');
   });
+
+  it('uses compiler tombstones to clear domains without emitting an empty class', () => {
+    const numeric = ['x-numeric', '', 'numeric-tabular', 'numeric-tabular'] as const;
+    const reset = [null, '', 'numeric-normal', 'numeric-normal', 'numeric-tabular'] as const;
+    const resetClass = ['x-reset', '', 'numeric-normal', 'numeric-normal'] as const;
+
+    expect(reduceCompiledUtilities([numeric, reset, resetClass])).toEqual([resetClass]);
+    expect(
+      props(
+        { $$css: 2, c: 'x-numeric-composite', _: [numeric] },
+        { $$css: 2, c: 'x-reset-composite', _: [reset, resetClass] },
+      ),
+    ).toEqual({
+      className: 'x-reset',
+    });
+  });
+
+  it('joins static, conditional, and nested class strings without parsing utilities', () => {
+    expect(sx('x-base', false, ['x-nested', [null, 'x-last']])).toBe('x-base x-nested x-last');
+  });
+});
