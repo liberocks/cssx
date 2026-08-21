@@ -116,3 +116,82 @@ export function configureCompilationAsset(
   getTheme: () => Promise<string | undefined>,
   layer: string | undefined,
   sourceMap: boolean,
+  metadataKey: string,
+  transformedDataById?: ReadonlyMap<string, CssxSourceModule>,
+): void {
+  compiler.hooks.thisCompilation.tap('@cssxio/unplugin', (compilation) => {
+    compilation.hooks.processAssets.tapPromise(
+      {
+        name: '@cssxio/unplugin',
+        stage: compiler.webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONS,
+      },
+      async () => {
+        const sourceData = [...compilation.modules].map((module) =>
+          sourceDataFromModule(module, metadataKey, transformedDataById),
+        );
+        const compiled = await compileCssxStylesheet(
+          sourceData.some((data) => Object.keys(data.candidates).length > 0)
+            ? sourceData
+            : [...(transformedDataById?.values() ?? [])],
+          await getTheme(),
+          layer,
+          sourceMap,
+        );
+        if (!compiled.css) {
+          return;
+        }
+        const finalCssFileName = resolveCssFileName(cssFileName, compiled.css);
+        if (compilation.getAsset?.(finalCssFileName)) {
+          throw new Error(`CSSX CSS asset collision at "${finalCssFileName}".`);
+        }
+        compilation.emitAsset(
+          finalCssFileName,
+          new compiler.webpack.sources.RawSource(cssWithSourceMapComment(compiled, finalCssFileName)),
+        );
+        if (compiled.map) {
+          const mapFileName = `${finalCssFileName}.map`;
+          if (compilation.getAsset?.(mapFileName)) {
+            throw new Error(`CSSX CSS map asset collision at "${mapFileName}".`);
+          }
+          compilation.emitAsset(
+            mapFileName,
+            new compiler.webpack.sources.RawSource(cssSourceMap(compiled.map, finalCssFileName)),
+          );
+        }
+      },
+    );
+  });
+}
+
+/**
+ * Reads CSSX source data stored on one native bundler module.
+ *
+ * @param module Native bundler module to read.
+ * @param metadataKey Key used to store CSSX metadata.
+ * @returns Valid source data or an empty record when no valid data exists.
+ */
+function sourceDataFromModule(
+  module: ModuleWithCssxRules,
+  metadataKey: string,
+  transformedDataById: ReadonlyMap<string, CssxSourceModule> | undefined,
+): CssxSourceModule {
+  const value = module.buildInfo?.[metadataKey];
+  if (!value || typeof value !== 'object') {
+    return (
+      transformedDataById?.get(module.resource?.split('?', 1)[0] ?? '') ?? {
+        id: '',
+        candidates: {},
+        composites: {},
+        origins: {},
+      }
+    );
+  }
+  const { id, candidates, composites, atomicClasses, origins } = value as Partial<CssxSourceModule>;
+  return {
+    id: typeof id === 'string' ? id : '',
+    candidates: candidates && typeof candidates === 'object' ? candidates : {},
+    composites: composites && typeof composites === 'object' ? composites : {},
+    ...(Array.isArray(atomicClasses) ? { atomicClasses } : {}),
+    origins: origins && typeof origins === 'object' ? origins : {},
+  };
+}
