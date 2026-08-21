@@ -150,3 +150,105 @@ function createCssSourceMap(
   const sourceIndexes = new Map(sources.map((source, index) => [source, index]));
   const points: Array<{
     readonly column: number;
+    readonly line: number;
+    readonly source: number;
+    readonly originalLine: number;
+    readonly originalColumn: number;
+  }> = [];
+  let location = advanceCssLocation({ line: 0, column: 0 }, prefixCss);
+  for (const entry of entries) {
+    const origin = origins.get(entry.candidate);
+    if (origin) {
+      points.push({
+        ...location,
+        source: sourceIndexes.get(origin.id) ?? 0,
+        originalLine: origin.line,
+        originalColumn: origin.column,
+      });
+    }
+    location = advanceCssLocation(location, entry.css);
+  }
+  return { version: 3, sources, names: [], mappings: encodeCssMappings(points) };
+}
+
+/**
+ * Moves a generated CSS location forward by a CSS string.
+ *
+ * @param location Starting generated CSS location.
+ * @param location.line Zero-based generated CSS line.
+ * @param location.column Zero-based generated CSS column.
+ * @param css CSS whose length advances the location.
+ * @returns The generated CSS location after the string.
+ */
+function advanceCssLocation(
+  location: { readonly line: number; readonly column: number },
+  css: string,
+): { readonly line: number; readonly column: number } {
+  const lastLine = css.lastIndexOf('\n');
+  return lastLine === -1
+    ? { line: location.line, column: location.column + css.length }
+    : { line: location.line + css.split('\n').length - 1, column: css.length - lastLine - 1 };
+}
+
+/**
+ * Encodes generated CSS source map points as source map mappings.
+ *
+ * @param points Generated and original locations for utility rules.
+ * @returns Source map mappings in base64 VLQ form.
+ */
+function encodeCssMappings(
+  points: readonly {
+    readonly column: number;
+    readonly line: number;
+    readonly source: number;
+    readonly originalLine: number;
+    readonly originalColumn: number;
+  }[],
+): string {
+  const lines: string[][] = [];
+  let previousSource = 0;
+  let previousOriginalLine = 0;
+  let previousOriginalColumn = 0;
+  let previousGeneratedLine = 0;
+  let previousGeneratedColumn = 0;
+  for (const point of points) {
+    while (lines.length <= point.line) {
+      lines.push([]);
+    }
+    if (point.line !== previousGeneratedLine) {
+      previousGeneratedLine = point.line;
+      previousGeneratedColumn = 0;
+    }
+    lines[point.line]?.push(
+      `${encodeVlq(point.column - previousGeneratedColumn)}${encodeVlq(point.source - previousSource)}${encodeVlq(point.originalLine - previousOriginalLine)}${encodeVlq(point.originalColumn - previousOriginalColumn)}`,
+    );
+    previousGeneratedColumn = point.column;
+    previousSource = point.source;
+    previousOriginalLine = point.originalLine;
+    previousOriginalColumn = point.originalColumn;
+  }
+  return lines.map((line) => line.join(',')).join(';');
+}
+
+/** Represents the base64 alphabet used by source map VLQ encoding. */
+const BASE64_VLQ_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/**
+ * Encodes one signed integer as a base64 VLQ segment.
+ *
+ * @param value Signed integer to encode.
+ * @returns The encoded source map segment.
+ */
+function encodeVlq(value: number): string {
+  let encoded = '';
+  let remaining = value < 0 ? (-value << 1) | 1 : value << 1;
+  do {
+    let digit = remaining & 31;
+    remaining >>>= 5;
+    if (remaining) {
+      digit |= 32;
+    }
+    encoded += BASE64_VLQ_ALPHABET[digit] ?? '';
+  } while (remaining);
+  return encoded;
+}
