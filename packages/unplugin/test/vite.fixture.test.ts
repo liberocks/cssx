@@ -64,3 +64,47 @@ describe('CSSX Vite fixture', () => {
       const map = (await fetch(`${origin}cssx.css.map`).then((result) => result.json())) as { sources: string[] };
       expect(map.sources.some((source) => source.endsWith('/src/main.ts') || source === 'src/main.ts')).toBe(true);
 
+      await writeFile(
+        join(root, 'src/main.ts'),
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'bg-red-500' });",
+      );
+      const active = await server.environments.client.moduleGraph.getModuleByUrl('/src/main.ts');
+      if (!active?.file) {
+        throw new Error('Vite did not retain the transformed source module.');
+      }
+      server.watcher.emit('change', active.file);
+      server.environments.client.moduleGraph.onFileChange(active.file);
+      const transformed = await server.environments.client.transformRequest('/src/main.ts');
+      expect(transformed?.code).not.toBe(initial?.code);
+      const updated = await fetch(`${origin}cssx.css`);
+      expect(await updated.text()).toContain('background-color:var(--color-red-500)');
+
+      await writeFile(
+        join(root, 'src/main.ts'),
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'not-a-utility' });",
+      );
+      server.watcher.emit('change', active.file);
+      server.environments.client.moduleGraph.onFileChange(active.file);
+      await expect(server.environments.client.transformRequest('/src/main.ts')).rejects.toThrow('cannot');
+
+      await writeFile(
+        join(root, 'src/main.ts'),
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'text-white' });",
+      );
+      server.watcher.emit('change', active.file);
+      server.environments.client.moduleGraph.onFileChange(active.file);
+      await server.environments.client.transformRequest('/src/main.ts');
+      const recovered = await fetch(`${origin}cssx.css`);
+      expect(await recovered.text()).toContain('color:var(--color-white)');
+
+      await rm(join(root, 'src/main.ts'));
+      server.watcher.emit('unlink', active.file);
+      server.environments.client.moduleGraph.onFileDelete(active.file);
+      const deleted = await fetch(`${origin}cssx.css`);
+      expect(await deleted.text()).toBe('');
+    } finally {
+      await server.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
