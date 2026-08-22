@@ -125,3 +125,88 @@ describe('CSSX unplugin transform', () => {
       },
       'export const noCssx = true;',
       '/project/empty.ts',
+    );
+    expect(watched).toEqual([`${process.cwd()}/theme.css`]);
+  });
+
+  it.each(['webpack', 'rspack'] as const)('collects active %s compilation module rules', async (framework) => {
+    const plugin = pluginFor(framework);
+    let compilationCallback: ((compilation: any) => void) | undefined;
+    plugin[framework]({
+      webpack: {
+        Compilation: { PROCESS_ASSETS_STAGE_ADDITIONS: -100 },
+        sources: {
+          RawSource: class {
+            constructor(readonly source: string) {}
+          },
+        },
+      },
+      hooks: {
+        thisCompilation: {
+          tap(_name: string, callback: (compilation: any) => void) {
+            compilationCallback = callback;
+          },
+        },
+      },
+    });
+
+    const module = { buildInfo: {} };
+    await plugin.transform.handler.call(
+      {
+        getNativeBuildContext() {
+          return { framework, loaderContext: { _module: module } };
+        },
+      },
+      source,
+      '/project/styles.ts',
+    );
+
+    let processAssets: (() => Promise<void>) | undefined;
+    const emitted: any[] = [];
+    compilationCallback?.({
+      modules: [module],
+      hooks: {
+        processAssets: {
+          tapPromise(_options: unknown, callback: () => Promise<void>) {
+            processAssets = callback;
+          },
+        },
+      },
+      emitAsset(name: string, asset: unknown) {
+        emitted.push({ name, asset });
+      },
+    });
+    await processAssets?.();
+
+    expect(emitted).toHaveLength(2);
+    expect(emitted[0].name).toBe('cssx.css');
+    expect(emitted[0].asset.source).toContain('background-color:#ef4444');
+    expect(emitted[1].name).toBe('cssx.css.map');
+  });
+
+  it('prunes esbuild rules using the metafile and returns CSS for write: false', async () => {
+    const plugin = pluginFor('esbuild');
+    const build: any = {
+      initialOptions: { absWorkingDir: '/project', outdir: 'dist', write: false },
+      onEnd(callback: (result: any) => Promise<void>) {
+        this.end = callback;
+      },
+    };
+    plugin.esbuild.config(build.initialOptions);
+    await plugin.esbuild.setup(build);
+    await plugin.transform.handler(source, '/project/styles.ts');
+
+    const firstResult = { metafile: { inputs: { 'styles.ts': {} } }, outputFiles: [] };
+    await build.end(firstResult);
+    expect(build.initialOptions.metafile).toBe(true);
+    expect(firstResult.outputFiles).toHaveLength(1);
+    expect(firstResult.outputFiles[0]).toMatchObject({
+      path: '/project/dist/cssx.css',
+      text: expect.stringContaining('padding:calc(0.25rem * 5)'),
+    });
+
+    const secondResult = { metafile: { inputs: {} }, outputFiles: [] };
+    await build.end(secondResult);
+    expect(secondResult.outputFiles).toEqual([]);
+  });
+});
