@@ -68,3 +68,50 @@ describe('native bundler helpers', () => {
       createCompiler(compilation),
       'cssx.css',
       async () => undefined,
+      undefined,
+      true,
+      'cssx',
+      new Map([['/project/entry.ts', { id: '/project/entry.ts', candidates: { 'p-4': 'x' }, origins: {} }]]),
+    );
+
+    await processAssets?.();
+
+    expect(emitted).toEqual(['cssx.css', 'cssx.css.map']);
+  });
+
+  it('omits a native CSS source map when disabled', async () => {
+    let processAssets: (() => Promise<void>) | undefined;
+    const emitted: string[] = [];
+    const compilation: TestCompilation = {
+      modules: [{ buildInfo: { cssx: { id: 'entry.ts', candidates: { 'p-4': 'x' }, origins: {} } } }],
+      hooks: {
+        processAssets: {
+          tapPromise: (_options: unknown, handler: () => Promise<void>) => {
+            processAssets = handler;
+          },
+        },
+      },
+      getAsset: () => undefined,
+      emitAsset: (fileName: string) => emitted.push(fileName),
+    };
+
+    configureCompilationAsset(createCompiler(compilation), 'cssx.css', async () => undefined, undefined, false, 'cssx');
+    await processAssets?.();
+
+    expect(emitted).toEqual(['cssx.css']);
+  });
+});
+
+function createCompiler(compilation: TestCompilation): NativeCompiler {
+  return {
+    webpack: {
+      Compilation: { PROCESS_ASSETS_STAGE_ADDITIONS: 0 },
+      sources: { RawSource: class RawSource {} },
+    },
+    hooks: {
+      thisCompilation: {
+        tap: (_name, handler) => handler(compilation),
+      },
+    },
+  };
+}
