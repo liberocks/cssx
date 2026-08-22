@@ -90,3 +90,65 @@ describe('CSSX Webpack fixture', () => {
     try {
       await mkdir(join(root, 'src'));
       const entry = join(root, 'src/main.js');
+      await writeFile(
+        entry,
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'p-2' });",
+      );
+      const builds: webpack.Stats[] = [];
+      let watchError: Error | undefined;
+      const nextBuild = () =>
+        new Promise<webpack.Stats>((resolvePromise, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Webpack watch rebuild timed out.')), 10_000);
+          const check = () => {
+            if (watchError) {
+              clearTimeout(timeout);
+              reject(watchError);
+              return;
+            }
+            const result = builds.shift();
+            if (result) {
+              clearTimeout(timeout);
+              resolvePromise(result);
+            } else {
+              setTimeout(check, 5);
+            }
+          };
+          check();
+        });
+      watching = compiler.watch({}, (error, result) => {
+        if (error) {
+          watchError = error;
+          return;
+        }
+        if (!result) {
+          watchError = new Error('Webpack watch did not return build stats.');
+          return;
+        }
+        if (result.hasErrors()) {
+          watchError = new Error(result.toString({ all: false, errors: true }));
+          return;
+        }
+        builds.push(result);
+      });
+      expect((await nextBuild()).hasErrors()).toBe(false);
+      expect(await readFile(join(outputPath, 'cssx.css'), 'utf8')).toContain('padding:calc(0.25rem * 2)');
+
+      const rebuilt = nextBuild();
+      await writeFile(
+        entry,
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'text-white' });",
+      );
+      expect((await rebuilt).hasErrors()).toBe(false);
+      const css = await readFile(join(outputPath, 'cssx.css'), 'utf8');
+      expect(css).toContain('color:#fff');
+      expect(css).not.toContain('padding:calc(0.25rem * 2)');
+    } finally {
+      await new Promise<void>((resolvePromise, reject) =>
+        watching
+          ? watching.close((error) => (error ? reject(error) : resolvePromise()))
+          : compiler.close((error) => (error ? reject(error) : resolvePromise())),
+      );
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 15_000);
+});
