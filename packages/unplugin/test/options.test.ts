@@ -23,3 +23,20 @@ describe('unplugin options', () => {
     expect(() => assertPluginOptions({ cssFileName: '' })).toThrow('non-empty relative');
     expect(() => assertPluginOptions({ cssFileName: '../escape.css' })).toThrow('must not escape');
     expect(() => assertPluginOptions({ cssFileName: 'styles.txt' })).toThrow('must end in .css');
+    expect(() => assertPluginOptions({ sourceMap: 'false' } as never)).toThrow('sourceMap must be a boolean');
+    expect(() => assertPluginOptions({ cssFileName: 'assets/cssx.css', layer: 'cssx_layer' })).not.toThrow();
+  });
+
+  it('makes deterministic CSS asset names and paths', () => {
+    expect(stableId('css')).toBe(stableId('css'));
+    expect(resolveCssFileName('assets/[hash].css', 'body{}')).toMatch(/^assets\/[a-z0-9]+\.css$/);
+    expect(viteCssPath('/app/', 'assets/cssx.css')).toBe('/app/assets/cssx.css');
+    expect(viteCssPath(undefined, 'cssx.css')).toBe('/cssx.css');
+    expect(moduleId('/project/source.ts?type=script')).toBe('/project/source.ts');
+    expect(resolveEsbuildAssetPath('/project', { outdir: 'dist' }, 'cssx.css')).toBe(resolve('/project/dist/cssx.css'));
+    expect(resolveEsbuildAssetPath('/project', { outfile: 'dist/app.js' }, 'cssx.css')).toBe(
+      resolve('/project/dist/cssx.css'),
+    );
+    expect(resolveEsbuildAssetPath('/project', {}, 'cssx.css')).toBe(resolve('/project/cssx.css'));
+  });
+});
