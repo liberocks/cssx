@@ -93,3 +93,67 @@ describe('CSSX Rollup fixture', () => {
 
       await writeFile(
         entry,
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'bg-red-500' });",
+      );
+      rebuiltBundle = await rollup({ input: entry, cache: firstBundle.cache, plugins: [plugin] });
+      const rebuilt = await rebuiltBundle.generate({ format: 'es' });
+      const rebuiltCss = rebuilt.output.find(
+        (output): output is OutputAsset => output.type === 'asset' && output.fileName === 'cssx.css',
+      );
+      expect(String(rebuiltCss?.source)).toContain('background-color:#ef4444');
+      expect(String(rebuiltCss?.source)).not.toContain('padding:calc(0.25rem * 4)');
+    } finally {
+      await rebuiltBundle?.close();
+      await firstBundle?.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('updates extracted CSS through a native Rollup watcher', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cssx-rollup-watch-'));
+    const output = join(root, 'dist');
+    let watcher: RollupWatcher | undefined;
+    try {
+      const entry = join(root, 'main.js');
+      await writeFile(
+        entry,
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'p-4' });",
+      );
+      watcher = watch({ input: entry, output: { dir: output, format: 'es' }, plugins: [cssxRollup()] });
+      await waitForWatchEnd(watcher);
+      expect(await readFile(join(output, 'cssx.css'), 'utf8')).toContain('padding:calc(0.25rem * 4)');
+
+      const rebuilt = waitForWatchEnd(watcher);
+      await writeFile(
+        entry,
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'bg-red-500' });",
+      );
+      await rebuilt;
+      const css = await readFile(join(output, 'cssx.css'), 'utf8');
+      expect(css).toContain('background-color:#ef4444');
+      expect(css).not.toContain('padding:calc(0.25rem * 4)');
+    } finally {
+      await watcher?.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 15_000);
+});
+
+function waitForWatchEnd(watcher: RollupWatcher): Promise<void> {
+  return new Promise((resolvePromise, reject) => {
+    const onEvent = (event: RollupWatcherEvent) => {
+      if (event.code === 'ERROR') {
+        watcher.off('event', onEvent);
+        reject(event.error ?? new Error('Rollup watch build failed.'));
+      }
+      if (event.code === 'BUNDLE_END') {
+        void event.result?.close();
+      }
+      if (event.code === 'END') {
+        watcher.off('event', onEvent);
+        resolvePromise();
+      }
+    };
+    watcher.on('event', onEvent);
+  });
+}
