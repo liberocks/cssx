@@ -113,3 +113,81 @@ export async function transformCssxModule(
             new Set(atomicClasses),
           )
         ).css;
+  return {
+    code: result.code,
+    rules: utilityCss ? [compiledCssRule(wrapCssLayer(utilityCss, options.layer))] : [],
+    candidates,
+    composites,
+    atomicClasses,
+    origins,
+    cssOnlySignature: metadata.cssx?.cssOnlySignature ?? '',
+    ...(result.map ? { map: result.map } : {}),
+  };
+}
+
+/**
+ * Reads a source map from a build tool transform context.
+ *
+ * @param context A build tool transform context.
+ * @param id The source module ID.
+ * @returns A source map, when the context provides a compatible one.
+ */
+export function sourceMapFromContext(context: unknown, id: string): IncomingSourceMap | undefined {
+  if (!context || typeof context !== 'object') {
+    return undefined;
+  }
+  const getCombinedSourcemap = (context as { readonly getCombinedSourcemap?: unknown }).getCombinedSourcemap;
+  if (typeof getCombinedSourcemap !== 'function') {
+    return undefined;
+  }
+  const sourceMap = getCombinedSourcemap.call(context);
+  if (!sourceMap || typeof sourceMap !== 'object') {
+    return undefined;
+  }
+  const map = sourceMap as Partial<IncomingSourceMap>;
+  if (map.version !== 3 || !Array.isArray(map.sources) || typeof map.mappings !== 'string') {
+    return undefined;
+  }
+  return {
+    version: map.version,
+    sources: [...map.sources],
+    names: [...(map.names ?? [])],
+    mappings: map.mappings,
+    file: map.file ?? id.split('?', 1)[0] ?? id,
+    ...(map.sourceRoot ? { sourceRoot: map.sourceRoot } : {}),
+    ...(map.sourcesContent ? { sourcesContent: [...map.sourcesContent] } : {}),
+  };
+}
+
+/** CSSX metadata written by the Babel transform. */
+interface CssxMetadata {
+  /** Maps utility strings to generated class names. */
+  readonly candidates?: Readonly<Record<string, string>>;
+  /** Maps utility strings to their locations in the source module. */
+  readonly origins?: Readonly<Record<string, CssxCandidateOrigin>>;
+  /** Maps composite classes to their winning atomic classes. */
+  readonly composites?: Readonly<Record<string, readonly string[]>>;
+  /** Atomic classes required by compiled styles that survive to runtime. */
+  readonly atomicClasses?: readonly string[];
+}
+
+/**
+ * Converts compiled CSS into the rule shape used for stylesheet collection.
+ *
+ * @param css Compiled CSS for one module.
+ * @returns A CSSX rule with a stable generated class name.
+ */
+function compiledCssRule(css: string): CssxRule {
+  return { className: `cssx-${stableId(css)}`, css };
+}
+
+/**
+ * Wraps CSS in the configured layer when one is set.
+ *
+ * @param css CSS to wrap.
+ * @param layer Optional CSS layer name.
+ * @returns The original CSS or CSS wrapped in an `@layer` rule.
+ */
+function wrapCssLayer(css: string, layer: string | undefined): string {
+  return css && layer ? `@layer ${layer}{${css}}` : css;
+}
