@@ -109,3 +109,77 @@ describe('CSSX esbuild fixture', () => {
       plugins: [cssxEsbuild(), observer],
     });
     const nextBuild = () => {
+      const expected = completedBuilds + 1;
+      return new Promise<void>((resolvePromise, reject) => {
+        if (completedBuilds >= expected) {
+          return resolvePromise();
+        }
+        const timeout = setTimeout(() => reject(new Error('esbuild watch rebuild timed out.')), 10_000);
+        resolveBuild = () => {
+          clearTimeout(timeout);
+          resolvePromise();
+        };
+      });
+    };
+    try {
+      await writeFile(
+        entry,
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'p-4' });",
+      );
+      const initial = nextBuild();
+      await buildContext.watch();
+      await initial;
+      expect(await readFile(join(output, 'cssx.css'), 'utf8')).toContain('padding:calc(0.25rem * 4)');
+
+      const rebuilt = nextBuild();
+      await writeFile(
+        entry,
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'bg-red-500' });",
+      );
+      await rebuilt;
+      const css = await readFile(join(output, 'cssx.css'), 'utf8');
+      expect(css).toContain('background-color:#ef4444');
+      expect(css).not.toContain('padding:calc(0.25rem * 4)');
+    } finally {
+      await buildContext.dispose();
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  it('handles esbuild host edge cases for missing metadata, collisions, and disk output', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cssx-esbuild-host-'));
+    const entry = join(root, 'entry.jsx');
+    let onLoad: ((args: { path: string }) => Promise<unknown>) | undefined;
+    let onEnd: ((result: any) => Promise<void>) | undefined;
+    const build: any = {
+      initialOptions: { absWorkingDir: root, outdir: 'dist', write: false },
+      onLoad(_options: unknown, callback: (args: { path: string }) => Promise<unknown>) {
+        onLoad = callback;
+      },
+      onEnd(callback: (result: any) => Promise<void>) {
+        onEnd = callback;
+      },
+    };
+    try {
+      await writeFile(
+        entry,
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'p-4' });",
+      );
+      cssxEsbuild().setup(build);
+      await onEnd?.({});
+      await onLoad?.({ path: entry });
+
+      await onEnd?.({ metafile: { inputs: { 'entry.jsx': {} } } });
+      const assetPath = join(root, 'dist', 'cssx.css');
+      await expect(
+        onEnd?.({ metafile: { inputs: { 'entry.jsx': {} } }, outputFiles: [{ path: assetPath }] }),
+      ).rejects.toThrow('CSS asset collision');
+
+      build.initialOptions.write = true;
+      await onEnd?.({ metafile: { inputs: { 'entry.jsx': {} } } });
+      expect(await readFile(assetPath, 'utf8')).toContain('padding:calc(0.25rem * 4)');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
