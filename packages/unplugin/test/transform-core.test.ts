@@ -184,3 +184,127 @@ describe('CSSX unplugin transform', () => {
       },
     };
     const bundle = {
+      'entry.js': { type: 'chunk', modules: { '/project/styles.ts': {}, '/project/additional.ts': {} } },
+    };
+
+    await plugin.rollup.generateBundle.call(context, {}, bundle);
+    await plugin.rollup.generateBundle.call(context, {}, bundle);
+
+    expect(emitted).toHaveLength(4);
+    expect(emitted[0]).toMatchObject({ type: 'asset', fileName: 'cssx.css' });
+    expect(emitted[0].source).toContain('padding:calc(0.25rem * 5)');
+    expect(emitted[0].source.match(/padding:calc\(0\.25rem \* 5\)/g)).toHaveLength(1);
+    expect(emitted[0].source).not.toContain(':root');
+    expect(emitted[1]).toMatchObject({ type: 'asset', fileName: 'cssx.css.map' });
+    expect(JSON.parse(emitted[1].source).sources).toEqual(['/project/additional.ts', '/project/styles.ts']);
+  });
+
+  it('retains transformed CSSX candidates when Vite does not retain plugin metadata', async () => {
+    const plugin = pluginFor('vite');
+    await plugin.transform.handler(source, '/project/styles.ts?astro&type=script');
+    const emitted: any[] = [];
+
+    await plugin.vite.generateBundle.call(
+      {
+        emitFile(asset: unknown) {
+          emitted.push(asset);
+        },
+        getModuleInfo() {
+          return { meta: {} };
+        },
+      },
+      {},
+      { 'entry.js': { type: 'chunk', modules: {} } },
+    );
+
+    expect(emitted).toHaveLength(2);
+    expect(emitted[0].source).toContain('padding:calc(0.25rem * 5)');
+    expect(emitted[1]).toMatchObject({ fileName: 'cssx.css.map' });
+  });
+
+  it('removes Vite candidates when a watched source file is deleted', async () => {
+    const plugin = pluginFor('vite');
+    await plugin.transform.handler(source, '/project/styles.ts');
+    plugin.watchChange('/project/styles.ts', { event: 'delete' });
+    const emitted: unknown[] = [];
+
+    await plugin.vite.generateBundle.call(
+      {
+        emitFile(asset: unknown) {
+          emitted.push(asset);
+        },
+        getModuleInfo() {
+          return null;
+        },
+      },
+      {},
+      { 'entry.js': { type: 'chunk', modules: {} } },
+    );
+
+    expect(emitted).toEqual([]);
+  });
+
+  it('serves a virtual Vite stylesheet and refreshes it after module transforms', async () => {
+    const plugin = pluginFor('vite');
+    let middleware: ((request: any, response: any, next: () => void) => void) | undefined;
+    const messages: any[] = [];
+    plugin.vite.configureServer({
+      config: { base: '/' },
+      middlewares: {
+        use(handler: typeof middleware) {
+          middleware = handler;
+        },
+      },
+      ws: {
+        send(message: unknown) {
+          messages.push(message);
+        },
+      },
+    });
+
+    await plugin.transform.handler(source, '/project/styles.ts');
+    const response: { headers: Record<string, string>; body?: string } = { headers: {} };
+    await new Promise<void>((resolvePromise) =>
+      middleware?.(
+        { url: '/cssx.css?direct' },
+        {
+          setHeader(name: string, value: string) {
+            response.headers[name] = value;
+          },
+          end(body?: string) {
+            response.body = body;
+            resolvePromise();
+          },
+        },
+        resolvePromise,
+      ),
+    );
+
+    expect(response.headers['Content-Type']).toContain('text/css');
+    expect(response.headers['Cache-Control']).toBe('no-store');
+    expect(response.body).toContain('padding:calc(0.25rem * 5)');
+    expect(messages).toContainEqual(
+      expect.objectContaining({
+        type: 'update',
+        updates: [expect.objectContaining({ type: 'css-update', path: '/cssx.css', acceptedPath: '/cssx.css' })],
+      }),
+    );
+  });
+
+  it('uses default serial names in Vite development', async () => {
+    const plugin = pluginFor('vite');
+    plugin.vite.configureServer({
+      config: { base: '/' },
+      middlewares: { use() {} },
+      ws: { send() {} },
+    });
+
+    const transformed = await plugin.transform.handler(
+      `import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ root: 'p-4' }); export const props = cssx.props(styles.root);`,
+      '/project/styles.ts',
+    );
+
+    expect(transformed.code).toMatch(/className: "s[0-9A-Za-z]+x"/);
+    expect(transformed.code).not.toContain('className: "d');
+  });
+});
