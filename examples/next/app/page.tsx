@@ -28,3 +28,24 @@ export default function Page() {
             <a {...cssx.props(styles.inlineLink)} href="https://nextjs.org/learn">
               the learning center
             </a>
+            .
+          </p>
+        </div>
+        <div {...cssx.props(styles.ctas)}>
+          <a
+            className={sx(
+              'flex items-center justify-center gap-2 rounded-full bg-brand px-4 py-3 text-sm font-medium text-white hover:bg-slate-800',
+            )}
+            href="https://vercel.com/new"
+          >
+            <Image src="/vercel.svg" alt="Vercel logomark" width={16} height={16} />
+            Deploy Now
+          </a>
+          <a {...cssx.props(styles.secondary)} href="https://nextjs.org/docs">
+            Documentation
+          </a>
+        </div>
+      </main>
+    </div>
+  );
+}
