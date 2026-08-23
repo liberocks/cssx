@@ -6,3 +6,9 @@ import { classes } from '../../styles';
 <DocsLayout title="Styling with CSSX" description="Create static styles, combine them, and join inline utility strings.">
   <header><p class={classes.eyebrow}>Core concept</p><h1 class={classes.title}>Styling with CSSX</h1><p class={classes.lead}>Create static styles, combine them, and join inline utility strings.</p></header>
   <section class={classes.section}><h2 class={classes.heading}>Create static styles</h2><p class={classes.copy}>create accepts one plain object. Values must be string literals or local constants that hold string literals. Every style key compiles to one composite class.</p><pre class={classes.code}><code>const styles = cssx.create({`{`}
+  button: 'inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white',
+  disabled: 'opacity-50',
+{`}`});</code></pre></section>
+  <section class={classes.section}><h2 class={classes.heading}>Compose styles</h2><p class={classes.copy}>props accepts compiled styles, nested arrays, empty values, and raw class strings. It applies compiled styles from left to right. Fully static local compositions fold to one class; runtime-dependent combinations use the compact conflict-aware fallback.</p><pre class={classes.code}><code>const buttonProps = cssx.props(styles.button, isDisabled && styles.disabled);</code></pre></section>
+  <section class={classes.section}><h2 class={classes.heading}>Join inline utilities</h2><p class={classes.copy}>Use cx for class or className values. CSSX builds static utility strings. Dynamic values only join strings at runtime.</p><pre class={classes.code}><code>className={`{`}cx('inline-flex items-center', isDisabled && 'opacity-50'){`}`}</code></pre></section>
+</DocsLayout>
