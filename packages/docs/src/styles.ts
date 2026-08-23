@@ -39,3 +39,31 @@ const styles = cssx.create({
   table: 'min-w-full border-collapse text-left text-sm',
   tableHead: 'bg-gray-100 text-gray-700',
   tableHeader: 'border-b border-gray-200 px-4 py-3 font-semibold',
+  tableRow: 'border-b border-gray-200 last:border-b-0',
+  tableCell: 'px-4 py-3 leading-relaxed text-gray-700',
+  tableCode: 'font-mono text-blue-700',
+  notice: 'mt-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-relaxed text-blue-900',
+  utilityIndex: 'mt-8 grid gap-4 md:grid-cols-2',
+  utilityLink:
+    'rounded-md border border-gray-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50 focus:border-blue-300 focus:bg-blue-50',
+  utilityTitle: 'font-semibold text-gray-900',
+  utilityDescription: 'mt-1 text-sm leading-relaxed text-gray-600',
+  toc: 'hidden w-48 shrink-0 xl:block',
+  tocInner: 'sticky top-6 border-l border-gray-200 pl-4',
+  tocTitle: 'mb-2 text-sm font-bold text-gray-700',
+  tocList: 'flex flex-col gap-1',
+  tocLink: 'text-sm leading-relaxed text-gray-500 hover:text-blue-700 focus:text-blue-700',
+  footerNav: 'mt-12 flex items-center justify-between gap-4 border-t border-gray-200 pt-6 text-sm',
+  footerLink: 'rounded-md text-blue-700 hover:text-blue-900 focus:text-blue-900',
+  homeHero: 'border-b border-gray-200 pb-10',
+  homeTitle: 'text-2xl font-bold tracking-tight text-gray-900',
+  homeLead: 'mt-4 max-w-3xl text-lg leading-relaxed text-gray-700',
+  homeActions: 'mt-6 flex flex-wrap gap-3',
+  primaryLink: 'rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:bg-blue-700',
+  secondaryLink:
+    'rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-blue-300 hover:text-blue-700 focus:border-blue-300 focus:text-blue-700',
+});
+
+export const classes = Object.fromEntries(
+  Object.entries(styles).map(([name, style]) => [name, cssx.props(style).className]),
+) as Record<keyof typeof styles, string>;
