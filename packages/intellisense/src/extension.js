@@ -67,3 +67,50 @@ function activate(context) {
         return undefined;
       }
       const range = document.getWordRangeAtPosition(position, /[^\s'"`]+/);
+      if (!range) {
+        return undefined;
+      }
+      const text = document.getText(range);
+      const detail = documentation(text);
+      return detail ? new vscode.Hover(new vscode.MarkdownString(detail), range) : undefined;
+    },
+  });
+
+  context.subscriptions.push(provider, hover);
+}
+
+/**
+ * Checks whether the cursor is inside a CSSX utility string.
+ *
+ * @param {import('vscode').TextDocument} document - The open editor document.
+ * @param {import('vscode').Position} position - The cursor position.
+ * @returns {boolean} True when CSSX suggestions can be shown.
+ */
+function isCssxString(document, position) {
+  const line = document.lineAt(position.line).text.slice(0, position.character);
+  const configured = vscode.workspace.getConfiguration('cssxIntelliSense').get('classFunctions', []);
+  const functions = ['cssx.create', 'cssx.sx', 'sx', ...configured].map(escapeRegex).join('|');
+  return (
+    new RegExp(`(?:${functions})\\s*\\([^\\n]*['\"\`][^'\"\`]*$`).test(line) ||
+    /\b(?:class|className)\s*=\s*['"`][^'"`]*$/.test(line)
+  );
+}
+
+/**
+ * Escapes text that will be used in a regular expression.
+ *
+ * @param {string} value - Text to escape.
+ * @returns {string} The escaped text.
+ */
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Stops CSSX editor support.
+ *
+ * @returns {void} Nothing.
+ */
+function deactivate() {}
+
+module.exports = { activate, deactivate };
