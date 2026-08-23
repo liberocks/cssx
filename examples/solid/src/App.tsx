@@ -27,3 +27,23 @@ export default function App() {
         <a {...cssx.props(styles.logoLink)} href="https://solidjs.com" target="_blank" rel="noreferrer">
           <img {...cssx.props(styles.logo)} src={solidLogo} alt="Solid logo" />
         </a>
+      </div>
+      <h1 {...cssx.props(styles.title)}>Vite + Solid</h1>
+      <div {...cssx.props(styles.card)}>
+        <button
+          class={sx(
+            'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-blue-700',
+            count() > 0 && 'scale-105',
+          )}
+          onClick={() => setCount((value) => value + 1)}
+        >
+          count is {count()}
+        </button>
+        <p {...cssx.props(styles.copy)}>
+          Edit <code class={sx('text-brand')}>src/main.tsx</code> and save to test HMR
+        </p>
+      </div>
+      <p {...cssx.props(styles.hint)}>CSSX extracts static utilities and joins counter state with sx.</p>
+    </main>
+  );
+}
