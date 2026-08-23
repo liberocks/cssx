@@ -165,3 +165,115 @@ const RECIPES = [
   ['outline-', 'Outline'],
   ['ring-', 'Ring'],
   ['shadow-', 'Shadow'],
+  ['opacity-', 'Opacity'],
+  ['duration-', 'Transition duration'],
+  ['animation-duration-', 'Animation duration'],
+  ['animation-delay-', 'Animation delay'],
+  ['animation-ease-', 'Animation timing function'],
+  ['animation-iterations-', 'Animation iteration count'],
+  ['animation-direction-', 'Animation direction'],
+  ['animation-fill-', 'Animation fill mode'],
+  ['contain-intrinsic-size-', 'Contain intrinsic size'],
+  ['contain-intrinsic-inline-size-', 'Contain intrinsic inline size'],
+  ['contain-intrinsic-block-size-', 'Contain intrinsic block size'],
+  ['stroke-miterlimit-', 'SVG stroke miter limit'],
+  ['stroke-dasharray-', 'SVG stroke dash pattern'],
+  ['stroke-dashoffset-', 'SVG stroke dash offset'],
+  ['delay-', 'Transition delay'],
+  ['ease-', 'Transition timing'],
+  ['translate-x-', 'Translation'],
+  ['translate-y-', 'Translation'],
+  ['scale-', 'Scale'],
+  ['scale-x-', 'X scale'],
+  ['scale-y-', 'Y scale'],
+  ['rotate-', 'Rotation'],
+  ['skew-x-', 'X skew'],
+  ['skew-y-', 'Y skew'],
+  ['grid-cols-', 'Grid columns'],
+  ['grid-rows-', 'Grid rows'],
+  ['col-span-', 'Grid column span'],
+  ['row-span-', 'Grid row span'],
+  ['from-', 'Gradient start'],
+  ['via-', 'Gradient middle'],
+  ['to-', 'Gradient end'],
+  ['blur-', 'Filter blur'],
+  ['backdrop-blur-', 'Backdrop blur'],
+];
+
+/** Lists prefixes that change how a utility is applied. */
+const VARIANTS = [
+  'sm:',
+  'md:',
+  'lg:',
+  'xl:',
+  '2xl:',
+  'hover:',
+  'focus:',
+  'focus-visible:',
+  'focus-within:',
+  'active:',
+  'disabled:',
+  'enabled:',
+  'checked:',
+  'required:',
+  'invalid:',
+  'valid:',
+  'first:',
+  'last:',
+  'odd:',
+  'even:',
+  'before:',
+  'after:',
+  'selection:',
+  'dark:',
+  'print:',
+  'group-hover:',
+  'group-focus:',
+  'state-[name]:',
+  'group-state-[name]:',
+  'peer-state-[name]:',
+  'peer-checked:',
+  'has-checked:',
+  'in-focus:',
+  'not-hover:',
+  'data-active:',
+  'aria-expanded:',
+  'supports-[display:grid]:',
+  'not-supports-[display:grid]:',
+  'max-md:',
+  'min-[900px]:',
+  '*:',
+  '**:',
+];
+
+/**
+ * Gets completion entries that start with a prefix.
+ *
+ * @param {string} prefix - Text already typed by the user.
+ * @returns {{label: string, detail: string}[]} Matching completion entries.
+ */
+function entries(prefix) {
+  const items = EXACT.map((label) => ({ label, detail: 'CSSX utility' }))
+    .concat(RECIPES.map(([label, detail]) => ({ label, detail: `${detail} utility family` })))
+    .concat(VARIANTS.map((label) => ({ label, detail: 'CSSX variant' })));
+  return items.filter((item) => item.label.startsWith(prefix));
+}
+
+/**
+ * Gets short help text for one utility.
+ *
+ * @param {string} candidate - A CSSX utility string.
+ * @returns {string | null} Help text, or null when the utility is unknown.
+ */
+function documentation(candidate) {
+  const base = candidate.split(':').at(-1)?.replace(/^!|-$/g, '') ?? candidate;
+  const exact = EXACT.includes(base);
+  const recipe = RECIPES.find(([prefix]) => base.startsWith(prefix));
+  return exact
+    ? `**${base}** — CSSX utility.`
+    : recipe
+      ? `**${base}** — ${recipe[1]} utility. Values are resolved during compilation.`
+      : null;
+}
+
+module.exports = { entries, documentation };
