@@ -22,3 +22,20 @@ const utilityCategories = [
     <p class={classes.copy}>Each category shows supported class patterns and the CSS they create. Patterns with a value describe every supported form in that family.</p>
     <div class={classes.utilityIndex}>
       {utilityCategories.map(([slug, title, description]) => (
+        <a class={classes.utilityLink} href={`/docs/utilities/${slug}`}>
+          <h3 class={classes.utilityTitle}>{title}</h3>
+          <p class={classes.utilityDescription}>{description}</p>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <section class={classes.section}>
+    <h2 class={classes.heading}>How CSSX works</h2>
+    <ul class={classes.list}>
+      <li class={classes.listItem}>Use <code class={classes.inlineCode}>cssx.create</code> for named static styles and <code class={classes.inlineCode}>cssx.props</code> to combine them.</li>
+      <li class={classes.listItem}>Use <code class={classes.inlineCode}>cx</code> when inline utility strings are the clearer choice.</li>
+      <li class={classes.listItem}>Configure one adapter to transform source code and create the CSS file for your app.</li>
+    </ul>
+  </section>
+</DocsLayout>
