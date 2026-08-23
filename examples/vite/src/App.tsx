@@ -27,3 +27,23 @@ export default function App() {
         <a {...cssx.props(styles.logoLink)} href="https://react.dev" target="_blank" rel="noreferrer">
           <img className={sx('h-24 w-24 animate-logo-spin')} src={reactLogo} alt="React logo" />
         </a>
+      </div>
+      <h1 {...cssx.props(styles.title)}>Vite + React</h1>
+      <div {...cssx.props(styles.card)}>
+        <button
+          className={sx(
+            'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-blue-700',
+            count > 0 && 'scale-105',
+          )}
+          onClick={() => setCount((value) => value + 1)}
+        >
+          count is {count}
+        </button>
+        <p {...cssx.props(styles.copy)}>
+          Edit <code className={sx('text-brand')}>src/main.tsx</code> and save to test HMR
+        </p>
+      </div>
+      <p {...cssx.props(styles.hint)}>CSSX extracts static utilities and joins counter state with sx.</p>
+    </main>
+  );
+}
