@@ -81,3 +81,59 @@ export function frameworkVisualSuite(framework: string): void {
       test.skip(mode !== 'development', 'Stylesheet HMR only runs during development.');
       const fixture = hmrFixtures[framework as keyof typeof hmrFixtures];
       if (!fixture) {
+        throw new Error(`No CSSX HMR fixture is configured for ${framework}.`);
+      }
+      const sourcePath = resolve(import.meta.dirname, '../../examples', fixture.source);
+      const source = await readFile(sourcePath, 'utf8');
+      const from = source.includes(fixture.from) ? fixture.from : fixture.to;
+      const to = from === fixture.from ? fixture.to : fixture.from;
+      if (!source.includes(from)) {
+        throw new Error(`Expected a CSSX HMR token in ${sourcePath}.`);
+      }
+
+      await page.addInitScript(() => {
+        const key = '__cssxDocumentLoads';
+        sessionStorage.setItem(key, String(Number(sessionStorage.getItem(key) ?? '0') + 1));
+      });
+      await page.goto('/');
+      const target = fixture.parent ? page.locator(fixture.selector).locator('..') : page.locator(fixture.selector);
+      const stylesheet = page.locator('link[rel="stylesheet"][href*="cssx"]');
+      const beforeColor = await target.evaluate(
+        (element, property) => getComputedStyle(element)[property as 'backgroundColor' | 'color'],
+        fixture.property,
+      );
+      const beforeClass = await target.getAttribute('class');
+      const beforeLoads = await page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads')));
+      if (fixture.stateful) {
+        await page.getByRole('button', { name: /count is 0/i }).click();
+        await expect(page.getByRole('button', { name: /count is 1/i })).toBeVisible();
+      }
+
+      await writeFile(sourcePath, source.replace(from, to));
+      try {
+        await expect
+          .poll(() =>
+            target.evaluate(
+              (element, property) => getComputedStyle(element)[property as 'backgroundColor' | 'color'],
+              fixture.property,
+            ),
+          )
+          .not.toBe(beforeColor);
+        await expect
+          .poll(() => page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads'))))
+          .toBe(beforeLoads);
+        await expect
+          .poll(() => stylesheet.evaluateAll((links) => links.some((link) => /[?&](?:t|cssx)=/.test(link.href))))
+          .toBe(true);
+        if (fixture.stateful) {
+          await expect(page.getByRole('button', { name: /count is 1/i })).toBeVisible();
+        }
+        if (framework === 'astro') {
+          await expect(target).toHaveAttribute('class', beforeClass ?? '');
+        }
+      } finally {
+        await writeFile(sourcePath, source);
+      }
+    });
+  });
+}
