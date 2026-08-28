@@ -436,3 +436,295 @@ The default palette has 50-950 shades for `red`, `orange`, `amber`, `yellow`,
 ```tsx
 const styles = cssx.create({
   input: 'bg-blue-600 text-white border-blue-700/50 placeholder-slate-500',
+});
+
+<input {...cssx.props(styles.input)} placeholder="Project name" />;
+```
+
+### Backgrounds and gradients
+
+| Class                                                                                        | Styles                                                |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `bg-none`, `bg-[image]`                                                                      | `background-image`.                                   |
+| `bg-{auto,cover,contain}`                                                                    | `background-size`.                                    |
+| `bg-{top-left,top,top-right,left,center,right,bottom-left,bottom,bottom-right}`              | `background-position`.                                |
+| `bg-{repeat,no-repeat,repeat-x,repeat-y,repeat-round,repeat-space}`                          | `background-repeat`.                                  |
+| `bg-{fixed,local,scroll}`                                                                    | `background-attachment`.                              |
+| `bg-clip-{border,padding,content,text}`, `bg-origin-{border,padding,content}`                | Background clip or origin.                            |
+| `bg-position-[value]`, `bg-position-(--property)`, `bg-size-[value]`, `bg-size-(--property)` | Custom position or size.                              |
+| `bg-linear-to-{t,tr,r,br,b,bl,l,tl}`                                                         | Directional `linear-gradient()`.                      |
+| `bg-linear-{angle,[angle]}`                                                                  | Angled `linear-gradient()`.                           |
+| `from/via/to-<color>`, `from/via/to-<0..100%>`                                               | Composable gradient color and stop-position channels. |
+
+Use `_` for spaces in bracketed values and `\_` for a literal underscore.
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  banner: 'bg-linear-to-r/oklch from-blue-500 via-violet-500 to-pink-500 bg-cover',
+});
+
+<section {...cssx.props(styles.banner)} />;
+```
+
+### Borders, radii, outlines, and rings
+
+| Class                                                     | Styles                            |
+| --------------------------------------------------------- | --------------------------------- |
+| `border`, `border-{0,2,4,8}`                              | All-side border width.            |
+| `border-{x,y,t,r,b,l}`, `border-{x,y,t,r,b,l}-{0,2,4,8}`  | Selected border width.            |
+| `rounded`, `rounded-{none,sm,md,lg,xl,2xl,full}`          | `border-radius`.                  |
+| `divide-{x,y}[-{0,2,4,8,[value]}]`                        | Child-scoped divider widths.      |
+| `divide-{x,y}-reverse`                                    | Reverses divider direction.       |
+| `outline`                                                 | Solid 1px outline.                |
+| `outline-{none,hidden,solid,dashed,dotted,double}`        | Outline style or reset.           |
+| `outline-{0,1,2,4,8,[value]}`, `outline-offset-<spacing>` | Outline width or offset.          |
+| `ring`, `ring-{0,2,4,8,[value]}`                          | Composable ring width and shadow. |
+| `ring-offset-{0,2,4,8,[value]}`                           | Ring offset width.                |
+
+Color forms are documented in [Colors](#colors). Dividers apply to every child
+except the last, and rings compose with regular shadows.
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  panel: 'border border-blue-500 rounded-lg outline outline-2 outline-blue-500 ring-2 ring-blue-500/50',
+});
+
+<section {...cssx.props(styles.panel)} />;
+```
+
+### Effects, filters, and masks
+
+| Class                                                                                                                             | Styles                               |
+| --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `shadow`, `shadow-{sm,md,lg,xl,none}`                                                                                             | Composable `box-shadow` channel.     |
+| `opacity-<n>`                                                                                                                     | `opacity: n / 100`.                  |
+| `filter-none`                                                                                                                     | Resets filter channels.              |
+| `blur-{none,xs,sm,md,lg,xl,2xl,3xl,[value]}`                                                                                      | Composable `blur()`.                 |
+| `brightness-*`, `contrast-*`, `saturate-*`, `grayscale[-0]`, `hue-rotate-{n,[value]}`, `invert[-0]`, `sepia[-0]`, `drop-shadow-*` | Composable `filter` channels.        |
+| `backdrop-filter-none`                                                                                                            | Resets backdrop-filter channels.     |
+| `backdrop-{blur,brightness,contrast,grayscale,hue-rotate,invert,opacity,saturate,sepia}-*`                                        | Composable backdrop-filter channels. |
+| `mask-none`, `mask-[image]`, `mask-(--property)`                                                                                  | `mask-image`.                        |
+| `mask-{cover,contain}`, `mask-{repeat,no-repeat,repeat-x,repeat-y,repeat-round,repeat-space}`                                     | Mask size or repeat.                 |
+| `mask-clip-{border,padding,content}`, `mask-no-clip`, `mask-origin-{border,padding,content}`                                      | Mask clipping or origin.             |
+| `mask-{position,size}-[value]`, `mask-{position,size}-(--property)`                                                               | Custom mask position or size.        |
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  portrait: 'shadow-md opacity-90 blur-sm backdrop-blur-md mask-[url("/mask.svg")] mask-cover',
+});
+
+<img {...cssx.props(styles.portrait)} alt="" />;
+```
+
+### Transitions, animation, and transforms
+
+| Class                                                                                                                                                                                      | Styles                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| `transition`, `transition-{none,all,colors,opacity,shadow,transform}`                                                                                                                      | Transition property and default timing.     |
+| `transition-{normal,discrete}`                                                                                                                                                             | `transition-behavior`.                      |
+| `duration-{n,[value]}`, `delay-{n,[value]}`                                                                                                                                                | Transition duration or delay.               |
+| `ease-{linear,in,out,in-out}`                                                                                                                                                              | Transition timing function.                 |
+| `animate-none`, `animate-{spin,ping,pulse,bounce}`, `animate-<theme-name>`, `animate-[value]`                                                                                              | Animation. Only used keyframes are emitted. |
+| `animation-duration-{n,theme,[value],(--property)}`, `animation-delay-{n,theme,[value],(--property)}`                                                                                      | Independent animation duration or delay.    |
+| `animation-ease-{linear,in,out,in-out,theme,[value],(--property)}`                                                                                                                         | Independent animation timing function.      |
+| `animation-iterations-{1,2,3,infinite}`, `animation-direction-{normal,reverse,alternate,alternate-reverse}`, `animation-fill-{none,forwards,backwards,both}`, `animation-{running,paused}` | Independent animation playback controls.    |
+| `translate-{x,y}-<spacing>`                                                                                                                                                                | Composable individual `translate`.          |
+| `rotate-{n,[value]}`                                                                                                                                                                       | Individual `rotate`.                        |
+| `scale[-x/-y]-{n,[value]}`                                                                                                                                                                 | Composable individual `scale`.              |
+| `skew-{x,y}-{n,[value]}`                                                                                                                                                                   | Composable `transform` skew channel.        |
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  button: 'transition-transform duration-200 ease-out hover:scale-105 -translate-y-1 animate-pulse',
+});
+
+<button {...cssx.props(styles.button)}>Save</button>;
+```
+
+### Interaction and form controls
+
+| Class                                                                                                                                                                                                                                                                                                                              | Styles                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `cursor-{auto,default,pointer,wait,text,move,help,not-allowed,none,context-menu,progress,cell,crosshair,vertical-text,alias,copy,no-drop,grab,grabbing,all-scroll,col-resize,row-resize,n-resize,e-resize,s-resize,w-resize,ne-resize,nw-resize,se-resize,sw-resize,ew-resize,ns-resize,nesw-resize,nwse-resize,zoom-in,zoom-out}` | `cursor`.                                 |
+| `touch-{auto,none,manipulation,pan-x,pan-y,pinch-zoom}`                                                                                                                                                                                                                                                                            | `touch-action`.                           |
+| `will-change-{auto,scroll,contents,transform}`                                                                                                                                                                                                                                                                                     | `will-change`.                            |
+| `pointer-events-{none,auto}`, `select-{none,text,all,auto}`                                                                                                                                                                                                                                                                        | Pointer event or text-selection behavior. |
+| `accent-auto`, `accent-<color>`, `caret-auto`, `caret-<color>`                                                                                                                                                                                                                                                                     | Accent or caret color.                    |
+| `appearance-{auto,none}`                                                                                                                                                                                                                                                                                                           | `appearance`.                             |
+| `scheme-{normal,dark,light,light-dark,only-dark,only-light}`                                                                                                                                                                                                                                                                       | `color-scheme`.                           |
+| `field-sizing-content`                                                                                                                                                                                                                                                                                                             | `field-sizing: content`.                  |
+| `resize`, `resize-{x,y,none}`                                                                                                                                                                                                                                                                                                      | Resize behavior.                          |
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  textarea: 'cursor-text touch-manipulation select-none accent-blue-500 appearance-none resize-y',
+});
+
+<textarea {...cssx.props(styles.textarea)} />;
+```
+
+### Scrolling and scrollbars
+
+| Class                                                | Styles                              |
+| ---------------------------------------------------- | ----------------------------------- |
+| `scroll-{m,mx,my,mt,mr,mb,ml}-<spacing>`             | Physical scroll margin.             |
+| `scroll-{p,px,py,pt,pr,pb,pl}-<spacing>`             | Physical scroll padding.            |
+| `scroll-{auto,smooth}`                               | `scroll-behavior`.                  |
+| `scrollbar-{auto,thin,none}`                         | `scrollbar-width`.                  |
+| `scrollbar-{thumb,track}-<color>`                    | Composed `scrollbar-color` channel. |
+| `scrollbar-gutter-{auto,stable,both}`                | `scrollbar-gutter`.                 |
+| `snap-{none,x,y,both}`, `snap-{mandatory,proximity}` | Scroll-snap type and strictness.    |
+| `snap-{normal,always}`                               | `scroll-snap-stop`.                 |
+| `snap-{start,end,center,align-none}`                 | `scroll-snap-align`.                |
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  gallery: 'overflow-x-auto scroll-smooth snap-x snap-mandatory snap-always scrollbar-thin scrollbar-thumb-slate-500',
+});
+
+<div {...cssx.props(styles.gallery)} />;
+```
+
+### SVG and forced colors
+
+| Class                                                                                                                                                          | Styles                          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `fill-none`, `fill-<color>`                                                                                                                                    | SVG `fill`.                     |
+| `stroke-none`, `stroke-<color>`                                                                                                                                | SVG `stroke` color.             |
+| `stroke-<n>`, `stroke-[value]`                                                                                                                                 | SVG `stroke-width`.             |
+| `stroke-cap-{butt,round,square}`, `stroke-join-{miter,round,bevel}`, `stroke-miterlimit-{n,[value],(--property)}`                                              | SVG stroke geometry.            |
+| `stroke-dasharray-{n,[value],(--property)}`, `stroke-dashoffset-{n,[value],(--property)}`                                                                      | SVG dash pattern or offset.     |
+| `fill-rule-{nonzero,evenodd}`, `clip-rule-{nonzero,evenodd}`                                                                                                   | SVG fill and clip rules.        |
+| `vector-effect-{none,non-scaling-stroke}`, `paint-order-{normal,fill,stroke,markers}`, `shape-rendering-{auto,optimize-speed,crisp-edges,geometric-precision}` | SVG presentation and rendering. |
+| `forced-color-adjust-{auto,none}`                                                                                                                              | `forced-color-adjust`.          |
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  icon: 'fill-blue-500 stroke-white stroke-[1.5px] forced-color-adjust-auto',
+});
+
+<svg {...cssx.props(styles.icon)} aria-hidden="true" />;
+```
+
+### Arbitrary declarations
+
+| Class              | Styles                                                           |
+| ------------------ | ---------------------------------------------------------------- |
+| `[property:value]` | One validated declaration. Custom properties are supported.      |
+| `text-[length]`    | `font-size` when the value is recognized as a length.            |
+| `text-[color]`     | Text color when the value resolves as a color.                   |
+| `bg-[image]`       | `background-image` when the value is a supported image function. |
+| `bg-[color]`       | Background color when the value resolves as a color.             |
+
+Semicolons, braces, malformed nesting, and unsafe property names are rejected.
+
+### Containment and rendering
+
+| Class                                                                                  | Styles                                                                         |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `content-visibility-{visible,auto,hidden}`                                             | `content-visibility`.                                                          |
+| `contain-{none,content,strict,size,inline-size,layout,style,paint}`, `contain-[value]` | CSS containment. Use underscores for spaces, such as `contain-[layout_paint]`. |
+| `contain-intrinsic-{size,inline-size,block-size}-{n,[value],(--property)}`             | Intrinsic fallback size for contained content.                                 |
+| `image-render-{auto,crisp-edges,pixelated}`                                            | Image interpolation behavior.                                                  |
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  logo: '[mask-type:luminance] text-[14px] bg-[url("/hero.svg")]',
+});
+
+<div {...cssx.props(styles.logo)} />;
+```
+
+### Variants
+
+Variants stack before a candidate, for example `tablet:hover:bg-brand`. CSSX
+supports custom breakpoints from `--breakpoint-*`; defaults are `sm`, `md`,
+`lg`, `xl`, and `2xl`.
+
+| Variant                                                                                                                                                                                                                                                                                            | Selector or condition                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `hover:`                                                                                                                                                                                                                                                                                           | `:hover` within `@media (hover: hover)`.                                      |
+| `focus:`, `focus-visible:`, `focus-within:`, `active:`, `disabled:`, `enabled:`, `visited:`, `checked:`, `indeterminate:`, `default:`, `valid:`, `invalid:`, `in-range:`, `out-of-range:`, `placeholder-shown:`, `autofill:`, `read-only:`, `required:`, `optional:`, `open:`, `target:`, `empty:` | Corresponding state pseudo-class.                                             |
+| `first:`, `last:`, `only:`, `odd:`, `even:`, `first-of-type:`, `last-of-type:`, `only-of-type:`                                                                                                                                                                                                    | Structural pseudo-class.                                                      |
+| `before:`, `after:`, `selection:`, `marker:`, `file:`, `first-letter:`, `first-line:`, `placeholder:`                                                                                                                                                                                              | Pseudo-element. `before` and `after` receive default empty content.           |
+| `group-<state>:`, `peer-<state>:`                                                                                                                                                                                                                                                                  | Stateful group or sibling relationship.                                       |
+| `state-[name]:`, `group-state-[name]:`, `peer-state-[name]:`                                                                                                                                                                                                                                       | Custom-element `:state(name)` condition, directly or through a group or peer. |
+| `has-<state>:`, `has-[selector]:`, `in-<state>:`, `not-<state>:`                                                                                                                                                                                                                                   | Relationship condition.                                                       |
+| `*:`, `**:`                                                                                                                                                                                                                                                                                        | Direct-child or descendant scope.                                             |
+| `data-name:`, `data-[name=value]:`, `aria-name:`, `aria-[name=value]:`                                                                                                                                                                                                                             | Attribute condition.                                                          |
+| `dark:`, `print:`, `supports-[property:value]:`, `not-supports-[property:value]:`                                                                                                                                                                                                                  | Media or support condition.                                                   |
+| `<breakpoint>:`, `max-<breakpoint>:`, `min-[value]:`, `max-[value]:`                                                                                                                                                                                                                               | Responsive condition.                                                         |
+| `[&>svg]:`, `[&.is-active]:`, `[@supports(...)]:`, `[@media ...]:`                                                                                                                                                                                                                                 | Safe arbitrary selector or at-rule condition.                                 |
+
+Arbitrary selector variants must contain `&`; only static selectors and
+supported at-rules are accepted.
+
+Custom state names must be identifiers, for example `state-[open]:block` or
+`group-state-[expanded]:text-white`.
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  trigger: 'sm:hover:bg-blue-600 group-focus:text-white data-[state=open]:block [&>svg]:size-4',
+});
+
+<button {...cssx.props(styles.trigger)} data-state="open">
+  <svg />
+</button>;
+```
+
+### Composition
+
+CSSX stores the style groups that each compiled style changes. The browser can
+then merge compiled styles without reading utility syntax.
+
+| Composition                                                 | Result                                             |
+| ----------------------------------------------------------- | -------------------------------------------------- |
+| Broad directional utility followed by a narrower one        | Only the overlapping declaration atom is replaced. |
+| Same semantic write group                                   | The later compiled style wins.                     |
+| Logical and physical writes                                 | Remain independently composable.                   |
+| Filters, backdrop filters, transforms, gradients, and rings | Their channels compose independently.              |
+| `normal-nums`, `filter-none`, `backdrop-filter-none`        | Reset all related channels.                        |
+| `space-*` and `divide-*`                                    | Remain a child-selector-scoped atom.               |
+
+#### Example
+
+```tsx
+const styles = cssx.create({
+  base: 'px-4 scale-95',
+  override: 'pr-2 scale-x-105',
+});
+
+<div {...cssx.props(styles.base, styles.override)} />;
+```
+
+`create` input is intentionally static. Dynamic utility strings should remain
+raw class strings or be modeled as explicit static style choices.
+
+## Verification
+
+- `pnpm test:unit` runs the unit tests.
+- `pnpm test:coverage` runs the tests with coverage checks.
+- `pnpm test:package-contract` builds packages and checks their public files, dependencies, file sizes, and import time.
+- `pnpm lint` checks source files and tests with ESLint.
+- `pnpm typecheck` checks workspace types.
+- `pnpm test:release` runs formatting, linting, coverage, package checks, and type checks.
+
+Historical compatibility references are documented in [`packages/compiler/THIRD_PARTY_NOTICES.md`](packages/compiler/THIRD_PARTY_NOTICES.md).
