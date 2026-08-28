@@ -1,5 +1,6 @@
 node_modules/
 packages/*/dist/
+packages/docs/.astro/
 examples/*/dist/
 examples/*/.astro/
 examples/*/.next/

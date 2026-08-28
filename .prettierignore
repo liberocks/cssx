@@ -6,5 +6,7 @@ coverage/
 **/build/
 **/.cache/
 examples/gatsby/public/
+examples/*/pnpm-lock.yaml
 examples/next/next-env.d.ts
 examples/next/tsconfig.json
+tests/test-results/
