@@ -19,3 +19,18 @@ Run `pnpm test:release` from the workspace root. It builds packages, runs unit a
 The 0.2 compiler and runtime must be upgraded together. Compiled styles now use
 the `$$css: 2` composite-class ABI. The compiler package renamed the old packed
 record APIs to `compileStyleRecords`, `compileStyleRecordMaps`,
+`composeCompiledStyles`, and `mergeCompiledStyles`; their corresponding public
+types now use `CompiledStyle` and `CompiledUtility` names.
+
+## npm Publication
+
+Create the repository or `npm` environment secret named `NPM_TOKEN` with an npm
+automation token authorized to publish the selected package. Update that
+package's version, then run the Release workflow manually from the default
+branch and choose its package name. The workflow runs the full release gate and
+publishes only the selected package with an npm provenance attestation; npm
+trusted publishing can replace the token when configured for this repository.
+
+Publish dependencies first when their workspace version has changed. The
+workflow resolves `workspace:*` dependency ranges to each dependency's declared
+version during publishing.
