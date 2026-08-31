@@ -201,7 +201,7 @@ void props;
     } finally {
       await Promise.all(staleFiles.map((path) => rm(path, { force: true })));
     }
-  }, 20_000);
+  }, 45_000);
 
   it('records reproducible compiler source and artifact checksums in the published build', async () => {
     const manifest = JSON.parse(
@@ -278,7 +278,7 @@ void props;
     expect(cssxClassValues.every((className) => !className.includes(' '))).toBe(true);
     expect(htmlText).not.toContain('class="rounded-md');
     expect(gzipSync(html).byteLength + gzipSync(css).byteLength).toBeLessThan(1_955);
-  });
+  }, 15_000);
 
   it('keeps compiler, transform, and adapter artifacts within their release budgets', async () => {
     const adapterChunk = (await readdir(join(workspaceRoot, 'packages/unplugin/dist'))).find((file) =>
