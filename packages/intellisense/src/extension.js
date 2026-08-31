@@ -1,8 +1,6 @@
 'use strict';
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-/** Loads the editor extension API. */
-const vscode = require('vscode');
 /** Provides utility completions and hover text. */
 const { entries, documentation } = require('./catalog');
 
@@ -22,32 +20,33 @@ const LANGUAGE_SELECTOR = [
  * Starts CSSX editor support.
  *
  * @param {import('vscode').ExtensionContext} context - The editor extension context.
+ * @param {typeof import('vscode')} [editor] - The editor API used to register providers.
  * @returns {void} Nothing.
  */
-function activate(context) {
-  const provider = vscode.languages.registerCompletionItemProvider(
+function activate(context, editor = loadEditorApi()) {
+  const provider = editor.languages.registerCompletionItemProvider(
     LANGUAGE_SELECTOR,
     {
       provideCompletionItems(document, position) {
         if (
-          !vscode.workspace.getConfiguration('cssxIntelliSense').get('suggestions', true) ||
-          !isCssxString(document, position)
+          !editor.workspace.getConfiguration('cssxIntelliSense').get('suggestions', true) ||
+          !isCssxString(document, position, editor)
         ) {
           return undefined;
         }
-        const range = document.getWordRangeAtPosition(position, /[^\s'"`]+/) ?? new vscode.Range(position, position);
+        const range = document.getWordRangeAtPosition(position, /[^\s'"`]+/) ?? new editor.Range(position, position);
         const partial = document.getText(range);
         const variantPrefix = partial.lastIndexOf(':') === -1 ? '' : partial.slice(0, partial.lastIndexOf(':') + 1);
         const utilityPrefix = partial.slice(variantPrefix.length);
         return entries(utilityPrefix).map((entry) => {
-          const item = new vscode.CompletionItem(
+          const item = new editor.CompletionItem(
             `${variantPrefix}${entry.label}`,
-            entry.label.endsWith(':') ? vscode.CompletionItemKind.Keyword : vscode.CompletionItemKind.Value,
+            entry.label.endsWith(':') ? editor.CompletionItemKind.Keyword : editor.CompletionItemKind.Value,
           );
           item.insertText = `${variantPrefix}${entry.label}`;
           item.range = range;
           item.detail = entry.detail;
-          item.documentation = new vscode.MarkdownString(
+          item.documentation = new editor.MarkdownString(
             documentation(`${variantPrefix}${entry.label}`) ?? entry.detail,
           );
           return item;
@@ -61,9 +60,9 @@ function activate(context) {
     '/',
   );
 
-  const hover = vscode.languages.registerHoverProvider(LANGUAGE_SELECTOR, {
+  const hover = editor.languages.registerHoverProvider(LANGUAGE_SELECTOR, {
     provideHover(document, position) {
-      if (!isCssxString(document, position)) {
+      if (!isCssxString(document, position, editor)) {
         return undefined;
       }
       const range = document.getWordRangeAtPosition(position, /[^\s'"`]+/);
@@ -72,7 +71,7 @@ function activate(context) {
       }
       const text = document.getText(range);
       const detail = documentation(text);
-      return detail ? new vscode.Hover(new vscode.MarkdownString(detail), range) : undefined;
+      return detail ? new editor.Hover(new editor.MarkdownString(detail), range) : undefined;
     },
   });
 
@@ -84,11 +83,12 @@ function activate(context) {
  *
  * @param {import('vscode').TextDocument} document - The open editor document.
  * @param {import('vscode').Position} position - The cursor position.
+ * @param {typeof import('vscode')} [editor] - The editor API used to read configuration.
  * @returns {boolean} True when CSSX suggestions can be shown.
  */
-function isCssxString(document, position) {
+function isCssxString(document, position, editor = loadEditorApi()) {
   const line = document.lineAt(position.line).text.slice(0, position.character);
-  const configured = vscode.workspace.getConfiguration('cssxIntelliSense').get('classFunctions', []);
+  const configured = editor.workspace.getConfiguration('cssxIntelliSense').get('classFunctions', []);
   const functions = ['cssx.create', 'cssx.sx', 'sx', ...configured].map(escapeRegex).join('|');
   return (
     new RegExp(`(?:${functions})\\s*\\([^\\n]*['\"\`][^'\"\`]*$`).test(line) ||
@@ -106,6 +106,11 @@ function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Loads the editor extension API only when the extension is activated. */
+function loadEditorApi(load = require) {
+  return load('vscode');
+}
+
 /**
  * Stops CSSX editor support.
  *
@@ -113,4 +118,4 @@ function escapeRegex(value) {
  */
 function deactivate() {}
 
-module.exports = { activate, deactivate };
+module.exports = { activate, deactivate, loadEditorApi };

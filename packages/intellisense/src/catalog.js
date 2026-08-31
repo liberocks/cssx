@@ -323,7 +323,7 @@ function entries(prefix) {
  * @returns {string | null} Help text, or null when the utility is unknown.
  */
 function documentation(candidate) {
-  const base = candidate.split(':').at(-1)?.replace(/^!|-$/g, '') ?? candidate;
+  const base = candidate.split(':').at(-1).replace(/^!|-$/g, '');
   const exact = EXACT.includes(base);
   const recipe = RECIPES.find(([prefix]) => base.startsWith(prefix));
   return exact
