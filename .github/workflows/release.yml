@@ -55,7 +55,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: |
           for example in examples/*; do
-            pnpm --dir "$example" install --frozen-lockfile
+            pnpm --dir "$example" install --no-frozen-lockfile
           done
       - run: pnpm --dir tests exec playwright install chromium
       - run: pnpm test:visual
