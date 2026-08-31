@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { create, props, reduceCompiledUtilities, sx } from '../src/index';
+import { create, props, reduceCompiledUtilities, sx, type CompiledUtility } from '../src/index';
 
 describe('CSSX runtime', () => {
   it('fails when create reaches runtime', () => {
@@ -48,5 +48,32 @@ describe('CSSX runtime', () => {
 
   it('joins static, conditional, and nested class strings without parsing utilities', () => {
     expect(sx('x-base', false, ['x-nested', [null, 'x-last']])).toBe('x-base x-nested x-last');
+  });
+
+  it('keeps raw inputs and ignores empty compiled composites', () => {
+    const record = ['x-atomic', '', 'display', 'display'] as const;
+
+    expect(props()).toEqual({ className: '' });
+    expect(props('external', ['nested', false])).toEqual({ className: 'external nested' });
+    expect(props({ $$css: 2, c: '', _: [record] })).toEqual({ className: '' });
+  });
+
+  it('deduplicates repeated winners and rejects malformed compiled styles', () => {
+    const first = ['x-shared', '', 'first', 'first'] as const;
+    const second = ['x-shared', '', 'second', 'second'] as const;
+
+    expect(props({ $$css: 2, c: 'x-first', _: [first] }, { $$css: 2, c: 'x-second', _: [second] })).toEqual({
+      className: 'x-shared',
+    });
+    expect(() => props(1 as never)).toThrow('not compiled by CSSX');
+    expect(() => props({ $$css: 2, c: 1, _: [] } as never)).toThrow('not compiled by CSSX');
+    expect(() => props({ $$css: 2, c: 'x', _: 'invalid' } as never)).toThrow('not compiled by CSSX');
+  });
+
+  it('handles sparse records and empty conflict groups defensively', () => {
+    const record = ['x-atomic', '', '', ''] as const;
+    const records = [undefined, record] as unknown as readonly CompiledUtility[];
+
+    expect(reduceCompiledUtilities(records)).toEqual([record]);
   });
 });
