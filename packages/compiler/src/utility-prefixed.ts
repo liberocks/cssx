@@ -5,9 +5,10 @@ import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility 
 import { compileColorUtility, compileGradientUtility, compileTextDecorationUtility } from './utility-paint';
 import { compileAnimationUtility, compileDimensionUtility, compileTransformUtility } from './utility-transform';
 import { compileModernUtility } from './utility-modern';
+import { compileMotionUtility, isMotionUtilityCandidate } from './utility-motion';
 import { compileBackgroundUtility, compileMaskUtility, compileNumericUtility } from './utility-visual-basics';
 import { flexValue, resolveArbitraryCssValue, resolveDimensionValue, resolveSpacingValue } from './utility-resolvers';
-import { leadingValue, millisecondsValue, trackingValue } from './utility-values';
+import { leadingValue, trackingValue } from './utility-values';
 
 /**
  * Routes supported prefixed utilities to their specialized compiler.
@@ -25,6 +26,13 @@ export function compilePrefixedUtility(
   negative: boolean,
   theme: CssxTheme,
 ): UtilityDeclaration | UtilityDeclaration[] | null {
+  const motion = compileMotionUtility(utility, negative, theme);
+  if (motion) {
+    return motion;
+  }
+  if (isMotionUtilityCandidate(utility)) {
+    return null;
+  }
   const modern = compileModernUtility(utility, theme);
   if (modern) {
     return modern;
@@ -222,14 +230,6 @@ export function compilePrefixedUtility(
   const animation = /^animate-(.+)$/.exec(utility);
   if (animation) {
     return compileAnimationUtility(animation[1] ?? '', theme);
-  }
-  const transitionDuration = /^duration-(\d+|\[[^\]]+\])$/.exec(utility);
-  if (transitionDuration) {
-    return { property: 'transition-duration', value: millisecondsValue(transitionDuration[1] ?? '') };
-  }
-  const transitionDelay = /^delay-(\d+|\[[^\]]+\])$/.exec(utility);
-  if (transitionDelay) {
-    return { property: 'transition-delay', value: millisecondsValue(transitionDelay[1] ?? '') };
   }
   const transform = compileTransformUtility(utility, negative, theme);
   if (transform) {

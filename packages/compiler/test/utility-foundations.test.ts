@@ -123,6 +123,7 @@ describe('CSSX utility compiler', () => {
         'print:hidden',
         'data-[state=open]:bg-red-500',
         'aria-disabled:opacity-50',
+        'aria-[sort=ascending]:opacity-50',
         'supports-[display:grid]:grid',
       ],
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
@@ -132,6 +133,7 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('@media print');
     expect(result.css).toContain('[data-state=open]');
     expect(result.css).toContain('[aria-disabled="true"]');
+    expect(result.css).toContain('[aria-sort=ascending]');
     expect(result.css).toContain('@supports (display: grid)');
     expect(result.css).not.toContain('.data-\\[state');
   });

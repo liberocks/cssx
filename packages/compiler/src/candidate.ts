@@ -40,6 +40,8 @@ const VARIANT_ORDER = new Map<string, number>([
   ['xl', 40],
   ['2xl', 50],
   ['dark', 60],
+  ['motion-safe', 65],
+  ['motion-reduce', 65],
   ['print', 70],
 ]);
 

@@ -287,11 +287,11 @@ void props;
     if (!adapterChunk) {
       throw new Error('Expected the unplugin shared adapter chunk.');
     }
-    await expectArtifactWithinBudget('packages/compiler/dist/index.js', { raw: 116_000, gzip: 32_000, brotli: 26_500 });
+    await expectArtifactWithinBudget('packages/compiler/dist/index.js', { raw: 130_000, gzip: 35_500, brotli: 29_500 });
     await expectArtifactWithinBudget('packages/compiler/dist/index.cjs', {
-      raw: 117_000,
-      gzip: 32_300,
-      brotli: 26_700,
+      raw: 131_000,
+      gzip: 36_000,
+      brotli: 30_000,
     });
     await expectArtifactWithinBudget('packages/babel-plugin/dist/index.js', {
       raw: 24_000,

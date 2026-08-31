@@ -1,6 +1,6 @@
 import { parseCandidate } from './candidate';
 import { classifyCandidate } from './semantics';
-import { parseTheme, serializeThemeTokens } from './theme';
+import { parseTheme, resolveThemeValue, serializeThemeKeyframe, serializeThemeTokens } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 import { atomizeDeclarations, cloneDeclarations } from './utility-values';
 import { applyVariants } from './utility-variants';
@@ -14,6 +14,7 @@ import {
 } from './utility-box-model';
 import { compileContainerUtility, compileCoreLayoutUtility } from './utility-layout';
 import { compilePrefixedUtility } from './utility-prefixed';
+import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 
 export type { UtilityDeclaration } from './utility-types';
 import type { CssxTheme } from './theme';
@@ -103,17 +104,17 @@ export function describeUtilityRecipe(candidateSource: string, theme: CssxTheme)
     throw new Error(`CSSX cannot compile utility "${candidateSource}".`);
   }
   const declarations = compileDeclarations(candidate.utility, candidate.negative, theme);
+  const keyframes = requiredAnimationKeyframes(declarations, theme);
   if (candidate.important) {
     for (const declaration of declarations) {
       declaration.value = `${declaration.value} !important`;
     }
   }
   const atoms = atomizeDeclarations(declarations);
-  const keyframeName = animationKeyframeName(candidateSource);
   return {
     candidate: candidateSource,
     atoms,
-    resources: { keyframes: keyframeName ? [keyframeName] : [], properties: requiredPropertyNames(candidateSource) },
+    resources: { keyframes, properties: requiredPropertyNames(candidateSource) },
     writes: atoms.map((atom) => {
       const group = atom[0]?.semanticGroup ?? semantics.group;
       return { group, conflicts: atom[0]?.semanticConflicts ?? [group] };
@@ -177,11 +178,11 @@ export async function compileUtilities(
   const uniqueCompiled = [...new Map(compiled.map((entry) => [entry.css, entry] as const)).values()];
   const resources = `${[...requiredProperties].sort().map(propertyRegistration).join('')}${[...requiredKeyframes]
     .sort()
-    .map((name) => theme.keyframes[name])
+    .map((name) => serializeThemeKeyframe(theme, name))
     .filter((resource): resource is string => resource !== undefined)
     .join('')}`;
   const utilityCss = uniqueCompiled.map((entry) => entry.css).join('');
-  const prefixCss = `${serializeThemeTokens(theme, utilityCss)}${resources}`;
+  const prefixCss = `${serializeThemeTokens(theme, `${resources}${utilityCss}`)}${resources}`;
   return {
     classes,
     prefixCss,
@@ -250,7 +251,7 @@ function compileCandidate(
         candidate: candidateSource,
         className: generatedClass,
         css: applyVariants(selectors, declarations, candidate.variants, theme),
-        order: cssOrder(candidate, semantics.group),
+        order: cssOrder(candidate, semantics.group, declarations),
       },
     ];
   }
@@ -268,7 +269,7 @@ function compileCandidate(
         candidate: candidateSource,
         className,
         css: applyVariants(selectors, declarations, candidate.variants, theme),
-        order: `${cssOrder(candidate, semantics.group)}\u0000${index}`,
+        order: `${cssOrder(candidate, semantics.group, declarations)}\u0000${index}`,
       };
     })
     .filter((entry): entry is CompiledUtility => entry !== null);
@@ -348,7 +349,11 @@ const CASCADE_GROUP_ORDER: Readonly<Record<string, number>> = {
  * @param group Semantic group written by the candidate.
  * @returns Stable CSS ordering key.
  */
-function cssOrder(candidate: ReturnType<typeof parseCandidate>, group: string): string {
+function cssOrder(
+  candidate: ReturnType<typeof parseCandidate>,
+  group: string,
+  declarations: readonly UtilityDeclaration[],
+): string {
   const variantOrder = candidate.variants
     .map((variant) => {
       const known = ['sm', 'md', 'lg', 'xl', '2xl', 'dark', 'print'].indexOf(variant);
@@ -356,7 +361,29 @@ function cssOrder(candidate: ReturnType<typeof parseCandidate>, group: string): 
     })
     .join(':');
   const groupOrder = String(CASCADE_GROUP_ORDER[group] ?? 900).padStart(3, '0');
-  return `${variantOrder}\u0000${groupOrder}\u0000${group}`;
+  const properties = declarations.map((declaration) => declaration.property);
+  const isController = properties.includes('transition-property') && properties.length > 1;
+  const isShorthand = properties.some((property) => SHORTHAND_WRITE_SETS[property] !== undefined);
+  const isEnhancement = properties.some(
+    (property) =>
+      property === 'animation-timeline' ||
+      property.startsWith('animation-range') ||
+      property.startsWith('scroll-timeline') ||
+      property.startsWith('view-timeline') ||
+      property === 'timeline-scope',
+  );
+  const isStartingStyle = candidate.variants.includes('starting');
+  const isViewTransition = candidate.variants.some((variant) => variant.startsWith('vt-'));
+  const phase = isViewTransition
+    ? 500
+    : isStartingStyle
+      ? 400
+      : isEnhancement
+        ? 300
+        : isShorthand || isController
+          ? 100
+          : 200;
+  return `${String(phase).padStart(3, '0')}\u0000${variantOrder}\u0000${groupOrder}\u0000${group}`;
 }
 
 /**
@@ -408,15 +435,41 @@ function compileDeclarations(utility: string, negative: boolean, theme: CssxThem
 }
 
 /**
- * Finds the keyframe resource requested by an animation utility.
+ * Finds keyframe resources referenced by emitted animation declarations.
  *
- * @param candidateSource Source utility candidate.
- * @returns Keyframe name, or null when none is needed.
+ * @param declarations Compiled utility declarations.
+ * @param theme Active resolved theme.
+ * @returns Referenced keyframe names in stable order.
  */
-function animationKeyframeName(candidateSource: string): string | null {
-  const candidate = parseCandidate(candidateSource);
-  const match = /^animate-([a-z_][a-z0-9_-]*)$/i.exec(candidate.utility);
-  return match?.[1] && match[1] !== 'none' ? match[1] : null;
+function requiredAnimationKeyframes(declarations: readonly UtilityDeclaration[], theme: CssxTheme): readonly string[] {
+  const required = new Set<string>();
+  for (const declaration of declarations) {
+    if (declaration.property === 'animation-name') {
+      for (const name of declaration.value.split(',').map((part) => part.trim())) {
+        if (theme.keyframes[name]) {
+          required.add(name);
+        }
+      }
+    } else if (declaration.property === 'animation') {
+      const animationValue = resolveAnimationThemeReferences(declaration.value, theme);
+      for (const name of Object.keys(theme.keyframes)) {
+        const escapedName = name.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`(?:^|[\\s,])${escapedName}(?=$|[\\s,])`).test(animationValue)) {
+          required.add(name);
+        }
+      }
+    }
+  }
+  return [...required].sort();
+}
+
+/** Resolves theme variables in an animation declaration for resource discovery. */
+function resolveAnimationThemeReferences(value: string, theme: CssxTheme): string {
+  return value.replaceAll(/var\((--[a-z0-9_-]+)\)/gi, (reference, emittedName: string) => {
+    const prefix = theme.prefix ? `--${theme.prefix}-` : '';
+    const tokenName = prefix && emittedName.startsWith(prefix) ? `--${emittedName.slice(prefix.length)}` : emittedName;
+    return resolveThemeValue(theme, tokenName) ?? reference;
+  });
 }
 
 /**

@@ -11,6 +11,7 @@ import {
   serializeCss,
 } from '../src/index';
 import { parseTheme } from '../src/theme';
+import { validateUtilityCandidate } from '../src/utilities';
 
 describe('CSSX compiler', () => {
   it('emits one composite class for a complete static style', async () => {
@@ -123,6 +124,17 @@ describe('CSSX compiler', () => {
   it('rejects invalid reusability budgets', () => {
     expect(() => compileStyleRecords({ root: 'p-4' }, { reusabilityBudget: -1 })).toThrow('reusabilityBudget');
     expect(() => compileStyleRecords({ root: 'p-4' }, { reusabilityBudget: 101 })).toThrow('reusabilityBudget');
+  });
+
+  it('validates standalone candidates and returns an empty record map for empty input', () => {
+    expect(() => validateUtilityCandidate('p-4', parseTheme())).not.toThrow();
+    expect(compileStyleRecords({})).toEqual({
+      styles: {},
+      classes: {},
+      candidates: {},
+      classNames: {},
+      composites: {},
+    });
   });
 
   it('shares one serial namespace across independent compilations and compositions', () => {

@@ -715,22 +715,13 @@ const ATOM_SEMANTIC_SLOTS: Readonly<Record<string, Omit<UtilityConflictRecord, '
   'margin-bottom': { group: 'mb', conflicts: ['mb'] },
   'border-width': {
     group: 'border-width',
-    conflicts: [
-      'border',
-      'border-width',
-      'border-x',
-      'border-y',
-      'border-top',
-      'border-right',
-      'border-bottom',
-      'border-left',
-    ],
+    conflicts: ['border-width', 'border-x', 'border-y', 'border-top', 'border-right', 'border-bottom', 'border-left'],
   },
-  'border-top-width': { group: 'border-top', conflicts: ['border-top', 'border'] },
-  'border-right-width': { group: 'border-right', conflicts: ['border-right', 'border'] },
-  'border-bottom-width': { group: 'border-bottom', conflicts: ['border-bottom', 'border'] },
-  'border-left-width': { group: 'border-left', conflicts: ['border-left', 'border'] },
-  'border-color': { group: 'border-color', conflicts: ['border-color', 'border'] },
+  'border-top-width': { group: 'border-top', conflicts: ['border-top'] },
+  'border-right-width': { group: 'border-right', conflicts: ['border-right'] },
+  'border-bottom-width': { group: 'border-bottom', conflicts: ['border-bottom'] },
+  'border-left-width': { group: 'border-left', conflicts: ['border-left'] },
+  'border-color': { group: 'border-color', conflicts: ['border-color'] },
   '--cssx-translate-x': { group: 'translate-x', conflicts: ['translate-x'] },
   '--cssx-translate-y': { group: 'translate-y', conflicts: ['translate-y'] },
   '--cssx-scale-x': { group: 'scale-x', conflicts: ['scale-x'] },
@@ -743,7 +734,7 @@ const ATOM_SEMANTIC_SLOTS: Readonly<Record<string, Omit<UtilityConflictRecord, '
 const SHORTHAND_SEMANTIC_SLOTS: Readonly<Record<string, Omit<UtilityConflictRecord, 'scope'>>> = Object.fromEntries(
   Object.entries(SHORTHAND_WRITE_SETS).flatMap(([shorthand, components]) => [
     [shorthand, { group: shorthand, conflicts: [shorthand, ...components] }],
-    ...components.map((property) => [property, { group: property, conflicts: [property, shorthand] }]),
+    ...components.map((property) => [property, { group: property, conflicts: [property] }]),
   ]),
 );
 
@@ -755,10 +746,15 @@ const SHORTHAND_SEMANTIC_SLOTS: Readonly<Record<string, Omit<UtilityConflictReco
  */
 function serializeThemeSignature(theme: ReturnType<typeof parseTheme>): string {
   const outputSignature = theme.mode === 'inline' && !theme.prefix ? '' : `${theme.mode}:${theme.prefix}|`;
-  return `${outputSignature}${Object.keys(theme.tokens)
+  const tokens = Object.keys(theme.tokens)
     .sort()
     .map((name) => `${name}:${resolveThemeValue(theme, name) ?? 'initial'}`)
-    .join('|')}`;
+    .join('|');
+  const keyframes = Object.keys(theme.keyframes)
+    .sort()
+    .map((name) => `${name}:${theme.keyframes[name] ?? ''}`)
+    .join('|');
+  return `${outputSignature}${tokens}|${keyframes}`;
 }
 
 /**

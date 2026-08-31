@@ -149,7 +149,7 @@ const INVALID_CANDIDATES = [
   ['ring', 'ring-3'],
   ['filter', 'blur-ultra'],
   ['mask', 'mask-repeat-diagonal'],
-  ['transition', 'duration-slow'],
+  ['transition', 'duration-glacial'],
   ['animation', 'animate-unknown'],
   ['animation longhand', 'animation-duration-slow'],
   ['containment', 'contain-layout-paint'],

@@ -106,11 +106,15 @@ describe('CSSX semantic conflict classifier', () => {
       throw new Error('Expected shorthand and longhand compiled styles.');
     }
 
-    expect(mergeCompiledStyles([font, text])).toBe(result.classes['text-sm']);
+    expect(mergeCompiledStyles([font, text])).toBe(`${result.classes['[font:inherit]']} ${result.classes['text-sm']}`);
     expect(mergeCompiledStyles([text, font])).toBe(result.classes['[font:inherit]']);
-    expect(mergeCompiledStyles([background, color])).toBe(result.classes['bg-blue-500']);
+    expect(mergeCompiledStyles([background, color])).toBe(
+      `${result.classes['[background:red]']} ${result.classes['bg-blue-500']}`,
+    );
     expect(mergeCompiledStyles([color, background])).toBe(result.classes['[background:red]']);
-    expect(mergeCompiledStyles([transition, duration])).toBe(result.classes['duration-200']);
+    expect(mergeCompiledStyles([transition, duration])).toBe(
+      `${result.classes['[transition:all_1s]']} ${result.classes['duration-200']}`,
+    );
     expect(mergeCompiledStyles([duration, transition])).toBe(result.classes['[transition:all_1s]']);
   });
 
@@ -122,27 +126,37 @@ describe('CSSX semantic conflict classifier', () => {
       throw new Error('Expected animation styles.');
     }
 
-    expect(mergeCompiledStyles([animation, duration])).toBe(result.classes['animation-duration-500']);
+    expect(mergeCompiledStyles([animation, duration])).toBe(
+      `${result.classes['animate-spin']} ${result.classes['animation-duration-500']}`,
+    );
     expect(mergeCompiledStyles([duration, animation])).toBe(result.classes['animate-spin']);
   });
 
   it.each([
     ['[border:0]', 'border-red-500'],
     ['[animation:none]', '[animation-duration:1s]'],
+    ['[animation:none]', 'animation-timeline-view-block'],
+    ['[animation:none]', 'animation-range-entry'],
+    ['[animation-range:entry_0%_exit_100%]', 'animation-range-start-entry'],
     ['[grid:none]', 'grid-cols-3'],
     ['[mask:none]', 'mask-repeat-x'],
     ['[container:layout]', '[container-type:inline-size]'],
-  ])('lets the %s shorthand reset %s', (shorthandCandidate, componentCandidate) => {
-    const result = compileStyleRecords({ shorthand: shorthandCandidate, component: componentCandidate });
-    const shorthand = result.styles.shorthand;
-    const component = result.styles.component;
-    if (!shorthand || !component) {
-      throw new Error('Expected shorthand and component compiled styles.');
-    }
+  ])(
+    'lets the %s shorthand reset an earlier %s while preserving a later component',
+    (shorthandCandidate, componentCandidate) => {
+      const result = compileStyleRecords({ shorthand: shorthandCandidate, component: componentCandidate });
+      const shorthand = result.styles.shorthand;
+      const component = result.styles.component;
+      if (!shorthand || !component) {
+        throw new Error('Expected shorthand and component compiled styles.');
+      }
 
-    expect(mergeCompiledStyles([component, shorthand])).toBe(result.classes[shorthandCandidate]);
-    expect(mergeCompiledStyles([shorthand, component])).toBe(result.classes[componentCandidate]);
-  });
+      expect(mergeCompiledStyles([component, shorthand])).toBe(result.classes[shorthandCandidate]);
+      expect(mergeCompiledStyles([shorthand, component])).toBe(
+        `${result.classes[shorthandCandidate]} ${result.classes[componentCandidate]}`,
+      );
+    },
+  );
 
   it('keeps vendor fallback declarations in one composable atom', () => {
     const result = compileStyleRecords({ clip: 'bg-clip-text', hyphenation: 'hyphens-auto' });

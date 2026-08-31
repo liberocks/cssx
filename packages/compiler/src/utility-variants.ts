@@ -17,6 +17,7 @@ export function applyVariants(
   variants: readonly string[],
   theme: CssxTheme,
 ): string {
+  validateVariantCombination(variants);
   let renderedSelectors = typeof selectors === 'string' ? [selectors] : [...selectors];
   let selectorSuffix = declarations[0]?.selectorSuffix ?? '';
   if (declarations.some((declaration) => (declaration.selectorSuffix ?? '') !== selectorSuffix)) {
@@ -92,6 +93,16 @@ export function applyVariants(
       }
     } else if (variant === 'dark') {
       atRules.push('@media (prefers-color-scheme: dark)');
+    } else if (variant === 'motion-safe') {
+      atRules.push('@media (prefers-reduced-motion: no-preference)');
+    } else if (variant === 'motion-reduce') {
+      atRules.push('@media (prefers-reduced-motion: reduce)');
+    } else if (variant === 'starting') {
+      atRules.push('@starting-style');
+    } else if (resolveViewTransitionVariant(variant)) {
+      const pseudoElement = resolveViewTransitionVariant(variant) ?? '';
+      renderedSelectors = renderedSelectors.map((selector) => `${selector}${pseudoElement}`);
+      atRules.push('@supports (view-transition-name: none)');
     } else if (variant === 'print') {
       atRules.push('@media print');
     } else if (variant.startsWith('data-[') && variant.endsWith(']')) {
@@ -147,6 +158,43 @@ export function applyVariants(
     css = `${atRules[index]}{${css}}`;
   }
   return css;
+}
+
+/** Resolves a View Transition pseudo-element variant to its selector suffix. */
+function resolveViewTransitionVariant(variant: string): string | null {
+  const match = /^vt-(group|image-pair|old|new)-\[([^\]]+)\]$/i.exec(variant);
+  const target = match?.[2] ?? '';
+  const validTarget =
+    target === '*' ||
+    /^\.[a-z_][a-z0-9_-]*$/i.test(target) ||
+    (/^[a-z_][a-z0-9_-]*$/i.test(target) && !/^(?:inherit|initial|none|revert|revert-layer|unset)$/i.test(target));
+  if (!match || !validTarget) {
+    return null;
+  }
+  return `::view-transition-${match[1]}(${target})`;
+}
+
+/** Rejects combinations whose selector categories cannot compose predictably. */
+function validateVariantCombination(variants: readonly string[]): void {
+  const viewTransitionVariants = variants.filter((variant) => resolveViewTransitionVariant(variant));
+  if (viewTransitionVariants.length === 0) {
+    return;
+  }
+  const incompatible = variants.find(
+    (variant) =>
+      !viewTransitionVariants.includes(variant) &&
+      (variant === '*' ||
+        variant === '**' ||
+        PSEUDO_ELEMENT_VARIANTS[variant] !== undefined ||
+        variant.startsWith('group-') ||
+        variant.startsWith('peer-') ||
+        variant.startsWith('has-') ||
+        variant.startsWith('in-') ||
+        (variant.startsWith('[') && !variant.startsWith('[@supports') && !variant.startsWith('[@media'))),
+  );
+  if (viewTransitionVariants.length > 1 || incompatible) {
+    throw new Error('CSSX View Transition variants cannot compose with relationship or pseudo-element variants.');
+  }
 }
 
 /** Supported pseudo-class variants and their selector fragments. */

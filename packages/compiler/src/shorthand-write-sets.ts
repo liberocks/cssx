@@ -50,7 +50,13 @@ export const SHORTHAND_WRITE_SETS: Readonly<Record<string, readonly string[]>> =
     'animation-direction',
     'animation-fill-mode',
     'animation-play-state',
+    'animation-composition',
+    'animation-timeline',
+    'animation-range',
+    'animation-range-start',
+    'animation-range-end',
   ],
+  'animation-range': ['animation-range-start', 'animation-range-end'],
   grid: [
     'grid-template-columns',
     'grid-template-rows',

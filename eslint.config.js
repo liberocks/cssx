@@ -11,6 +11,7 @@ export default tseslint.config(
       '**/build/**',
       '**/.cache/**',
       '**/public/**',
+      'experiments/**',
     ],
   },
   ...tseslint.configs.recommended,

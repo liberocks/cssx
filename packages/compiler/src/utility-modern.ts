@@ -3,14 +3,6 @@ import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 import { resolveArbitraryCssValue, resolveSpacingValue } from './utility-resolvers';
 
-/** Named easing values supported by modern animation utilities. */
-const ANIMATION_EASING: Readonly<Record<string, string>> = {
-  linear: 'linear',
-  in: 'cubic-bezier(.4, 0, 1, 1)',
-  out: 'cubic-bezier(0, 0, .2, 1)',
-  'in-out': 'cubic-bezier(.4, 0, .2, 1)',
-};
-
 /** Fixed modern utility declarations keyed by complete utility name. */
 const FIXED_VALUES: Readonly<Record<string, readonly [property: string, value: string]>> = {
   'content-visibility-visible': ['content-visibility', 'visible'],
@@ -86,35 +78,6 @@ export function compileModernUtility(utility: string, theme: CssxTheme): Utility
     return { property: fixed[0], value: fixed[1] };
   }
 
-  const animation = /^animation-(duration|delay|ease)-(.+)$/.exec(utility);
-  if (animation) {
-    const kind = animation[1] ?? '';
-    const raw = animation[2] ?? '';
-    const property = kind === 'ease' ? 'animation-timing-function' : `animation-${kind}`;
-    const value =
-      kind === 'ease'
-        ? (ANIMATION_EASING[raw] ?? resolveNamedValue(raw, `--animation-ease-${raw}`, theme))
-        : resolveAnimationTime(raw, `--animation-${kind}-${raw}`, theme);
-    return value ? { property, value } : null;
-  }
-
-  const iterations = /^animation-iterations-(1|2|3|infinite)$/.exec(utility);
-  if (iterations) {
-    return { property: 'animation-iteration-count', value: iterations[1] ?? '' };
-  }
-  const direction = /^animation-direction-(normal|reverse|alternate|alternate-reverse)$/.exec(utility);
-  if (direction) {
-    return { property: 'animation-direction', value: direction[1] ?? '' };
-  }
-  const fill = /^animation-fill-(none|forwards|backwards|both)$/.exec(utility);
-  if (fill) {
-    return { property: 'animation-fill-mode', value: fill[1] ?? '' };
-  }
-  const state = /^animation-(running|paused)$/.exec(utility);
-  if (state) {
-    return { property: 'animation-play-state', value: state[1] ?? '' };
-  }
-
   const contain = /^contain-\[(.+)\]$/.exec(utility);
   if (contain) {
     return { property: 'contain', value: resolveArbitraryCssValue(`[${contain[1] ?? ''}]`) };
@@ -137,21 +100,6 @@ export function compileModernUtility(utility: string, theme: CssxTheme): Utility
     return value ? { property, value } : null;
   }
   return null;
-}
-
-/**
- * Resolves a numeric animation time or named theme value.
- *
- * @param raw Utility value.
- * @param token Theme token name.
- * @param theme Active resolved theme.
- * @returns CSS time, or null when unknown.
- */
-function resolveAnimationTime(raw: string, token: string, theme: CssxTheme): string | null {
-  if (/^\d+$/.test(raw)) {
-    return `${raw}ms`;
-  }
-  return resolveNamedValue(raw, token, theme);
 }
 
 /**

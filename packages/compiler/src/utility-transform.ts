@@ -2,7 +2,7 @@ import { resolveThemeToken } from './theme';
 import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 import { resolveAngleValue, resolveScaleValue } from './utility-values';
-import { resolveDimensionValue, resolveSpacingValue } from './utility-resolvers';
+import { resolveArbitraryCssValue, resolveDimensionValue, resolveSpacingValue } from './utility-resolvers';
 
 /**
  * Compiles width, height, and logical dimension utilities.
@@ -60,7 +60,7 @@ export function compileArbitraryProperty(utility: string): UtilityDeclaration {
   if (!/^(--[a-z0-9_-]+|[a-z-]+)$/i.test(property) || !value || /[{};]/.test(value)) {
     throw new Error(`Invalid arbitrary CSSX utility "${utility}".`);
   }
-  return { property, value };
+  return { property, value: resolveArbitraryCssValue(`[${value}]`) };
 }
 
 /**
