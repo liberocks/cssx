@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileUtilities } from '../src/index';
+import { applyVariants } from '../src/utility-variants';
+import { parseTheme } from '../src/theme';
 
 describe('CSSX utility compiler', () => {
   it('compiles default utilities and rewrites only their root selectors', async () => {
@@ -270,5 +272,53 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('padding:calc(var(--spacing) * 4)');
     expect(result.css).toContain('@media (width >= 50rem)');
     expect(result.css).not.toContain('--breakpoint-tablet:50rem');
+  });
+
+  it('validates generated classes and includes only live atomic selectors', async () => {
+    await expect(compileUtilities(['p-4'], () => '')).rejects.toThrow('unsafe generated class name');
+    await expect(compileUtilities(['p-4'], () => 'unsafe/class')).rejects.toThrow('unsafe generated class name');
+    await expect(compileUtilities(['p-4'], () => 'p-atom', '', {}, new Set())).resolves.toMatchObject({ entries: [] });
+    await expect(compileUtilities(['size-4'], () => 'first second', '', {}, new Set(['first']))).resolves.toMatchObject(
+      { entries: [{ candidate: 'size-4' }] },
+    );
+    await expect(compileUtilities(['size-4'], () => 'one two three')).rejects.toThrow('expected 2 generated classes');
+    await expect(
+      compileUtilities(
+        Array.from({ length: 50_001 }, () => 'p-4'),
+        () => 'x',
+      ),
+    ).rejects.toThrow('50,000');
+  });
+
+  it('rejects invalid responsive, at-rule, and View Transition variant compositions', () => {
+    const theme = parseTheme();
+    const declarations = [{ property: 'display', value: 'block' }];
+
+    expect(() => applyVariants('.x', declarations, ['min-[]'], theme)).toThrow('Invalid CSSX responsive variant');
+    expect(() => applyVariants('.x', declarations, ['max-unknown'], theme)).toThrow('does not support variant');
+    expect(() => applyVariants('.x', declarations, ['unknown'], theme)).toThrow('does not support variant');
+    expect(() => applyVariants('.x', declarations, ['[@supports]'], theme)).toThrow('Invalid CSSX arbitrary at-rule');
+    expect(() => applyVariants('.x', declarations, ['before'], theme)).not.toThrow();
+    expect(() =>
+      applyVariants(
+        '.x',
+        [
+          { property: 'display', value: 'block', selectorSuffix: '::before' },
+          { property: 'color', value: 'red' },
+        ],
+        [],
+        theme,
+      ),
+    ).toThrow('must share one selector scope');
+    for (const variant of ['*', '**', 'after', 'peer-hover', 'has-hover', 'in-hover', '[&>svg]']) {
+      expect(() => applyVariants('.x', declarations, [variant, 'vt-old-[card]'], theme)).toThrow('cannot compose');
+    }
+  });
+
+  it('renders arbitrary maximum responsive variants', () => {
+    const theme = parseTheme();
+    expect(applyVariants('.x', [{ property: 'display', value: 'block' }], ['max-[600px]'], theme)).toBe(
+      '@media (width < 600px){.x{display:block;}}',
+    );
   });
 });

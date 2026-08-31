@@ -23,8 +23,8 @@ export function compileDimensionUtility(
   if (!match) {
     return null;
   }
-  const prefix = match[1] ?? '';
-  const value = resolveDimensionValue(match[2] ?? '', negative, theme, prefix);
+  const prefix = match[1]!;
+  const value = resolveDimensionValue(match[2]!, negative, theme, prefix);
   if (!value) {
     return null;
   }
@@ -43,7 +43,7 @@ export function compileDimensionUtility(
     'max-block': 'max-block-size',
   };
   const property = properties[prefix];
-  return property ? { property, value } : null;
+  return { property: property!, value };
 }
 
 /**
@@ -97,7 +97,7 @@ export function compileTransformUtility(
   const translate = /^(translate-x|translate-y)-(.+)$/.exec(utility);
   if (translate) {
     const axis = translate[1] === 'translate-x' ? '--cssx-translate-x' : '--cssx-translate-y';
-    const value = resolveSpacingValue(translate[2] ?? '', negative, theme);
+    const value = resolveSpacingValue(translate[2]!, negative, theme);
     if (!value) {
       return null;
     }
@@ -108,13 +108,13 @@ export function compileTransformUtility(
   }
   const rotate = /^rotate-(.+)$/.exec(utility);
   if (rotate) {
-    const value = resolveAngleValue(rotate[1] ?? '', negative);
+    const value = resolveAngleValue(rotate[1]!, negative);
     return value ? [{ property: 'rotate', value }] : null;
   }
   const scale = /^(scale-x|scale-y|scale)-(.+)$/.exec(utility);
   if (scale) {
-    const axis = scale[1] ?? '';
-    const value = resolveScaleValue(scale[2] ?? '', negative);
+    const axis = scale[1]!;
+    const value = resolveScaleValue(scale[2]!, negative);
     if (!value) {
       return null;
     }
@@ -138,8 +138,8 @@ export function compileTransformUtility(
   }
   const skew = /^skew-(x|y)-(.+)$/.exec(utility);
   if (skew) {
-    const axis = skew[1] ?? '';
-    const value = resolveAngleValue(skew[2] ?? '', negative);
+    const axis = skew[1]!;
+    const value = resolveAngleValue(skew[2]!, negative);
     if (!value) {
       return null;
     }

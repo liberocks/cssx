@@ -110,7 +110,7 @@ export async function compileStyleMap(
   }
   const compiled = await compileUtilities(
     candidates,
-    (candidate) => records.classes[candidate] ?? candidate,
+    (candidate) => records.classes[candidate]!,
     options.theme,
     createSelectorAliases(records.composites),
   );
@@ -145,7 +145,7 @@ export async function compileStyleMaps(
   }
   const compiled = await compileUtilities(
     candidates,
-    (candidate) => records.classes[candidate] ?? candidate,
+    (candidate) => records.classes[candidate]!,
     options.theme,
     createSelectorAliases(records.composites),
   );

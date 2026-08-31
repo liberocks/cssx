@@ -140,10 +140,7 @@ export function parseCandidate(raw: string): ParsedCandidate {
     throw new Error(`Invalid utility "${raw}".`);
   }
   const parts = splitTopLevel(raw, ':');
-  const finalPart = parts.pop();
-  if (!finalPart) {
-    throw new Error(`Invalid utility "${raw}".`);
-  }
+  const finalPart = parts.pop()!;
 
   let utility = finalPart;
   let important = false;

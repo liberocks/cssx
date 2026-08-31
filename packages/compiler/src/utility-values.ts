@@ -26,10 +26,7 @@ export function atomizeDeclarations(
 ): readonly (readonly UtilityDeclaration[])[] {
   const atoms: UtilityDeclaration[][] = [];
   for (let index = 0; index < declarations.length; index++) {
-    const declaration = declarations[index];
-    if (!declaration) {
-      continue;
-    }
+    const declaration = declarations[index]!;
     if (declaration.selectorSuffix || declaration.semanticGroup) {
       const grouped: UtilityDeclaration[] = [declaration];
       while (
@@ -37,10 +34,7 @@ export function atomizeDeclarations(
         (declaration.selectorSuffix !== undefined ||
           declarations[index + 1]?.semanticGroup === declaration.semanticGroup)
       ) {
-        const next = declarations[index + 1];
-        if (!next) {
-          break;
-        }
+        const next = declarations[index + 1]!;
         grouped.push(next);
         index++;
       }
@@ -52,11 +46,9 @@ export function atomizeDeclarations(
       declarations[index + 1]?.property === '--cssx-scale-y' &&
       declarations[index + 2]?.property === 'scale'
     ) {
-      const y = declarations[index + 1];
-      const sink = declarations[index + 2];
-      if (y && sink) {
-        atoms.push([declaration, sink], [y, sink]);
-      }
+      const y = declarations[index + 1]!;
+      const sink = declarations[index + 2]!;
+      atoms.push([declaration, sink], [y, sink]);
       index += 2;
       continue;
     }
@@ -69,7 +61,7 @@ export function atomizeDeclarations(
       declaration.property === '--cssx-skew-y'
     ) {
       const sink = declarations[index + 1];
-      if (sink && (sink.property === 'translate' || sink.property === 'scale' || sink.property === 'transform')) {
+      if (sink?.property === 'translate' || sink?.property === 'scale' || sink?.property === 'transform') {
         atoms.push([declaration, sink]);
         index++;
         continue;

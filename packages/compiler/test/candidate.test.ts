@@ -10,6 +10,10 @@ describe('CSSX candidate parsing', () => {
     ]);
   });
 
+  it('drops whitespace-only list segments', () => {
+    expect(splitCandidateList('   \n\t ')).toEqual([]);
+  });
+
   it('normalizes commutative state variants but preserves selector-sensitive order', () => {
     expect(parseCandidate('hover:focus:p-4')).toMatchObject({ variants: ['focus', 'hover'], utility: 'p-4' });
     expect(parseCandidate('before:hover:p-4')).toMatchObject({ variants: ['before', 'hover'], utility: 'p-4' });
@@ -72,5 +76,16 @@ describe('CSSX candidate parsing', () => {
       'bg-[url("a\\ b.svg")]',
     ]);
     expect(parseCandidate('before:content-["a\\" b"]').utility).toBe('content-["a\\" b"]');
+  });
+
+  it('rejects malformed modifier and trailing escape forms', () => {
+    expect(() => parseCandidate('')).toThrow('Invalid utility');
+    expect(() => parseCandidate('!p-4!')).toThrow('Invalid utility');
+    expect(() => splitCandidateList('p-4\\')).toThrow('Invalid utility list');
+  });
+
+  it('classifies malformed arbitrary properties and text alignment precisely', () => {
+    expect(classifyCandidate('[123:value]')).toBeNull();
+    expect(classifyCandidate('text-left')).toMatchObject({ group: 'text-align' });
   });
 });

@@ -21,8 +21,8 @@ export function compileBorderWidthUtility(utility: string): UtilityDeclaration |
   if (!match) {
     return null;
   }
-  const side = match[1] ?? '';
-  const value = `${match[2] ?? ''}px`.replace('0px', '0');
+  const side = match[1]!;
+  const value = `${match[2]!}px`.replace('0px', '0');
   const properties: Readonly<Record<string, readonly string[]>> = {
     x: ['border-left-width', 'border-right-width'],
     y: ['border-top-width', 'border-bottom-width'],
@@ -31,7 +31,7 @@ export function compileBorderWidthUtility(utility: string): UtilityDeclaration |
     b: ['border-bottom-width'],
     l: ['border-left-width'],
   };
-  return (properties[side] ?? []).map((property) => ({ property, value }));
+  return properties[side]!.map((property) => ({ property, value }));
 }
 
 /**
@@ -54,8 +54,8 @@ export function compileSpacingUtility(
   if (!match) {
     return null;
   }
-  const prefix = match[1] ?? '';
-  const rawValue = match[2] ?? '';
+  const prefix = match[1]!;
+  const rawValue = match[2]!;
   const value = prefix.startsWith('inset')
     ? resolveDimensionValue(rawValue, negative, theme, 'inset')
     : rawValue === 'auto' && prefix.startsWith('m') && !negative
@@ -97,7 +97,7 @@ export function compileSpacingUtility(
     'inset-e': ['inset-inline-end'],
   };
   const targets = properties[prefix];
-  return targets?.map((property) => ({ property, value })) ?? null;
+  return targets!.map((property) => ({ property, value }));
 }
 
 /**
@@ -113,8 +113,8 @@ export function compileSpaceUtility(utility: string, negative: boolean, theme: C
   if (!match) {
     return null;
   }
-  const axis = match[1] ?? '';
-  const rawValue = match[2] ?? '';
+  const axis = match[1]!;
+  const rawValue = match[2]!;
   const selectorSuffix = ' > :not(:last-child)';
   const semanticGroup = rawValue === 'reverse' ? `space-${axis}-reverse` : `space-${axis}`;
   const reverseProperty = `--cssx-space-${axis}-reverse`;
@@ -144,7 +144,7 @@ export function compileDivideUtility(utility: string, theme: CssxTheme): Utility
   const selectorSuffix = ' > :not(:last-child)';
   const axisMatch = /^divide-(x|y)(?:-(.+))?$/.exec(utility);
   if (axisMatch) {
-    const axis = axisMatch[1] ?? '';
+    const axis = axisMatch[1]!;
     const rawValue = axisMatch[2] ?? 'DEFAULT';
     const reverseProperty = `--cssx-divide-${axis}-reverse`;
     const semanticGroup = rawValue === 'reverse' ? `divide-${axis}-reverse` : `divide-${axis}`;
@@ -168,7 +168,7 @@ export function compileDivideUtility(utility: string, theme: CssxTheme): Utility
   if (!colorMatch) {
     return null;
   }
-  const modifier = splitColorModifier(colorMatch[1] ?? '');
+  const modifier = splitColorModifier(colorMatch[1]!);
   const resolved = resolveColorValue(modifier.value, theme);
   if (!resolved) {
     return null;
@@ -193,7 +193,7 @@ export function compilePlaceholderUtility(utility: string, theme: CssxTheme): Ut
   if (!match) {
     return null;
   }
-  const modifier = splitColorModifier(match[1] ?? '');
+  const modifier = splitColorModifier(match[1]!);
   const resolved = resolveColorValue(modifier.value, theme);
   if (!resolved) {
     return null;
@@ -241,12 +241,12 @@ export function compileOutlineUtility(
 
   const offset = /^outline-offset-(.+)$/.exec(utility);
   if (offset) {
-    const value = resolveSpacingValue(offset[1] ?? '', negative, theme);
+    const value = resolveSpacingValue(offset[1]!, negative, theme);
     return value ? [{ property: 'outline-offset', value }] : null;
   }
   const width = /^outline-(0|1|2|4|8|\[[^\]]+\])$/.exec(utility);
   if (width) {
-    const raw = width[1] ?? '';
+    const raw = width[1]!;
     return [
       { property: 'outline-width', value: raw.startsWith('[') ? raw.slice(1, -1) : `${raw}px`.replace('0px', '0') },
     ];
@@ -255,7 +255,7 @@ export function compileOutlineUtility(
   if (!color) {
     return null;
   }
-  const modifier = splitColorModifier(color[1] ?? '');
+  const modifier = splitColorModifier(color[1]!);
   const resolved = resolveColorValue(modifier.value, theme);
   if (!resolved) {
     return null;

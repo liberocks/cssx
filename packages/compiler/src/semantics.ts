@@ -120,7 +120,7 @@ function refineAmbiguousGroup(prefix: string, group: string, utility: string): s
  * @returns Whether the value represents a color.
  */
 function isBorderColorValue(value: string): boolean {
-  const color = value.split('/', 1)[0] ?? value;
+  const color = value.split('/', 1)[0]!;
   return color.startsWith('[') || /^(?:transparent|current|black|white|[a-z-]+-\d{1,3})$/i.test(color);
 }
 

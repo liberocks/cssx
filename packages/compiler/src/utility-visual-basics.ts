@@ -97,10 +97,10 @@ export function compileBackgroundUtility(utility: string): UtilityDeclaration | 
   }
   const position = /^bg-position-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (position) {
-    return { property: 'background-position', value: resolveArbitraryCssValue(position[1] ?? '') };
+    return { property: 'background-position', value: resolveArbitraryCssValue(position[1]!) };
   }
   const size = /^bg-size-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
-  return size ? { property: 'background-size', value: resolveArbitraryCssValue(size[1] ?? '') } : null;
+  return size ? { property: 'background-size', value: resolveArbitraryCssValue(size[1]!) } : null;
 }
 
 /**
@@ -134,11 +134,11 @@ export function compileMaskUtility(utility: string): UtilityDeclaration | null {
   }
   const match = /^mask-(position|size)-(.+)$/.exec(utility);
   if (match) {
-    return { property: `mask-${match[1]}`, value: resolveArbitraryCssValue(match[2] ?? '') };
+    return { property: `mask-${match[1]!}`, value: resolveArbitraryCssValue(match[2]!) };
   }
   const image = /^mask-(\[.+\]|\(.+\))$/.exec(utility);
   if (image) {
-    return { property: 'mask-image', value: resolveArbitraryCssValue(image[1] ?? '') };
+    return { property: 'mask-image', value: resolveArbitraryCssValue(image[1]!) };
   }
   return null;
 }

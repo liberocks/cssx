@@ -125,7 +125,7 @@ export function compileFilterFamily(
   };
   const simple = /^(blur|brightness|contrast|grayscale|invert|saturate|sepia|opacity)(?:-(.+))?$/.exec(utility);
   if (simple) {
-    const family = simple[1] ?? '';
+    const family = simple[1]!;
     if (family === 'opacity' && !includesOpacity) {
       return null;
     }
@@ -141,7 +141,7 @@ export function compileFilterFamily(
 
   const hue = /^hue-rotate-(.+)$/.exec(utility);
   if (hue) {
-    const raw = hue[1] ?? '';
+    const raw = hue[1]!;
     const value =
       raw.startsWith('[') && raw.endsWith(']')
         ? raw.slice(1, -1)
@@ -235,7 +235,7 @@ export function filterDeclarations(
 export function compileRingUtility(utility: string, theme: CssxTheme): UtilityDeclaration[] | null {
   const ringOffset = /^ring-offset-(.+)$/.exec(utility);
   if (ringOffset) {
-    const raw = ringOffset[1] ?? '';
+    const raw = ringOffset[1]!;
     const width = resolveBorderWidthValue(raw);
     if (width) {
       return [
@@ -270,7 +270,7 @@ export function compileRingUtility(utility: string, theme: CssxTheme): UtilityDe
   if (!match) {
     return null;
   }
-  const modifier = splitColorModifier(match[1] ?? '');
+  const modifier = splitColorModifier(match[1]!);
   const color = resolveUtilityColor(modifier.value, theme);
   if (!color) {
     return null;

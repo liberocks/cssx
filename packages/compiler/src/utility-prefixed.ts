@@ -44,7 +44,7 @@ export function compilePrefixedUtility(
   const borderSpacing = /^border-spacing(?:-(x|y))?-(.+)$/.exec(utility);
   if (borderSpacing) {
     const axis = borderSpacing[1];
-    const value = resolveSpacingValue(borderSpacing[2] ?? '', negative, theme);
+    const value = resolveSpacingValue(borderSpacing[2]!, negative, theme);
     if (!value) {
       return null;
     }
@@ -104,7 +104,7 @@ export function compilePrefixedUtility(
 
   const columns = /^columns-(auto|\d+|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (columns) {
-    const value = columns[1] ?? '';
+    const value = columns[1]!;
     return {
       property: 'columns',
       value: value.startsWith('[') || value.startsWith('(') ? resolveArbitraryCssValue(value) : value,
@@ -115,24 +115,24 @@ export function compilePrefixedUtility(
   }
   const content = /^content-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (content) {
-    return { property: 'content', value: resolveArbitraryCssValue(content[1] ?? '') };
+    return { property: 'content', value: resolveArbitraryCssValue(content[1]!) };
   }
   const breakUtility =
     /^(?:break-(before|after)-(auto|avoid|all|avoid-page|page|left|right|column)|break-(inside)-(auto|avoid|avoid-page|avoid-column))$/.exec(
       utility,
     );
   if (breakUtility) {
-    const family = breakUtility[1] ?? breakUtility[3] ?? '';
-    const value = breakUtility[2] ?? breakUtility[4] ?? '';
+    const family = breakUtility[1] ?? breakUtility[3]!;
+    const value = breakUtility[2] ?? breakUtility[4]!;
     return { property: `break-${family}`, value };
   }
   const object = /^object-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (object) {
-    return { property: 'object-position', value: resolveArbitraryCssValue(object[1] ?? '') };
+    return { property: 'object-position', value: resolveArbitraryCssValue(object[1]!) };
   }
   const tabSize = /^tab-(\d+|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (tabSize) {
-    const value = tabSize[1] ?? '';
+    const value = tabSize[1]!;
     return {
       property: 'tab-size',
       value: value.startsWith('[') || value.startsWith('(') ? resolveArbitraryCssValue(value) : value,
@@ -140,7 +140,7 @@ export function compilePrefixedUtility(
   }
   const listImage = /^list-image-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (listImage) {
-    return { property: 'list-style-image', value: resolveArbitraryCssValue(listImage[1] ?? '') };
+    return { property: 'list-style-image', value: resolveArbitraryCssValue(listImage[1]!) };
   }
   const clamp = /^line-clamp-(none|\d+)$/.exec(utility);
   if (clamp) {
@@ -155,7 +155,7 @@ export function compilePrefixedUtility(
           { property: 'overflow', value: 'hidden', semanticGroup: 'line-clamp' },
           { property: 'display', value: '-webkit-box', semanticGroup: 'line-clamp' },
           { property: '-webkit-box-orient', value: 'vertical', semanticGroup: 'line-clamp' },
-          { property: '-webkit-line-clamp', value: clamp[1] ?? '', semanticGroup: 'line-clamp' },
+          { property: '-webkit-line-clamp', value: clamp[1]!, semanticGroup: 'line-clamp' },
         ];
   }
 
@@ -184,13 +184,13 @@ export function compilePrefixedUtility(
   if (gridLine) {
     return {
       property: `grid-${gridLine[1] === 'col' ? 'column' : 'row'}-${gridLine[2]}`,
-      value: gridLine[3] === 'auto' ? 'auto' : (gridLine[3] ?? ''),
+      value: gridLine[3]!,
     };
   }
   const order = /^order-(first|last|none|\d+)$/.exec(utility);
   if (order) {
     const values: Readonly<Record<string, string>> = { first: '-9999', last: '9999', none: '0' };
-    const value = values[order[1] ?? ''] ?? order[1] ?? '';
+    const value = values[order[1]!] ?? order[1]!;
     return {
       property: 'order',
       value: negative && value !== '0' ? (value.startsWith('-') ? value.slice(1) : `-${value}`) : value,
@@ -198,12 +198,12 @@ export function compilePrefixedUtility(
   }
   const basis = /^basis-(.+)$/.exec(utility);
   if (basis) {
-    const value = resolveDimensionValue(basis[1] ?? '', negative, theme, 'basis');
+    const value = resolveDimensionValue(basis[1]!, negative, theme, 'basis');
     return value ? { property: 'flex-basis', value } : null;
   }
   const flex = /^flex-(\d+(?:\/\d+)?|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (flex) {
-    const raw = flex[1] ?? '';
+    const raw = flex[1]!;
     const value = raw.startsWith('[') || raw.startsWith('(') ? resolveArbitraryCssValue(raw) : flexValue(raw);
     return value ? { property: 'flex', value } : null;
   }
@@ -213,23 +213,23 @@ export function compilePrefixedUtility(
   }
   const zIndex = /^z-(\d+|auto)$/.exec(utility);
   if (zIndex) {
-    return { property: 'z-index', value: zIndex[1] ?? 'auto' };
+    return { property: 'z-index', value: zIndex[1]! };
   }
   const leading = /^leading-(none|tight|snug|normal|relaxed|loose|\[[^\]]+\])$/.exec(utility);
   if (leading) {
-    return { property: 'line-height', value: leadingValue(leading[1] ?? '') };
+    return { property: 'line-height', value: leadingValue(leading[1]!) };
   }
   const font = /^font-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (font) {
-    return { property: 'font-family', value: resolveArbitraryCssValue(font[1] ?? '') };
+    return { property: 'font-family', value: resolveArbitraryCssValue(font[1]!) };
   }
   const tracking = /^tracking-(tighter|tight|normal|wide|wider|widest)$/.exec(utility);
   if (tracking) {
-    return { property: 'letter-spacing', value: trackingValue(tracking[1] ?? '') };
+    return { property: 'letter-spacing', value: trackingValue(tracking[1]!) };
   }
   const animation = /^animate-(.+)$/.exec(utility);
   if (animation) {
-    return compileAnimationUtility(animation[1] ?? '', theme);
+    return compileAnimationUtility(animation[1]!, theme);
   }
   const transform = compileTransformUtility(utility, negative, theme);
   if (transform) {

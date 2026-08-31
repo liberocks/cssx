@@ -62,7 +62,7 @@ export function compileMotionUtility(
   }
   const arbitraryTransition = /^transition-(\[[\s\S]+\])$/.exec(utility);
   if (arbitraryTransition) {
-    return transitionDeclarations(resolveArbitraryCssValue(arbitraryTransition[1] ?? ''));
+    return transitionDeclarations(resolveArbitraryCssValue(arbitraryTransition[1]!));
   }
 
   if (utility === 'delay-stagger') {
@@ -70,22 +70,22 @@ export function compileMotionUtility(
   }
   const transitionTime = /^(duration|delay)-(.+)$/.exec(utility);
   if (transitionTime) {
-    const kind = transitionTime[1] ?? '';
+    const kind = transitionTime[1]!;
     if (negative && kind === 'duration') {
       return null;
     }
-    const value = resolveTime(transitionTime[2] ?? '', `--${kind}-`, theme);
+    const value = resolveTime(transitionTime[2]!, `--${kind}-`, theme);
     return value ? { property: `transition-${kind}`, value: negative ? negateCssValue(value) : value } : null;
   }
   const transitionEase = /^ease-(.+)$/.exec(utility);
   if (transitionEase) {
-    const value = resolveEasing(transitionEase[1] ?? '', theme);
+    const value = resolveEasing(transitionEase[1]!, theme);
     return !negative && value ? { property: 'transition-timing-function', value } : null;
   }
 
   const animationName = /^animation-name-(.+)$/.exec(utility);
   if (animationName) {
-    const raw = animationName[1] ?? '';
+    const raw = animationName[1]!;
     if (negative) {
       return null;
     }
@@ -103,8 +103,8 @@ export function compileMotionUtility(
   }
   const animationTime = /^animation-(duration|delay)-(.+)$/.exec(utility);
   if (animationTime) {
-    const kind = animationTime[1] ?? '';
-    const raw = animationTime[2] ?? '';
+    const kind = animationTime[1]!;
+    const raw = animationTime[2]!;
     if (kind === 'duration' && raw === 'auto' && !negative) {
       return { property: 'animation-duration', value: 'auto' };
     }
@@ -116,35 +116,35 @@ export function compileMotionUtility(
   }
   const animationEase = /^animation-ease-(.+)$/.exec(utility);
   if (animationEase) {
-    const value = resolveEasing(animationEase[1] ?? '', theme, true);
+    const value = resolveEasing(animationEase[1]!, theme, true);
     return !negative && value ? { property: 'animation-timing-function', value } : null;
   }
   const iterations = /^animation-iterations-(.+)$/.exec(utility);
   if (iterations) {
-    const raw = iterations[1] ?? '';
+    const raw = iterations[1]!;
     const value = raw === 'infinite' || /^\d+(?:\.\d+)?$/.test(raw) ? raw : arbitraryValue(raw);
     return !negative && value ? { property: 'animation-iteration-count', value } : null;
   }
   const direction = /^animation-direction-(normal|reverse|alternate|alternate-reverse)$/.exec(utility);
   if (direction) {
-    return !negative ? { property: 'animation-direction', value: direction[1] ?? '' } : null;
+    return !negative ? { property: 'animation-direction', value: direction[1]! } : null;
   }
   const fill = /^animation-fill-(none|forwards|backwards|both)$/.exec(utility);
   if (fill) {
-    return !negative ? { property: 'animation-fill-mode', value: fill[1] ?? '' } : null;
+    return !negative ? { property: 'animation-fill-mode', value: fill[1]! } : null;
   }
   const playState = /^animation-(running|paused)$/.exec(utility);
   if (playState) {
-    return !negative ? { property: 'animation-play-state', value: playState[1] ?? '' } : null;
+    return !negative ? { property: 'animation-play-state', value: playState[1]! } : null;
   }
   const composition = /^animation-composition-(replace|add|accumulate)$/.exec(utility);
   if (composition) {
-    return !negative ? { property: 'animation-composition', value: composition[1] ?? '' } : null;
+    return !negative ? { property: 'animation-composition', value: composition[1]! } : null;
   }
 
   const stagger = /^stagger-(?!index-|count-)(.+)$/.exec(utility);
   if (stagger) {
-    const raw = stagger[1] ?? '';
+    const raw = stagger[1]!;
     if (raw === 'reverse') {
       return !negative ? { property: '--cssx-stagger-reverse', value: '1' } : null;
     }
@@ -153,7 +153,7 @@ export function compileMotionUtility(
   }
   const staggerInteger = /^stagger-(index|count)-(\d+|\[\d+\])$/.exec(utility);
   if (staggerInteger) {
-    const value = (staggerInteger[2] ?? '').replaceAll(/\[|\]/g, '');
+    const value = staggerInteger[2]!.replaceAll(/\[|\]/g, '');
     return !negative ? { property: `--cssx-stagger-${staggerInteger[1]}`, value } : null;
   }
   const timeline = compileAnimationTimeline(utility);
@@ -227,7 +227,7 @@ function compileAnimationTimeline(utility: string): UtilityDeclaration | null {
     'animation-timeline-none': 'none',
   };
   if (fixed[utility]) {
-    return { property: 'animation-timeline', value: fixed[utility] ?? '', atRule: TIMELINE_SUPPORT };
+    return { property: 'animation-timeline', value: fixed[utility]!, atRule: TIMELINE_SUPPORT };
   }
   const scroll = /^animation-timeline-scroll(?:-(root|self))?-(block|inline|x|y)$/.exec(utility);
   if (scroll) {
@@ -244,7 +244,7 @@ function compileAnimationTimeline(utility: string): UtilityDeclaration | null {
     return { property: 'animation-timeline', value: `view(${view[1]})`, atRule: TIMELINE_SUPPORT };
   }
   const named = /^animation-timeline-\[(--[a-z_][a-z0-9_-]*)\]$/i.exec(utility);
-  return named ? { property: 'animation-timeline', value: named[1] ?? '', atRule: TIMELINE_SUPPORT } : null;
+  return named ? { property: 'animation-timeline', value: named[1]!, atRule: TIMELINE_SUPPORT } : null;
 }
 
 /** Compiles named timeline producer and scope utilities. */
@@ -253,7 +253,7 @@ function compileTimelineProducer(utility: string): UtilityDeclaration | null {
   if (name) {
     return {
       property: `${name[1]}-timeline-name`,
-      value: name[2] ?? '',
+      value: name[2]!,
       atRule: name[1] === 'scroll' ? SCROLL_TIMELINE_SUPPORT : VIEW_TIMELINE_SUPPORT,
     };
   }
@@ -261,7 +261,7 @@ function compileTimelineProducer(utility: string): UtilityDeclaration | null {
   if (axis) {
     return {
       property: `${axis[1]}-timeline-axis`,
-      value: axis[2] ?? '',
+      value: axis[2]!,
       atRule: axis[1] === 'scroll' ? SCROLL_TIMELINE_SUPPORT : VIEW_TIMELINE_SUPPORT,
     };
   }
@@ -269,7 +269,7 @@ function compileTimelineProducer(utility: string): UtilityDeclaration | null {
   if (inset) {
     return {
       property: 'view-timeline-inset',
-      value: resolveArbitraryCssValue(inset[1] ?? ''),
+      value: resolveArbitraryCssValue(inset[1]!),
       atRule: VIEW_TIMELINE_SUPPORT,
     };
   }
@@ -277,7 +277,7 @@ function compileTimelineProducer(utility: string): UtilityDeclaration | null {
     return { property: 'timeline-scope', value: 'all', atRule: TIMELINE_SCOPE_SUPPORT };
   }
   const scope = /^timeline-scope-\[(--[a-z_][a-z0-9_-]*)\]$/i.exec(utility);
-  return scope ? { property: 'timeline-scope', value: scope[1] ?? '', atRule: TIMELINE_SCOPE_SUPPORT } : null;
+  return scope ? { property: 'timeline-scope', value: scope[1]!, atRule: TIMELINE_SCOPE_SUPPORT } : null;
 }
 
 /** Compiles animation attachment range utilities. */
@@ -287,7 +287,7 @@ function compileAnimationRange(utility: string): UtilityDeclaration | null {
     return null;
   }
   const property = match[1] ? `animation-range-${match[1]}` : 'animation-range';
-  const raw = match[2] ?? '';
+  const raw = match[2]!;
   const value = /^(normal|entry|exit|cover|contain)$/.test(raw) ? raw : arbitraryValue(raw);
   return value ? { property, value, atRule: RANGE_SUPPORT } : null;
 }
@@ -305,15 +305,15 @@ function compileViewTransitionUtility(utility: string): UtilityDeclaration | nul
     };
   }
   const name = /^view-transition-name-\[([^\]]+)\]$/.exec(utility);
-  if (name && isCustomIdentifier(name[1] ?? '', ['auto', 'match-element', 'none'])) {
-    return { property: 'view-transition-name', value: name[1] ?? '', atRule: VIEW_TRANSITION_NAME_SUPPORT };
+  if (name && isCustomIdentifier(name[1]!, ['auto', 'match-element', 'none'])) {
+    return { property: 'view-transition-name', value: name[1]!, atRule: VIEW_TRANSITION_NAME_SUPPORT };
   }
   if (utility === 'view-transition-class-none') {
     return { property: 'view-transition-class', value: 'none', atRule: VIEW_TRANSITION_CLASS_SUPPORT };
   }
   const classNames = /^view-transition-class-\[([^\]]+)\]$/.exec(utility);
   if (classNames) {
-    const value = resolveArbitraryCssValue(`[${classNames[1] ?? ''}]`);
+    const value = resolveArbitraryCssValue(`[${classNames[1]!}]`);
     if (value.split(/\s+/).every((part) => isCustomIdentifier(part, ['none']))) {
       return { property: 'view-transition-class', value, atRule: VIEW_TRANSITION_CLASS_SUPPORT };
     }

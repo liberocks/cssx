@@ -80,13 +80,13 @@ export function compileModernUtility(utility: string, theme: CssxTheme): Utility
 
   const contain = /^contain-\[(.+)\]$/.exec(utility);
   if (contain) {
-    return { property: 'contain', value: resolveArbitraryCssValue(`[${contain[1] ?? ''}]`) };
+    return { property: 'contain', value: resolveArbitraryCssValue(`[${contain[1]!}]`) };
   }
 
   const intrinsic = /^contain-intrinsic-(size|inline-size|block-size)-(.+)$/.exec(utility);
   if (intrinsic) {
-    const suffix = intrinsic[1] ?? '';
-    const raw = intrinsic[2] ?? '';
+    const suffix = intrinsic[1]!;
+    const raw = intrinsic[2]!;
     const property = `contain-intrinsic-${suffix}`;
     const value = resolveIntrinsicSize(raw, property, theme);
     return value ? { property, value } : null;
@@ -94,8 +94,8 @@ export function compileModernUtility(utility: string, theme: CssxTheme): Utility
 
   const svgNumeric = /^stroke-(miterlimit|dasharray|dashoffset)-(.+)$/.exec(utility);
   if (svgNumeric) {
-    const property = `stroke-${svgNumeric[1] ?? ''}`;
-    const raw = svgNumeric[2] ?? '';
+    const property = `stroke-${svgNumeric[1]!}`;
+    const raw = svgNumeric[2]!;
     const value = resolveNumericSvgValue(raw);
     return value ? { property, value } : null;
   }

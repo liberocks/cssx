@@ -52,31 +52,21 @@ export function applyVariants(
       );
     } else if (isGroupStateVariant(variant)) {
       const state = variant.slice('group-'.length);
-      renderedSelectors = renderedSelectors.map(
-        (selector) => `.group:${PSEUDO_CLASS_VARIANTS[state] ?? state} ${selector}`,
-      );
+      renderedSelectors = renderedSelectors.map((selector) => `.group:${PSEUDO_CLASS_VARIANTS[state]!} ${selector}`);
     } else if (isPeerStateVariant(variant)) {
       const state = variant.slice('peer-'.length);
-      renderedSelectors = renderedSelectors.map(
-        (selector) => `.peer:${PSEUDO_CLASS_VARIANTS[state] ?? state} ~ ${selector}`,
-      );
+      renderedSelectors = renderedSelectors.map((selector) => `.peer:${PSEUDO_CLASS_VARIANTS[state]!} ~ ${selector}`);
     } else if (variant.startsWith('has-[') && variant.endsWith(']')) {
       renderedSelectors = renderedSelectors.map((selector) => `${selector}:has(${variant.slice(5, -1)})`);
     } else if (variant.startsWith('has-') && isStateVariant(variant.slice(4))) {
       const state = variant.slice(4);
-      renderedSelectors = renderedSelectors.map(
-        (selector) => `${selector}:has(*:${PSEUDO_CLASS_VARIANTS[state] ?? state})`,
-      );
+      renderedSelectors = renderedSelectors.map((selector) => `${selector}:has(*:${PSEUDO_CLASS_VARIANTS[state]!})`);
     } else if (variant.startsWith('not-') && isStateVariant(variant.slice(4))) {
       const state = variant.slice(4);
-      renderedSelectors = renderedSelectors.map(
-        (selector) => `${selector}:not(*:${PSEUDO_CLASS_VARIANTS[state] ?? state})`,
-      );
+      renderedSelectors = renderedSelectors.map((selector) => `${selector}:not(*:${PSEUDO_CLASS_VARIANTS[state]!})`);
     } else if (variant.startsWith('in-') && isStateVariant(variant.slice(3))) {
       const state = variant.slice(3);
-      renderedSelectors = renderedSelectors.map(
-        (selector) => `:where(*:${PSEUDO_CLASS_VARIANTS[state] ?? state}) ${selector}`,
-      );
+      renderedSelectors = renderedSelectors.map((selector) => `:where(*:${PSEUDO_CLASS_VARIANTS[state]!}) ${selector}`);
     } else if (variant.startsWith('[') && variant.endsWith(']')) {
       const arbitraryVariant = variant.slice(1, -1);
       if (arbitraryVariant.startsWith('@supports') || arbitraryVariant.startsWith('@media')) {
@@ -100,7 +90,7 @@ export function applyVariants(
     } else if (variant === 'starting') {
       atRules.push('@starting-style');
     } else if (resolveViewTransitionVariant(variant)) {
-      const pseudoElement = resolveViewTransitionVariant(variant) ?? '';
+      const pseudoElement = resolveViewTransitionVariant(variant)!;
       renderedSelectors = renderedSelectors.map((selector) => `${selector}${pseudoElement}`);
       atRules.push('@supports (view-transition-name: none)');
     } else if (variant === 'print') {

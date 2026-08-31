@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTheme, resolveThemeToken, serializeThemeTokens } from '../src/theme';
+import { parseTheme, resolveThemeToken, serializeThemeKeyframe, serializeThemeTokens } from '../src/theme';
 
 describe('CSSX theme parsing', () => {
   it('merges restricted @theme declarations over the CSSX default tokens', () => {
@@ -173,5 +173,14 @@ describe('CSSX theme parsing', () => {
     );
     expect(() => parseTheme('@theme { --font-demo: "open; }')).toThrow('Unterminated CSSX @theme block');
     expect(() => parseTheme('@theme { --font-demo: calc(1px; }')).toThrow('Invalid CSSX @theme declaration');
+  });
+
+  it('serializes known keyframes and ignores empty declaration segments', () => {
+    const theme = parseTheme(
+      '@theme prefix(app) { ;; --color-brand: #123456;; @keyframes fade { to { color: var(--color-brand); } } }',
+    );
+
+    expect(serializeThemeKeyframe(theme, 'fade')).toContain('var(--app-color-brand)');
+    expect(serializeThemeKeyframe(theme, 'missing')).toBeUndefined();
   });
 });

@@ -56,21 +56,19 @@ export function compileGradientUtility(
       tl: 'to top left',
     };
     const interpolation = direction[2] ? `in ${direction[2]} ` : '';
-    const value = directions[direction[1] ?? ''];
-    return value
-      ? [
-          {
-            property: 'background-image',
-            value: `linear-gradient(${interpolation}${value}, var(--cssx-gradient-via-stops, var(--cssx-gradient-stops)))`,
-            semanticGroup: 'background-image',
-          },
-        ]
-      : null;
+    const value = directions[direction[1]!];
+    return [
+      {
+        property: 'background-image',
+        value: `linear-gradient(${interpolation}${value}, var(--cssx-gradient-via-stops, var(--cssx-gradient-stops)))`,
+        semanticGroup: 'background-image',
+      },
+    ];
   }
 
   const angle = /^bg-linear-(\d+|\[[^\]]+\])$/.exec(utility);
   if (angle) {
-    const rawAngle = angle[1] ?? '';
+    const rawAngle = angle[1]!;
     const value = rawAngle.startsWith('[') ? rawAngle.slice(1, -1) : `${negative ? '-' : ''}${rawAngle}deg`;
     return [
       {
@@ -85,8 +83,8 @@ export function compileGradientUtility(
   if (!stop) {
     return null;
   }
-  const role = stop[1] ?? '';
-  const raw = stop[2] ?? '';
+  const role = stop[1]!;
+  const raw = stop[2]!;
   const semanticGroup = `gradient-${role}`;
   const position = resolveGradientPosition(raw);
   if (position) {
@@ -149,8 +147,8 @@ export function compileColorUtility(utility: string, theme: CssxTheme): UtilityD
   if (!match) {
     return null;
   }
-  const family = match[1] ?? '';
-  const modifier = splitColorModifier(match[2] ?? '');
+  const family = match[1]!;
+  const modifier = splitColorModifier(match[2]!);
   const value = modifier.value;
   if (family === 'text' && /^(xs|sm|base|lg|xl|\d+xl)$/.test(value)) {
     return null;
@@ -186,7 +184,7 @@ export function compileColorUtility(utility: string, theme: CssxTheme): UtilityD
     stroke: 'stroke',
   };
   const property = properties[family];
-  return property ? { property, value: color } : null;
+  return { property: property!, value: color };
 }
 
 /**
@@ -199,7 +197,7 @@ export function compileColorUtility(utility: string, theme: CssxTheme): UtilityD
 export function compileTextDecorationUtility(utility: string, theme: CssxTheme): UtilityDeclaration | null {
   const offset = /^underline-offset-(auto|\d+|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (offset) {
-    const raw = offset[1] ?? '';
+    const raw = offset[1]!;
     const value =
       raw === 'auto'
         ? raw
@@ -215,7 +213,7 @@ export function compileTextDecorationUtility(utility: string, theme: CssxTheme):
   if (!decoration) {
     return null;
   }
-  const raw = decoration[1] ?? '';
+  const raw = decoration[1]!;
   if (/^(solid|double|dotted|dashed|wavy)$/.test(raw)) {
     return { property: 'text-decoration-style', value: raw };
   }

@@ -74,7 +74,7 @@ export function compileCoreLayoutUtility(
 
   const overflow = /^(overflow|overflow-x|overflow-y)-(auto|hidden|clip|visible|scroll)$/.exec(utility);
   if (overflow) {
-    return { property: overflow[1] ?? 'overflow', value: overflow[2] ?? '' };
+    return { property: overflow[1]!, value: overflow[2]! };
   }
   const overscroll = /^(overscroll|overscroll-x|overscroll-y)-(auto|contain|none)$/.exec(utility);
   if (overscroll) {
@@ -83,16 +83,16 @@ export function compileCoreLayoutUtility(
         overscroll[1] === 'overscroll'
           ? 'overscroll-behavior'
           : `overscroll-behavior-${overscroll[1] === 'overscroll-x' ? 'x' : 'y'}`,
-      value: overscroll[2] ?? '',
+      value: overscroll[2]!,
     };
   }
   const aspect = /^aspect-(\[[^\]]+\])$/.exec(utility);
   if (aspect) {
-    return { property: 'aspect-ratio', value: (aspect[1] ?? '').slice(1, -1) };
+    return { property: 'aspect-ratio', value: aspect[1]!.slice(1, -1) };
   }
   const size = /^size-(.+)$/.exec(utility);
   if (size) {
-    const value = resolveDimensionValue(size[1] ?? '', negative, theme, 'size');
+    const value = resolveDimensionValue(size[1]!, negative, theme, 'size');
     return value
       ? [
           { property: 'width', value },
@@ -102,7 +102,7 @@ export function compileCoreLayoutUtility(
   }
   const logicalInset = /^(start|end)-(.+)$/.exec(utility);
   if (logicalInset) {
-    const value = resolveDimensionValue(logicalInset[2] ?? '', negative, theme, logicalInset[1] ?? '');
+    const value = resolveDimensionValue(logicalInset[2]!, negative, theme, logicalInset[1]!);
     return value ? { property: logicalInset[1] === 'start' ? 'inset-inline-start' : 'inset-inline-end', value } : null;
   }
   const cursor =
@@ -110,15 +110,15 @@ export function compileCoreLayoutUtility(
       utility,
     );
   if (cursor) {
-    return { property: 'cursor', value: cursor[1] ?? '' };
+    return { property: 'cursor', value: cursor[1]! };
   }
   const willChange = /^will-change-(auto|scroll|contents|transform)$/.exec(utility);
   if (willChange) {
-    return { property: 'will-change', value: willChange[1] ?? '' };
+    return { property: 'will-change', value: willChange[1]! };
   }
   const gridFlow = /^grid-flow-(row|col|row-dense|col-dense)$/.exec(utility);
   if (gridFlow) {
-    return { property: 'grid-auto-flow', value: (gridFlow[1] ?? '').replace('-', ' ') };
+    return { property: 'grid-auto-flow', value: gridFlow[1]!.replace('-', ' ') };
   }
   const autoTracks = /^auto-(cols|rows)-(auto|min|max|fr)$/.exec(utility);
   if (autoTracks) {
@@ -130,13 +130,13 @@ export function compileCoreLayoutUtility(
     };
     return {
       property: autoTracks[1] === 'cols' ? 'grid-auto-columns' : 'grid-auto-rows',
-      value: values[autoTracks[2] ?? ''] ?? '',
+      value: values[autoTracks[2]!]!,
     };
   }
   const scroll = /^scroll-(mx|my|mt|mr|mb|ml|m|px|py|pt|pr|pb|pl|p)-(.+)$/.exec(utility);
   if (scroll) {
-    const prefix = scroll[1] ?? '';
-    const value = resolveSpacingValue(scroll[2] ?? '', negative, theme);
+    const prefix = scroll[1]!;
+    const value = resolveSpacingValue(scroll[2]!, negative, theme);
     if (!value) {
       return null;
     }
@@ -156,17 +156,17 @@ export function compileCoreLayoutUtility(
       pb: ['scroll-padding-bottom'],
       pl: ['scroll-padding-left'],
     };
-    return (properties[prefix] ?? []).map((property) => ({ property, value }));
+    return properties[prefix]!.map((property) => ({ property, value }));
   }
   const strokeWidth = /^stroke-(\d+|\[[^\]]+\])$/.exec(utility);
   if (strokeWidth) {
-    const raw = strokeWidth[1] ?? '';
+    const raw = strokeWidth[1]!;
     return { property: 'stroke-width', value: raw.startsWith('[') ? raw.slice(1, -1) : raw };
   }
   const scrollbarColor = /^scrollbar-(thumb|track)-(.+)$/.exec(utility);
   if (scrollbarColor) {
-    const part = scrollbarColor[1] ?? '';
-    const modifier = splitColorModifier(scrollbarColor[2] ?? '');
+    const part = scrollbarColor[1]!;
+    const modifier = splitColorModifier(scrollbarColor[2]!);
     const resolved = resolveColorValue(modifier.value, theme);
     if (!resolved) {
       return null;

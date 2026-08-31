@@ -99,7 +99,7 @@ export function resolveDimensionValue(
     '7xl': '80rem',
   };
   if ((dimension === 'max-w' || dimension === 'max-inline') && namedMaxWidths[raw]) {
-    return namedMaxWidths[raw] ?? null;
+    return namedMaxWidths[raw]!;
   }
   if (raw === 'auto' || raw === 'full' || raw === 'screen') {
     const values: Readonly<Record<string, string>> = {
@@ -113,7 +113,7 @@ export function resolveDimensionValue(
             ? '100vh'
             : '100vw',
     };
-    const value = values[raw] ?? null;
+    const value = values[raw]!;
     return value && negative ? `-${value}` : value;
   }
   const fraction = /^(\d+)\/(\d+)$/.exec(raw);
@@ -154,7 +154,7 @@ export function splitColorModifier(value: string): { readonly value: string; rea
   let quote = '';
   let escaped = false;
   for (let index = 0; index < value.length; index++) {
-    const character = value[index] ?? '';
+    const character = value[index]!;
     if (escaped) {
       escaped = false;
       continue;

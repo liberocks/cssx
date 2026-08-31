@@ -44,7 +44,7 @@ function parseSelector(selector: string): SelectorAst {
   };
 
   for (let index = 0; index < selector.length; index++) {
-    const character = selector[index] ?? '';
+    const character = selector[index];
     if (character === '\\') {
       text += `${character}${selector[index + 1] ?? ''}`;
       index++;
@@ -96,7 +96,7 @@ function parseSelector(selector: string): SelectorAst {
 function readAttributeEnd(selector: string, start: number): number {
   let depth = 1;
   for (let index = start + 1; index < selector.length; index++) {
-    const character = selector[index] ?? '';
+    const character = selector[index];
     if (character === '\\') {
       index++;
       continue;

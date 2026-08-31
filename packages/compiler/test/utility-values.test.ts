@@ -58,5 +58,24 @@ describe('utility value helpers', () => {
     expect(resolveScaleValue('125', false)).toBe('1.25');
     expect(resolveScaleValue('[.8]', true)).toBe('-.8');
     expect(resolveScaleValue('bad', false)).toBeNull();
+    expect(resolveAngleValue('[.25turn]', false)).toBe('.25turn');
+    expect(resolveScaleValue('[.8]', false)).toBe('.8');
+    expect(resolveScaleValue('50', true)).toBe('-0.5');
+  });
+
+  it('keeps non-composable declaration sequences independent', () => {
+    const declarations: UtilityDeclaration[] = [
+      { property: 'color', value: 'red', semanticGroup: 'color' },
+      { property: 'background-color', value: 'blue', semanticGroup: 'background' },
+      { property: '--cssx-translate-x', value: '1rem' },
+      { property: 'color', value: 'green' },
+    ];
+
+    expect(atomizeDeclarations(declarations)).toEqual([
+      [declarations[0]],
+      [declarations[1]],
+      [declarations[2]],
+      [declarations[3]],
+    ]);
   });
 });

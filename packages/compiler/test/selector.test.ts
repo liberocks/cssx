@@ -21,4 +21,10 @@ describe('selector AST rewriting', () => {
       '.x-root[data-label="a\\" &"][data-state] "\\"&"',
     );
   });
+
+  it('handles escaped and nested attribute delimiters', () => {
+    expect(replaceNestingSelectors('&[data-label=\\]value]', '.x-root')).toBe('.x-root[data-label=\\]value]');
+    expect(replaceNestingSelectors('&[data-state[open]]', '.x-root')).toBe('.x-root[data-state[open]]');
+    expect(replaceNestingSelectors('\\', '.x-root')).toBeNull();
+  });
 });

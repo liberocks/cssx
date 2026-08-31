@@ -86,7 +86,7 @@ function readThemeModifier(
   }
   const prefix = /^prefix\(([a-z_][a-z0-9_-]*)\)/i.exec(source.slice(start));
   if (prefix) {
-    return { mode: 'reference', prefix: prefix[1] ?? '', end: start + prefix[0].length };
+    return { mode: 'reference', prefix: prefix[1]!, end: start + prefix[0].length };
   }
   return null;
 }
@@ -106,7 +106,7 @@ function extractKeyframes(block: string, keyframes: Record<string, string>): str
       index += '@keyframes'.length;
       index = skipWhitespaceAndComments(block, index);
       const nameStart = index;
-      while (/[a-z0-9_-]/i.test(block[index] ?? '')) {
+      while (/[a-z0-9_-]/i.test(block[index]!)) {
         index++;
       }
       const name = block.slice(nameStart, index);
@@ -123,7 +123,7 @@ function extractKeyframes(block: string, keyframes: Record<string, string>): str
       index = frameBlock.end;
       continue;
     }
-    declarations += block[index] ?? '';
+    declarations += block[index]!;
     index++;
   }
   return declarations;
@@ -214,7 +214,7 @@ export function serializeThemeTokens(theme: CssxTheme, css: string): string {
   }
   return `:root{${names
     .sort()
-    .map((name) => `${themeTokenName(theme, name)}:${rewriteThemeReferences(theme, theme.tokens[name] ?? '')}`)
+    .map((name) => `${themeTokenName(theme, name)}:${rewriteThemeReferences(theme, theme.tokens[name]!)}`)
     .join(';')}}`;
 }
 
@@ -227,7 +227,7 @@ export function serializeThemeTokens(theme: CssxTheme, css: string): string {
  */
 export function serializeThemeKeyframe(theme: CssxTheme, name: string): string | undefined {
   const keyframe = theme.keyframes[name];
-  return keyframe ? rewriteThemeReferences(theme, keyframe) : undefined;
+  return keyframe === undefined ? undefined : rewriteThemeReferences(theme, keyframe);
 }
 
 /**
@@ -242,7 +242,7 @@ function referencedThemeTokens(theme: CssxTheme, css: string): string[] {
   const names = new Set<string>();
   const expression = new RegExp(`var\\((${prefix.replace('-', '\\-')}[a-z0-9_-]+)`, 'gi');
   for (const match of css.matchAll(expression)) {
-    const variable = match[1] ?? '';
+    const variable = match[1]!;
     const name = theme.prefix ? `--${variable.slice(prefix.length)}` : variable;
     collectThemeTokenReferences(theme, name, names);
   }
@@ -262,8 +262,8 @@ function collectThemeTokenReferences(theme: CssxTheme, name: string, names: Set<
     return;
   }
   names.add(name);
-  for (const match of (theme.tokens[name] ?? '').matchAll(/var\((--[a-z0-9_-]+)/gi)) {
-    collectThemeTokenReferences(theme, match[1] ?? '', names);
+  for (const match of theme.tokens[name]!.matchAll(/var\((--[a-z0-9_-]+)/gi)) {
+    collectThemeTokenReferences(theme, match[1]!, names);
   }
 }
 
@@ -416,7 +416,7 @@ function splitDeclarations(block: string): readonly string[] {
 function skipWhitespaceAndComments(source: string, start: number): number {
   let index = start;
   while (index < source.length) {
-    if (/\s/.test(source[index] ?? '')) {
+    if (/\s/.test(source[index]!)) {
       index++;
       continue;
     }
@@ -445,7 +445,7 @@ function readBalancedBlock(source: string, start: number): { readonly content: s
   let quote = '';
   let escaped = false;
   for (let index = start; index < source.length; index++) {
-    const character = source[index] ?? '';
+    const character = source[index]!;
     if (escaped) {
       escaped = false;
       continue;
@@ -472,9 +472,6 @@ function readBalancedBlock(source: string, start: number): { readonly content: s
     }
     if (depth === 0) {
       return { content: source.slice(start + 1, index), end: index + 1 };
-    }
-    if (depth < 0) {
-      break;
     }
   }
   throw new Error('Unterminated CSSX @theme block.');
