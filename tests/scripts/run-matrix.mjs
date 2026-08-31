@@ -26,6 +26,8 @@ run([
   ...(update ? ['--update-snapshots'] : []),
 ]);
 
+run(['exec', 'playwright', 'test', 'motion', '--config', 'playwright.config.ts']);
+
 for (const framework of frameworks) {
   for (const mode of ['development', 'production']) {
     const relativeSpec = framework;
