@@ -61,5 +61,10 @@ jobs:
           for example in examples/*; do
             pnpm --dir "$example" install --no-frozen-lockfile
           done
+      - run: |
+          pnpm --dir packages/compiler build
+          pnpm --dir packages/babel-plugin build
+          pnpm --dir packages/cssx build
+          pnpm --dir packages/unplugin build
       - run: pnpm --dir tests exec playwright install chromium
       - run: pnpm test:visual
