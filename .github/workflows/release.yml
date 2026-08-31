@@ -37,6 +37,7 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir examples/astro install --frozen-lockfile
       - run: pnpm test:release
       - run: pnpm benchmark
 
@@ -52,6 +53,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: |
+          for example in examples/*; do
+            pnpm --dir "$example" install --frozen-lockfile
+          done
       - run: pnpm --dir tests exec playwright install chromium
       - run: pnpm test:visual
 
