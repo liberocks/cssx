@@ -127,7 +127,7 @@ export function compileStyleRecords(
   input: Readonly<Record<string, string>>,
   options: StyleCompilerOptions = {},
 ): CompiledStyleRecordMap {
-  return compileStyleRecordMaps({ $: input }, options).styleMaps.$ ?? emptyCompiledStyleRecordMap();
+  return compileStyleRecordMaps({ $: input }, options).styleMaps.$!;
 }
 
 /**
@@ -164,12 +164,9 @@ export function compileStyleRecordMaps(
   }
   const compiledCandidates = compileCandidates(allCandidates, theme);
   const allocator = options.classNameAllocator ?? createClassNameAllocator(options.className);
-  const allocatedClasses = allocateClassNames(allCandidates, theme, compiledCandidates, allocator);
-  const classNames = allocatedClasses.classNames;
-  const classes: Record<string, string> = Object.create(null) as Record<string, string>;
-  for (const [candidate, names] of Object.entries(classNames)) {
-    classes[candidate] = names.join(' ');
-  }
+  // Keep atoms symbolic while planning so emitted composites get compact serial
+  // names ahead of atomic classes that may be pruned from the final stylesheet.
+  const atomIdentities = createAtomIdentities(allCandidates, theme, compiledCandidates, allocator);
   const styleMaps: Record<string, CompiledStyleRecordMap> = Object.create(null) as Record<
     string,
     CompiledStyleRecordMap
@@ -194,21 +191,12 @@ export function compileStyleRecordMaps(
     for (const [name, styleCandidates] of Object.entries(candidates)) {
       const records: CompiledUtility[] = [];
       for (const candidate of styleCandidates) {
-        const compiledCandidate = compiledCandidates.get(candidate);
-        if (!compiledCandidate) {
-          throw new Error(`CSSX cannot classify utility "${candidate}" for composition.`);
-        }
+        const compiledCandidate = compiledCandidates.get(candidate)!;
         const { classification, atoms } = compiledCandidate;
-        const names = classNames[candidate];
-        if (!names || names.length !== atoms.length) {
-          throw new Error(`CSSX could not assign generated classes to utility "${candidate}".`);
-        }
+        const names = atomIdentities.symbols[candidate]!;
         for (let index = 0; index < atoms.length; index++) {
-          const atom = atoms[index];
-          const className = names[index];
-          if (!atom || !className) {
-            continue;
-          }
+          const atom = atoms[index]!;
+          const className = names[index]!;
           const semantics = atomSemantics(atom, classification);
           if (semantics.conflicts.length > 1) {
             records.push([null, classification.scope, semantics.group, ...semantics.conflicts]);
@@ -228,21 +216,43 @@ export function compileStyleRecordMaps(
     options.reusabilityBudget,
     allocator,
   );
+  const allocatedAtoms = allocator.allocate([...atomIdentities.allocationIdentities.values()]);
+  const classNames: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
+  const classes: Record<string, string> = Object.create(null) as Record<string, string>;
+  for (const [candidate, identities] of Object.entries(atomIdentities.symbols)) {
+    const names = identities.map((identity) => allocatedAtoms.get(atomIdentities.allocationIdentities.get(identity)!)!);
+    classNames[candidate] = names;
+    classes[candidate] = names.join(' ');
+  }
 
   for (const [mapName, candidates] of Object.entries(candidatesByMap)) {
     const styles: Record<string, CompiledStyle> = Object.create(null) as Record<string, CompiledStyle>;
     const classNamesByStyle: Record<string, string> = Object.create(null) as Record<string, string>;
-    const recordsByStyle = recordsByMap[mapName] ?? {};
-    const compositionAtomsByStyle = compositionAtomsByMap[mapName] ?? {};
+    const recordsByStyle = recordsByMap[mapName]!;
+    const compositionAtomsByStyle = compositionAtomsByMap[mapName]!;
     for (const name of Object.keys(candidates)) {
-      const records = recordsByStyle[name] ?? [];
-      const atomicClasses = compositionAtomsByStyle[name] ?? [];
-      const identity = compositeIdentity(atomicClasses);
-      const className = identity ? (plannedCompositions.classNames.get(identity) ?? '') : '';
+      const atomicIdentities = compositionAtomsByStyle[name]!;
+      const identity = compositeIdentity(atomicIdentities);
+      const plannedClassName = plannedCompositions.classNames.get(identity) ?? '';
+      const className = plannedClassName
+        .split(' ')
+        .map((value) => allocatedAtoms.get(atomIdentities.allocationIdentities.get(value)!) ?? value)
+        .join(' ');
+      const records = recordsByStyle[name]!.map((record) => {
+        const [atomicIdentity, ...rest] = record;
+        return [
+          atomicIdentity === null
+            ? null
+            : allocatedAtoms.get(atomIdentities.allocationIdentities.get(atomicIdentity)!)!,
+          ...rest,
+        ] as CompiledUtility;
+      });
       styles[name] = { $$css: 2, c: className, _: records };
       classNamesByStyle[name] = className;
       for (const fragment of plannedCompositions.fragments.get(identity) ?? []) {
-        composites[fragment.className] = fragment.atomicClasses;
+        composites[fragment.className] = fragment.atomicClasses.map((atomicIdentity) =>
+          allocatedAtoms.get(atomIdentities.allocationIdentities.get(atomicIdentity)!)!,
+        );
       }
     }
     styleMaps[mapName] = { styles, classes, candidates, classNames: classNamesByStyle, composites };
@@ -318,13 +328,13 @@ function planReusability(
   if (normalizedBudget === 100) {
     return {
       classNames: new Map(
-        identities.map((identity, index) => [identity, canonicalCompositions[index]?.join(' ') ?? ''] as const),
+        identities.map((identity, index) => [identity, canonicalCompositions[index]!.join(' ')] as const),
       ),
       fragments: new Map(),
     };
   }
 
-  const groups = reusableGroups(canonicalCompositions);
+  const groups = factorReusableGroups(reusableGroups(canonicalCompositions));
   const selectedGroups = selectReusableGroups(
     groups,
     canonicalCompositions.reduce((total, atomicClasses) => total + atomicClasses.length, 0),
@@ -335,7 +345,7 @@ function planReusability(
     for (const compositionIndex of group.compositionIndexes) {
       const selectedAtoms = atomsByComposition[compositionIndex];
       for (const atomicClass of group.atomicClasses) {
-        selectedAtoms?.add(atomicClass);
+        selectedAtoms!.add(atomicClass);
       }
     }
   }
@@ -351,15 +361,15 @@ function planReusability(
 
   for (const group of selectedGroups) {
     const identity = compositeIdentity(group.atomicClasses);
-    const className = fragmentNames.get(compositeNameIdentity(identity)) ?? '';
+    const className = fragmentNames.get(compositeNameIdentity(identity))!;
     const fragment = { className, atomicClasses: group.atomicClasses };
     for (const compositionIndex of group.compositionIndexes) {
-      fragmentsForIndex[compositionIndex]?.push(fragment);
+      fragmentsForIndex[compositionIndex]!.push(fragment);
     }
   }
   for (let index = 0; index < canonicalCompositions.length; index++) {
-    const residualAtoms = (canonicalCompositions[index] ?? []).filter(
-      (atomicClass) => !atomsByComposition[index]?.has(atomicClass),
+    const residualAtoms = canonicalCompositions[index]!.filter(
+      (atomicClass) => !atomsByComposition[index]!.has(atomicClass),
     );
     const residualIdentity = compositeIdentity(residualAtoms);
     if (residualIdentity) {
@@ -369,18 +379,16 @@ function planReusability(
   const residualNames = allocator.allocate([...residualIdentities]);
 
   for (let index = 0; index < identities.length; index++) {
-    const identity = identities[index] ?? '';
+    const identity = identities[index]!;
     if (!identity || classNames.has(identity)) {
       continue;
     }
-    const fragments = fragmentsForIndex[index] ?? [];
-    const residualAtoms = (canonicalCompositions[index] ?? []).filter(
-      (atomicClass) => !atomsByComposition[index]?.has(atomicClass),
+    const fragments = fragmentsForIndex[index]!;
+    const residualAtoms = canonicalCompositions[index]!.filter(
+      (atomicClass) => !atomsByComposition[index]!.has(atomicClass),
     );
     const residualIdentity = compositeIdentity(residualAtoms);
-    const residualClassName = residualIdentity
-      ? (residualNames.get(compositeNameIdentity(residualIdentity)) ?? '')
-      : '';
+    const residualClassName = residualIdentity ? residualNames.get(compositeNameIdentity(residualIdentity))! : '';
     const className = [...fragments.map((fragment) => fragment.className), residualClassName].filter(Boolean).join(' ');
     classNames.set(identity, className);
     fragmentsByComposition.set(identity, [
@@ -400,13 +408,13 @@ function createCompleteCompositionPlan(
   const classNames = new Map<string, string>();
   const fragments = new Map<string, readonly ReusableFragment[]>();
   for (let index = 0; index < identities.length; index++) {
-    const identity = identities[index] ?? '';
+    const identity = identities[index]!;
     if (!identity || classNames.has(identity)) {
       continue;
     }
-    const className = names.get(compositeNameIdentity(identity)) ?? '';
+    const className = names.get(compositeNameIdentity(identity))!;
     classNames.set(identity, className);
-    fragments.set(identity, [{ className, atomicClasses: compositions[index] ?? [] }]);
+    fragments.set(identity, [{ className, atomicClasses: compositions[index]! }]);
   }
   return { classNames, fragments };
 }
@@ -426,7 +434,7 @@ function normalizeReusabilityBudget(budget: ReusabilityBudget | undefined): numb
 function reusableGroups(compositions: readonly (readonly string[])[]): readonly ReusableGroup[] {
   const usageByAtom = new Map<string, number[]>();
   for (let compositionIndex = 0; compositionIndex < compositions.length; compositionIndex++) {
-    for (const atomicClass of compositions[compositionIndex] ?? []) {
+    for (const atomicClass of compositions[compositionIndex]!) {
       const indexes = usageByAtom.get(atomicClass) ?? [];
       indexes.push(compositionIndex);
       usageByAtom.set(atomicClass, indexes);
@@ -443,20 +451,124 @@ function reusableGroups(compositions: readonly (readonly string[])[]): readonly 
     atomsByUsage.set(key, group);
   }
   return [...atomsByUsage.values()]
-    .map(({ atomicClasses, compositionIndexes }) => {
-      const coverage = atomicClasses.length * compositionIndexes.length;
-      // A reusable group removes one alias from every matching atom rule while
-      // adding one token to each matching static class string.
-      const score = (compositionIndexes.length - 1) * atomicClasses.length - compositionIndexes.length;
-      return { atomicClasses, compositionIndexes, coverage, score };
-    })
-    .filter((group) => group.score > 0)
-    .sort(
-      (left, right) =>
-        right.score - left.score ||
-        right.coverage - left.coverage ||
-        compositeIdentity(left.atomicClasses).localeCompare(compositeIdentity(right.atomicClasses)),
+    .map(({ atomicClasses, compositionIndexes }) => reusableGroup(atomicClasses, compositionIndexes))
+    .sort(compareReusableGroups);
+}
+
+/**
+ * Combines a repeated bundle with two low-value groups that partition its use.
+ * This preserves exact composition semantics while avoiding one alias per atom
+ * for correlated dimensions.
+ */
+function factorReusableGroups(groups: readonly ReusableGroup[]): readonly ReusableGroup[] {
+  const omitted = new Set<ReusableGroup>();
+  const additions: ReusableGroup[] = [];
+  for (const parent of groups) {
+    if (parent.atomicClasses.length < 2 || parent.compositionIndexes.length < 4 || omitted.has(parent)) {
+      continue;
+    }
+    const children = groups.filter(
+      (child) =>
+        child !== parent &&
+        child.score <= 0 &&
+        child.compositionIndexes.length >= 2 &&
+        child.compositionIndexes.length < parent.compositionIndexes.length &&
+        indexesAreSubset(child.compositionIndexes, parent.compositionIndexes),
     );
+    for (let leftIndex = 0; leftIndex < children.length; leftIndex++) {
+      const left = children[leftIndex]!;
+      for (let rightIndex = leftIndex + 1; rightIndex < children.length; rightIndex++) {
+        const right = children[rightIndex]!;
+        if (
+          !indexesAreDisjoint(left.compositionIndexes, right.compositionIndexes) ||
+          !indexesCover(parent.compositionIndexes, left.compositionIndexes, right.compositionIndexes)
+        ) {
+          continue;
+        }
+        omitted.add(parent);
+        omitted.add(left);
+        omitted.add(right);
+        additions.push(
+          reusableGroup([...parent.atomicClasses, ...left.atomicClasses].sort(), left.compositionIndexes),
+          reusableGroup([...parent.atomicClasses, ...right.atomicClasses].sort(), right.compositionIndexes),
+        );
+        break;
+      }
+      if (omitted.has(parent)) {
+        break;
+      }
+    }
+  }
+  return [...groups.filter((group) => !omitted.has(group)), ...additions].sort(compareReusableGroups);
+}
+
+/** Creates derived statistics for one exact usage group. */
+function reusableGroup(atomicClasses: readonly string[], compositionIndexes: readonly number[]): ReusableGroup {
+  const coverage = atomicClasses.length * compositionIndexes.length;
+  // A reusable group removes one alias from every matching atom rule while
+  // adding one token to every matching static class string.
+  const score = (compositionIndexes.length - 1) * atomicClasses.length - compositionIndexes.length;
+  return { atomicClasses, compositionIndexes, coverage, score };
+}
+
+/** Orders reusable fragments deterministically by the existing score policy. */
+function compareReusableGroups(left: ReusableGroup, right: ReusableGroup): number {
+  return (
+    right.score - left.score ||
+    right.coverage - left.coverage ||
+    compositeIdentity(left.atomicClasses).localeCompare(compositeIdentity(right.atomicClasses))
+  );
+}
+
+/** Returns whether every sorted child index belongs to the sorted parent list. */
+function indexesAreSubset(child: readonly number[], parent: readonly number[]): boolean {
+  let parentIndex = 0;
+  for (const index of child) {
+    while (parent[parentIndex] !== undefined && parent[parentIndex]! < index) {
+      parentIndex++;
+    }
+    if (parent[parentIndex] !== index) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Returns whether two sorted index lists have no shared entry. */
+function indexesAreDisjoint(left: readonly number[], right: readonly number[]): boolean {
+  let leftIndex = 0;
+  let rightIndex = 0;
+  while (leftIndex < left.length && rightIndex < right.length) {
+    const leftValue = left[leftIndex]!;
+    const rightValue = right[rightIndex]!;
+    if (leftValue === rightValue) {
+      return false;
+    }
+    if (leftValue < rightValue) {
+      leftIndex++;
+    } else {
+      rightIndex++;
+    }
+  }
+  return true;
+}
+
+/** Returns whether two sorted, disjoint child lists exactly cover the parent. */
+function indexesCover(parent: readonly number[], left: readonly number[], right: readonly number[]): boolean {
+  let leftIndex = 0;
+  let rightIndex = 0;
+  for (const index of parent) {
+    const next = Math.min(left[leftIndex] ?? Infinity, right[rightIndex] ?? Infinity);
+    if (next !== index) {
+      return false;
+    }
+    if (left[leftIndex] === index) {
+      leftIndex++;
+    } else {
+      rightIndex++;
+    }
+  }
+  return leftIndex === left.length && rightIndex === right.length;
 }
 
 /** Selects positive-value groups without exceeding the configured atom coverage. */
@@ -465,13 +577,16 @@ function selectReusableGroups(
   totalAtomOccurrences: number,
   budget: number | 'auto',
 ): readonly ReusableGroup[] {
+  const eligible = groups.filter(
+    (group) => group.score > 0 || (group.atomicClasses.length === 1 && group.compositionIndexes.length >= 3),
+  );
   if (budget === 'auto') {
-    return groups;
+    return eligible;
   }
   const limit = Math.floor((totalAtomOccurrences * budget) / 100);
   const selected: ReusableGroup[] = [];
   let coverage = 0;
-  for (const group of groups) {
+  for (const group of eligible) {
     if (coverage + group.coverage > limit) {
       continue;
     }
@@ -482,59 +597,66 @@ function selectReusableGroups(
 }
 
 /**
- * Creates the empty result used when a style map has no named entries.
- *
- * @returns An empty compiled style map.
- */
-function emptyCompiledStyleRecordMap(): CompiledStyleRecordMap {
-  return { styles: {}, classes: {}, candidates: {}, classNames: {}, composites: {} };
-}
-
-/**
- * Allocates deterministic classes from emitted declarations, not source spelling.
+ * Creates deterministic symbolic atom identities from emitted declarations.
  *
  * This keeps identical CSS stable across input order and gives atomized utilities
- * separate names. The collision suffix is only used when different identities have
- * the same primary hash, so a real collision cannot silently merge declarations.
+ * separate identities, allowing emitted composites to be allocated first.
  *
  * @param candidates Utility candidates to name.
  * @param theme Parsed theme that affects declarations.
- * @returns Generated classes for every distinct candidate.
+ * @returns Atom identities for every distinct candidate.
  */
-function allocateClassNames(
+function createAtomIdentities(
   candidates: readonly string[],
   theme: ReturnType<typeof parseTheme>,
   compiledCandidates: ReadonlyMap<string, CompiledCandidate>,
   allocator: ClassNameAllocator,
-): { readonly classNames: Readonly<Record<string, readonly string[]>> } {
+): {
+  readonly symbols: Readonly<Record<string, readonly string[]>>;
+  readonly allocationIdentities: ReadonlyMap<string, string>;
+} {
   const themeSignature = serializeThemeSignature(theme);
-  const classNames: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
-  const atomIdentities = new Map<string, readonly string[]>();
+  const symbols: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
+  const symbolsByIdentity = atomSymbolsFor(allocator);
+  const allocationIdentities = new Map<string, string>();
   for (const candidate of [...new Set(candidates)].sort()) {
-    const compiledCandidate = compiledCandidates.get(candidate);
-    if (!compiledCandidate) {
-      throw new Error(`CSSX cannot classify utility "${candidate}" for composition.`);
-    }
+    const compiledCandidate = compiledCandidates.get(candidate)!;
     const { classification, atoms } = compiledCandidate;
-    atomIdentities.set(
-      candidate,
-      atoms.map((atom) => {
-        const payload = atom
-          .map(
-            (declaration) =>
-              `${declaration.property}:${declaration.value}:${declaration.selectorSuffix ?? ''}${declaration.atRule ? `:${declaration.atRule}` : ''}`,
-          )
-          .join(';');
-        const identity = `${COMPILER_ABI}\u0000${themeSignature}\u0000${classification.scope}\u0000${payload}`;
-        return identity;
-      }),
-    );
+    symbols[candidate] = atoms.map((atom) => {
+      const payload = atom
+        .map(
+          (declaration) =>
+            `${declaration.property}:${declaration.value}:${declaration.selectorSuffix ?? ''}${declaration.atRule ? `:${declaration.atRule}` : ''}`,
+        )
+        .join(';');
+      const identity = `${COMPILER_ABI}\u0000${themeSignature}\u0000${classification.scope}\u0000${payload}`;
+      const existing = symbolsByIdentity.get(identity);
+      if (existing) {
+        allocationIdentities.set(existing, identity);
+        return existing;
+      }
+      const symbol = `a${symbolsByIdentity.size.toString(36)}`;
+      symbolsByIdentity.set(identity, symbol);
+      allocationIdentities.set(symbol, identity);
+      return symbol;
+    });
   }
-  const allocated = allocator.allocate([...atomIdentities.values()].flat());
-  for (const [candidate, identities] of atomIdentities) {
-    classNames[candidate] = identities.map((identity) => allocated.get(identity) ?? '');
+  return { symbols, allocationIdentities };
+}
+
+/** Keeps symbolic composition atoms stable across compiler calls sharing an allocator. */
+const atomSymbolsByAllocator = new WeakMap<object, Map<string, string>>();
+
+/** Returns the collision-free symbolic atom namespace associated with one allocator. */
+function atomSymbolsFor(allocator: ClassNameAllocator): Map<string, string> {
+  const key = allocator as object;
+  const existing = atomSymbolsByAllocator.get(key);
+  if (existing) {
+    return existing;
   }
-  return { classNames };
+  const symbols = new Map<string, string>();
+  atomSymbolsByAllocator.set(key, symbols);
+  return symbols;
 }
 
 /** Fully validated options used while allocating generated classes. */
@@ -620,7 +742,7 @@ class GeneratedClassNameAllocator implements ClassNameAllocator {
       this.allocated.add(className);
       this.classNames.set(identity, className);
     }
-    return new Map(identities.map((identity) => [identity, this.classNames.get(identity) ?? ''] as const));
+    return new Map(identities.map((identity) => [identity, this.classNames.get(identity)!] as const));
   }
 
   reserve(classNames: readonly string[]): void {
@@ -644,7 +766,7 @@ function serialClassFragment(value: bigint): string {
   let fragment = '';
   const base = BigInt(SERIAL_CLASS_ALPHABET.length);
   do {
-    fragment = `${SERIAL_CLASS_ALPHABET[Number(remaining % base)] ?? ''}${fragment}`;
+    fragment = `${SERIAL_CLASS_ALPHABET[Number(remaining % base)]!}${fragment}`;
     remaining /= base;
   } while (remaining > 0n);
   return fragment;
@@ -688,17 +810,13 @@ function atomSemantics(
   }[],
   fallback: UtilityConflictRecord,
 ): UtilityConflictRecord {
-  const semanticGroup = atom[0]?.semanticGroup;
+  const semanticGroup = atom[0]!.semanticGroup;
   if (semanticGroup) {
-    return { scope: fallback.scope, group: semanticGroup, conflicts: atom[0]?.semanticConflicts ?? [semanticGroup] };
+    return { scope: fallback.scope, group: semanticGroup, conflicts: atom[0]!.semanticConflicts ?? [semanticGroup] };
   }
-  const property = atom[0]?.property;
-  const slot = property ? (ATOM_SEMANTIC_SLOTS[property] ?? SHORTHAND_SEMANTIC_SLOTS[property]) : undefined;
-  return property
-    ? slot
-      ? { scope: fallback.scope, ...slot }
-      : { scope: fallback.scope, group: property, conflicts: [property] }
-    : fallback;
+  const property = atom[0]!.property;
+  const slot = ATOM_SEMANTIC_SLOTS[property] ?? SHORTHAND_SEMANTIC_SLOTS[property];
+  return slot ? { scope: fallback.scope, ...slot } : { scope: fallback.scope, group: property, conflicts: [property] };
 }
 
 /** Semantic data reused by every atom with a known emitted property. */
@@ -752,7 +870,7 @@ function serializeThemeSignature(theme: ReturnType<typeof parseTheme>): string {
     .join('|');
   const keyframes = Object.keys(theme.keyframes)
     .sort()
-    .map((name) => `${name}:${theme.keyframes[name] ?? ''}`)
+    .map((name) => `${name}:${theme.keyframes[name]!}`)
     .join('|');
   return `${outputSignature}${tokens}|${keyframes}`;
 }
@@ -832,7 +950,7 @@ function composePackedUtilities(
   classNameAllocator.reserve(atomicClasses);
   return {
     className: identity
-      ? (classNameAllocator.allocate([compositeNameIdentity(identity)]).get(compositeNameIdentity(identity)) ?? '')
+      ? classNameAllocator.allocate([compositeNameIdentity(identity)]).get(compositeNameIdentity(identity))!
       : '',
     atomicClasses,
   };

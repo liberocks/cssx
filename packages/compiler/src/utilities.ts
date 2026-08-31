@@ -173,7 +173,7 @@ export async function compileUtilities(
   }
 
   compiled.sort(
-    (left, right) => left.order.localeCompare(right.order) || left.className.localeCompare(right.className),
+    (left, right) => left.order.localeCompare(right.order) || left.candidate.localeCompare(right.candidate),
   );
   const uniqueCompiled = [...new Map(compiled.map((entry) => [entry.css, entry] as const)).values()];
   const resources = `${[...requiredProperties].sort().map(propertyRegistration).join('')}${[...requiredKeyframes]
@@ -235,17 +235,11 @@ function compileCandidate(
   includedClasses: ReadonlySet<string> | undefined,
 ): readonly CompiledUtility[] {
   const candidate = parseCandidate(candidateSource);
-  const semantics = classifyCandidate(candidateSource);
-  if (!semantics) {
-    throw new Error(`CSSX cannot compile utility "${candidateSource}".`);
-  }
+  const semantics = classifyCandidate(candidateSource)!;
   if (classNames.length === 1) {
     const declarations = atoms.flat();
-    const generatedClass = classNames[0] ?? '';
+    const generatedClass = classNames[0]!;
     const selectors = classSelectors(generatedClass, selectorAliases, includedClasses);
-    if (selectors.length === 0) {
-      return [];
-    }
     return [
       {
         candidate: candidateSource,
@@ -260,7 +254,7 @@ function compileCandidate(
   }
   return atoms
     .map((declarations, index) => {
-      const className = classNames[index] ?? '';
+      const className = classNames[index]!;
       const selectors = classSelectors(className, selectorAliases, includedClasses);
       if (selectors.length === 0) {
         return null;

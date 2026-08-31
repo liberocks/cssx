@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { classifyUtility, compileStyleRecords, mergeCompiledStyles } from '../src/index';
+import {
+  classifyUtility,
+  compileStyleRecords,
+  composeCompiledStyles,
+  createClassNameAllocator,
+  mergeCompiledStyles,
+} from '../src/index';
 
 describe('CSSX semantic conflict classifier', () => {
   it('preserves directional shorthand conflicts and canonical scopes', () => {
@@ -192,5 +198,87 @@ describe('CSSX semantic conflict classifier', () => {
     expect(mergeCompiledStyles([direction, cool, warm])).toBe(
       `${result.classes['bg-linear-to-r']} ${result.classes['via-cyan-500']} ${result.classes['from-red-500']} ${result.classes['to-transparent']}`,
     );
+  });
+
+  it('enforces compiler input and class-name limits before generating records', () => {
+    expect(() =>
+      compileStyleRecords(Object.fromEntries(Array.from({ length: 10_001 }, (_, index) => [`s${index}`, 'p-4']))),
+    ).toThrow('at most 10000 entries');
+
+    const source = `${'p-4 '.repeat(4_095)}p-4`;
+    expect(() =>
+      compileStyleRecords(Object.fromEntries(Array.from({ length: 13 }, (_, index) => [`s${index}`, source]))),
+    ).toThrow('at most 50000 utility candidates');
+  });
+
+  it('validates every class-name option and probes reserved random names', () => {
+    expect(() => createClassNameAllocator({ variant: 'other' as never })).toThrow('variant');
+    expect(() => createClassNameAllocator({ suffix: '.' })).toThrow('suffix');
+    expect(() => createClassNameAllocator({ variant: 'random', length: 0 })).toThrow('length');
+
+    const className = { variant: 'random' as const, prefix: 'x', suffix: '' };
+    const first = compileStyleRecords({ style: 'p-4' }, { className });
+    const allocator = createClassNameAllocator(className);
+    allocator.reserve([first.classes['p-4']!]);
+    const retried = compileStyleRecords({ style: 'p-4' }, { classNameAllocator: allocator });
+
+    expect(retried.classes['p-4']).not.toBe(first.classes['p-4']);
+  });
+
+  it('handles empty and malformed external compiled records safely', () => {
+    expect(composeCompiledStyles([])).toEqual({ className: '', atomicClasses: [] });
+    expect(mergeCompiledStyles([{ $$css: 2, c: '', _: [undefined, ['', '', 'group', undefined]] as never }])).toBe('');
+  });
+
+  it('plans tied reusable groups at constrained budgets and permits empty styles', () => {
+    const result = compileStyleRecords(
+      {
+        first: 'flex items-center justify-center',
+        second: 'flex items-center justify-center',
+        third: 'relative block overflow-hidden',
+        fourth: 'relative block overflow-hidden',
+        empty: '',
+      },
+      { reusabilityBudget: 1 },
+    );
+
+    expect(result.classNames.empty).toBe('');
+    expect(Object.values(result.composites)).toHaveLength(2);
+  });
+
+  it('keeps an empty style unaliased at a zero reusability budget', () => {
+    expect(compileStyleRecords({ empty: '' }, { reusabilityBudget: 0 }).classNames.empty).toBe('');
+  });
+
+  it('selects complete reusable groups and resolves tie-breaks deterministically', () => {
+    const complete = compileStyleRecords({
+      first: 'flex items-center justify-center',
+      second: 'flex items-center justify-center',
+    });
+    expect(complete.classNames.first).toBe(complete.classNames.second);
+
+    const constrained = compileStyleRecords(
+      {
+        first: 'p-4 bg-red-500',
+        second: 'p-4 bg-red-500',
+        third: 'p-4 bg-red-500',
+        fourth: 'm-4 text-white',
+        fifth: 'm-4 text-white',
+        sixth: 'm-4 text-white',
+      },
+      { reusabilityBudget: 50 },
+    );
+    expect(Object.values(constrained.composites)).toHaveLength(2);
+  });
+
+  it('includes non-inline themes and reset tokens in random class identities', () => {
+    const className = { variant: 'random' as const };
+    const reference = compileStyleRecords(
+      { style: 'p-4' },
+      { className, theme: '@theme reference { --spacing: 2px; }' },
+    );
+    const reset = compileStyleRecords({ style: 'p-4' }, { className, theme: '@theme { --unused: initial; }' });
+
+    expect(reference.classes['p-4']).not.toBe(reset.classes['p-4']);
   });
 });

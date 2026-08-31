@@ -93,6 +93,17 @@ describe('CSSX motion utilities', () => {
     expect(result.css).toContain('animation:var(--app-animate-reveal)');
   });
 
+  it('retains keyframes referenced through unprefixed animation tokens', async () => {
+    const result = await compileUtilities(
+      ['[animation:var(--animate-reveal)]'],
+      className,
+      '@theme { --animate-reveal: reveal 200ms both; @keyframes reveal { to { opacity: 1; } } }',
+    );
+
+    expect(result.css).toContain('animation:var(--animate-reveal)');
+    expect(result.css).toContain('@keyframes reveal{ to { opacity: 1; } }');
+  });
+
   it('compiles declarative stagger formulas without runtime coordination', async () => {
     const result = await compileUtilities(
       [
