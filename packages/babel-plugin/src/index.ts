@@ -1,6 +1,6 @@
 import type { NodePath, PluginObj, PluginPass } from '@babel/core';
 import * as babelTypes from '@babel/types';
-import type { ObjectExpression } from '@babel/types';
+import type { CallExpression, ObjectExpression } from '@babel/types';
 import type { CssxPluginOptions, FileState } from './plugin-types';
 import { markAllCandidates, markStyleKeyCandidates, recordCandidateOrigin } from './state-helpers';
 import {
@@ -47,6 +47,7 @@ export default function cssxBabelPlugin(
   const importSource = options.importSource ?? DEFAULT_IMPORT_SOURCE;
   let state: FileState;
   let fileName = '';
+  let foldedProps: Array<{ readonly path: NodePath<CallExpression>; readonly className: string }> = [];
 
   return {
     name: '@cssxio/babel-plugin',
@@ -67,8 +68,10 @@ export default function cssxBabelPlugin(
             liveFallbackClasses: new Set(),
             cssRanges: [],
           };
+          foldedProps = [];
         },
         exit(path, babelState) {
+          finalizeFoldedProps(path, t);
           path.scope.crawl();
           markReferencedStyleCandidates(path);
           removeDeadStyleMaps(path);
@@ -148,7 +151,7 @@ export default function cssxBabelPlugin(
       const anchor =
         parent.isVariableDeclarator() && types.isIdentifier(parent.node.id)
           ? `map:${parent.node.id.name}`
-          : `create:${path.node.loc?.start.line ?? 0}:${path.node.loc?.start.column ?? 0}`;
+          : `create:${path.node.loc!.start.line}:${path.node.loc!.start.column}`;
       result = withStableCompositeNames(result, fileName, anchor);
     }
     for (const [candidate, className] of Object.entries(result.classes)) {
@@ -207,14 +210,47 @@ export default function cssxBabelPlugin(
               .sort()
               .join('\u0000')}`,
           )
-        : (composition?.className ?? '');
+        : composition!.className;
     if (composition) {
       state.composites.set(className, composition.atomicClasses);
     }
     markEmittedClassNames(className);
-    path.replaceWith(
-      types.objectExpression([types.objectProperty(types.identifier('className'), types.stringLiteral(className))]),
-    );
+    foldedProps.push({ path, className });
+  }
+
+  /** Emits compact static props after all folded calls in the module are known. */
+  function finalizeFoldedProps(program: NodePath<import('@babel/types').Program>, types: typeof t): void {
+    if (foldedProps.length === 0) {
+      return;
+    }
+    const declarations: import('@babel/types').VariableDeclarator[] = [];
+    const useHelper = foldedProps.length >= 4;
+    const helper = useHelper ? program.scope.generateUidIdentifier('cssxProps') : undefined;
+    if (helper) {
+      declarations.push(
+        types.variableDeclarator(
+          helper,
+          types.arrowFunctionExpression(
+            [types.identifier('className')],
+            types.objectExpression([
+              types.objectProperty(types.identifier('className'), types.identifier('className')),
+            ]),
+          ),
+        ),
+      );
+    }
+    if (declarations.length > 0) {
+      program.unshiftContainer('body', types.variableDeclaration('const', declarations));
+    }
+    for (const { path, className } of foldedProps) {
+      path.replaceWith(
+        helper
+          ? types.callExpression(helper, [types.stringLiteral(className)])
+          : types.objectExpression([
+              types.objectProperty(types.identifier('className'), types.stringLiteral(className)),
+            ]),
+      );
+    }
   }
 
   /**
@@ -230,24 +266,15 @@ export default function cssxBabelPlugin(
       path.replaceWith(types.stringLiteral(compileSxString(staticSource, path.node.loc?.start)));
       return;
     }
-    const transformed = path.node.arguments.map((argument) => transformSxArgument(argument, types));
+    const transformed = path.node.arguments.map((argument) =>
+      transformSxArgument(argument as import('@babel/types').Expression | import('@babel/types').SpreadElement, types),
+    );
     if (transformed.some((argument) => argument === undefined)) {
       return;
     }
     const expressions = transformed.filter(
       (argument): argument is import('@babel/types').Expression => argument !== undefined,
     );
-    if (expressions.every((expression) => types.isStringLiteral(expression))) {
-      path.replaceWith(
-        types.stringLiteral(
-          expressions
-            .map((expression) => expression.value)
-            .filter(Boolean)
-            .join(' '),
-        ),
-      );
-      return;
-    }
     path.node.arguments = expressions;
   }
 
@@ -263,14 +290,10 @@ export default function cssxBabelPlugin(
    * @returns A transformed expression, or undefined when this input prevents static transformation.
    */
   function transformSxArgument(
-    node:
-      | import('@babel/types').Expression
-      | import('@babel/types').JSXNamespacedName
-      | import('@babel/types').SpreadElement
-      | import('@babel/types').ArgumentPlaceholder,
+    node: import('@babel/types').Expression | import('@babel/types').SpreadElement,
     types: typeof t,
   ): import('@babel/types').Expression | undefined {
-    if (types.isSpreadElement(node) || types.isJSXNamespacedName(node) || types.isArgumentPlaceholder(node)) {
+    if (types.isSpreadElement(node)) {
       return undefined;
     }
     if (types.isStringLiteral(node)) {
@@ -287,14 +310,6 @@ export default function cssxBabelPlugin(
         return undefined;
       }
       const values = elements.filter((element): element is import('@babel/types').Expression => element !== undefined);
-      if (values.every((element) => types.isStringLiteral(element))) {
-        return types.stringLiteral(
-          values
-            .map((element) => element.value)
-            .filter(Boolean)
-            .join(' '),
-        );
-      }
       return types.arrayExpression(values);
     }
     if (types.isLogicalExpression(node, { operator: '&&' })) {
@@ -338,7 +353,7 @@ export default function cssxBabelPlugin(
     }
     const className = options.stableClassNames
       ? stableCompositeName(fileName, location, 'sx')
-      : (result.classNames.inline ?? '');
+      : result.classNames.inline!;
     for (const [candidate, candidateClassName] of Object.entries(result.classes)) {
       state.classes.set(candidate, candidateClassName);
       state.liveCandidates.add(candidate);
@@ -347,13 +362,11 @@ export default function cssxBabelPlugin(
     for (const [compositeClassName, atomicClasses] of Object.entries(result.composites)) {
       state.composites.set(compositeClassName, atomicClasses);
     }
-    if (className) {
-      if (options.stableClassNames) {
-        state.composites.set(className, atomicClassesForStyle(result.styles.inline));
-      }
-      markEmittedClassNames(className);
+    if (options.stableClassNames) {
+      state.composites.set(className, atomicClassesForStyle(result.styles.inline!));
     }
-    return className;
+    markEmittedClassNames(className);
+    return className!;
   }
 
   /**
@@ -367,10 +380,7 @@ export default function cssxBabelPlugin(
   function markReferencedStyleCandidates(program: NodePath<import('@babel/types').Program>): void {
     for (const [styleName, candidatesByKey] of state.styleCandidates) {
       const binding = program.scope.getBinding(styleName);
-      if (!binding) {
-        continue;
-      }
-      for (const reference of binding.referencePaths) {
+      for (const reference of binding!.referencePaths) {
         const parent = reference.parentPath;
         if (!parent?.isMemberExpression() || parent.node.object !== reference.node) {
           markAllCandidates(state, candidatesByKey);
@@ -415,36 +425,20 @@ export default function cssxBabelPlugin(
         readonly index: number;
         readonly record: import('@babel/types').ArrayExpression;
       }[] = [];
-      const styles = binding.path.node.init;
-      if (!styles || !t.isObjectExpression(styles)) {
-        continue;
-      }
+      const styles = binding.path.node.init as import('@babel/types').ObjectExpression;
       for (const property of styles.properties) {
-        if (!t.isObjectProperty(property) || !t.isObjectExpression(property.value)) {
-          continue;
-        }
-        const records = property.value.properties.find(
-          (styleProperty) =>
-            t.isObjectProperty(styleProperty) &&
-            ((t.isIdentifier(styleProperty.key) && styleProperty.key.name === '_') ||
-              (t.isStringLiteral(styleProperty.key) && styleProperty.key.value === '_')),
-        );
-        if (!records || !t.isObjectProperty(records) || !t.isArrayExpression(records.value)) {
-          continue;
-        }
-        for (let index = 0; index < records.value.elements.length; index++) {
-          const record = records.value.elements[index];
-          if (!record || !t.isArrayExpression(record)) {
-            continue;
-          }
+        const style = property as import('@babel/types').ObjectProperty;
+        const records = (style.value as import('@babel/types').ObjectExpression).properties.find(
+          (styleProperty) => t.isObjectProperty(styleProperty) && t.isIdentifier(styleProperty.key, { name: '_' }),
+        ) as import('@babel/types').ObjectProperty;
+        const recordValues = records.value as import('@babel/types').ArrayExpression;
+        for (let index = 0; index < recordValues.elements.length; index++) {
+          const record = recordValues.elements[index] as import('@babel/types').ArrayExpression;
           const key = packedRecordKey(record);
-          if (key === null) {
-            continue;
-          }
           const entry = entries.get(key) ?? { record, uses: 0 };
           entry.uses++;
           entries.set(key, entry);
-          recordArrays.push({ records: records.value, index, record });
+          recordArrays.push({ records: recordValues, index, record });
         }
       }
       const interned = new Map<string, import('@babel/types').Identifier>();
@@ -461,7 +455,7 @@ export default function cssxBabelPlugin(
         continue;
       }
       for (const { records, index, record } of recordArrays) {
-        const identifier = interned.get(packedRecordKey(record) ?? '');
+        const identifier = interned.get(packedRecordKey(record));
         if (!identifier) {
           continue;
         }
@@ -474,18 +468,12 @@ export default function cssxBabelPlugin(
   }
 
   /** Returns a stable key for the compact runtime tuple representation. */
-  function packedRecordKey(record: import('@babel/types').ArrayExpression): string | null {
-    const values: Array<string | null> = [];
-    for (const value of record.elements) {
-      if (t.isStringLiteral(value)) {
-        values.push(value.value);
-      } else if (t.isNullLiteral(value)) {
-        values.push(null);
-      } else {
-        return null;
-      }
-    }
-    return JSON.stringify(values);
+  function packedRecordKey(record: import('@babel/types').ArrayExpression): string {
+    return JSON.stringify(
+      record.elements.map((value) =>
+        t.isNullLiteral(value) ? null : (value as import('@babel/types').StringLiteral).value,
+      ),
+    );
   }
 
   /**
@@ -510,9 +498,7 @@ export default function cssxBabelPlugin(
       if (!key || utilityString === null) {
         throw diagnosticError(property, 'Each cssx.create() value must be a static utility string.');
       }
-      if (typeof value.node.start === 'number' && typeof value.node.end === 'number') {
-        state.cssRanges.push({ start: value.node.start, end: value.node.end });
-      }
+      state.cssRanges.push({ start: value.node.start!, end: value.node.end! });
       result[key] = utilityString;
     }
     return result;
@@ -583,7 +569,7 @@ export default function cssxBabelPlugin(
 
   /** Marks every composite class from a local style map as reachable. */
   function markAllStyleClasses(styleName: string): void {
-    for (const className of Object.values(state.styleClasses.get(styleName) ?? {})) {
+    for (const className of Object.values(state.styleClasses.get(styleName)!)) {
       markEmittedClassNames(className);
     }
   }
@@ -610,7 +596,7 @@ export default function cssxBabelPlugin(
 
   /** Marks atomic fallback classes for every surviving style in one map. */
   function markAllFallbackClasses(styleName: string): void {
-    for (const key of Object.keys(state.styles.get(styleName) ?? {})) {
+    for (const key of Object.keys(state.styles.get(styleName)!)) {
       markFallbackClasses(styleName, key);
     }
   }
@@ -667,10 +653,8 @@ function withStableCompositeNames(
 }
 
 /** Extracts every winning atom from one compiled style for an alias selector. */
-function atomicClassesForStyle(style: CompiledStyle | undefined): readonly string[] {
-  return [
-    ...new Set((style?._ ?? []).map((record) => record[0]).filter((className): className is string => !!className)),
-  ];
+function atomicClassesForStyle(style: CompiledStyle): readonly string[] {
+  return [...new Set(style._.map((record) => record[0]).filter((className): className is string => !!className))];
 }
 
 /** Creates a deterministic CSS-safe class name from a source anchor. */

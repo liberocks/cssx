@@ -3,6 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
 import cssxBabelPlugin from '../src/index';
 
+function transform(source: string, options: Parameters<typeof cssxBabelPlugin>[1] = {}) {
+  return transformSync(source, {
+    babelrc: false,
+    configFile: false,
+    plugins: [[cssxBabelPlugin, options]],
+  });
+}
+
 describe('CSSX Babel plugin', () => {
   it('extracts create styles and folds fully static props calls', () => {
     const result = transformSync(
@@ -28,6 +36,17 @@ describe('CSSX Babel plugin', () => {
     expect(result?.code).toContain('className');
     expect(Object.keys(metadata.candidates)).toHaveLength(2);
     expect(Object.values(metadata.candidates).every((className) => /^s[0-9A-Za-z]+x$/.test(className))).toBe(true);
+  });
+
+  it('interns repeated static props output without retaining the runtime import', () => {
+    const result = transform(`
+      import * as cssx from '@cssxio/cssx';
+      const styles = cssx.create({ one: 'flex p-4', two: 'flex p-5', three: 'flex p-6', four: 'flex p-7' });
+      export const props = [cssx.props(styles.one), cssx.props(styles.two), cssx.props(styles.three), cssx.props(styles.four)];
+    `);
+
+    expect(result?.code).toContain('_cssxProps');
+    expect(result?.code).not.toContain('@cssxio/cssx');
   });
 
   it('keeps development composites stable across CSS-only edits', () => {
@@ -315,5 +334,102 @@ describe('CSSX Babel plugin', () => {
     expect(css).toContain('@media (width >= 50rem)');
     expect(css).toContain('@media (hover: hover)');
     expect(css).toContain('background-color:#123456');
+  });
+
+  it('handles remaining supported and rejected source forms conservatively', () => {
+    const runtime = transform(
+      `import { create } from '@cssxio/cssx'; const styles = create({ root: 'p-4', duplicate: 'p-4', other: 'bg-red-500' }); export const values = [styles.root, styles['other'], styles[variant], styles];`,
+    );
+    expect(runtime?.code).toContain('styles.root');
+    expect(runtime?.code).toContain("styles['other']");
+
+    const stable = transform(
+      `import * as cssx from '@cssxio/cssx'; cssx.create({ lone: 'p-4' }); const styles = cssx.create({ root: 'p-4', alert: 'bg-red-500' }); export const props = cssx.props(styles.root, styles.alert); export const classes = cssx.sx('p-4');`,
+      { stableClassNames: true },
+    );
+    expect(stable?.code).toContain('className: "d');
+    expect(stable?.code).toContain('export const classes = "d');
+
+    const sx = transform(
+      `import { sx } from '@cssxio/cssx'; export const empty = sx('   '); export const nested = sx([active && 'p-4', false, enabled ? 'bg-red-500' : 'bg-blue-500']); export const preserved = sx([, 'p-4']); export const spread = sx(...items); export const mixed = sx(['p-4', active]); export const logical = sx(active && dynamic); export const rejectedLogical = sx(active && [, 'p-4']); export const conditional = sx(active ? 'p-4' : dynamic); export const rejectedConditional = sx(active ? 'p-4' : [, 'bg-red-500']); export const value = sx(true);`,
+    );
+    expect(sx?.code).toContain('export const empty = ""');
+    expect(sx?.code).toContain('active && "');
+    expect(sx?.code).toContain("sx([, 'p-4'])");
+    expect(sx?.code).toContain('sx(...items)');
+    expect(sx?.code).toContain('active && dynamic');
+    expect(sx?.code).toContain('active ? "');
+
+    const props = transform(
+      `import { create, props } from '@cssxio/cssx'; const styles = create({ root: 'p-4' }); export const ignored = props(false, null); export const missing = props(styles.missing); export const nestedMissing = props([styles.missing]); export const hole = props([, styles.root]); export const nestedSpread = props([...items]); export const value = props(true);`,
+    );
+    expect(props?.code).toContain('className: ""');
+    expect(props?.code).toContain('props(styles.missing)');
+    expect(props?.code).toContain('props([, styles.root])');
+    expect(props?.code).toContain('props([...items])');
+    expect(props?.code).toContain('props(true)');
+
+    const exportedRuntime = transform(
+      `import { create } from '@cssxio/cssx'; export const styles = create({ first: 'flex items-center', second: 'flex items-center' }); export const value = styles[variant];`,
+    );
+    expect(exportedRuntime?.code).toMatch(/const _c\d* = \[/);
+
+    const atomic = transform(
+      `import { create, props } from '@cssxio/cssx'; const styles = create({ root: 'p-4' }); export const value = props(styles.root);`,
+      { reusabilityBudget: 100 },
+    );
+    const atomicMetadata = (
+      atomic?.metadata as unknown as { readonly cssx: { readonly atomicClasses: readonly string[] } }
+    ).cssx;
+    expect(atomicMetadata.atomicClasses.length).toBeGreaterThan(0);
+
+    const customSource = transform(
+      `import { create } from 'custom-cssx'; export const styles = create({ root: 'p-4' });`,
+      { importSource: 'custom-cssx' },
+    );
+    expect(customSource?.code).not.toContain('custom-cssx');
+
+    const unrelated = transform(
+      `import * as cssx from 'other'; export const styles = cssx.create({ root: 'p-4' }); cssx['unknown']();`,
+    );
+    expect(unrelated?.code).toContain("from 'other'");
+
+    const nonNamespace = transform(
+      `import { create as cssx } from '@cssxio/cssx'; export const styles = cssx.create({ root: 'p-4' });`,
+    );
+    expect(nonNamespace?.code).toContain('cssx.create');
+
+    const stringNamedImport = transform(
+      `import { 'create' as makeStyles } from '@cssxio/cssx'; export const styles = makeStyles({ root: 'p-4' });`,
+    );
+    expect(stringNamedImport?.code).not.toContain('@cssxio/cssx');
+
+    const throwingAllocator = {
+      allocate(): never {
+        throw 'allocator failed';
+      },
+      reserve() {},
+    };
+    expect(() =>
+      transform(`import { create } from '@cssxio/cssx'; create({ root: 'p-4' });`, {
+        classNameAllocator: throwingAllocator,
+      }),
+    ).toThrow('Unable to compile CSSX styles.');
+    expect(() =>
+      transform(`import { sx } from '@cssxio/cssx'; sx('p-4');`, { classNameAllocator: throwingAllocator }),
+    ).toThrow('Unable to compile CSSX sx() utilities.');
+    expect(() => transform(`import { sx } from '@cssxio/cssx'; sx('nope-value');`)).toThrow('cannot classify utility');
+
+    for (const source of [
+      `import { create } from '@cssxio/cssx'; create();`,
+      `import { create } from '@cssxio/cssx'; create({ root: false });`,
+      `import { create } from '@cssxio/cssx'; const utility = false; create({ root: utility });`,
+      `import { create } from '@cssxio/cssx'; create({ [key]: 'p-4' });`,
+      `import { create } from '@cssxio/cssx'; create({ 1n: 'p-4' });`,
+      `import * as cssx from '@cssxio/cssx'; cssx['props']();`,
+      `import * as cssx from '@cssxio/cssx'; cssx['sx']();`,
+    ]) {
+      expect(() => transform(source)).toThrow();
+    }
   });
 });
