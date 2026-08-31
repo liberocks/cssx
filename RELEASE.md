@@ -1,6 +1,6 @@
 ## Required Verification
 
-The `CI / coverage` and `CI / verify` checks run `pnpm test:coverage`, `pnpm test:release`, and `pnpm benchmark` from the workspace root. They are required for every PR targeting `next` or `main`.
+The `CI / format`, `CI / lint`, `CI / coverage`, and `CI / verify` checks run `pnpm format:check`, `pnpm lint`, `pnpm test:coverage`, `pnpm test:release`, and `pnpm benchmark` from the workspace root. They are required for every PR targeting `next` or `main`.
 
 ## 0.2 ABI Migration
 
@@ -15,11 +15,11 @@ types now use `CompiledStyle` and `CompiledUtility` names.
 Create `next` from `main`. All human-authored changes must enter `next` through
 a PR, and `main` must accept changes only through a PR from `next`.
 
-Configure repository rules so both branches require the `CI / coverage` and
-`CI / verify` checks. Block direct pushes to `main`, enable auto-merge, and
-allow workflows to create PRs. Give only the release workflow a bypass for
-`next`: it writes the deterministic version-bump commit that must exist before
-publication.
+Configure repository rules so both branches require the `CI / format`, `CI /
+lint`, `CI / coverage`, and `CI / verify` checks. Block direct pushes to
+`main`, enable auto-merge, and allow workflows to create PRs. Give only the
+release workflow a bypass for `next`: it writes the deterministic version-bump
+commit that must exist before publication.
 
 The initial migration must not push the local commits currently ahead of
 `origin/main` to `main`. Put them on a feature branch and merge them through the
