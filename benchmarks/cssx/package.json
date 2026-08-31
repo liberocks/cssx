@@ -1,0 +1,20 @@
+{
+  "name": "cssx-vite-build-benchmark",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../scripts/generate-vite-corpus.mjs cssx && vite",
+    "build": "node ../scripts/generate-vite-corpus.mjs cssx && vite build"
+  },
+  "dependencies": {
+    "@cssxio/cssx": "workspace:*",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@cssxio/unplugin": "workspace:*",
+    "@vitejs/plugin-react": "^5.1.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.2"
+  }
+}
