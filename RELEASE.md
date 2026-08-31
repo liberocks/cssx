@@ -1,15 +1,3 @@
-# Release Review Record
-
-## Source And Dependency Review
-
-Review date: 2026-08-29
-
-Scope: `packages/*/src`, all CSSX package manifests, and the root `pnpm-lock.yaml`.
-
-Outcome: The CSSX packages use their declared dependencies only. The reviewed source contains no vendored implementation. Historical compatibility references are recorded in each published compiler package's `THIRD_PARTY_NOTICES.md`.
-
-The package-contract test enforces that the prohibited utility packages are absent from package manifests and the resolved root dependency graph. Renew this review before a release whenever reviewed source or dependency declarations change.
-
 ## Required Verification
 
 The `CI / coverage`, `CI / verify`, and `CI / visual` checks run `pnpm test:coverage`, `pnpm test:release`, `pnpm test:visual`, and `pnpm benchmark` from the workspace root. They are required for every PR targeting `next` or `main`.
