@@ -11,10 +11,7 @@ export default defineConfig({
   testDir: '.',
   testMatch: ['**/*.spec.ts'],
   timeout: 120_000,
-  expect: {
-    timeout: 15_000,
-    toHaveScreenshot: { animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01 },
-  },
+  expect: { timeout: 15_000, toHaveScreenshot: { animations: 'disabled', caret: 'hide' } },
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
