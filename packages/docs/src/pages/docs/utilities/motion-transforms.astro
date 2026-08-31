@@ -2,4 +2,80 @@
 import DocsLayout from '../../../layouts/DocsLayout.astro';
 import { classes } from '../../../styles';
 ---
-<DocsLayout title="Motion and transforms" description="Transitions, animation, translate, rotate, scale, and skew."><header><p class={classes.eyebrow}>Utility reference</p><h1 class={classes.title}>Motion and transforms</h1><p class={classes.lead}>Transitions, animation, translate, rotate, scale, and skew.</p></header><section class={classes.section}><h2 class={classes.heading}>Classes</h2><p class={classes.copy}>transition-*, duration-*, delay-*, ease-*, animate-*, animation-duration-*, animation-delay-*, animation-ease-*, animation-iterations-*, animation-direction-*, animation-fill-*, animation-running, animation-paused, translate-x/y-*, rotate-*, scale-*, and skew-x/y-*.</p></section><section class={classes.section}><h2 class={classes.heading}>Animation longhands</h2><pre class={classes.code}><code>animate-spin animation-duration-500 animation-delay-[150ms]{`\n`}animation-ease-out animation-iterations-infinite animation-fill-both</code></pre><p class={classes.copy}>Animation longhands emit after animate-* so they override values in its shorthand. Numeric duration and delay values use milliseconds. Define --animation-duration-name or --animation-ease-name in @theme for named values.</p></section></DocsLayout>
+
+<DocsLayout
+  title="Motion and transforms"
+  description="CSS-only transitions, animations, timelines, View Transitions, and transform utilities."
+>
+  <header>
+    <p class={classes.eyebrow}>Utility reference</p>
+    <h1 class={classes.title}>Motion and transforms</h1>
+    <p class={classes.lead}>
+      Compose native CSS transitions, animations, timelines, View Transitions, and individual transforms without a
+      motion runtime.
+    </p>
+  </header>
+
+  <section class={classes.section}>
+    <h2 class={classes.heading}>Transitions</h2>
+    <p class={classes.copy}>
+      Use <code>transition-*</code>, <code>duration-*</code>, <code>delay-*</code>, and <code>ease-*</code>. CSSX
+      includes focused property recipes such as <code>transition-transform-opacity</code>, <code>transition-filter</code
+      >, and <code>transition-size</code>. Numeric duration and delay values use milliseconds; negative delays are
+      supported.
+    </p>
+    <pre class={classes.code}><code>transition-transform-opacity duration-normal ease-spring-snappy<br />open:opacity-100 open:translate-y-0</code></pre>
+    <p class={classes.copy}>
+      Named values resolve from <code>--duration-*</code>, <code>--delay-*</code>, and <code>--ease-*</code> theme
+      tokens. <code>transition-discrete</code> emits <code>allow-discrete</code> for properties that support discrete
+      transitions.
+    </p>
+  </section>
+
+  <section class={classes.section}>
+    <h2 class={classes.heading}>Entry and reduced motion</h2>
+    <p class={classes.copy}>
+      <code>starting:</code> emits a utility inside <code>@starting-style</code>. Use ordinary state variants for leave
+      destinations. <code>motion-safe:</code> and <code>motion-reduce:</code> apply the corresponding reduced-motion
+      preference query.
+    </p>
+    <pre class={classes.code}><code>open:starting:opacity-0 open:starting:translate-y-2<br />motion-reduce:duration-instant</code></pre>
+  </section>
+
+  <section class={classes.section}>
+    <h2 class={classes.heading}>Animations</h2>
+    <p class={classes.copy}><code>animate-*</code> remains the shorthand form. Compose it with <code>animation-name-*</code>, <code>animation-duration-*</code>, <code>animation-delay-*</code>, <code>animation-ease-*</code>, <code>animation-iterations-*</code>, <code>animation-direction-*</code>, <code>animation-fill-*</code>, <code>animation-running</code>, <code>animation-paused</code>, and <code>animation-composition-*</code>.</p>
+    <pre class={classes.code}><code>animation-name-fade-in animation-duration-500 animation-fill-both<br />animation-ease-spring-gentle animation-composition-add</code></pre>
+    <p class={classes.copy}>
+      Built-in keyframes include fade, directional slide, scale, spin, pulse, ping, bounce, and shimmer presets. Define
+      additional global keyframes in <code>@theme</code>. CSSX emits only keyframes referenced by live declarations.
+    </p>
+  </section>
+
+  <section class={classes.section}>
+    <h2 class={classes.heading}>Stagger</h2>
+    <p class={classes.copy}>
+      Set inherited timing with <code>stagger-*</code>, then provide explicit <code>stagger-index-*</code> and optional
+      <code>stagger-count-*</code> values. Apply <code>delay-stagger</code> or <code>animation-delay-stagger</code> to emit
+      the CSS calculation. <code>stagger-reverse</code> reverses the index calculation and requires a count.
+    </p>
+  </section>
+
+  <section class={classes.section}>
+    <h2 class={classes.heading}>Timelines and View Transitions</h2>
+    <p class={classes.copy}><code>animation-timeline-*</code>, <code>scroll-timeline-*</code>, <code>view-timeline-*</code>, <code>timeline-scope-*</code>, and <code>animation-range-*</code> expose native progress timelines. View Transition capture utilities use <code>view-transition-name-*</code> and <code>view-transition-class-*</code>. Style document-root pseudo-elements with <code>vt-old-[target]:</code>, <code>vt-new-[target]:</code>, <code>vt-group-[target]:</code>, and <code>vt-image-pair-[target]:</code>.</p>
+    <pre class={classes.code}><code>animation-name-fade-in animation-timeline-view-block animation-range-entry<br />vt-old-[hero]:opacity-0 vt-new-[hero]:opacity-100</code></pre>
+    <p class={classes.copy}>
+      Timeline and View Transition output is feature-gated. Apply generated <code>vt-*</code> classes to the document
+      element. CSSX styles native View Transition pseudo-elements but does not initiate a transition transaction.
+    </p>
+  </section>
+
+  <section class={classes.section}>
+    <h2 class={classes.heading}>CSS-only boundary</h2>
+    <p class={classes.copy}>
+      CSSX does not observe elements, delay DOM removal, interpret gestures, simulate springs at runtime, or project
+      layout. Spring easings are checked-in <code>linear()</code> timing functions; duration remains explicit.
+    </p>
+  </section>
+</DocsLayout>
