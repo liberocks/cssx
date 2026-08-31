@@ -70,10 +70,10 @@ export async function transformCssxModule(
     return null;
   }
   const theme = await loadTheme(options);
-  const result = await transformAsync(code, {
+  const transformed = (await transformAsync(code, {
     babelrc: false,
     configFile: false,
-    filename: id.split('?', 1)[0],
+    filename: id.split('?', 1).join(''),
     parserOpts: { plugins: ['jsx', 'typescript'] },
     plugins: [
       [
@@ -89,17 +89,11 @@ export async function transformCssxModule(
     ],
     sourceMaps: true,
     ...(inputSourceMap ? { inputSourceMap } : {}),
-  });
-  if (!result?.code) {
-    return null;
-  }
-  const metadata = result.metadata as unknown as {
-    readonly cssx?: CssxMetadata & { readonly cssOnlySignature?: string };
+  }))!;
+  const metadata = transformed.metadata as unknown as {
+    readonly cssx: CssxMetadata;
   };
-  const candidates = metadata.cssx?.candidates ?? {};
-  const origins = metadata.cssx?.origins ?? {};
-  const composites = metadata.cssx?.composites ?? {};
-  const atomicClasses = metadata.cssx?.atomicClasses ?? [];
+  const { candidates, origins, composites, atomicClasses, cssOnlySignature } = metadata.cssx;
   const candidateNames = Object.keys(candidates);
   const utilityCss =
     candidateNames.length === 0
@@ -107,21 +101,21 @@ export async function transformCssxModule(
       : (
           await compileUtilities(
             candidateNames,
-            (candidate) => candidates[candidate] ?? candidate,
+            (candidate) => candidates[candidate]!,
             theme,
             createSelectorAliases(composites),
             new Set(atomicClasses),
           )
         ).css;
   return {
-    code: result.code,
+    code: transformed.code!,
     rules: utilityCss ? [compiledCssRule(wrapCssLayer(utilityCss, options.layer))] : [],
     candidates,
     composites,
     atomicClasses,
     origins,
-    cssOnlySignature: metadata.cssx?.cssOnlySignature ?? '',
-    ...(result.map ? { map: result.map } : {}),
+    cssOnlySignature,
+    map: transformed.map!,
   };
 }
 
@@ -153,7 +147,7 @@ export function sourceMapFromContext(context: unknown, id: string): IncomingSour
     sources: [...map.sources],
     names: [...(map.names ?? [])],
     mappings: map.mappings,
-    file: map.file ?? id.split('?', 1)[0] ?? id,
+    file: map.file ?? id.split('?', 1).join(''),
     ...(map.sourceRoot ? { sourceRoot: map.sourceRoot } : {}),
     ...(map.sourcesContent ? { sourcesContent: [...map.sourcesContent] } : {}),
   };
@@ -162,13 +156,15 @@ export function sourceMapFromContext(context: unknown, id: string): IncomingSour
 /** CSSX metadata written by the Babel transform. */
 interface CssxMetadata {
   /** Maps utility strings to generated class names. */
-  readonly candidates?: Readonly<Record<string, string>>;
+  readonly candidates: Readonly<Record<string, string>>;
   /** Maps utility strings to their locations in the source module. */
-  readonly origins?: Readonly<Record<string, CssxCandidateOrigin>>;
+  readonly origins: Readonly<Record<string, CssxCandidateOrigin>>;
   /** Maps composite classes to their winning atomic classes. */
-  readonly composites?: Readonly<Record<string, readonly string[]>>;
+  readonly composites: Readonly<Record<string, readonly string[]>>;
   /** Atomic classes required by compiled styles that survive to runtime. */
-  readonly atomicClasses?: readonly string[];
+  readonly atomicClasses: readonly string[];
+  /** Source with CSSX utility literals removed. */
+  readonly cssOnlySignature: string;
 }
 
 /**

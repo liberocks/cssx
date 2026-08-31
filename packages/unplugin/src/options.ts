@@ -128,7 +128,7 @@ export function resolveEsbuildAssetPath(
  * @returns The module ID without its query value.
  */
 export function moduleId(id: string): string {
-  return id.split('?', 1)[0] ?? id;
+  return id.split('?', 1).join('');
 }
 
 /**
@@ -142,7 +142,7 @@ function validateCssFileName(fileName: string): string {
     throw new Error('cssFileName must be a non-empty relative path.');
   }
   const normalized = normalize(fileName);
-  if (normalized === '..' || normalized.startsWith(`..${sep}`) || normalized.includes(`${sep}..${sep}`)) {
+  if (normalized === '..' || normalized.startsWith(`..${sep}`)) {
     throw new Error('cssFileName must not escape the bundler output directory.');
   }
   if (!normalized.endsWith('.css')) {

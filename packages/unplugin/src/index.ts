@@ -324,7 +324,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
           sendViteStyles(viteServer, viteCssPath('/', cssFileName));
         }
 
-        esbuildDataById.set(resolve(esbuildWorkingDirectory, id.split('?', 1)[0] ?? id), data);
+        esbuildDataById.set(resolve(esbuildWorkingDirectory, moduleId(id)), data);
 
         const transformedCode = transformed?.code ?? code;
         return {
@@ -395,7 +395,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
           const previous = new Map(
             handled.map((module: ViteHotUpdateModule) => [
               module,
-              rollupDataById.get(moduleId(module.id ?? ''))?.cssOnlySignature ?? '',
+              rollupDataById.get(moduleId(module.id!))!.cssOnlySignature,
             ]),
           );
           for (const module of handled) {
@@ -404,8 +404,8 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
             }
           }
           const cssOnly = handled.every((module: ViteHotUpdateModule) => {
-            const data = rollupDataById.get(moduleId(module.id ?? ''));
-            return Boolean(data && data.atomicClasses?.length === 0 && data.cssOnlySignature === previous.get(module));
+            const data = rollupDataById.get(moduleId(module.id!));
+            return Boolean(data && data.atomicClasses!.length === 0 && data.cssOnlySignature === previous.get(module));
           });
           if (!cssOnly) {
             return;

@@ -24,6 +24,11 @@ describe('unplugin options', () => {
     expect(() => assertPluginOptions({ cssFileName: '../escape.css' })).toThrow('must not escape');
     expect(() => assertPluginOptions({ cssFileName: 'styles.txt' })).toThrow('must end in .css');
     expect(() => assertPluginOptions({ sourceMap: 'false' } as never)).toThrow('sourceMap must be a boolean');
+    expect(() => assertPluginOptions({ reusabilityBudget: Number.NaN })).toThrow('reusabilityBudget');
+    expect(() => assertPluginOptions({ reusabilityBudget: -1 })).toThrow('reusabilityBudget');
+    expect(() => assertPluginOptions({ reusabilityBudget: 101 })).toThrow('reusabilityBudget');
+    expect(() => assertPluginOptions({ reusabilityBudget: 'auto' })).not.toThrow();
+    expect(() => assertPluginOptions({ reusabilityBudget: 0 })).not.toThrow();
     expect(() => assertPluginOptions({ cssFileName: 'assets/cssx.css', layer: 'cssx_layer' })).not.toThrow();
   });
 

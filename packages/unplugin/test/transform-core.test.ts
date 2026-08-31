@@ -49,6 +49,23 @@ describe('CSSX unplugin transform', () => {
         '/project/input.ts',
       ),
     ).toMatchObject({ file: '/project/input.ts', sourceRoot: '/source', names: ['value'] });
+    expect(sourceMapFromContext({ getCombinedSourcemap: () => null }, '/project/input.ts')).toBeUndefined();
+    expect(
+      sourceMapFromContext(
+        { getCombinedSourcemap: () => ({ version: 3, sources: [], mappings: '' }) },
+        '/project/input.ts',
+      ),
+    ).toMatchObject({ names: [], file: '/project/input.ts' });
+  });
+
+  it('retains an empty CSSX metadata record when an import has no utility literals', async () => {
+    const result = await transformRequired(
+      "import * as cssx from '@cssxio/cssx'; export const value = cssx;",
+      '/project/empty.ts',
+    );
+
+    expect(result.rules).toEqual([]);
+    expect(result.candidates).toEqual({});
   });
 
   it('maps final utility fragments to their originating modules', async () => {
@@ -60,6 +77,16 @@ describe('CSSX unplugin transform', () => {
     expect(stylesheet.css).toContain('.cssx-padding');
     expect(stylesheet.css).toContain('.cssx-color');
     expect(stylesheet.map?.sources).toEqual(['/project/button.ts', '/project/title.ts']);
+    expect(stylesheet.map?.mappings).not.toBe('');
+  });
+
+  it('maps only candidates with available source locations', async () => {
+    const stylesheet = await compileCssxStylesheet([
+      { id: '', candidates: { 'p-4': 'cssx-padding' } },
+      { id: '/project/title.ts', candidates: { 'text-white': 'cssx-color' } },
+    ]);
+
+    expect(stylesheet.map?.sources).toEqual(['/project/title.ts']);
     expect(stylesheet.map?.mappings).not.toBe('');
   });
 

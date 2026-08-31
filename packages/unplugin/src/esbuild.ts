@@ -1,10 +1,11 @@
 import { Buffer } from 'node:buffer';
 import { mkdir, readFile, realpath, unlink, writeFile } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, normalize, resolve, sep } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import type { Loader, Plugin } from 'esbuild';
 import { createClassNameAllocator } from '@cssxio/compiler';
 import { compileCssxStylesheet, transformCssxModule } from './index';
 import type { CssxPluginOptions } from './index';
+import { loadTheme, resolveCssFileName, resolveEsbuildAssetPath } from './options';
 import type { CssxSourceModule } from './stylesheet';
 
 /** Matches JavaScript and TypeScript source files handled by esbuild. */
@@ -63,7 +64,7 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
           }
         }
         const compiled = await compileCss([...dataById], options);
-        const assetPath = resolveAssetPath(
+        const assetPath = resolveEsbuildAssetPath(
           workingDirectory,
           build.initialOptions,
           resolveCssFileName(options.cssFileName ?? 'cssx.css', compiled.css),
@@ -118,7 +119,7 @@ async function compileCss(
   modules: readonly (readonly [string, CssxSourceModule])[],
   options: CssxPluginOptions,
 ): ReturnType<typeof compileCssxStylesheet> {
-  const theme = options.themeFile ? await readFile(resolve(process.cwd(), options.themeFile), 'utf8') : options.theme;
+  const theme = await loadTheme(options);
   return compileCssxStylesheet(
     modules.map(([, data]) => data),
     theme,
@@ -134,84 +135,7 @@ async function compileCss(
  * @returns The esbuild JavaScript or TypeScript loader.
  */
 function loaderFor(id: string): Loader {
-  if (/\.tsx?$/.test(id)) {
-    return 'ts';
-  }
-  if (/\.jsx?$/.test(id)) {
-    return 'js';
-  }
-  return 'js';
-}
-
-/**
- * Resolves a CSS output template and replaces each `[hash]` marker.
- *
- * @param template Relative CSS output path template.
- * @param css Generated CSS used to calculate the hash.
- * @returns A validated relative CSS output path.
- */
-function resolveCssFileName(template: string, css: string): string {
-  const fileName = validateCssFileName(template);
-  return fileName.replaceAll('[hash]', stableId(css));
-}
-
-/**
- * Validates a relative CSS output path.
- *
- * @param fileName CSS output path to validate.
- * @returns The normalized relative CSS path.
- */
-function validateCssFileName(fileName: string): string {
-  if (!fileName || isAbsolute(fileName)) {
-    throw new Error('cssFileName must be a non-empty relative path.');
-  }
-  const normalized = normalize(fileName);
-  if (normalized === '..' || normalized.startsWith(`..${sep}`) || normalized.includes(`${sep}..${sep}`)) {
-    throw new Error('cssFileName must not escape the bundler output directory.');
-  }
-  if (!normalized.endsWith('.css')) {
-    throw new Error('cssFileName must end in .css.');
-  }
-  return normalized;
-}
-
-/**
- * Resolves the absolute CSS asset path for an esbuild build.
- *
- * @param workingDirectory esbuild's working directory.
- * @param options esbuild output path options.
- * @param options.outdir Optional esbuild output directory.
- * @param options.outfile Optional esbuild output file.
- * @param fileName Validated relative CSS output path.
- * @returns The absolute path where the CSS asset belongs.
- */
-function resolveAssetPath(
-  workingDirectory: string,
-  options: { readonly outdir?: string; readonly outfile?: string },
-  fileName: string,
-): string {
-  if (options.outdir) {
-    return resolve(workingDirectory, options.outdir, fileName);
-  }
-  if (options.outfile) {
-    return resolve(dirname(resolve(workingDirectory, options.outfile)), fileName);
-  }
-  return resolve(workingDirectory, fileName);
-}
-
-/**
- * Creates a stable short identifier from a string.
- *
- * @param value String to hash.
- * @returns A base-36 hash suitable for a generated output file name.
- */
-function stableId(value: string): string {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index++) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
+  return /\.tsx?$/.test(id) ? 'ts' : 'js';
 }
 
 /**

@@ -93,7 +93,7 @@ export async function compileCssxStylesheet(
   }
   const compiled = await compileUtilities(
     names,
-    (candidate) => candidates[candidate] ?? candidate,
+    (candidate) => candidates[candidate]!,
     theme,
     createSelectorAliases(composites),
     hasAtomicClassMetadata ? atomicClasses : undefined,
@@ -161,7 +161,7 @@ function createCssSourceMap(
     if (origin) {
       points.push({
         ...location,
-        source: sourceIndexes.get(origin.id) ?? 0,
+        source: sourceIndexes.get(origin.id)!,
         originalLine: origin.line,
         originalColumn: origin.column,
       });
@@ -184,10 +184,11 @@ function advanceCssLocation(
   location: { readonly line: number; readonly column: number },
   css: string,
 ): { readonly line: number; readonly column: number } {
-  const lastLine = css.lastIndexOf('\n');
-  return lastLine === -1
-    ? { line: location.line, column: location.column + css.length }
-    : { line: location.line + css.split('\n').length - 1, column: css.length - lastLine - 1 };
+  const lines = css.split('\n');
+  return {
+    line: location.line + lines.length - 1,
+    column: lines.at(-1)!.length + location.column * Number(lines.length === 1),
+  };
 }
 
 /**
@@ -205,20 +206,15 @@ function encodeCssMappings(
     readonly originalColumn: number;
   }[],
 ): string {
-  const lines: string[][] = [];
+  const lines = Array.from({ length: Math.max(0, ...points.map((point) => point.line)) + 1 }, () => [] as string[]);
   let previousSource = 0;
   let previousOriginalLine = 0;
   let previousOriginalColumn = 0;
   let previousGeneratedLine = 0;
   let previousGeneratedColumn = 0;
   for (const point of points) {
-    while (lines.length <= point.line) {
-      lines.push([]);
-    }
-    if (point.line !== previousGeneratedLine) {
-      previousGeneratedLine = point.line;
-      previousGeneratedColumn = 0;
-    }
+    previousGeneratedColumn *= Number(point.line === previousGeneratedLine);
+    previousGeneratedLine = point.line;
     lines[point.line]?.push(
       `${encodeVlq(point.column - previousGeneratedColumn)}${encodeVlq(point.source - previousSource)}${encodeVlq(point.originalLine - previousOriginalLine)}${encodeVlq(point.originalColumn - previousOriginalColumn)}`,
     );
@@ -248,7 +244,7 @@ function encodeVlq(value: number): string {
     if (remaining) {
       digit |= 32;
     }
-    encoded += BASE64_VLQ_ALPHABET[digit] ?? '';
+    encoded += BASE64_VLQ_ALPHABET[digit]!;
   } while (remaining);
   return encoded;
 }
