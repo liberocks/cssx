@@ -3,7 +3,7 @@ import './assert-compiler-build.mjs';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
+import { bundleCss, bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
 import { validateCss } from './cssx.mjs';
 import { createWorkload, readVariantArgument } from './workload.mjs';
 
@@ -27,7 +27,7 @@ export async function runTailwindBenchmark(variant = 'large') {
           return { content: tailwindCss, base: dirname(tailwindCssPath) };
         },
       });
-      return { js: await bundleJavaScript(workload.tailwindSource), css: compiler.build(candidates) };
+      return { js: await bundleJavaScript(workload.tailwindSource), css: await bundleCss(compiler.build(candidates)) };
     },
     (artifacts) => validateCss(artifacts.css, workload),
   );

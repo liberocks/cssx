@@ -29,8 +29,8 @@ pnpm --dir benchmarks benchmark:medium
 
 This compares CSSX, Tailwind, and StyleX as final build artifacts. Each
 implementation exports the same component-to-`className` data and keeps style
-definitions internal. JavaScript is bundled and minified with the same esbuild
-configuration; each implementation's final CSS is then measured separately.
+definitions internal. JavaScript and CSS are minified before each
+implementation's final CSS is measured separately.
 CSSX uses its default serial names and automatic reusability planning. StyleX
 rules are converted to final CSS with `processStylexRules`; intermediate
 metadata is never counted. Tailwind receives the same component utility
@@ -40,6 +40,9 @@ layer without preflight or base CSS.
 Reported output consists of separate JavaScript and CSS artifacts. Gzip size is
 the sum of independently compressed artifacts, matching normal delivery rather
 than compressing JavaScript and CSS together.
+
+The benchmark uses gzip level 6 explicitly so size measurements are
+reproducible.
 
 ### Pre-extracted utility candidate compilation
 
@@ -51,8 +54,8 @@ only one implementation.
 
 ## Measurement protocol
 
-- Each runner rebuilds CSSX compiler and Babel artifacts, then verifies source
-  and artifact hashes before the benchmark starts.
+- The suite rebuilds CSSX compiler and Babel artifacts once, then every runner
+  verifies that compiler artifacts match their source hashes before it starts.
 - Every runner performs one untimed validation warmup and 15 timed samples.
 - Six isolated child-process trials are collected per framework and scale.
 - Runner order rotates across trials.

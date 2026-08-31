@@ -1,7 +1,7 @@
 import { transformSync } from '@babel/core';
 import stylexPlugin from '@stylexjs/babel-plugin';
 import './assert-compiler-build.mjs';
-import { bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
+import { bundleCss, bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
 import { createWorkload, readVariantArgument } from './workload.mjs';
 import { validateCss } from './cssx.mjs';
 
@@ -33,7 +33,7 @@ export async function runStylexBenchmark(variant = 'large') {
       }
       return {
         js: await bundleJavaScript(result.code),
-        css: stylexPlugin.processStylexRules(result.metadata.stylex),
+        css: await bundleCss(stylexPlugin.processStylexRules(result.metadata.stylex)),
       };
     },
     (artifacts) => validateCss(artifacts.css, workload),

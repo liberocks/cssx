@@ -41,6 +41,7 @@ for (const variant of variants) {
       Framework: runner.framework,
       Median: `${result.median.toFixed(3)} ms`,
       'Raw output': `${(result.js.bytes + result.css.bytes).toLocaleString()} B`,
+      'JS / CSS gzip': `${result.js.gzip.toLocaleString()} / ${result.css.gzip.toLocaleString()} B`,
       Gzip: `${result.gzip.toLocaleString()} B`,
     });
   }

@@ -2,7 +2,7 @@ import { transformSync } from '@babel/core';
 import cssxPlugin from '../../packages/babel-plugin/dist/index.js';
 import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
 import './assert-compiler-build.mjs';
-import { bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
+import { bundleCss, bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
 import { createWorkload, readVariantArgument } from './workload.mjs';
 
 const SERIAL_CLASS_NAME = /^s[0-9A-Za-z]+x$/;
@@ -32,15 +32,16 @@ export async function runCssxBenchmark(variant = 'large') {
         createSelectorAliases(metadata.composites ?? {}),
         new Set(metadata.atomicClasses ?? []),
       );
-      return { js: await bundleJavaScript(result.code), css: compiled.css };
+      return { js: await bundleJavaScript(result.code), css: await bundleCss(compiled.css) };
     },
     (artifacts) => validateCssxOutput(artifacts, workload),
   );
 }
 
 /** Rejects missing transforms, missing styles, and non-default generated names. */
-function validateCssxOutput(artifacts, workload) {
-  const classValues = [...artifacts.js.matchAll(/className:\s*"([^"]+)"/g)].map((match) => match[1] ?? '');
+async function validateCssxOutput(artifacts, workload) {
+  const module = await import(`data:text/javascript;base64,${Buffer.from(artifacts.js).toString('base64')}`);
+  const classValues = Object.values(module.props ?? {}).map((value) => value?.className ?? '');
   const classNames = classValues.flatMap((classValue) => classValue.split(' '));
   if (
     classValues.length !== workload.componentCount ||
