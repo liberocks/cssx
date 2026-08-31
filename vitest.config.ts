@@ -15,14 +15,12 @@ export default defineConfig({
     include: ['packages/*/test/**/*.test.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json-summary'],
-      include: ['packages/*/src/**/*.ts'],
+      reporter: ['text', 'json', 'json-summary'],
+      include: ['packages/*/src/**/*.{js,ts}'],
       exclude: ['**/*.d.ts'],
       thresholds: {
-        statements: 85,
-        branches: 75,
-        functions: 95,
-        lines: 90,
+        100: true,
+        perFile: true,
       },
     },
   },
