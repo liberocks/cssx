@@ -14,7 +14,7 @@ import {
 describe('unplugin options', () => {
   it('loads inline and file-based themes', async () => {
     expect(await loadTheme({ theme: '@theme { --spacing: 2px; }' })).toContain('--spacing');
-    expect(await loadTheme({ themeFile: 'TODO.md' })).toContain('# CSSX Implementation Plan');
+    expect(await loadTheme({ themeFile: 'README.md' })).toContain('# CSSX');
   });
 
   it('validates mutually exclusive and safe output settings', () => {

@@ -11,6 +11,8 @@ examples/next/next-env.d.ts
 examples/next/tsconfig.json
 packages/intellisense/*.vsix
 benchmarks/node_modules/
+benchmarks/*/dist/
+benchmarks/*/src/corpus.tsx
 coverage/
 .opencode/
 TODO.md

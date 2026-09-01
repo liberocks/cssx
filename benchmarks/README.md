@@ -11,7 +11,7 @@ contains every component width and the shared canonical declarations.
 | Medium  |        500 |        7,600 |
 | Large   |      1,000 |       15,200 |
 
-Run the complete suite:
+Run every canonical and Vite application suite:
 
 ```sh
 pnpm --dir benchmarks benchmark
@@ -71,3 +71,20 @@ pnpm --dir benchmarks benchmark:stylex
 pnpm --dir benchmarks benchmark:cssx-utilities
 pnpm --dir benchmarks benchmark:tailwind
 ```
+
+### Vite application output
+
+`benchmark:vite` builds three matching React/Vite applications in `cssx`,
+`tailwind`, and `stylex`. They share the exact component tree and content while
+each project uses its native styling integration.
+
+```sh
+pnpm --dir benchmarks benchmark:vite
+```
+
+The report measures all JavaScript and CSS reachable from the initial
+`index.html` entry. It reports delivered, JavaScript, and CSS gzip sizes.
+Source maps, manifests, HTML, and any non-initial assets are excluded. The
+Tailwind uses its official full import, including preflight. The fixture
+intentionally stays within the CSS feature subset expressible by all three
+implementations.
