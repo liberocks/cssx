@@ -232,14 +232,54 @@ describe('CSSX utility compiler', () => {
 
   it('compiles safe arbitrary selector and at-rule variants', async () => {
     const result = await compileUtilities(
-      ['[&>svg]:block', '[&.is-active]:bg-orange-500', "[&[data-label='&']]:block", '[@supports(display:grid)]:grid'],
+      [
+        '[&>svg]:block',
+        '[&.is-active]:bg-orange-500',
+        "[&[data-label='&']]:block",
+        '[html[data-theme=dark]_&]:text-white',
+        '[&[data-label=hello\\_world]]:block',
+        '[@supports(display:grid)]:grid',
+      ],
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
     );
 
     expect(result.css).toContain('.x----svg--block>svg');
     expect(result.css).toContain('.x----is-active--bg-orange-500.is-active');
     expect(result.css).toContain("[data-label='&']{display:block;}");
+    expect(result.css).toContain('html[data-theme=dark] .x--html-data-theme-dark-----text-white{color:#fff;}');
+    expect(result.css).toContain('[data-label=hello_world]{display:block;}');
     expect(result.css).toContain('@supports (display:grid){.x---supports-display-grid---grid{display:grid;}}');
+  });
+
+  it('supports selector-based dark mode and xs responsive utilities', async () => {
+    const result = await compileUtilities(
+      ['dark:text-white', 'xs:p-5', 'max-md:hidden'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+      '',
+      {},
+      undefined,
+      { darkMode: 'selector' },
+    );
+
+    expect(result.css).toContain('.x-dark-text-white:where([data-theme=dark], [data-theme=dark] *){color:#fff;}');
+    expect(result.css).toContain('@media (width >= 30rem)');
+    expect(result.css).toContain('@media (width < 48rem)');
+  });
+
+  it('emits selector-based dark utilities after their base utilities', async () => {
+    const result = await compileUtilities(
+      ['bg-white', 'hover:bg-slate-100', 'dark:bg-slate-950', 'dark:hover:bg-slate-800'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+      '',
+      {},
+      undefined,
+      { darkMode: 'selector' },
+    );
+
+    expect(result.css.indexOf('.x-bg-white{')).toBeLessThan(result.css.indexOf('.x-dark-bg-slate-950:where'));
+    expect(result.css.indexOf('.x-hover-bg-slate-100:hover')).toBeLessThan(
+      result.css.indexOf('.x-dark-hover-bg-slate-800:where'),
+    );
   });
 
   it('rejects arbitrary selector variants without an anchor', async () => {

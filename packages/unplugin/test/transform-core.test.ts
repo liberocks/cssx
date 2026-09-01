@@ -128,6 +128,19 @@ describe('CSSX unplugin transform', () => {
     expect(css).toContain('opacity:0.5');
   });
 
+  it('extracts sx calls directly from Astro templates', async () => {
+    const result = await transformRequired(
+      `---\nimport { sx } from '@cssxio/cssx';\n---\n<main class={sx('p-4', disabled && 'opacity-50')} />`,
+      '/project/page.astro',
+    );
+    const css = serializeCss(result.rules);
+
+    expect(result.code).toContain('class={sx("');
+    expect(result.code).toContain('disabled && "');
+    expect(css).toContain('padding:calc(0.25rem * 4)');
+    expect(css).toContain('opacity:0.5');
+  });
+
   it('folds static props without a runtime import and emits only its hashed rules', async () => {
     const result = await transformRequired(
       `import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ root: 'p-5 bg-red-500' }); export const rootProps = cssx.props(styles.root);`,

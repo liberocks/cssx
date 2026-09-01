@@ -1,4 +1,4 @@
-import type { ClassNameAllocator, ClassNameOptions, CompiledStyle, ReusabilityBudget } from '@cssxio/compiler';
+import type { ClassNameAllocator, ClassNameOptions, CompiledStyle, DarkMode, ReusabilityBudget } from '@cssxio/compiler';
 
 /** Options that control how the CSSX compiler plugin finds and compiles calls. */
 export interface CssxPluginOptions {
@@ -14,6 +14,8 @@ export interface CssxPluginOptions {
   readonly reusabilityBudget?: ReusabilityBudget;
   /** Uses source-addressed composite names for development stylesheet updates. */
   readonly stableClassNames?: boolean;
+  /** Controls how the `dark` variant is activated. */
+  readonly darkMode?: DarkMode;
 }
 
 /** Per-file data collected while the plugin transforms one source module. */

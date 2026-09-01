@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
 
 const styles = cssx.create({
@@ -7,8 +8,6 @@ const styles = cssx.create({
   eyebrow: 'text-sm font-medium text-brand',
   title: 'text-[2.5rem] leading-[1.1] font-semibold',
   copy: 'text-slate-300',
-  button: 'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-cyan-700',
-  active: 'scale-105',
   hint: 'text-sm text-slate-400',
 });
 
@@ -24,7 +23,10 @@ export default function App() {
           This example adds the CSSX webpack adapter through the Create React App configuration override.
         </p>
         <button
-          {...cssx.props(styles.button, count > 0 && styles.active)}
+          className={sx(
+            'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-cyan-700',
+            count > 0 && 'scale-105',
+          )}
           onClick={() => setCount((value) => value + 1)}
         >
           count is {count}

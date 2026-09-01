@@ -1,6 +1,6 @@
 import { transformAsync } from '@babel/core';
 import cssxBabelPlugin from '@cssxio/babel-plugin';
-import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
+import { compileUtilities, createClassNameAllocator, createSelectorAliases } from '@cssxio/compiler';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 import { assertPluginOptions, loadTheme, stableId, type CssxPluginOptions } from './options';
 import type { CssxCandidateOrigin } from './stylesheet';
@@ -43,8 +43,10 @@ export interface IncomingSourceMap {
   readonly file: string;
 }
 
-/** Matches JavaScript and TypeScript module IDs, with an optional query. */
-const SCRIPT_ID = /\.[cm]?[jt]sx?(?:\?.*)?$/;
+/** Matches JavaScript, TypeScript, and Astro module IDs, with an optional query. */
+const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro)(?:\?.*)?$/;
+/** Matches Astro module IDs, with an optional query. */
+const ASTRO_ID = /\.astro(?:\?.*)?$/;
 
 /**
  * Transforms one source module that imports CSSX.
@@ -69,6 +71,9 @@ export async function transformCssxModule(
   if (!SCRIPT_ID.test(id) || !code.includes(importSource)) {
     return null;
   }
+  if (ASTRO_ID.test(id)) {
+    return transformAstroSxModule(code, id, options);
+  }
   const theme = await loadTheme(options);
   const transformed = (await transformAsync(code, {
     babelrc: false,
@@ -84,6 +89,7 @@ export async function transformCssxModule(
           theme,
           reusabilityBudget: options.reusabilityBudget,
           stableClassNames: options.stableClassNames,
+          darkMode: options.darkMode,
         },
       ],
     ],
@@ -105,6 +111,7 @@ export async function transformCssxModule(
             theme,
             createSelectorAliases(composites),
             new Set(atomicClasses),
+            { darkMode: options.darkMode },
           )
         ).css;
   return {
@@ -117,6 +124,104 @@ export async function transformCssxModule(
     cssOnlySignature,
     map: transformed.map!,
   };
+}
+
+/**
+ * Transforms `sx` expressions embedded in an Astro template without parsing its HTML as JavaScript.
+ *
+ * @param code Astro component source.
+ * @param id Astro component identifier.
+ * @param options Adapter options.
+ * @returns Transformed Astro source and its compiled CSS metadata.
+ */
+async function transformAstroSxModule(
+  code: string,
+  id: string,
+  options: CssxPluginOptions & {
+    readonly classNameAllocator?: ClassNameAllocator;
+    readonly stableClassNames?: boolean;
+  },
+): Promise<TransformResult | null> {
+  const calls = astroSxCalls(code);
+  if (calls.length === 0) {
+    return null;
+  }
+
+  const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator();
+  const importSource = options.importSource ?? '@cssxio/cssx';
+  const candidates: Record<string, string> = {};
+  const composites: Record<string, readonly string[]> = {};
+  const atomicClasses = new Set<string>();
+  const rules: CssxRule[] = [];
+  let transformedCode = code;
+
+  for (const call of [...calls].reverse()) {
+    const transformed = await transformCssxModule(
+      `import { sx } from ${JSON.stringify(importSource)};\nconst style = ${call.code};`,
+      `${id}.ts`,
+      { ...options, classNameAllocator },
+    );
+    if (!transformed) {
+      continue;
+    }
+    const expression = transformedExpression(transformed.code);
+    transformedCode = `${transformedCode.slice(0, call.start)}${expression}${transformedCode.slice(call.end)}`;
+    Object.assign(candidates, transformed.candidates);
+    Object.assign(composites, transformed.composites);
+    transformed.atomicClasses.forEach((className) => atomicClasses.add(className));
+    rules.push(...transformed.rules);
+  }
+
+  return {
+    code: transformedCode,
+    rules,
+    candidates,
+    composites,
+    atomicClasses: [...atomicClasses],
+    origins: {},
+    cssOnlySignature: transformedCode,
+  };
+}
+
+/** Finds complete `sx(...)` calls without interpreting the surrounding Astro template. */
+function astroSxCalls(code: string): { readonly start: number; readonly end: number; readonly code: string }[] {
+  const calls: { start: number; end: number; code: string }[] = [];
+  const expression = /\bsx\s*\(/g;
+  for (const match of code.matchAll(expression)) {
+    const start = match.index!;
+    const open = code.indexOf('(', start);
+    let depth = 0;
+    let quote = '';
+    for (let index = open; index < code.length; index += 1) {
+      const character = code[index]!;
+      if (quote) {
+        if (character === '\\') {
+          index += 1;
+        } else if (character === quote) {
+          quote = '';
+        }
+        continue;
+      }
+      if (character === '"' || character === "'" || character === '`') {
+        quote = character;
+      } else if (character === '(') {
+        depth += 1;
+      } else if (character === ')' && --depth === 0) {
+        calls.push({ start, end: index + 1, code: code.slice(start, index + 1) });
+        expression.lastIndex = index + 1;
+        break;
+      }
+    }
+  }
+  return calls;
+}
+
+/** Extracts the transformed `sx` expression from the synthetic JavaScript module. */
+function transformedExpression(code: string): string {
+  const prefix = 'const style = ';
+  const start = code.indexOf(prefix) + prefix.length;
+  const end = code.indexOf(';', start);
+  return code.slice(start, end);
 }
 
 /**

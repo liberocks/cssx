@@ -1,0 +1,17 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { sx } from '@cssxio/cssx';
+---
+
+<BaseLayout title="CSSX">
+  <header
+    class={sx(
+      'flex min-h-16 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 xs:px-5 sm:px-6 dark:border-slate-800 dark:bg-slate-900',
+    )}
+  >
+    <slot name="header" />
+  </header>
+  <main class={sx('min-h-[calc(100vh-4rem)] p-4 xs:p-5 sm:p-6')}>
+    <slot />
+  </main>
+</BaseLayout>

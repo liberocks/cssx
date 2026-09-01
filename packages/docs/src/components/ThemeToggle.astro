@@ -1,0 +1,37 @@
+---
+import { sx } from '@cssxio/cssx';
+---
+
+<button
+  class={sx(
+    'inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm border border-slate-200 bg-transparent px-3 text-sm font-medium leading-none text-slate-600 [border-style:solid] hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:outline-slate-50',
+  )}
+  type="button"
+  data-theme-toggle
+  aria-label="Toggle color theme"
+>
+  <span data-theme-label></span>
+</button>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]');
+
+  function updateLabels() {
+    const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'Light' : 'Dark';
+    for (const button of buttons) {
+      button.setAttribute('aria-pressed', String(nextTheme === 'Light'));
+      button.querySelector('[data-theme-label]')!.textContent = nextTheme;
+    }
+  }
+
+  updateLabels();
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+      localStorage.setItem('cssx-theme', theme);
+      updateLabels();
+    });
+  }
+</script>

@@ -1,41 +1,43 @@
 ---
-import DocsLayout from '../layouts/DocsLayout.astro';
-import { classes } from '../styles';
-const utilityCategories = [
-  ['layout', 'Layout', 'Display, position, flow, media, and container utilities.'], ['flexbox-grid', 'Flexbox and grid', 'Flex and grid containers, items, placement, and alignment.'], ['spacing-sizing', 'Spacing and sizing', 'Spacing, size, inset, and scroll utilities.'], ['typography', 'Typography', 'Font, text, list, and content utilities.'], ['backgrounds-gradients', 'Backgrounds and gradients', 'Background, color, and gradient utilities.'], ['borders-effects', 'Borders and effects', 'Border, outline, ring, shadow, and opacity utilities.'], ['filters-masks', 'Filters and masks', 'Filter, backdrop filter, and mask utilities.'], ['motion-transforms', 'Motion and transforms', 'Transition, animation, and transform utilities.'], ['interactivity-scrolling', 'Interactivity and scrolling', 'Control, cursor, scrolling, snap, and scrollbar utilities.'], ['tables-svg-accessibility', 'Tables, SVG, accessibility', 'Table, SVG, and accessibility utilities.'],
-] as const;
+import HomeLayout from '../layouts/HomeLayout.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
+import { sx } from '@cssxio/cssx';
 ---
 
-<DocsLayout title="Documentation" description="CSSX documentation for compile-time utility styling.">
-  <header class={classes.homeHero}>
-    <p class={classes.eyebrow}>CSSX documentation</p>
-    <h1 class={classes.homeTitle}>Compile utility styling at build time.</h1>
-    <p class={classes.homeLead}>CSSX turns static utility strings into class names and CSS. Use this guide to set up CSSX, combine styles, and find supported utilities.</p>
-    <div class={classes.homeActions}>
-      <a class={classes.primaryLink} href="/docs/installation">Install CSSX</a>
-      <a class={classes.secondaryLink} href="/docs/utilities/layout">Browse utilities</a>
-    </div>
-  </header>
+<HomeLayout>
+  <a
+    slot="header"
+    class={sx('text-sm font-bold tracking-tight text-slate-950 no-underline dark:text-slate-50')}
+    href="/">CSSX</a
+  >
+  <nav slot="header" class={sx('flex items-center gap-6 text-sm font-medium')} aria-label="Primary navigation">
+    <a
+      class={sx(
+        'inline-flex min-h-11 items-center text-slate-600 no-underline hover:text-slate-950 focus-visible:text-slate-950 dark:text-slate-300 dark:hover:text-slate-50 dark:focus-visible:text-slate-50',
+      )}
+      href="/docs/">Docs</a
+    >
+  </nav>
+  <ThemeToggle slot="header" />
 
-  <section class={classes.section}>
-    <h2 class={classes.heading}>Reference by category</h2>
-    <p class={classes.copy}>Each category shows supported class patterns and the CSS they create. Patterns with a value describe every supported form in that family.</p>
-    <div class={classes.utilityIndex}>
-      {utilityCategories.map(([slug, title, description]) => (
-        <a class={classes.utilityLink} href={`/docs/utilities/${slug}`}>
-          <h3 class={classes.utilityTitle}>{title}</h3>
-          <p class={classes.utilityDescription}>{description}</p>
-        </a>
-      ))}
+  <section class={sx('mx-auto grid max-w-5xl gap-10 py-12 xs:gap-12 xs:py-16 sm:py-24')}>
+    <div class={sx('grid max-w-3xl gap-6')}>
+      <p class={sx('text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400')}>Lorem ipsum</p>
+      <h1 class={sx('text-[2.25rem] font-semibold tracking-tight text-slate-950 xs:text-[2.75rem] sm:text-[3.75rem] dark:text-slate-50')}>
+        Dolor sit amet consectetur.
+      </h1>
+      <p class={sx('max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+      </p>
+    </div>
+    <div class={sx('grid gap-6 border-t border-slate-200 pt-8 sm:grid-cols-2 dark:border-slate-800')}>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </p>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+      </p>
     </div>
   </section>
-
-  <section class={classes.section}>
-    <h2 class={classes.heading}>How CSSX works</h2>
-    <ul class={classes.list}>
-      <li class={classes.listItem}>Use <code class={classes.inlineCode}>cssx.create</code> for named static styles and <code class={classes.inlineCode}>cssx.props</code> to combine them.</li>
-      <li class={classes.listItem}>Use <code class={classes.inlineCode}>cx</code> when inline utility strings are the clearer choice.</li>
-      <li class={classes.listItem}>Configure one adapter to transform source code and create the CSS file for your app.</li>
-    </ul>
-  </section>
-</DocsLayout>
+</HomeLayout>

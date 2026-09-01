@@ -27,6 +27,7 @@ export type {
   UtilityRecipeResources,
   UtilityWriteSet,
 } from './utilities';
+export type { DarkMode } from './utility-variants';
 export type { CssxTheme, ThemeOutputMode } from './theme';
 
 import { compileStyleRecords, compileStyleRecordMaps } from './conflicts';
@@ -38,6 +39,7 @@ import type {
   ReusabilityBudget,
 } from './conflicts';
 import { compileUtilities } from './utilities';
+import type { DarkMode } from './utility-variants';
 
 /** One generated class name and the CSS rule it identifies. */
 export interface CssxRule {
@@ -57,6 +59,8 @@ export interface CompilerOptions {
   readonly classNameAllocator?: ClassNameAllocator;
   /** Controls how aggressively static styles share generated class fragments. */
   readonly reusabilityBudget?: ReusabilityBudget;
+  /** Controls how the `dark` variant is activated. */
+  readonly darkMode?: DarkMode;
 }
 
 /** The output from one compiled style map. */
@@ -113,6 +117,8 @@ export async function compileStyleMap(
     (candidate) => records.classes[candidate]!,
     options.theme,
     createSelectorAliases(records.composites),
+    undefined,
+    { darkMode: options.darkMode },
   );
   return {
     styles: records.styles,
@@ -148,6 +154,8 @@ export async function compileStyleMaps(
     (candidate) => records.classes[candidate]!,
     options.theme,
     createSelectorAliases(records.composites),
+    undefined,
+    { darkMode: options.darkMode },
   );
   return {
     styleMaps: records.styleMaps,

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
+import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
 
 export const meta: MetaFunction = () => [{ title: 'Remix + CSSX' }];
@@ -10,8 +11,6 @@ const styles = cssx.create({
   eyebrow: 'text-sm font-medium text-brand',
   title: 'text-[2.5rem] leading-[1.1] font-semibold',
   copy: 'text-slate-600',
-  button: 'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-orange-700',
-  active: 'scale-105',
   hint: 'text-sm text-slate-500',
 });
 
@@ -25,7 +24,10 @@ export default function Index() {
         <h1 {...cssx.props(styles.title)}>CSSX with Remix</h1>
         <p {...cssx.props(styles.copy)}>The Vite adapter emits a stylesheet for the Remix document to load.</p>
         <button
-          {...cssx.props(styles.button, count > 0 && styles.active)}
+          className={sx(
+            'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-orange-700',
+            count > 0 && 'scale-105',
+          )}
           onClick={() => setCount((value) => value + 1)}
         >
           count is {count}
