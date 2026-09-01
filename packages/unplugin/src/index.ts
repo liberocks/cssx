@@ -363,7 +363,9 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
             return next();
           }
           void getTheme()
-            .then((theme) => compileCssxStylesheet([...rollupDataById.values()], theme, options.layer, sourceMap, options.darkMode))
+            .then((theme) =>
+              compileCssxStylesheet([...rollupDataById.values()], theme, options.layer, sourceMap, options.darkMode),
+            )
             .then((compiled) => {
               if (pathname === `${cssPath}.map`) {
                 response.setHeader('Content-Type', 'application/json; charset=utf-8');

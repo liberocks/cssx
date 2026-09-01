@@ -151,24 +151,19 @@ async function transformAstroSxModule(
   const importSource = options.importSource ?? '@cssxio/cssx';
   const candidates: Record<string, string> = {};
   const composites: Record<string, readonly string[]> = {};
-  const atomicClasses = new Set<string>();
   const rules: CssxRule[] = [];
   let transformedCode = code;
 
   for (const call of [...calls].reverse()) {
-    const transformed = await transformCssxModule(
+    const transformed = (await transformCssxModule(
       `import { sx } from ${JSON.stringify(importSource)};\nconst style = ${call.code};`,
       `${id}.ts`,
       { ...options, classNameAllocator },
-    );
-    if (!transformed) {
-      continue;
-    }
+    )) as TransformResult;
     const expression = transformedExpression(transformed.code);
     transformedCode = `${transformedCode.slice(0, call.start)}${expression}${transformedCode.slice(call.end)}`;
     Object.assign(candidates, transformed.candidates);
     Object.assign(composites, transformed.composites);
-    transformed.atomicClasses.forEach((className) => atomicClasses.add(className));
     rules.push(...transformed.rules);
   }
 
@@ -177,7 +172,7 @@ async function transformAstroSxModule(
     rules,
     candidates,
     composites,
-    atomicClasses: [...atomicClasses],
+    atomicClasses: [],
     origins: {},
     cssOnlySignature: transformedCode,
   };

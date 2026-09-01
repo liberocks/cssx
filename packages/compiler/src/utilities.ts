@@ -164,7 +164,15 @@ export async function compileUtilities(
       continue;
     }
     compiled.push(
-      ...compileCandidate(candidate, generatedClasses, theme, recipe.atoms, selectorAliases, includedClasses, variantOptions),
+      ...compileCandidate(
+        candidate,
+        generatedClasses,
+        theme,
+        recipe.atoms,
+        selectorAliases,
+        includedClasses,
+        variantOptions,
+      ),
     );
     for (const keyframe of recipe.resources.keyframes) {
       requiredKeyframes.add(keyframe);
@@ -178,7 +186,7 @@ export async function compileUtilities(
     if (left.order !== right.order) {
       return left.order < right.order ? -1 : 1;
     }
-    return left.candidate < right.candidate ? -1 : left.candidate > right.candidate ? 1 : 0;
+    return left.candidate < right.candidate ? -1 : 1;
   });
   const uniqueCompiled = [...new Map(compiled.map((entry) => [entry.css, entry] as const)).values()];
   const resources = `${[...requiredProperties].sort().map(propertyRegistration).join('')}${[...requiredKeyframes]

@@ -1,4 +1,10 @@
-import type { ClassNameAllocator, ClassNameOptions, CompiledStyle, DarkMode, ReusabilityBudget } from '@cssxio/compiler';
+import type {
+  ClassNameAllocator,
+  ClassNameOptions,
+  CompiledStyle,
+  DarkMode,
+  ReusabilityBudget,
+} from '@cssxio/compiler';
 
 /** Options that control how the CSSX compiler plugin finds and compiles calls. */
 export interface CssxPluginOptions {

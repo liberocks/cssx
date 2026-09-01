@@ -85,7 +85,17 @@ export function compileFilterFamily(
     return filterNoneDeclarations(property, none, channels);
   }
   const definitions: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-    blur: { none: '0', xs: '4px', sm: '8px', md: '12px', lg: '16px', xl: '24px', '2xl': '40px', '3xl': '64px' },
+    blur: {
+      DEFAULT: '8px',
+      none: '0',
+      xs: '4px',
+      sm: '8px',
+      md: '12px',
+      lg: '16px',
+      xl: '24px',
+      '2xl': '40px',
+      '3xl': '64px',
+    },
     brightness: {
       '0': '0',
       '50': '.5',

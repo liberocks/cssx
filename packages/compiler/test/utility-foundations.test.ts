@@ -35,6 +35,41 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('.x-table-cell{display:table-cell;}');
   });
 
+  it('compiles every exact semantic utility in the catalog', async () => {
+    const result = await compileUtilities(
+      ['collapse', 'transform', 'transform-none', 'blur'],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(result.css).toContain('.x-collapse{visibility:collapse;}');
+    expect(result.css).toContain('.x-transform{transform:translate(0, 0);}');
+    expect(result.css).toContain('.x-transform-none{transform:none;}');
+    expect(result.css).toContain('.x-blur{--cssx-filter-blur:blur(8px);');
+  });
+
+  it('compiles every named border style and applies variants to it', async () => {
+    const result = await compileUtilities(
+      [
+        'border-none',
+        'border-hidden',
+        'border-dotted',
+        'border-dashed',
+        'border-solid',
+        'border-double',
+        'hover:border-solid',
+      ],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('.x-border-none{border-style:none;}');
+    expect(result.css).toContain('.x-border-hidden{border-style:hidden;}');
+    expect(result.css).toContain('.x-border-dotted{border-style:dotted;}');
+    expect(result.css).toContain('.x-border-dashed{border-style:dashed;}');
+    expect(result.css).toContain('.x-border-solid{border-style:solid;}');
+    expect(result.css).toContain('.x-border-double{border-style:double;}');
+    expect(result.css).toContain('.x-hover-border-solid:hover{border-style:solid;}');
+  });
+
   it('compiles columns, breaks, float/clear, object position, sizing, and box-decoration layout utilities', async () => {
     const result = await compileUtilities(
       [

@@ -215,9 +215,17 @@ describe('CSSX Babel plugin', () => {
   });
 
   it('does not recompile generated sx class names when Babel transforms a module twice', () => {
-    const first = transform(`import { sx } from '@cssxio/cssx'; export const className = sx('p-4', active && 'opacity-50');`);
+    const first = transform(
+      `import { sx } from '@cssxio/cssx'; export const className = sx('p-4', active && 'opacity-50');`,
+    );
 
     expect(() => transform(first?.code ?? '')).not.toThrow();
+  });
+
+  it('leaves already generated sx class names unchanged', () => {
+    const result = transform(`import { sx } from '@cssxio/cssx'; export const className = sx('s0x');`);
+
+    expect(result?.code).toContain("sx('s0x')");
   });
 
   it('handles static edge forms while leaving unsupported dynamic calls intact', () => {

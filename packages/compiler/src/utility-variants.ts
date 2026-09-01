@@ -78,7 +78,7 @@ export function applyVariants(
       const state = variant.slice(3);
       renderedSelectors = renderedSelectors.map((selector) => `:where(*:${PSEUDO_CLASS_VARIANTS[state]!}) ${selector}`);
     } else if (variant.startsWith('[') && variant.endsWith(']')) {
-        const arbitraryVariant = variant.slice(1, -1);
+      const arbitraryVariant = variant.slice(1, -1);
       if (arbitraryVariant.startsWith('@supports') || arbitraryVariant.startsWith('@media')) {
         atRules.push(normalizeArbitraryAtRule(arbitraryVariant));
       } else {

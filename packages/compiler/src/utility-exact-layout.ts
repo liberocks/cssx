@@ -28,7 +28,12 @@ const SIMPLE_DECLARATIONS = compactDeclarations([
     'display',
     'block=block;inline-block=inline-block;inline=inline;flex=flex;inline-flex=inline-flex;grid=grid;inline-grid=inline-grid;flow-root=flow-root;contents=contents;table=table;inline-table=inline-table;table-caption=table-caption;table-cell=table-cell;table-column=table-column;table-column-group=table-column-group;table-footer-group=table-footer-group;table-header-group=table-header-group;table-row-group=table-row-group;table-row=table-row;list-item=list-item',
   ],
+  ['visibility', 'visible=visible;invisible=hidden;collapse=collapse'],
   ['box-sizing', 'box-border=border-box;box-content=content-box'],
+  [
+    'border-style',
+    'border-none=none;border-hidden=hidden;border-dotted=dotted;border-dashed=dashed;border-solid=solid;border-double=double',
+  ],
   ['float', 'float-start=inline-start;float-end=inline-end;float-right=right;float-left=left;float-none=none'],
   [
     'clear',
@@ -83,8 +88,8 @@ export const EXACT_LAYOUT_DECLARATIONS: Readonly<Record<string, readonly Utility
   absolute: [{ property: 'position', value: 'absolute' }],
   relative: [{ property: 'position', value: 'relative' }],
   sticky: [{ property: 'position', value: 'sticky' }],
-  visible: [{ property: 'visibility', value: 'visible' }],
-  invisible: [{ property: 'visibility', value: 'hidden' }],
+  transform: [{ property: 'transform', value: 'translate(0, 0)' }],
+  'transform-none': [{ property: 'transform', value: 'none' }],
   'overflow-auto': [{ property: 'overflow', value: 'auto' }],
   'overflow-hidden': [{ property: 'overflow', value: 'hidden' }],
   'overflow-clip': [{ property: 'overflow', value: 'clip' }],

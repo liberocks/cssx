@@ -106,7 +106,14 @@ describe('CSSX unplugin transform', () => {
     const emitted: any[] = [];
 
     await plugin.vite.generateBundle.call(
-      { emitFile(asset: unknown) { emitted.push(asset); }, getModuleInfo() { return null; } },
+      {
+        emitFile(asset: unknown) {
+          emitted.push(asset);
+        },
+        getModuleInfo() {
+          return null;
+        },
+      },
       {},
       { 'entry.js': { type: 'chunk', modules: {} } },
     );
