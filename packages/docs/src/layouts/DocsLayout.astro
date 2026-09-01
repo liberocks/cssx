@@ -14,10 +14,12 @@ import { sx } from '@cssxio/cssx';
   <div class={sx('block min-h-[calc(100vh-4rem)] md:grid md:grid-cols-4')}>
     <aside
       class={sx(
-        'border-b border-slate-200 bg-white p-4 xs:p-5 sm:p-6 md:sticky md:top-16 md:self-start md:border-r md:border-b-0 dark:border-slate-800 dark:bg-slate-900',
+        'border-b border-slate-200 bg-white p-4 xs:p-5 sm:p-6 md:self-stretch md:border-r md:border-b-0 dark:border-slate-800 dark:bg-slate-900',
       )}
     >
-      <slot name="sidebar" />
+      <div class={sx('md:sticky md:top-16')}>
+        <slot name="sidebar" />
+      </div>
     </aside>
     <main class={sx('min-w-0 p-4 xs:p-5 sm:p-6 md:col-span-3')}>
       <slot />
