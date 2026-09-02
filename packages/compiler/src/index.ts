@@ -18,7 +18,7 @@ export type {
   CompiledUtility,
   UtilityConflictRecord,
 } from './conflicts';
-export { compileUtilities, describeUtilityRecipe } from './utilities';
+export { compileSourceUtilities, compileUtilities, describeUtilityRecipe, validateUtilityCandidate } from './utilities';
 export type {
   UtilityDeclaration,
   UtilityCompilation,
@@ -30,6 +30,7 @@ export type {
 export type { DarkMode } from './utility-variants';
 export type { CssxTheme, ThemeOutputMode } from './theme';
 export { parseTheme } from './theme';
+export { splitCandidateList } from './candidate';
 
 import { compileStyleRecords, compileStyleRecordMaps } from './conflicts';
 import type {

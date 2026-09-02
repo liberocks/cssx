@@ -17,11 +17,18 @@ export const publicExports = [
       'classifyUtility',
       'compileStyleRecords',
       'compileStyleMap',
+      'compileSourceUtilities',
       'compileUtilities',
       'mergeCompiledStyles',
       'parseTheme',
       'serializeCss',
     ],
+  },
+  {
+    specifier: '@cssxio/html',
+    packageDirectory: 'packages/html',
+    exportPath: '.',
+    exports: ['RUNTIME_STYLESHEET_ATTRIBUTE', 'start'],
   },
   {
     specifier: '@cssxio/babel-plugin',

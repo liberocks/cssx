@@ -16,6 +16,18 @@ const run = (arguments_, env = {}) => {
   if (result.status !== 0) process.exit(result.status ?? 1);
 };
 
+run(['--dir', '..', '--filter', '@cssxio/html', 'build']);
+
+run([
+  'exec',
+  'playwright',
+  'test',
+  'html',
+  '--config',
+  'playwright.config.ts',
+  ...(update ? ['--update-snapshots'] : []),
+]);
+
 run([
   'exec',
   'playwright',
