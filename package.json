@@ -12,6 +12,7 @@
     "benchmark:vite": "pnpm --dir benchmarks benchmark:vite",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
+    "generate:tailwind-corpus": "pnpm --filter @cssxio/compiler build && node scripts/generate-tailwind-conformance.mjs",
     "lint": "eslint . --max-warnings 0",
     "test": "pnpm test:unit && pnpm test:package-contract",
     "test:unit": "vitest run --exclude packages/cssx/test/package-contract.test.ts",

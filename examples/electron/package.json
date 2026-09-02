@@ -1,0 +1,27 @@
+{
+  "name": "cssx-electron-example",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "dev": "concurrently -k 'vite --host 127.0.0.1 --port 4318' 'wait-on http://127.0.0.1:4318 && cross-env CSSX_ELECTRON_URL=http://127.0.0.1:4318 electron .'",
+    "build": "vite build",
+    "start": "electron .",
+    "test": "pnpm build && cross-env CSSX_ELECTRON_SMOKE=1 electron ."
+  },
+  "dependencies": {
+    "@cssxio/cssx": "link:../../packages/cssx",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@cssxio/unplugin": "link:../../packages/unplugin",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^44.1.1",
+    "typescript": "^5.9.2",
+    "vite": "^8.2.2",
+    "wait-on": "^9.0.3"
+  }
+}

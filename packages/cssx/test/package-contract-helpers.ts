@@ -19,6 +19,7 @@ export const publicExports = [
       'compileStyleMap',
       'compileUtilities',
       'mergeCompiledStyles',
+      'parseTheme',
       'serializeCss',
     ],
   },
@@ -26,6 +27,18 @@ export const publicExports = [
     specifier: '@cssxio/babel-plugin',
     packageDirectory: 'packages/babel-plugin',
     exportPath: '.',
+    exports: ['default'],
+  },
+  {
+    specifier: '@cssxio/react-native',
+    packageDirectory: 'packages/react-native',
+    exportPath: '.',
+    exports: ['create', 'props', 'sx'],
+  },
+  {
+    specifier: '@cssxio/react-native/babel',
+    packageDirectory: 'packages/react-native',
+    exportPath: './babel',
     exports: ['default'],
   },
   {

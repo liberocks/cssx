@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "CSSX Expo",
+    "slug": "cssx-expo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic"
+  }
+}
