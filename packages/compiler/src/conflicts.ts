@@ -86,9 +86,9 @@ export type ReusabilityBudget = number | 'auto';
 export interface ClassNameOptions {
   /** Naming algorithm. Defaults to `serial`; `random` is a stable content hash. */
   readonly variant?: 'random' | 'serial';
-  /** Text prepended to every generated class. Defaults to `s`. */
+  /** Text prepended to every generated class. Defaults to an empty string. */
   readonly prefix?: string;
-  /** Text appended to every generated class. Defaults to `x`. */
+  /** Text appended to every generated class. Defaults to an empty string. */
   readonly suffix?: string;
   /** Length of the hash fragment when `variant` is `random`. */
   readonly length?: number;
@@ -675,14 +675,14 @@ interface NormalizedClassNameOptions {
  */
 function normalizeClassNameOptions(options: ClassNameOptions | undefined): NormalizedClassNameOptions {
   const variant = options?.variant ?? 'serial';
-  const prefix = options?.prefix ?? 's';
-  const suffix = options?.suffix ?? 'x';
+  const prefix = options?.prefix ?? '';
+  const suffix = options?.suffix ?? '';
   const length = options?.length;
   if (variant !== 'random' && variant !== 'serial') {
     throw new Error('CSSX className.variant must be "random" or "serial".');
   }
-  if (!/^[A-Za-z_-][A-Za-z0-9_-]*$/.test(prefix)) {
-    throw new Error('CSSX className.prefix must be a non-empty safe CSS identifier prefix.');
+  if (prefix && !/^[A-Za-z_-][A-Za-z0-9_-]*$/.test(prefix)) {
+    throw new Error('CSSX className.prefix must be a safe CSS identifier prefix.');
   }
   if (!/^[A-Za-z0-9_-]*$/.test(suffix)) {
     throw new Error('CSSX className.suffix must contain only letters, digits, hyphens, or underscores.');
@@ -734,7 +734,9 @@ class GeneratedClassNameAllocator implements ClassNameAllocator {
       do {
         const core =
           this.naming.variant === 'serial'
-            ? serialClassFragment(this.serialCounter++)
+            ? this.naming.prefix || this.naming.suffix
+              ? serialClassFragment(this.serialCounter++)
+              : (this.serialCounter++).toString()
             : randomClassFragment(identity, this.naming.length, attempt);
         className = `${this.naming.prefix}${core}${this.naming.suffix}`;
         attempt++;

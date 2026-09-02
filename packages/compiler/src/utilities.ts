@@ -203,7 +203,6 @@ async function compileUtilityList(
         selectorAliases,
         includedClasses,
         variantOptions,
-        escapeSourceSelectors,
       ),
     );
     for (const keyframe of recipe.resources.keyframes) {
@@ -245,7 +244,10 @@ async function compileUtilityList(
  */
 function readGeneratedClassNames(candidate: string, value: string): readonly string[] {
   const classes = value.split(/\s+/).filter(Boolean);
-  if (classes.length === 0 || classes.some((className) => !/^[A-Za-z_-][A-Za-z0-9_-]*$/.test(className))) {
+  if (
+    classes.length === 0 ||
+    classes.some((className) => !/^(?:[A-Za-z_][A-Za-z0-9_-]*|[0-9][A-Za-z0-9_-]*)$/.test(className))
+  ) {
     throw new Error(`CSSX received an unsafe generated class name for utility "${candidate}".`);
   }
   return classes;
@@ -279,14 +281,13 @@ function compileCandidate(
   selectorAliases: Readonly<Record<string, readonly string[]>>,
   includedClasses: ReadonlySet<string> | undefined,
   variantOptions: VariantOptions,
-  escapeSourceSelectors: boolean,
 ): readonly CompiledUtility[] {
   const candidate = parseCandidate(candidateSource);
   const semantics = classifyCandidate(candidateSource)!;
   if (classNames.length === 1) {
     const declarations = atoms.flat();
     const generatedClass = classNames[0]!;
-    const selectors = classSelectors(generatedClass, selectorAliases, includedClasses, escapeSourceSelectors);
+    const selectors = classSelectors(generatedClass, selectorAliases, includedClasses);
     return [
       {
         candidate: candidateSource,
@@ -302,7 +303,7 @@ function compileCandidate(
   return atoms
     .map((declarations, index) => {
       const className = classNames[index]!;
-      const selectors = classSelectors(className, selectorAliases, includedClasses, escapeSourceSelectors);
+      const selectors = classSelectors(className, selectorAliases, includedClasses);
       if (selectors.length === 0) {
         return null;
       }
@@ -321,13 +322,12 @@ function classSelectors(
   className: string,
   selectorAliases: Readonly<Record<string, readonly string[]>>,
   includedClasses: ReadonlySet<string> | undefined,
-  escapeSourceSelectors: boolean,
 ): readonly string[] {
   const names = new Set(selectorAliases[className] ?? []);
   if (!includedClasses || includedClasses.has(className)) {
     names.add(className);
   }
-  return [...names].sort().map((name) => `.${escapeSourceSelectors ? escapeCssIdentifier(name) : name}`);
+  return [...names].sort().map((name) => `.${escapeCssIdentifier(name)}`);
 }
 
 /** Escapes a class name for use as one CSS identifier. */

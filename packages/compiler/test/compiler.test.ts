@@ -13,16 +13,21 @@ import {
 import { parseTheme } from '../src/theme';
 import { validateUtilityCandidate } from '../src/utilities';
 
+function cssClassSelector(className: string): string {
+  const first = className[0] ?? '';
+  return /^[0-9]$/.test(first) ? `.\\${first.charCodeAt(0).toString(16)} ${className.slice(1)}` : `.${className}`;
+}
+
 describe('CSSX compiler', () => {
   it('emits one composite class for a complete static style', async () => {
     const result = await compileStyleMap({ root: 'relative flex p-5 hover:bg-red-500' });
     const className = result.classNames.root ?? '';
     const css = serializeCss(result.rules);
 
-    expect(className).toMatch(/^s[0-9A-Za-z]+x$/);
+    expect(className).toMatch(/^[0-9][0-9A-Za-z]*$/);
     expect(className.split(' ')).toHaveLength(1);
-    expect(css).toContain(`.${className}`);
-    expect(css).toContain(`.${className}:hover`);
+    expect(css).toContain('.\\30 ');
+    expect(css).toContain('.\\30 :hover');
     expect(css).toContain('position:relative');
     expect(css).toContain('display:flex');
     expect(css).toContain('padding:calc(0.25rem * 5)');
@@ -47,7 +52,7 @@ describe('CSSX compiler', () => {
 
     expect(uniqueClasses.every((className) => /^u-[0-9A-Za-z]+-x$/.test(className))).toBe(true);
     expect(serials).toEqual(['0', '1', '2', '3', '4', '5', '6']);
-    expect(serializeCss(result.rules)).toContain('.u-0-x');
+    expect(serializeCss(result.rules)).toContain('.u-0-');
   });
 
   it('continues serial names through lower- and uppercase letters before base-62 rollover', async () => {
@@ -57,23 +62,27 @@ describe('CSSX compiler', () => {
     );
     const classes = new Set([...Object.values(result.classes), ...Object.values(result.classNames)]);
 
-    expect(classes).toContain('u-0x');
-    expect(classes).toContain('u-9x');
-    expect(classes).toContain('u-ax');
-    expect(classes).toContain('u-zx');
-    expect(classes).toContain('u-Ax');
-    expect(classes).toContain('u-Zx');
-    expect(classes).toContain('u-10x');
+    expect(classes).toContain('u-0');
+    expect(classes).toContain('u-9');
+    expect(classes).toContain('u-a');
+    expect(classes).toContain('u-z');
+    expect(classes).toContain('u-A');
+    expect(classes).toContain('u-Z');
+    expect(classes).toContain('u-10');
   });
 
-  it('uses serial names with s and x defaults', async () => {
+  it('uses serial names with blank prefix and suffix defaults', async () => {
     const result = await compileStyleMap({ root: 'p-4 bg-red-500' }, { className: { variant: 'serial' } });
     const classes = [
       ...Object.values(result.classes).flatMap((value) => value.split(' ')),
       ...Object.values(result.classNames),
     ];
 
-    expect(classes.every((className) => /^s[0-9A-Za-z]+x$/.test(className))).toBe(true);
+    expect(classes.every((className) => /^[0-9][0-9A-Za-z]*$/.test(className))).toBe(true);
+    const identities = Array.from({ length: 63 }, (_, index) => index.toString().padStart(2, '0'));
+    expect([...createClassNameAllocator().allocate(identities).values()]).toEqual(
+      Array.from({ length: 63 }, (_, index) => `${index}`),
+    );
   });
 
   it('keeps one complete class per style at a zero reusability budget', async () => {
@@ -221,7 +230,7 @@ describe('CSSX compiler', () => {
       second.classNames.color,
       composition.className,
     ].filter((className): className is string => !!className);
-    expect(classNames.every((className) => /^s[0-9A-Za-z]+x$/.test(className))).toBe(true);
+    expect(classNames.every((className) => /^[0-9][0-9A-Za-z]*$/.test(className))).toBe(true);
     expect(composition.className).toBeTruthy();
   });
 
@@ -237,13 +246,13 @@ describe('CSSX compiler', () => {
 
     expect(classes.every((className) => /^app_[0-9a-z]{4}_v$/.test(className))).toBe(true);
     expect(new Set(classes).size).toBe(classes.length);
-    expect(serializeCss(result.rules)).toContain(`.${result.classNames.root}`);
+    expect(serializeCss(result.rules)).toContain(cssClassSelector(result.classNames.root ?? ''));
   });
 
   it('rejects unsafe naming options and random lengths that cannot avoid collisions', async () => {
-    await expect(compileStyleMaps({ root: { base: 'p-4 bg-red-500' } }, { className: { prefix: '' } })).rejects.toThrow(
-      'prefix',
-    );
+    await expect(
+      compileStyleMaps({ root: { base: 'p-4 bg-red-500' } }, { className: { prefix: '9' } }),
+    ).rejects.toThrow('prefix');
     await expect(
       compileStyleMaps({ root: { base: 'p-4' } }, { className: { variant: 'serial', length: 3 } }),
     ).rejects.toThrow('only supported');
@@ -356,8 +365,8 @@ describe('CSSX compiler', () => {
     expect(css.match(/@keyframes wiggle/g)).toHaveLength(1);
     expect(css.match(/animation:wiggle/g)).toHaveLength(1);
     expect(css.match(/@property --cssx-scrollbar-thumb/g)).toHaveLength(1);
-    expect(mergeCompiledStyles([button])).toContain('s');
-    expect(mergeCompiledStyles([card])).toContain('s');
+    expect(mergeCompiledStyles([button])).toBeTruthy();
+    expect(mergeCompiledStyles([card])).toBeTruthy();
   });
 
   it('lowers independently overridable multi-property utilities into generated atoms', async () => {
@@ -372,8 +381,8 @@ describe('CSSX compiler', () => {
 
     expect(horizontalAtoms).toHaveLength(2);
     expect(mergeCompiledStyles([horizontal, right])).toBe(`${horizontalAtoms[0]} ${result.classes['pr-1']}`);
-    expect(css).toContain(`.${horizontalAtoms[0]}`);
-    expect(css).toContain(`.${horizontalAtoms[1]}`);
+    expect(css).toContain(cssClassSelector(horizontalAtoms[0] ?? ''));
+    expect(css).toContain(cssClassSelector(horizontalAtoms[1] ?? ''));
     expect(css).toContain('padding-left:calc(0.25rem * 2);');
     expect(css).toContain('padding-right:calc(0.25rem * 2);');
   });

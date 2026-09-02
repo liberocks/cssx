@@ -16,7 +16,7 @@ const css = serializeCss(result.rules, { layer: 'cssx' });
 ## Class names
 
 The style-map compiler APIs accept `className`. By default CSSX uses compact,
-collision-free serial names: `s0x`, `s1x`, and so on.
+collision-free serial names with no prefix or suffix: `0`, `1`, and so on.
 
 Static style maps also default to `reusabilityBudget: 'auto'`. CSSX shares
 positive-value groups of utilities between repeated styles and leaves each
@@ -41,11 +41,11 @@ const result = await compileStyleMap(
 // Atomic and composite names: app-0-v1, app-1-v1, …, app-z-v1, app-A-v1, …, app-10-v1
 ```
 
-`serial` is a collision-free, case-sensitive base-62 counter for the complete
-compilation: `0` through `9`, then `a` through `z`, then `A` through `Z`, then
-`10`. Its default prefix and suffix are `s` and `x` (`s0x`, `s1x`, …). It is
-the smallest output for a bounded build, while the `prefix` gives it a project
-namespace. Choose the stable content-hash `random` variant when that better
+`serial` uses a collision-free decimal counter by default: `0`, `1`, and so
+on. When either affix is set, it uses a compact, case-sensitive base-62 counter:
+`0` through `9`, then `a` through `z`, then `A` through `Z`, then `10`. CSSX
+escapes digit-leading generated names in CSS selectors. The `prefix` gives it a
+project namespace. Choose the stable content-hash `random` variant when that better
 fits your build; set
 `length` to fix the hash fragment length when you need a smaller output:
 
@@ -57,7 +57,7 @@ fits your build; set
 CSSX resolves collisions deterministically for random names. A fixed random
 length must have enough base-36 combinations for every generated atomic and
 composite class; otherwise compilation fails instead of reusing a class name.
-`length` applies only to `random`, and `prefix` must be a non-empty safe CSS
+`length` applies only to `random`, and a non-empty `prefix` must be a safe CSS
 identifier prefix. Prefixes and suffixes work with both variants.
 
 When you compile independent maps that share one stylesheet, create one
@@ -91,7 +91,7 @@ const second = compileStyleRecords({ card: 'bg-white' }, { classNameAllocator })
 
 - `CompilerOptions` configures high-level compilation. Its optional `theme` is CSSX `@theme` input, `className` controls generated class naming, and `reusabilityBudget` controls static class sharing.
 - `StyleCompilerOptions` configures compiled record generation with the same optional `theme`, `className`, and `reusabilityBudget` inputs.
-- `ClassNameOptions` defaults to `serial` names with an `s` prefix and `x` suffix. It can select `random` (stable hash), set a shared `prefix` or `suffix`, and set the random hash `length`.
+- `ClassNameOptions` defaults to `serial` names with blank prefixes and suffixes. It can select `random` (stable hash), set a shared `prefix` or `suffix`, and set the random hash `length`.
 - `ClassNameAllocator` maintains one collision-free naming namespace across independent compiler calls. Create one with `createClassNameAllocator(options?)`.
 - `CssxRule` contains a stable generated `className` and its full `css`.
 - `CompileResult` contains one map's `styles`, composite `classNames`, `rules`, generated atom `classes`, and parsed `candidates`.

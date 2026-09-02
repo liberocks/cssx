@@ -11,6 +11,11 @@ function transform(source: string, options: Parameters<typeof cssxBabelPlugin>[1
   });
 }
 
+function cssClassSelector(className: string): string {
+  const first = className[0] ?? '';
+  return /^[0-9]$/.test(first) ? `.\\${first.charCodeAt(0).toString(16)} ${className.slice(1)}` : `.${className}`;
+}
+
 describe('CSSX Babel plugin', () => {
   it('extracts create styles and folds fully static props calls', () => {
     const result = transformSync(
@@ -35,7 +40,7 @@ describe('CSSX Babel plugin', () => {
     expect(result?.code).not.toContain('@cssxio/cssx');
     expect(result?.code).toContain('className');
     expect(Object.keys(metadata.candidates)).toHaveLength(2);
-    expect(Object.values(metadata.candidates).every((className) => /^s[0-9A-Za-z]+x$/.test(className))).toBe(true);
+    expect(Object.values(metadata.candidates).every((className) => /^[0-9][0-9A-Za-z]*$/.test(className))).toBe(true);
   });
 
   it('interns repeated static props output without retaining the runtime import', () => {
@@ -223,9 +228,9 @@ describe('CSSX Babel plugin', () => {
   });
 
   it('leaves already generated sx class names unchanged', () => {
-    const result = transform(`import { sx } from '@cssxio/cssx'; export const className = sx('s0x');`);
+    const result = transform(`import { sx } from '@cssxio/cssx'; export const className = sx('0');`);
 
-    expect(result?.code).toContain("sx('s0x')");
+    expect(result?.code).toContain("sx('0')");
   });
 
   it('handles static edge forms while leaving unsupported dynamic calls intact', () => {
@@ -302,7 +307,7 @@ describe('CSSX Babel plugin', () => {
 
     expect(Object.keys(metadata.composites)).toHaveLength(5);
     expect(metadata.atomicClasses.length).toBeGreaterThan(0);
-    expect(css).toContain(`.${Object.keys(metadata.composites)[0]}`);
+    expect(css).toContain(cssClassSelector(Object.keys(metadata.composites)[0] ?? ''));
   });
 
   it('snapshots transformed JavaScript and extracted CSS metadata for custom themes, variants, and arbitrary properties', async () => {
@@ -340,8 +345,8 @@ describe('CSSX Babel plugin', () => {
     expect(result.code).not.toContain('$$css: 2');
     expect(Object.keys(metadata.composites)).toEqual([foldedClass]);
     expect(metadata.atomicClasses).toEqual([]);
-    expect(css).toContain(`.${foldedClass}`);
-    expect(atomicClasses.every((className) => !css.includes(`.${className}`))).toBe(true);
+    expect(css).toContain(cssClassSelector(foldedClass));
+    expect(atomicClasses.every((className) => !css.includes(cssClassSelector(className)))).toBe(true);
     expect(css).toContain('padding-left:calc(2px * 4)');
     expect(css).toContain('padding-right:calc(2px * 4)');
     expect(css).toContain('mask-type:luminance');

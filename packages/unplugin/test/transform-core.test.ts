@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { serializeCss } from '@cssxio/compiler';
 import { compileCssxStylesheet, transformCssxModule } from '../src/index';
 import { sourceMapFromContext } from '../src/transform';
+
+function cssClassSelector(className: string): string {
+  const first = className[0] ?? '';
+  return /^[0-9]$/.test(first) ? `.\\${first.charCodeAt(0).toString(16)} ${className.slice(1)}` : `.${className}`;
+}
 import { decodeFirstMapping, pluginFor, source, transformRequired } from './transform-helpers';
 
 describe('CSSX unplugin transform', () => {
@@ -168,12 +173,12 @@ describe('CSSX unplugin transform', () => {
     expect(result.code).not.toMatch(/from\s+['"]@cssxio\/cssx['"]/);
     expect(result.rules).toHaveLength(1);
     expect(classNames).toHaveLength(1);
-    expect(css).toContain(`.${classNames[0]}`);
+    expect(css).toContain(cssClassSelector(classNames[0] ?? ''));
     expect(result.atomicClasses).toEqual([]);
     expect(
       Object.values(result.candidates)
         .flatMap((className) => className.split(' '))
-        .every((className) => !css.includes(`.${className}`)),
+        .every((className) => !css.includes(cssClassSelector(className))),
     ).toBe(true);
     expect(css).not.toContain('p-5');
     expect(css).not.toContain('bg-red-500');
@@ -358,7 +363,7 @@ describe('CSSX unplugin transform', () => {
       '/project/styles.ts',
     );
 
-    expect(transformed.code).toMatch(/className: "s[0-9A-Za-z]+x"/);
+    expect(transformed.code).toMatch(/className: "[0-9][0-9A-Za-z]*"/);
     expect(transformed.code).not.toContain('className: "d');
   });
 });
