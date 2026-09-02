@@ -18,11 +18,18 @@ describe('release plan', () => {
     expect(selectReleasePackages(['packages/compiler/src/index.ts']).map(({ name }) => name)).toEqual([
       '@cssxio/compiler',
       '@cssxio/babel-plugin',
+      '@cssxio/react-native',
       '@cssxio/unplugin',
     ]);
   });
 
   it('does not release packages for non-package changes', () => {
     expect(selectReleasePackages(['README.md', 'benchmarks/benchmark.mjs'])).toEqual([]);
+  });
+
+  it('releases the React Native package when its source changes', () => {
+    expect(selectReleasePackages(['packages/react-native/src/index.ts']).map(({ name }) => name)).toEqual([
+      '@cssxio/react-native',
+    ]);
   });
 });

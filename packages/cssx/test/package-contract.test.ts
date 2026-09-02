@@ -107,6 +107,40 @@ void props;
     );
   });
 
+  it('type-checks React Native styles through the published declaration', async () => {
+    const sourcePath = join(fixtureDirectory, 'cssx-native-types.mts');
+    await writeFile(
+      sourcePath,
+      `import * as cssx from '@cssxio/react-native';
+
+const styles = cssx.create({ page: 'flex-1 p-6', title: 'text-lg' });
+const page: cssx.CompiledNativeStyle = styles.page;
+const props: { readonly style: cssx.NativeStyle } = cssx.props(styles.page, styles.title);
+
+void page;
+void props;
+`,
+    );
+
+    await runCommand(
+      process.execPath,
+      [
+        join(workspaceRoot, 'node_modules', 'typescript', 'bin', 'tsc'),
+        '--noEmit',
+        '--strict',
+        '--skipLibCheck',
+        '--target',
+        'ES2022',
+        '--module',
+        'NodeNext',
+        '--moduleResolution',
+        'NodeNext',
+        sourcePath,
+      ],
+      fixtureDirectory,
+    );
+  });
+
   it('declares only approved dependencies in CSSX package manifests', async () => {
     for (const packageDirectory of packageDirectories) {
       const manifest = await readManifest(packageDirectory);

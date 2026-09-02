@@ -1,0 +1,40 @@
+{
+  "name": "@cssxio/react-native",
+  "version": "0.2.0",
+  "description": "CSSX utility styling runtime and compiler transform for React Native and Expo.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./babel": {
+      "types": "./dist/babel.d.ts",
+      "import": "./dist/babel.js",
+      "require": "./dist/babel.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts src/babel.ts --format esm,cjs --dts --external @babel/core --clean"
+  },
+  "dependencies": {
+    "@cssxio/compiler": "workspace:*"
+  },
+  "peerDependencies": {
+    "@babel/core": "^7.28.0"
+  },
+  "peerDependenciesMeta": {
+    "@babel/core": {
+      "optional": true
+    }
+  }
+}

@@ -29,6 +29,7 @@ export type {
 } from './utilities';
 export type { DarkMode } from './utility-variants';
 export type { CssxTheme, ThemeOutputMode } from './theme';
+export { parseTheme } from './theme';
 
 import { compileStyleRecords, compileStyleRecordMaps } from './conflicts';
 import type {

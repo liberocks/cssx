@@ -201,6 +201,15 @@ importers:
 
   packages/intellisense: {}
 
+  packages/react-native:
+    dependencies:
+      '@babel/core':
+        specifier: ^7.28.0
+        version: 7.29.7
+      '@cssxio/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+
   packages/unplugin:
     dependencies:
       '@babel/core':
