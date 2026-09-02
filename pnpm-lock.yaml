@@ -175,6 +175,12 @@ importers:
 
   packages/compiler: {}
 
+  packages/html:
+    dependencies:
+      '@cssxio/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+
   packages/cssx: {}
 
   packages/docs:

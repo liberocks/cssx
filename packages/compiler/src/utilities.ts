@@ -142,6 +142,35 @@ export async function compileUtilities(
   includedClasses?: ReadonlySet<string>,
   variantOptions: VariantOptions = {},
 ): Promise<UtilityCompilation> {
+  return compileUtilityList(candidates, className, themeCss, selectorAliases, includedClasses, variantOptions, false);
+}
+
+/**
+ * Compiles utilities using their original source class names as selectors.
+ *
+ * @param candidates The utility strings to compile.
+ * @param themeCss Optional CSS theme input.
+ * @param variantOptions Options that affect variant rendering.
+ * @returns Generated CSS whose selectors match the source utility strings.
+ */
+export async function compileSourceUtilities(
+  candidates: readonly string[],
+  themeCss = '',
+  variantOptions: VariantOptions = {},
+): Promise<UtilityCompilation> {
+  return compileUtilityList(candidates, (candidate) => candidate, themeCss, {}, undefined, variantOptions, true);
+}
+
+/** Compiles utility candidates with either generated or source class selectors. */
+async function compileUtilityList(
+  candidates: readonly string[],
+  className: (candidate: string) => string,
+  themeCss: string,
+  selectorAliases: Readonly<Record<string, readonly string[]>>,
+  includedClasses: ReadonlySet<string> | undefined,
+  variantOptions: VariantOptions,
+  escapeSourceSelectors: boolean,
+): Promise<UtilityCompilation> {
   if (candidates.length > 50_000) {
     throw new Error('CSSX supports at most 50,000 utility candidates per compilation.');
   }
@@ -153,7 +182,9 @@ export async function compileUtilities(
 
   for (const candidate of [...new Set(candidates)]) {
     const recipe = describeUtilityRecipe(candidate, theme);
-    const generatedClasses = readGeneratedClassNames(candidate, className(candidate));
+    const generatedClasses = escapeSourceSelectors
+      ? [className(candidate)]
+      : readGeneratedClassNames(candidate, className(candidate));
     classes[candidate] = generatedClasses.join(' ');
     const liveClasses = includedClasses
       ? generatedClasses.filter(
@@ -172,6 +203,7 @@ export async function compileUtilities(
         selectorAliases,
         includedClasses,
         variantOptions,
+        escapeSourceSelectors,
       ),
     );
     for (const keyframe of recipe.resources.keyframes) {
@@ -247,13 +279,14 @@ function compileCandidate(
   selectorAliases: Readonly<Record<string, readonly string[]>>,
   includedClasses: ReadonlySet<string> | undefined,
   variantOptions: VariantOptions,
+  escapeSourceSelectors: boolean,
 ): readonly CompiledUtility[] {
   const candidate = parseCandidate(candidateSource);
   const semantics = classifyCandidate(candidateSource)!;
   if (classNames.length === 1) {
     const declarations = atoms.flat();
     const generatedClass = classNames[0]!;
-    const selectors = classSelectors(generatedClass, selectorAliases, includedClasses);
+    const selectors = classSelectors(generatedClass, selectorAliases, includedClasses, escapeSourceSelectors);
     return [
       {
         candidate: candidateSource,
@@ -269,7 +302,7 @@ function compileCandidate(
   return atoms
     .map((declarations, index) => {
       const className = classNames[index]!;
-      const selectors = classSelectors(className, selectorAliases, includedClasses);
+      const selectors = classSelectors(className, selectorAliases, includedClasses, escapeSourceSelectors);
       if (selectors.length === 0) {
         return null;
       }
@@ -288,12 +321,37 @@ function classSelectors(
   className: string,
   selectorAliases: Readonly<Record<string, readonly string[]>>,
   includedClasses: ReadonlySet<string> | undefined,
+  escapeSourceSelectors: boolean,
 ): readonly string[] {
   const names = new Set(selectorAliases[className] ?? []);
   if (!includedClasses || includedClasses.has(className)) {
     names.add(className);
   }
-  return [...names].sort().map((name) => `.${name}`);
+  return [...names].sort().map((name) => `.${escapeSourceSelectors ? escapeCssIdentifier(name) : name}`);
+}
+
+/** Escapes a class name for use as one CSS identifier. */
+function escapeCssIdentifier(value: string): string {
+  let output = '';
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    const character = value[index]!;
+    if (index === 0 && code >= 48 && code <= 57) {
+      output += `\\${code.toString(16)} `;
+    } else if (
+      code >= 128 ||
+      code === 45 ||
+      code === 95 ||
+      (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122)
+    ) {
+      output += character;
+    } else {
+      output += `\\${character}`;
+    }
+  }
+  return output;
 }
 
 /**

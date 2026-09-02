@@ -181,6 +181,9 @@ void props;
         if (manifest.name === '@cssxio/compiler') {
           expect(listing).toContain('package/THIRD_PARTY_NOTICES.md');
         }
+        if (manifest.name === '@cssxio/html') {
+          expect(listing).toContain('package/dist/cssx.global.js');
+        }
       }
 
       const cssxTarball = (await (await import('node:fs/promises')).readdir(packDirectory)).find((file) =>

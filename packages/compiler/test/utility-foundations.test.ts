@@ -1,9 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { compileUtilities } from '../src/index';
+import { compileSourceUtilities, compileUtilities } from '../src/index';
 import { applyVariants } from '../src/utility-variants';
 import { parseTheme } from '../src/theme';
 
 describe('CSSX utility compiler', () => {
+  it('compiles source utility names into escaped CSS selectors', async () => {
+    const result = await compileSourceUtilities(['p-5', '2xl:p-5', 'hover:bg-red-500', '[mask-type:luminance]']);
+
+    expect(result.classes).toEqual({
+      'p-5': 'p-5',
+      '2xl:p-5': '2xl:p-5',
+      'hover:bg-red-500': 'hover:bg-red-500',
+      '[mask-type:luminance]': '[mask-type:luminance]',
+    });
+    expect(result.css).toContain('.p-5{padding:calc(0.25rem * 5);}');
+    expect(result.css).toContain('.\\32 xl\\:p-5');
+    expect(result.css).toContain('.hover\\:bg-red-500:hover');
+    expect(result.css).toContain('.\\[mask-type\\:luminance\\]{mask-type:luminance;}');
+  });
+
   it('compiles default utilities and rewrites only their root selectors', async () => {
     const result = await compileUtilities(
       ['p-5', 'hover:bg-red-500', 'sm:grid-cols-3'],

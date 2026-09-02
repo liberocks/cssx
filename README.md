@@ -7,6 +7,7 @@ CSSX turns static utility strings into class names and CSS when you build your a
 | Package                                                   | Purpose                                                |
 | --------------------------------------------------------- | ------------------------------------------------------ |
 | [`@cssxio/cssx`](packages/cssx/README.md)                 | The `create`, `props`, and `sx` runtime API.           |
+| [`@cssxio/html`](packages/html/README.md)                 | Zero-build runtime styling for ordinary HTML.          |
 | [`@cssxio/compiler`](packages/compiler/README.md)         | Static utility compilation and CSS output.             |
 | [`@cssxio/babel-plugin`](packages/babel-plugin/README.md) | Source transform for static CSSX calls.                |
 | [`@cssxio/unplugin`](packages/unplugin/README.md)         | Build tool adapters that create the CSS file.          |
@@ -20,6 +21,28 @@ Install the runtime plus a compiler integration:
 pnpm add @cssxio/cssx
 pnpm add -D @cssxio/unplugin
 ```
+
+## Raw HTML
+
+For a plain HTML page with no build step, load the default-theme runtime from a CDN. It scans the classes present when the page loads, adds the matching CSSX rules to the document, and leaves every class attribute unchanged.
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <script defer src="https://cdn.jsdelivr.net/npm/@cssxio/html@0.2.0/dist/cssx.global.js"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 p-6 text-white">
+    <main class="mx-auto max-w-xl rounded-lg bg-white p-6 text-slate-950 shadow-lg">
+      CSSX styles this ordinary HTML.
+    </main>
+  </body>
+</html>
+```
+
+The CDN runtime includes the default CSSX theme. It ignores custom classes such as `htmx-indicator` and `app-card`, and it does not process content inserted after the initial page load. To use custom `@theme` tokens, bundle `start({ theme })` from `@cssxio/html` and host that script yourself. See the [raw HTML example](examples/html) and the [package README](packages/html/README.md).
 
 For bare React Native or Expo, install the native package instead:
 
