@@ -86,9 +86,9 @@ export type ReusabilityBudget = number | 'auto';
 export interface ClassNameOptions {
   /** Naming algorithm. Defaults to `serial`; `random` is a stable content hash. */
   readonly variant?: 'random' | 'serial';
-  /** Text prepended to every generated class. Defaults to an empty string. */
+  /** Text prepended to every generated class. Defaults to `s`. */
   readonly prefix?: string;
-  /** Text appended to every generated class. Defaults to an empty string. */
+  /** Text appended to every generated class. Defaults to `x`. */
   readonly suffix?: string;
   /** Length of the hash fragment when `variant` is `random`. */
   readonly length?: number;
@@ -675,8 +675,8 @@ interface NormalizedClassNameOptions {
  */
 function normalizeClassNameOptions(options: ClassNameOptions | undefined): NormalizedClassNameOptions {
   const variant = options?.variant ?? 'serial';
-  const prefix = options?.prefix ?? '';
-  const suffix = options?.suffix ?? '';
+  const prefix = options?.prefix ?? 's';
+  const suffix = options?.suffix ?? 'x';
   const length = options?.length;
   if (variant !== 'random' && variant !== 'serial') {
     throw new Error('CSSX className.variant must be "random" or "serial".');

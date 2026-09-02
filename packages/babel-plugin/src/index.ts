@@ -377,7 +377,7 @@ export default function cssxBabelPlugin(
 
   /** Recognizes the default serial class names written by an earlier CSSX transform. */
   function isGeneratedClassNames(value: string): boolean {
-    return /^[0-9]+(?:\s+[0-9]+)*$/.test(value);
+    return /^s[0-9A-Za-z]+x(?:\s+s[0-9A-Za-z]+x)*$/.test(value);
   }
 
   /**

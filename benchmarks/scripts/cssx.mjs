@@ -5,7 +5,7 @@ import './assert-compiler-build.mjs';
 import { bundleCss, bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
 import { createWorkload, readVariantArgument } from './workload.mjs';
 
-const SERIAL_CLASS_NAME = /^[0-9]+$/;
+const SERIAL_CLASS_NAME = /^s[0-9A-Za-z]+x$/;
 
 /** Transforms canonical source and extracts final CSS with CSSX's production pipeline. */
 export async function runCssxBenchmark(variant = 'large') {
@@ -47,7 +47,7 @@ async function validateCssxOutput(artifacts, workload) {
     classValues.length !== workload.componentCount ||
     classNames.some((className) => !SERIAL_CLASS_NAME.test(className))
   ) {
-    throw new Error('CSSX benchmark requires default unprefixed serial class names.');
+    throw new Error('CSSX benchmark requires default s…x serial class names.');
   }
   validateCss(artifacts.css, workload);
 }
