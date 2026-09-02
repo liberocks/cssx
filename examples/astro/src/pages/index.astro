@@ -1,6 +1,7 @@
 ---
 import astroLogo from '../assets/astro.svg';
 import background from '../assets/background.svg';
+import { sx } from '@cssxio/cssx';
 import { styleProps } from '../styles';
 ---
 
@@ -12,7 +13,7 @@ import { styleProps } from '../styles';
     <link rel="stylesheet" href="/assets/cssx.css" />
     <title>Astro + CSSX</title>
   </head>
-  <body>
+  <body class={sx('min-h-screen')}>
     <main {...styleProps.page}>
       <img {...styleProps.background} src={background.src} alt="" />
       <section {...styleProps.hero}>

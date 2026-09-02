@@ -1,51 +1,28 @@
 ---
-import Navigation from '../components/Navigation.astro';
-import { navigation } from '../data/navigation.js';
-import { classes } from '../styles.js';
-
-interface Props {
-  title: string;
-  description: string;
-}
-
-const { title, description } = Astro.props;
-const currentPath = Astro.url.pathname;
-const currentItem = navigation.flatMap((group) => group.items).find((item) => item.href === currentPath);
+import BaseLayout from './BaseLayout.astro';
+import { sx } from '@cssxio/cssx';
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="description" content={description} />
-    <link rel="stylesheet" href="/assets/cssx.css" />
-    <title>{title} | CSSX</title>
-  </head>
-  <body class={classes.page}>
-    <a class={classes.skipLink} href="#content">Skip to content</a>
-    <header class={classes.header}>
-      <div class={classes.headerInner}>
-        <a class={classes.brand} href="/"><span class={classes.brandMark}>CX</span>CSSX</a>
-        <p class={classes.headerTagline}>Compile-time utility styling</p>
-        <details class={classes.mobileNav}>
-          <summary class={classes.mobileSummary}>Browse docs</summary>
-          <div class={classes.mobileNavPanel}><Navigation currentPath={currentPath} mobile /></div>
-        </details>
+<BaseLayout title="CSSX Docs">
+  <header
+    class={sx(
+      'sticky top-0 z-10 flex min-h-16 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 xs:px-5 sm:px-6 dark:border-slate-800 dark:bg-slate-900',
+    )}
+  >
+    <slot name="header" />
+  </header>
+  <div class={sx('block min-h-[calc(100vh-4rem)] md:grid md:grid-cols-4')}>
+    <aside
+      class={sx(
+        'border-b border-slate-200 bg-white p-4 xs:p-5 sm:p-6 md:self-stretch md:border-r md:border-b-0 dark:border-slate-800 dark:bg-slate-900',
+      )}
+    >
+      <div class={sx('md:sticky md:top-16')}>
+        <slot name="sidebar" />
       </div>
-    </header>
-    <div class={classes.frame}>
-      <aside class={classes.sidebar}><div class={classes.sidebarInner}><Navigation currentPath={currentPath} /></div></aside>
-      <main class={classes.main} id="content">
-        <article class={classes.article}>
-          {currentItem && <p class={classes.breadcrumb}>Documentation / {currentItem.label}</p>}
-          <slot />
-          <nav class={classes.footerNav} aria-label="Documentation pagination">
-            <a class={classes.footerLink} href={currentPath === '/' ? '/docs/installation' : '/'}>{currentPath === '/' ? 'Start installation' : 'Back to introduction'}</a>
-            <a class={classes.footerLink} href="/docs/utilities/layout">Utility reference</a>
-          </nav>
-        </article>
-      </main>
-    </div>
-  </body>
-</html>
+    </aside>
+    <main class={sx('min-w-0 p-4 xs:p-5 sm:p-6 md:col-span-3')}>
+      <slot />
+    </main>
+  </div>
+</BaseLayout>

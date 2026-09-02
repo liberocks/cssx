@@ -4,7 +4,7 @@ import cssx from '@cssxio/unplugin/vite';
 export default defineConfig({
   output: 'static',
   vite: {
-    plugins: [cssx({ cssFileName: 'assets/cssx.css' })],
+    plugins: [cssx({ cssFileName: 'assets/cssx.css', darkMode: 'selector' })],
     build: {
       rollupOptions: {
         onwarn(warning, warn) {

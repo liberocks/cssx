@@ -1,3 +1,4 @@
+import type { DarkMode } from '@cssxio/compiler';
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment, type CssxSourceModule } from './stylesheet';
 import { resolveCssFileName } from './options';
 
@@ -108,6 +109,8 @@ export function storeCompilationData(
  * @param layer Optional CSS layer that wraps generated CSS.
  * @param sourceMap Whether to generate a CSS source map.
  * @param metadataKey Key used to read transformed module data.
+ * @param transformedDataById Transformed source data retained outside native loader metadata.
+ * @param darkMode Controls how the `dark` variant is activated.
  * @returns Nothing after registering the compilation asset handler.
  */
 export function configureCompilationAsset(
@@ -118,6 +121,7 @@ export function configureCompilationAsset(
   sourceMap: boolean,
   metadataKey: string,
   transformedDataById?: ReadonlyMap<string, CssxSourceModule>,
+  darkMode?: DarkMode,
 ): void {
   compiler.hooks.thisCompilation.tap('@cssxio/unplugin', (compilation) => {
     compilation.hooks.processAssets.tapPromise(
@@ -136,6 +140,7 @@ export function configureCompilationAsset(
           await getTheme(),
           layer,
           sourceMap,
+          darkMode,
         );
         if (!compiled.css) {
           return;

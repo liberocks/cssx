@@ -125,6 +125,7 @@ async function compileCss(
     theme,
     options.layer,
     options.sourceMap ?? true,
+    options.darkMode,
   );
 }
 

@@ -1,0 +1,37 @@
+---
+import '@fontsource-variable/inter/wght.css';
+import { sx } from '@cssxio/cssx';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+    <script is:inline>
+      try {
+        const savedTheme = localStorage.getItem('cssx-theme');
+        const theme = savedTheme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
+    <link rel="stylesheet" href="/assets/cssx.css" />
+  </head>
+  <body
+    class={sx(
+      'm-0 min-h-screen min-w-80 bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50 [font-family:Inter_Variable,sans-serif] [font-synthesis:none]',
+    )}
+  >
+    <slot />
+  </body>
+</html>
