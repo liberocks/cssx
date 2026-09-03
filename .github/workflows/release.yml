@@ -17,6 +17,7 @@ permissions:
   actions: write
   contents: write
   id-token: write
+  pull-requests: write
 
 concurrency:
   group: release-main
@@ -73,20 +74,59 @@ jobs:
         env:
           BUMP: ${{ inputs.bump }}
           BASE: ${{ steps.base.outputs.base }}
-      - name: Apply and commit versions
+      - name: Apply and commit release versions
         if: steps.plan.outputs.has-release == 'true'
+        id: release_commit
         run: |
           node scripts/release-plan.mjs apply --input "$RUNNER_TEMP/release-plan.json"
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          release_branch="release/$BUMP-$GITHUB_RUN_ID"
+          git switch --create "$release_branch"
           git add packages/*/package.json
           git commit -m "chore(release): publish $BUMP releases"
-          git push origin HEAD:main
+          git push --set-upstream origin "$release_branch"
+          printf 'release-branch=%s\n' "$release_branch" >> "$GITHUB_OUTPUT"
+          printf 'release-sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
         env:
           BUMP: ${{ inputs.bump }}
-      - name: Verify the release commit
+      - name: Create and merge the release PR
+        if: steps.plan.outputs.has-release == 'true'
+        id: release_pr
         run: |
-          release_sha="$(git rev-parse HEAD)"
+          release_pr="$(gh pr create \
+            --base main \
+            --head "$RELEASE_BRANCH" \
+            --title "chore(release): publish $BUMP releases" \
+            --body "Automated release version bump. The release workflow dispatches and waits for the protected checks before merging.")"
+          release_pr_number="$(gh pr view "$release_pr" --json number --jq '.number')"
+
+          gh workflow run ci.yml --ref "$RELEASE_BRANCH"
+          attempts_remaining=60
+          while [ "$attempts_remaining" -gt 0 ]; do
+            run_id="$(gh run list --workflow ci.yml --commit "$RELEASE_SHA" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId')"
+            if [ -n "$run_id" ]; then break; fi
+            sleep 5
+            attempts_remaining=$((attempts_remaining - 1))
+          done
+          [ -n "$run_id" ] || { printf 'Timed out waiting for CI on %s\n' "$RELEASE_SHA" >&2; exit 1; }
+          gh run watch "$run_id" --exit-status
+
+          gh pr merge "$release_pr_number" --squash --delete-branch
+          release_sha="$(gh pr view "$release_pr_number" --json mergeCommit --jq '.mergeCommit.oid')"
+          [ -n "$release_sha" ] || { printf 'Release PR %s did not merge\n' "$release_pr_number" >&2; exit 1; }
+          printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
+        env:
+          BUMP: ${{ inputs.bump }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ steps.release_commit.outputs.release-branch }}
+          RELEASE_SHA: ${{ steps.release_commit.outputs.release-sha }}
+      - name: Verify the merged release commit
+        if: steps.plan.outputs.has-release == 'true'
+        run: |
+          release_sha="$RELEASE_SHA"
+          git fetch origin main
+          git checkout "$release_sha"
           gh workflow run ci.yml --ref main
           attempts_remaining=60
           while [ "$attempts_remaining" -gt 0 ]; do
@@ -99,6 +139,7 @@ jobs:
           gh run watch "$run_id" --exit-status
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.release_pr.outputs.release-sha }}
       - name: Install release dependencies
         if: steps.plan.outputs.has-release == 'true'
         run: pnpm install --frozen-lockfile
