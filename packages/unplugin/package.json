@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/unplugin",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Universal bundler plugin for CSSX.",
   "license": "MIT",
   "repository": {
