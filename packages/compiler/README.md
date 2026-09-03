@@ -43,9 +43,9 @@ const result = await compileStyleMap(
 
 `serial` is a collision-free, case-sensitive base-62 counter for the complete
 compilation: `0` through `9`, then `a` through `z`, then `A` through `Z`, then
-`10`. Its default prefix and suffix are `s` and `x` (`s0x`, `s1x`, …). It is
-the smallest output for a bounded build, while the `prefix` gives it a project
-namespace. Choose the stable content-hash `random` variant when that better
+`10`. Its default prefix and suffix are `s` and `x` (`s0x`, `s1x`, …). When
+both affixes are explicitly blank, CSSX uses decimal serial names and escapes
+digit-leading selectors. The `prefix` gives it a project namespace. Choose the stable content-hash `random` variant when that better
 fits your build; set
 `length` to fix the hash fragment length when you need a smaller output:
 
@@ -57,7 +57,7 @@ fits your build; set
 CSSX resolves collisions deterministically for random names. A fixed random
 length must have enough base-36 combinations for every generated atomic and
 composite class; otherwise compilation fails instead of reusing a class name.
-`length` applies only to `random`, and `prefix` must be a non-empty safe CSS
+`length` applies only to `random`, and a non-empty `prefix` must be a safe CSS
 identifier prefix. Prefixes and suffixes work with both variants.
 
 When you compile independent maps that share one stylesheet, create one
