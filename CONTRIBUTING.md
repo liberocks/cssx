@@ -27,7 +27,7 @@ when changing rendered output, compiler output, or framework integration.
 
 ## Pull Requests
 
-Create a focused branch and open a PR to `next`; never push directly to `main`.
+Create a focused branch and open a PR to `main`; never push directly to `main`.
 Keep commits small and logically scoped. Describe the user-visible change,
 testing performed, and any benchmark impact in the PR.
 
@@ -37,6 +37,6 @@ output intentionally changed and the review explains why.
 
 ## Releases
 
-Do not manually change versions for publication. Maintainers release `next`
+Do not manually change versions for publication. Maintainers release `main`
 through the manual Release workflow. See [RELEASE.md](RELEASE.md) for package
-selection, trusted publication, and the automatic `next` to `main` merge.
+selection and trusted publication.

@@ -1,5 +1,5 @@
 name: Release
-run-name: Release ${{ inputs.bump }} from next by @${{ github.actor }}
+run-name: Release ${{ inputs.bump }} from main by @${{ github.actor }}
 
 on:
   workflow_dispatch:
@@ -17,10 +17,9 @@ permissions:
   actions: write
   contents: write
   id-token: write
-  pull-requests: write
 
 concurrency:
-  group: release-next
+  group: release-main
   cancel-in-progress: false
 
 jobs:
@@ -28,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 10.17.1
@@ -47,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: next
+          ref: main
           fetch-depth: 0
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
@@ -57,11 +58,21 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org
+      - name: Find the previous release checkpoint
+        id: base
+        run: |
+          base="$(git tag --list 'release-*' --sort=-creatordate | head -1)"
+          [ -n "$base" ] || {
+            printf '%s\n' 'No release checkpoint exists. Create release-baseline at the commit matching the packages already published to npm.' >&2
+            exit 1
+          }
+          printf 'base=%s\n' "$base" >> "$GITHUB_OUTPUT"
       - name: Plan release
         id: plan
-        run: node scripts/release-plan.mjs plan --base origin/main --bump "$BUMP" --output "$RUNNER_TEMP/release-plan.json"
+        run: node scripts/release-plan.mjs plan --base "$BASE" --bump "$BUMP" --output "$RUNNER_TEMP/release-plan.json"
         env:
           BUMP: ${{ inputs.bump }}
+          BASE: ${{ steps.base.outputs.base }}
       - name: Apply and commit versions
         if: steps.plan.outputs.has-release == 'true'
         run: |
@@ -70,17 +81,19 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add packages/*/package.json
           git commit -m "chore(release): publish $BUMP releases"
-          git push origin HEAD:next
+          git push origin HEAD:main
         env:
           BUMP: ${{ inputs.bump }}
       - name: Verify the release commit
         run: |
           release_sha="$(git rev-parse HEAD)"
-          gh workflow run ci.yml --ref next
-          for attempt in $(seq 1 60); do
+          gh workflow run ci.yml --ref main
+          attempts_remaining=60
+          while [ "$attempts_remaining" -gt 0 ]; do
             run_id="$(gh run list --workflow ci.yml --commit "$release_sha" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId')"
             if [ -n "$run_id" ]; then break; fi
             sleep 5
+            attempts_remaining=$((attempts_remaining - 1))
           done
           [ -n "$run_id" ] || { printf 'Timed out waiting for CI on %s\n' "$release_sha" >&2; exit 1; }
           gh run watch "$run_id" --exit-status
@@ -127,12 +140,9 @@ jobs:
           gh release create "$first_tag" --title "Release $first_tag" --notes-file "$RUNNER_TEMP/release-notes.md"
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Create and auto-merge the release PR
+      - name: Create a release checkpoint
+        if: steps.plan.outputs.has-release == 'true'
         run: |
-          pr_url="$(gh pr list --base main --head next --state open --json url --jq '.[0].url')"
-          if [ -z "$pr_url" ]; then
-            pr_url="$(gh pr create --base main --head next --title 'Release next to main' --body 'Automated release merge from next.')"
-          fi
-          gh pr merge "$pr_url" --auto --squash
-        env:
-          GH_TOKEN: ${{ github.token }}
+          checkpoint="release-$(date --utc +%Y%m%d%H%M%S)"
+          git tag --annotate "$checkpoint" --message "Release checkpoint $checkpoint"
+          git push origin "$checkpoint"

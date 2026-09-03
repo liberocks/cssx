@@ -15,7 +15,7 @@
 
 ## Checklist
 
-- [ ] The PR targets `next`.
+- [ ] The PR targets `main`.
 - [ ] Tests cover the behavior change without lowering coverage thresholds.
 - [ ] Generated output and unrelated formatting changes are excluded.
 - [ ] Visual snapshot updates are intentional and explained above.

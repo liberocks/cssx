@@ -1,6 +1,6 @@
 ## Required Verification
 
-The `format`, `lint`, `coverage`, and `verify` checks run `pnpm format:check`, `pnpm lint`, `pnpm test:coverage`, `pnpm test:release`, and `pnpm benchmark` from the workspace root. They are required for every PR targeting `next` or `main`.
+The `format`, `lint`, `coverage`, and `verify` checks run `pnpm format:check`, `pnpm lint`, `pnpm test:coverage`, `pnpm test:release`, and `pnpm benchmark` from the workspace root. They are required for every PR targeting `main`.
 
 ## 0.2 ABI Migration
 
@@ -12,18 +12,42 @@ types now use `CompiledStyle` and `CompiledUtility` names.
 
 ## Branch Policy
 
-Create `next` from `main`. All human-authored changes must enter `next` through
-a PR, and `main` must accept changes only through a PR from `next`.
+`main` is the protected, production-ready trunk. All human-authored changes
+enter it through a focused feature PR; direct pushes are blocked. Require the
+`format`, `lint`, `coverage`, and `verify` checks, and enable squash auto-merge.
+Only the release workflow may bypass the branch rule to write its deterministic
+version-bump commit.
 
-Configure repository rules so both branches require the `format`, `lint`,
-`coverage`, and `verify` checks. Block direct pushes to `main`, enable
-auto-merge, and allow workflows to create PRs. Give only the release workflow a
-bypass for `next`: it writes the deterministic version-bump commit that must
-exist before publication.
+Every internal feature PR receives a separately named Cloudflare Worker preview
+for the documentation site. The deployment URL appears in the workflow summary
+and GitHub Deployments view. Pull requests from forks still receive CI, but do
+not receive a preview because repository secrets are intentionally unavailable
+to them. Closing an internal PR deletes its dedicated preview Worker.
 
-The initial migration must not push the local commits currently ahead of
-`origin/main` to `main`. Put them on a feature branch and merge them through the
-first PR to `next`.
+The deployment workflow requires `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` repository secrets. The token needs permission to edit
+Workers in the account. `main` deploys the configured `cssx-docs` Worker;
+previews use `cssx-docs-pr-<PR number>` and therefore cannot overwrite
+production.
+
+Protect the `release-*` tag namespace so only the release workflow can create
+release checkpoints.
+
+### One-time migration
+
+1. Stop merging feature PRs into `next`.
+2. Create an annotated baseline checkpoint at the current `main` commit, after
+   confirming that its package versions match npm:
+
+   ```sh
+   git fetch origin
+   git tag --annotate release-baseline origin/main --message 'Release baseline'
+   git push origin release-baseline
+   ```
+
+3. Merge the existing `next` work to `main` through one final reviewed PR.
+4. Update branch protection so feature PRs target `main`, then delete `next`
+   after that PR has merged and no open PR still targets it.
 
 ## Publication
 
@@ -31,19 +55,15 @@ Configure npm trusted publishing for every public package using this repository
 and `.github/workflows/release.yml`. The workflow uses its OIDC identity and
 does not read an npm token.
 
-Run the Release workflow manually and choose `patch`, `minor`, or `major`. It
-compares `next` with `main`, selects public packages changed under `packages/*`,
-and applies the selected bump uniformly. A compiler release also releases the
-Babel plugin and bundler plugin; a Babel plugin release also releases the
-bundler plugin, so packed internal dependencies remain valid.
+Run the Release workflow manually from `main` and choose `patch`, `minor`, or
+`major`. It compares `main` with the latest `release-*` checkpoint, selects
+public packages changed under `packages/*`, and adds any public dependents that
+must remain compatible. A compiler release also releases the Babel plugin and
+bundler plugin; a Babel plugin release also releases the bundler plugin.
 
-The workflow first runs the complete verification suite. It then commits the
-calculated versions to `next`, re-runs CI for that exact commit, publishes the
-selected packages with provenance, and creates one annotated tag per package
-such as `@cssxio/compiler@0.2.1`. It creates one GitHub Release listing every
-published package, then creates or reuses the `next` to `main` PR and enables
-squash auto-merge.
-
-If no public package changed, publication, tags, and the GitHub Release are
-skipped. The workflow still creates or reuses the `next` to `main` PR and
-enables auto-merge after the required check succeeds.
+The workflow verifies `main`, makes the deterministic version-bump commit on
+`main`, verifies that exact commit, publishes selected packages with provenance,
+and creates one annotated package tag per published package such as
+`@cssxio/compiler@0.2.1`. It also creates an immutable `release-<UTC timestamp>`
+checkpoint for the next release calculation. If no public package changed, it
+does not publish, tag, or create a checkpoint.
