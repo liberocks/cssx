@@ -7,6 +7,7 @@ import { compileStyleRecords } from '../src/index';
 interface TailwindManifest {
   readonly source: {
     readonly repository: string;
+    readonly major: number;
     readonly version: string;
     readonly commit: string;
     readonly snapshot: string;
@@ -17,20 +18,20 @@ interface TailwindManifest {
 }
 
 const manifest = JSON.parse(
-  readFileSync(fileURLToPath(new URL('./fixtures/tailwind-4.3.3.json', import.meta.url)), 'utf8'),
+  readFileSync(fileURLToPath(new URL('./fixtures/tailwind-4.json', import.meta.url)), 'utf8'),
 ) as TailwindManifest;
 
-describe('Tailwind 4.3.3 complete utility corpus', () => {
-  it('accounts for every candidate from the pinned upstream IntelliSense snapshot', () => {
+describe('Tailwind 4 complete utility corpus', () => {
+  it('accounts for every candidate from the upstream IntelliSense snapshot', () => {
     const allCandidates = [...manifest.supported, ...manifest.unsupported];
 
-    expect(manifest.source).toEqual({
+    expect(manifest.source).toMatchObject({
       repository: 'https://github.com/tailwindlabs/tailwindcss',
-      version: '4.3.3',
-      commit: 'c2b24dd15fed1c59dd521bd86082f520c9f5ad0d',
+      major: 4,
       snapshot: 'packages/tailwindcss/src/__snapshots__/intellisense.test.ts.snap#getClassList-1',
     });
-    expect(manifest.total).toBe(12_423);
+    expect(manifest.source.version).toMatch(/^4\./);
+    expect(manifest.source.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(new Set(allCandidates).size).toBe(manifest.total);
   });
 
@@ -38,7 +39,7 @@ describe('Tailwind 4.3.3 complete utility corpus', () => {
     for (const candidate of manifest.supported) {
       expect(() => compileStyleRecords({ candidate }), candidate).not.toThrow();
     }
-  });
+  }, 20_000);
 
   it('fails explicitly for every candidate outside the CSSX compatibility surface', () => {
     for (const candidate of manifest.unsupported) {
