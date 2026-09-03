@@ -76,6 +76,17 @@ describe('CSSX compiler', () => {
     expect(classes.every((className) => /^s[0-9A-Za-z]+x$/.test(className))).toBe(true);
   });
 
+  it('supports blank class-name affixes when configured', async () => {
+    const result = await compileStyleMap(
+      { root: 'p-4 bg-red-500' },
+      { className: { variant: 'serial', prefix: '', suffix: '' } },
+    );
+    const classes = [...Object.values(result.classes), ...Object.values(result.classNames)];
+
+    expect(classes.every((className) => /^[0-9]+$/.test(className))).toBe(true);
+    expect(serializeCss(result.rules)).toContain('.\\30 ');
+  });
+
   it('keeps one complete class per style at a zero reusability budget', async () => {
     const result = await compileStyleMap(
       {
@@ -241,9 +252,9 @@ describe('CSSX compiler', () => {
   });
 
   it('rejects unsafe naming options and random lengths that cannot avoid collisions', async () => {
-    await expect(compileStyleMaps({ root: { base: 'p-4 bg-red-500' } }, { className: { prefix: '' } })).rejects.toThrow(
-      'prefix',
-    );
+    await expect(
+      compileStyleMaps({ root: { base: 'p-4 bg-red-500' } }, { className: { prefix: '9' } }),
+    ).rejects.toThrow('prefix');
     await expect(
       compileStyleMaps({ root: { base: 'p-4' } }, { className: { variant: 'serial', length: 3 } }),
     ).rejects.toThrow('only supported');
@@ -356,8 +367,8 @@ describe('CSSX compiler', () => {
     expect(css.match(/@keyframes wiggle/g)).toHaveLength(1);
     expect(css.match(/animation:wiggle/g)).toHaveLength(1);
     expect(css.match(/@property --cssx-scrollbar-thumb/g)).toHaveLength(1);
-    expect(mergeCompiledStyles([button])).toContain('s');
-    expect(mergeCompiledStyles([card])).toContain('s');
+    expect(mergeCompiledStyles([button])).toBeTruthy();
+    expect(mergeCompiledStyles([card])).toBeTruthy();
   });
 
   it('lowers independently overridable multi-property utilities into generated atoms', async () => {

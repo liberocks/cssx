@@ -1,5 +1,0 @@
----
-import DocsLayout from '../../layouts/DocsLayout.astro';
-import { classes } from '../../styles';
----
-<DocsLayout title="Arbitrary values" description="Use static bracket syntax when the listed values do not fit your need."><header><p class={classes.eyebrow}>Core concept</p><h1 class={classes.title}>Arbitrary values</h1><p class={classes.lead}>Use static bracket syntax when the listed values do not fit your need.</p></header><section class={classes.section}><h2 class={classes.heading}>Examples</h2><pre class={classes.code}><code>flex-[3_1_auto] w-[42rem] text-[length:1.125rem]{`\n`}bg-[image:linear-gradient(red,blue)] contain-[layout_paint] stroke-dasharray-[4_8]</code></pre></section><section class={classes.section}><h2 class={classes.heading}>Rules</h2><p class={classes.copy}>Arbitrary values must be static. CSSX checks them while building. Use _ for spaces and \_ for a real underscore. A custom property form, such as flex-(--panel-flex), writes var(--panel-flex).</p></section></DocsLayout>

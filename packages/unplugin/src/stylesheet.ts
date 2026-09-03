@@ -1,4 +1,5 @@
 import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
+import type { DarkMode } from '@cssxio/compiler';
 import { basename } from 'node:path';
 
 /** The source location of one utility string. */
@@ -50,6 +51,7 @@ export interface CssxStylesheet {
  * @param theme Optional CSS theme input.
  * @param layer Optional CSS layer for the output.
  * @param sourceMap Whether to generate a CSS source map.
+ * @param darkMode Controls how the `dark` variant is activated.
  * @returns The generated CSS and its source map when source locations exist.
  */
 export async function compileCssxStylesheet(
@@ -57,6 +59,7 @@ export async function compileCssxStylesheet(
   theme?: string,
   layer?: string,
   sourceMap = true,
+  darkMode?: DarkMode,
 ): Promise<CssxStylesheet> {
   const candidates: Record<string, string> = Object.create(null) as Record<string, string>;
   const composites: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
@@ -97,6 +100,7 @@ export async function compileCssxStylesheet(
     theme,
     createSelectorAliases(composites),
     hasAtomicClassMetadata ? atomicClasses : undefined,
+    { darkMode },
   );
   const layerPrefix = compiled.css && layer ? `@layer ${layer}{` : '';
   const css = `${layerPrefix}${compiled.css}${layerPrefix ? '}' : ''}`;

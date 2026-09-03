@@ -1,18 +1,6 @@
-# Release Review Record
-
-## Source And Dependency Review
-
-Review date: 2026-08-29
-
-Scope: `packages/*/src`, all CSSX package manifests, and the root `pnpm-lock.yaml`.
-
-Outcome: The CSSX packages use their declared dependencies only. The reviewed source contains no vendored implementation. Historical compatibility references are recorded in each published compiler package's `THIRD_PARTY_NOTICES.md`.
-
-The package-contract test enforces that the prohibited utility packages are absent from package manifests and the resolved root dependency graph. Renew this review before a release whenever reviewed source or dependency declarations change.
-
 ## Required Verification
 
-Run `pnpm test:release` from the workspace root. It builds packages, runs unit and package-contract tests, and type-checks the workspace.
+The `format`, `lint`, `coverage`, and `verify` checks run `pnpm format:check`, `pnpm lint`, `pnpm test:coverage`, `pnpm test:release`, and `pnpm benchmark` from the workspace root. They are required for every PR targeting `main`.
 
 ## 0.2 ABI Migration
 
@@ -22,15 +10,60 @@ record APIs to `compileStyleRecords`, `compileStyleRecordMaps`,
 `composeCompiledStyles`, and `mergeCompiledStyles`; their corresponding public
 types now use `CompiledStyle` and `CompiledUtility` names.
 
-## npm Publication
+## Branch Policy
 
-Create the repository or `npm` environment secret named `NPM_TOKEN` with an npm
-automation token authorized to publish the selected package. Update that
-package's version, then run the Release workflow manually from the default
-branch and choose its package name. The workflow runs the full release gate and
-publishes only the selected package with an npm provenance attestation; npm
-trusted publishing can replace the token when configured for this repository.
+`main` is the protected, production-ready trunk. All human-authored changes
+enter it through a focused feature PR; direct pushes are blocked. Require the
+`format`, `lint`, `coverage`, and `verify` checks, and enable squash auto-merge.
+Only the release workflow may bypass the branch rule to write its deterministic
+version-bump commit.
 
-Publish dependencies first when their workspace version has changed. The
-workflow resolves `workspace:*` dependency ranges to each dependency's declared
-version during publishing.
+Every internal feature PR receives a separately named Cloudflare Worker preview
+for the documentation site. The deployment URL appears in the workflow summary
+and GitHub Deployments view. Pull requests from forks still receive CI, but do
+not receive a preview because repository secrets are intentionally unavailable
+to them. Closing an internal PR deletes its dedicated preview Worker.
+
+The deployment workflow requires `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` repository secrets. The token needs permission to edit
+Workers in the account. `main` deploys the configured `cssx-docs` Worker;
+previews use `cssx-docs-pr-<PR number>` and therefore cannot overwrite
+production.
+
+Protect the `release-*` tag namespace so only the release workflow can create
+release checkpoints.
+
+### One-time migration
+
+1. Stop merging feature PRs into `next`.
+2. Create an annotated baseline checkpoint at the current `main` commit, after
+   confirming that its package versions match npm:
+
+   ```sh
+   git fetch origin
+   git tag --annotate release-baseline origin/main --message 'Release baseline'
+   git push origin release-baseline
+   ```
+
+3. Merge the existing `next` work to `main` through one final reviewed PR.
+4. Update branch protection so feature PRs target `main`, then delete `next`
+   after that PR has merged and no open PR still targets it.
+
+## Publication
+
+Configure npm trusted publishing for every public package using this repository
+and `.github/workflows/release.yml`. The workflow uses its OIDC identity and
+does not read an npm token.
+
+Run the Release workflow manually from `main` and choose `patch`, `minor`, or
+`major`. It compares `main` with the latest `release-*` checkpoint, selects
+public packages changed under `packages/*`, and adds any public dependents that
+must remain compatible. A compiler release also releases the Babel plugin and
+bundler plugin; a Babel plugin release also releases the bundler plugin.
+
+The workflow verifies `main`, makes the deterministic version-bump commit on
+`main`, verifies that exact commit, publishes selected packages with provenance,
+and creates one annotated package tag per published package such as
+`@cssxio/compiler@0.2.1`. It also creates an immutable `release-<UTC timestamp>`
+checkpoint for the next release calculation. If no public package changed, it
+does not publish, tag, or create a checkpoint.

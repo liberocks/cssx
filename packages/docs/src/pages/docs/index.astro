@@ -1,0 +1,113 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import ThemeToggle from '../../components/ThemeToggle.astro';
+import { sx } from '@cssxio/cssx';
+---
+
+<DocsLayout>
+  <a
+    slot="header"
+    class={sx('text-sm font-bold tracking-tight text-slate-950 no-underline dark:text-slate-50')}
+    href="/">CSSX</a
+  >
+  <nav slot="header" class={sx('flex items-center gap-6 text-sm font-medium')} aria-label="Primary navigation">
+    <a class={sx('inline-flex min-h-11 items-center text-slate-950 no-underline dark:text-slate-50')} href="/docs/" aria-current="page">
+      Docs
+    </a>
+  </nav>
+  <ThemeToggle slot="header" />
+
+  <nav slot="sidebar" class={sx('grid gap-5')} aria-label="Documentation navigation">
+    <p class={sx('text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400')}>Documentation</p>
+    <div class={sx('grid gap-1')}>
+      <a
+        class={sx(
+          'rounded-sm bg-slate-100 px-3 py-3 text-sm font-medium text-slate-950 no-underline dark:bg-slate-800 dark:text-slate-50',
+        )}
+        href="#overview"
+      >
+        Overview
+      </a>
+      <a
+        class={sx(
+          'rounded-sm px-3 py-3 text-sm text-slate-600 no-underline hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50',
+        )}
+        href="#usage"
+      >
+        Usage
+      </a>
+      <a
+        class={sx(
+          'rounded-sm px-3 py-3 text-sm text-slate-600 no-underline hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50',
+        )}
+        href="#reference"
+      >
+        Reference
+      </a>
+    </div>
+  </nav>
+
+  <article class={sx('mx-auto grid max-w-3xl gap-10 py-10 xs:py-12 sm:py-16')}>
+    <header class={sx('grid gap-5')} id="overview">
+      <p class={sx('text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400')}>Overview</p>
+      <h1 class={sx('text-[2.25rem] font-semibold tracking-tight text-slate-950 xs:text-[2.75rem] dark:text-slate-50')}>
+        Lorem ipsum dolor sit amet.
+      </h1>
+      <p class={sx('text-lg leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua.
+      </p>
+    </header>
+
+    <section class={sx('grid gap-4')} id="usage">
+      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Usage</h2>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+      </p>
+    </section>
+
+    <section class={sx('grid gap-4 border-t border-slate-200 pt-10 dark:border-slate-800')} id="reference">
+      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Reference</h2>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      </p>
+    </section>
+
+    <section class={sx('grid gap-4 border-t border-slate-200 pt-10 dark:border-slate-800')} id="configuration">
+      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Configuration</h2>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem
+        aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+      </p>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores
+        eos qui ratione voluptatem sequi nesciunt.
+      </p>
+    </section>
+
+    <section class={sx('grid gap-4 border-t border-slate-200 pt-10 dark:border-slate-800')} id="patterns">
+      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Patterns</h2>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non
+        numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+      </p>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex
+        ea commodi consequatur.
+      </p>
+    </section>
+
+    <section class={sx('grid gap-4 border-t border-slate-200 pt-10 dark:border-slate-800')} id="next-steps">
+      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Next steps</h2>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel
+        illum qui dolorem eum fugiat quo voluptas nulla pariatur?
+      </p>
+      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
+        At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque
+        corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+      </p>
+    </section>
+  </article>
+</DocsLayout>

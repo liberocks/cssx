@@ -1,53 +1,32 @@
-import { describe, expect, it, vi } from 'vitest';
-import { navigation } from '../src/data/navigation';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
 
-vi.mock('@cssxio/cssx', () => ({
-  create: <T>(styles: T) => styles,
-  props: (value: string) => ({ className: value }),
-}));
+const fromDocs = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
 describe('documentation catalog', () => {
-  const routes = [
-    '/',
-    '/docs/installation',
-    '/docs/integrations',
-    '/docs/editor-support',
-    '/docs/styling',
-    '/docs/variants',
-    '/docs/theme',
-    '/docs/arbitrary-values',
-    '/docs/build-output',
-    '/docs/utilities/layout',
-    '/docs/utilities/flexbox-grid',
-    '/docs/utilities/spacing-sizing',
-    '/docs/utilities/typography',
-    '/docs/utilities/backgrounds-gradients',
-    '/docs/utilities/borders-effects',
-    '/docs/utilities/filters-masks',
-    '/docs/utilities/motion-transforms',
-    '/docs/utilities/interactivity-scrolling',
-    '/docs/utilities/tables-svg-accessibility',
-  ];
+  const routes = ['/', '/docs/'];
 
   it('uses a unique static route for every documentation page', () => {
     expect(new Set(routes).size).toBe(routes.length);
   });
 
-  it('links every navigation entry to a generated documentation route', () => {
-    const staticRoutes = new Set(routes);
+  it('uses direct sx calls for the home and documentation pages', async () => {
+    const [home, docs] = await Promise.all([
+      readFile(fromDocs('../src/pages/index.astro'), 'utf8'),
+      readFile(fromDocs('../src/pages/docs/index.astro'), 'utf8'),
+    ]);
 
-    for (const item of navigation.flatMap((group) => group.items)) {
-      expect(staticRoutes.has(item.href)).toBe(true);
-    }
+    expect(home).toContain("import { sx } from '@cssxio/cssx';");
+    expect(docs).toContain("import { sx } from '@cssxio/cssx';");
+    expect(docs).toContain('dark:text-slate-50');
+    expect(docs).toContain('xs:py-12');
   });
 
-  it('maps every documentation style surface to a compiled class name', async () => {
-    const { classes } = await import('../src/styles');
+  it('keeps the header and desktop sidebar sticky in the docs layout', async () => {
+    const layout = await readFile(fromDocs('../src/layouts/DocsLayout.astro'), 'utf8');
 
-    expect(classes.page).toBe('min-h-screen bg-gray-50 text-gray-900');
-    expect(classes.header).toBe('border-b border-gray-200 bg-white');
-    expect(classes.sidebar).toBe('hidden w-56 shrink-0 lg:block');
-    expect(classes.table).toBe('min-w-full border-collapse text-left text-sm');
-    expect(Object.keys(classes).length).toBeGreaterThan(30);
+    expect(layout).toContain('sticky top-0 z-10');
+    expect(layout).toContain('md:sticky md:top-16');
   });
 });

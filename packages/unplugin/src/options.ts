@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, normalize, resolve, sep } from 'node:path';
-import type { ReusabilityBudget } from '@cssxio/compiler';
+import type { DarkMode, ReusabilityBudget } from '@cssxio/compiler';
 
 /** Options for a CSSX bundler adapter. */
 export interface CssxPluginOptions {
@@ -18,6 +18,8 @@ export interface CssxPluginOptions {
   readonly layer?: string;
   /** Controls how aggressively static styles share generated class fragments. */
   readonly reusabilityBudget?: ReusabilityBudget;
+  /** Activates `dark` variants with a media query or a `[data-theme=dark]` selector. */
+  readonly darkMode?: DarkMode;
 }
 
 /**
@@ -48,6 +50,9 @@ export function assertPluginOptions(options: CssxPluginOptions): void {
   }
   if (options.sourceMap !== undefined && typeof options.sourceMap !== 'boolean') {
     throw new Error('CSSX sourceMap must be a boolean.');
+  }
+  if (options.darkMode !== undefined && options.darkMode !== 'media' && options.darkMode !== 'selector') {
+    throw new Error('CSSX darkMode must be "media" or "selector".');
   }
   if (
     options.reusabilityBudget !== undefined &&

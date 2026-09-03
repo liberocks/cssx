@@ -213,6 +213,7 @@ describe('CSSX semantic conflict classifier', () => {
 
   it('validates every class-name option and probes reserved random names', () => {
     expect(() => createClassNameAllocator({ variant: 'other' as never })).toThrow('variant');
+    expect(() => createClassNameAllocator({ prefix: '' })).not.toThrow();
     expect(() => createClassNameAllocator({ suffix: '.' })).toThrow('suffix');
     expect(() => createClassNameAllocator({ variant: 'random', length: 0 })).toThrow('length');
 

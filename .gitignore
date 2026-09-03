@@ -6,11 +6,16 @@ examples/*/.astro/
 examples/*/.next/
 examples/*/build/
 examples/*/.cache/
+examples/*/.expo/
 examples/*/public/
+examples/next/AGENTS.md
+examples/next/CLAUDE.md
 examples/next/next-env.d.ts
 examples/next/tsconfig.json
 packages/intellisense/*.vsix
 benchmarks/node_modules/
+benchmarks/*/dist/
+benchmarks/*/src/corpus.tsx
 coverage/
 .opencode/
 TODO.md

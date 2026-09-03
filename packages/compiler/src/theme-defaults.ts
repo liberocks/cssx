@@ -4,6 +4,7 @@ import { DEFAULT_DOCUMENTED_COLOR_TOKENS } from './theme-colors';
 export const DEFAULT_THEME: Readonly<Record<string, string>> = {
   ...DEFAULT_DOCUMENTED_COLOR_TOKENS,
   '--spacing': '0.25rem',
+  '--breakpoint-xs': '30rem',
   '--breakpoint-sm': '40rem',
   '--breakpoint-md': '48rem',
   '--breakpoint-lg': '64rem',

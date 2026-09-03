@@ -217,10 +217,15 @@ export function compileStyleRecordMaps(
     allocator,
   );
   const allocatedAtoms = allocator.allocate([...atomIdentities.allocationIdentities.values()]);
+  /** Resolves compact atom symbols without repeatedly looking up full allocation identities. */
+  const allocatedAtomClasses = new Map<string, string>();
+  for (const [symbol, identity] of atomIdentities.allocationIdentities) {
+    allocatedAtomClasses.set(symbol, allocatedAtoms.get(identity)!);
+  }
   const classNames: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
   const classes: Record<string, string> = Object.create(null) as Record<string, string>;
   for (const [candidate, identities] of Object.entries(atomIdentities.symbols)) {
-    const names = identities.map((identity) => allocatedAtoms.get(atomIdentities.allocationIdentities.get(identity)!)!);
+    const names = identities.map((identity) => allocatedAtomClasses.get(identity)!);
     classNames[candidate] = names;
     classes[candidate] = names.join(' ');
   }
@@ -236,22 +241,17 @@ export function compileStyleRecordMaps(
       const plannedClassName = plannedCompositions.classNames.get(identity) ?? '';
       const className = plannedClassName
         .split(' ')
-        .map((value) => allocatedAtoms.get(atomIdentities.allocationIdentities.get(value)!) ?? value)
+        .map((value) => allocatedAtomClasses.get(value) ?? value)
         .join(' ');
       const records = recordsByStyle[name]!.map((record) => {
         const [atomicIdentity, ...rest] = record;
-        return [
-          atomicIdentity === null
-            ? null
-            : allocatedAtoms.get(atomIdentities.allocationIdentities.get(atomicIdentity)!)!,
-          ...rest,
-        ] as CompiledUtility;
+        return [atomicIdentity === null ? null : allocatedAtomClasses.get(atomicIdentity)!, ...rest] as CompiledUtility;
       });
       styles[name] = { $$css: 2, c: className, _: records };
       classNamesByStyle[name] = className;
       for (const fragment of plannedCompositions.fragments.get(identity) ?? []) {
         composites[fragment.className] = fragment.atomicClasses.map((atomicIdentity) =>
-          allocatedAtoms.get(atomIdentities.allocationIdentities.get(atomicIdentity)!)!,
+          allocatedAtomClasses.get(atomicIdentity)!,
         );
       }
     }
@@ -475,31 +475,46 @@ function factorReusableGroups(groups: readonly ReusableGroup[]): readonly Reusab
         child.compositionIndexes.length < parent.compositionIndexes.length &&
         indexesAreSubset(child.compositionIndexes, parent.compositionIndexes),
     );
+    /** Locates a candidate child by its exact sorted usage set. */
+    const childIndexes = new Map(children.map((child, index) => [usageKey(child.compositionIndexes), index]));
     for (let leftIndex = 0; leftIndex < children.length; leftIndex++) {
       const left = children[leftIndex]!;
-      for (let rightIndex = leftIndex + 1; rightIndex < children.length; rightIndex++) {
-        const right = children[rightIndex]!;
-        if (
-          !indexesAreDisjoint(left.compositionIndexes, right.compositionIndexes) ||
-          !indexesCover(parent.compositionIndexes, left.compositionIndexes, right.compositionIndexes)
-        ) {
-          continue;
-        }
-        omitted.add(parent);
-        omitted.add(left);
-        omitted.add(right);
-        additions.push(
-          reusableGroup([...parent.atomicClasses, ...left.atomicClasses].sort(), left.compositionIndexes),
-          reusableGroup([...parent.atomicClasses, ...right.atomicClasses].sort(), right.compositionIndexes),
-        );
-        break;
+      const complement = complementIndexes(parent.compositionIndexes, left.compositionIndexes);
+      const rightIndex = childIndexes.get(usageKey(complement));
+      if (rightIndex === undefined || rightIndex <= leftIndex) {
+        continue;
       }
-      if (omitted.has(parent)) {
-        break;
-      }
+      const right = children[rightIndex]!;
+      omitted.add(parent);
+      omitted.add(left);
+      omitted.add(right);
+      additions.push(
+        reusableGroup([...parent.atomicClasses, ...left.atomicClasses].sort(), left.compositionIndexes),
+        reusableGroup([...parent.atomicClasses, ...right.atomicClasses].sort(), right.compositionIndexes),
+      );
+      break;
     }
   }
   return [...groups.filter((group) => !omitted.has(group)), ...additions].sort(compareReusableGroups);
+}
+
+/** Returns the indexes from a sorted parent list that are absent from its sorted child list. */
+function complementIndexes(parent: readonly number[], child: readonly number[]): readonly number[] {
+  const complement: number[] = [];
+  let childIndex = 0;
+  for (const index of parent) {
+    if (child[childIndex] === index) {
+      childIndex++;
+    } else {
+      complement.push(index);
+    }
+  }
+  return complement;
+}
+
+/** Serializes a sorted usage list for constant-time group lookups. */
+function usageKey(indexes: readonly number[]): string {
+  return indexes.join(',');
 }
 
 /** Creates derived statistics for one exact usage group. */
@@ -532,43 +547,6 @@ function indexesAreSubset(child: readonly number[], parent: readonly number[]): 
     }
   }
   return true;
-}
-
-/** Returns whether two sorted index lists have no shared entry. */
-function indexesAreDisjoint(left: readonly number[], right: readonly number[]): boolean {
-  let leftIndex = 0;
-  let rightIndex = 0;
-  while (leftIndex < left.length && rightIndex < right.length) {
-    const leftValue = left[leftIndex]!;
-    const rightValue = right[rightIndex]!;
-    if (leftValue === rightValue) {
-      return false;
-    }
-    if (leftValue < rightValue) {
-      leftIndex++;
-    } else {
-      rightIndex++;
-    }
-  }
-  return true;
-}
-
-/** Returns whether two sorted, disjoint child lists exactly cover the parent. */
-function indexesCover(parent: readonly number[], left: readonly number[], right: readonly number[]): boolean {
-  let leftIndex = 0;
-  let rightIndex = 0;
-  for (const index of parent) {
-    const next = Math.min(left[leftIndex] ?? Infinity, right[rightIndex] ?? Infinity);
-    if (next !== index) {
-      return false;
-    }
-    if (left[leftIndex] === index) {
-      leftIndex++;
-    } else {
-      rightIndex++;
-    }
-  }
-  return leftIndex === left.length && rightIndex === right.length;
 }
 
 /** Selects positive-value groups without exceeding the configured atom coverage. */
@@ -615,7 +593,11 @@ function createAtomIdentities(
   readonly symbols: Readonly<Record<string, readonly string[]>>;
   readonly allocationIdentities: ReadonlyMap<string, string>;
 } {
-  const themeSignature = serializeThemeSignature(theme);
+  /**
+   * Every atom in this compilation shares a theme. A compact namespace avoids
+   * repeatedly comparing the full token set while retaining random-name scope.
+   */
+  const themeIdentity = themeNamespace(serializeThemeSignature(theme));
   const symbols: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
   const symbolsByIdentity = atomSymbolsFor(allocator);
   const allocationIdentities = new Map<string, string>();
@@ -629,7 +611,7 @@ function createAtomIdentities(
             `${declaration.property}:${declaration.value}:${declaration.selectorSuffix ?? ''}${declaration.atRule ? `:${declaration.atRule}` : ''}`,
         )
         .join(';');
-      const identity = `${COMPILER_ABI}\u0000${themeSignature}\u0000${classification.scope}\u0000${payload}`;
+      const identity = `${COMPILER_ABI}\u0000${themeIdentity}\u0000${classification.scope}\u0000${payload}`;
       const existing = symbolsByIdentity.get(identity);
       if (existing) {
         allocationIdentities.set(existing, identity);
@@ -681,8 +663,8 @@ function normalizeClassNameOptions(options: ClassNameOptions | undefined): Norma
   if (variant !== 'random' && variant !== 'serial') {
     throw new Error('CSSX className.variant must be "random" or "serial".');
   }
-  if (!/^[A-Za-z_-][A-Za-z0-9_-]*$/.test(prefix)) {
-    throw new Error('CSSX className.prefix must be a non-empty safe CSS identifier prefix.');
+  if (prefix && !/^[A-Za-z_-][A-Za-z0-9_-]*$/.test(prefix)) {
+    throw new Error('CSSX className.prefix must be a safe CSS identifier prefix.');
   }
   if (!/^[A-Za-z0-9_-]*$/.test(suffix)) {
     throw new Error('CSSX className.suffix must contain only letters, digits, hyphens, or underscores.');
@@ -714,7 +696,7 @@ export function createClassNameAllocator(options: ClassNameOptions = {}): ClassN
 class GeneratedClassNameAllocator implements ClassNameAllocator {
   private readonly classNames = new Map<string, string>();
   private readonly allocated = new Set<string>();
-  private serialCounter = 0n;
+  private serialCounter = 0;
 
   constructor(private readonly naming: NormalizedClassNameOptions) {}
 
@@ -734,7 +716,9 @@ class GeneratedClassNameAllocator implements ClassNameAllocator {
       do {
         const core =
           this.naming.variant === 'serial'
-            ? serialClassFragment(this.serialCounter++)
+            ? this.naming.prefix || this.naming.suffix
+              ? serialClassFragment(this.serialCounter++)
+              : String(this.serialCounter++)
             : randomClassFragment(identity, this.naming.length, attempt);
         className = `${this.naming.prefix}${core}${this.naming.suffix}`;
         attempt++;
@@ -761,14 +745,14 @@ const SERIAL_CLASS_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM
  * @param value Counter value to encode.
  * @returns A base-62 serial fragment, where `10` follows uppercase `Z`.
  */
-function serialClassFragment(value: bigint): string {
+function serialClassFragment(value: number): string {
   let remaining = value;
   let fragment = '';
-  const base = BigInt(SERIAL_CLASS_ALPHABET.length);
+  const base = SERIAL_CLASS_ALPHABET.length;
   do {
-    fragment = `${SERIAL_CLASS_ALPHABET[Number(remaining % base)]!}${fragment}`;
-    remaining /= base;
-  } while (remaining > 0n);
+    fragment = `${SERIAL_CLASS_ALPHABET[remaining % base]!}${fragment}`;
+    remaining = Math.floor(remaining / base);
+  } while (remaining > 0);
   return fragment;
 }
 
@@ -986,4 +970,20 @@ function hash(value: string): string {
     result = BigInt.asUintN(64, result * 0x100000001b3n);
   }
   return result.toString(36);
+}
+
+/**
+ * Creates a compact theme namespace without paying BigInt costs in the hot
+ * static-style compilation path. Two independent 32-bit hash lanes preserve
+ * practical separation between theme identities used by generated names.
+ */
+function themeNamespace(value: string): string {
+  let first = 0x811c9dc5;
+  let second = 0x9e3779b9;
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    first = Math.imul(first ^ code, 0x01000193);
+    second = Math.imul(second ^ code, 0x85ebca6b);
+  }
+  return `${(first >>> 0).toString(36)}-${(second >>> 0).toString(36)}`;
 }

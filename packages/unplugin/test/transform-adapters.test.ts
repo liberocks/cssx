@@ -96,6 +96,31 @@ describe('CSSX unplugin transform', () => {
     expect(emitted[0]?.source).toMatch(/^@layer cssx\{/);
   });
 
+  it('keeps Astro template styles when its virtual client script has no CSSX calls', async () => {
+    const plugin = unpluginFactory({}, { framework: 'vite', versions: {} } as never) as any;
+    await plugin.transform.handler(
+      `---\nimport { sx } from '@cssxio/cssx';\n---\n<button class={sx('min-h-11 border')}><script>console.log('client')</script></button>`,
+      '/project/ThemeToggle.astro',
+    );
+    await plugin.transform.handler("console.log('client')", '/project/ThemeToggle.astro?astro&type=script&index=0');
+    const emitted: any[] = [];
+
+    await plugin.vite.generateBundle.call(
+      {
+        emitFile(asset: unknown) {
+          emitted.push(asset);
+        },
+        getModuleInfo() {
+          return null;
+        },
+      },
+      {},
+      { 'entry.js': { type: 'chunk', modules: {} } },
+    );
+
+    expect(emitted[0]?.source).toContain('min-height:calc(0.25rem * 11)');
+  });
+
   it('rejects unsafe asset paths and ambiguous theme configuration', () => {
     expect(() => unpluginFactory({ cssFileName: '../cssx.css' }, { framework: 'vite', versions: {} } as never)).toThrow(
       'must not escape',

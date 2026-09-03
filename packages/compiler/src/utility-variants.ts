@@ -2,6 +2,15 @@ import { replaceNestingSelectors } from './selector';
 import { resolveThemeValue, type CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 
+/** Controls how the `dark` variant is activated. */
+export type DarkMode = 'media' | 'selector';
+
+/** Options that affect how variants are rendered. */
+export interface VariantOptions {
+  /** Activates `dark` variants with a media query or a `[data-theme=dark]` selector. */
+  readonly darkMode?: DarkMode;
+}
+
 /**
  * Applies selector and responsive variants around one utility rule.
  *
@@ -16,6 +25,7 @@ export function applyVariants(
   declarations: readonly UtilityDeclaration[],
   variants: readonly string[],
   theme: CssxTheme,
+  options: VariantOptions = {},
 ): string {
   validateVariantCombination(variants);
   let renderedSelectors = typeof selectors === 'string' ? [selectors] : [...selectors];
@@ -73,7 +83,7 @@ export function applyVariants(
         atRules.push(normalizeArbitraryAtRule(arbitraryVariant));
       } else {
         const rewrittenSelectors = renderedSelectors.map((selector) =>
-          replaceNestingSelectors(arbitraryVariant, `${selector}${selectorSuffix}`),
+          replaceNestingSelectors(normalizeArbitrarySelector(arbitraryVariant), `${selector}${selectorSuffix}`),
         );
         if (rewrittenSelectors.some((selector) => selector === null)) {
           throw new Error(`CSSX arbitrary selector variant "${variant}" must contain "&".`);
@@ -82,7 +92,13 @@ export function applyVariants(
         selectorSuffix = '';
       }
     } else if (variant === 'dark') {
-      atRules.push('@media (prefers-color-scheme: dark)');
+      if (options.darkMode === 'selector') {
+        renderedSelectors = renderedSelectors.map(
+          (selector) => `${selector}:where([data-theme=dark], [data-theme=dark] *)`,
+        );
+      } else {
+        atRules.push('@media (prefers-color-scheme: dark)');
+      }
     } else if (variant === 'motion-safe') {
       atRules.push('@media (prefers-reduced-motion: no-preference)');
     } else if (variant === 'motion-reduce') {
@@ -148,6 +164,11 @@ export function applyVariants(
     css = `${atRules[index]}{${css}}`;
   }
   return css;
+}
+
+/** Treats unescaped underscores as spaces in arbitrary selector variants. */
+function normalizeArbitrarySelector(value: string): string {
+  return value.replace(/\\_/g, '\u0000').replaceAll('_', ' ').replaceAll('\u0000', '_');
 }
 
 /** Resolves a View Transition pseudo-element variant to its selector suffix. */

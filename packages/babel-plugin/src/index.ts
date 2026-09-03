@@ -263,6 +263,9 @@ export default function cssxBabelPlugin(
   function transformSx(path: NodePath<import('@babel/types').CallExpression>, types: typeof t): void {
     const staticSource = readStaticSxSource(path.node.arguments, types);
     if (staticSource !== null) {
+      if (isGeneratedClassNames(staticSource)) {
+        return;
+      }
       path.replaceWith(types.stringLiteral(compileSxString(staticSource, path.node.loc?.start)));
       return;
     }
@@ -297,6 +300,9 @@ export default function cssxBabelPlugin(
       return undefined;
     }
     if (types.isStringLiteral(node)) {
+      if (isGeneratedClassNames(node.value)) {
+        return node;
+      }
       return types.stringLiteral(compileSxString(node.value, node.loc?.start));
     }
     if (types.isNullLiteral(node) || types.isBooleanLiteral(node, { value: false })) {
@@ -367,6 +373,11 @@ export default function cssxBabelPlugin(
     }
     markEmittedClassNames(className);
     return className!;
+  }
+
+  /** Recognizes the default serial class names written by an earlier CSSX transform. */
+  function isGeneratedClassNames(value: string): boolean {
+    return /^s[0-9A-Za-z]+x(?:\s+s[0-9A-Za-z]+x)*$/.test(value);
   }
 
   /**

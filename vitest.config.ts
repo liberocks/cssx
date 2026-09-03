@@ -7,6 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@cssxio/cssx': fromRoot('./packages/cssx/src/index.ts'),
+      '@cssxio/react-native': fromRoot('./packages/react-native/src/index.ts'),
+      '@cssxio/html': fromRoot('./packages/html/src/index.ts'),
       '@cssxio/compiler': fromRoot('./packages/compiler/src/index.ts'),
       '@cssxio/babel-plugin': fromRoot('./packages/babel-plugin/src/index.ts'),
     },

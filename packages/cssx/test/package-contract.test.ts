@@ -107,6 +107,40 @@ void props;
     );
   });
 
+  it('type-checks React Native styles through the published declaration', async () => {
+    const sourcePath = join(fixtureDirectory, 'cssx-native-types.mts');
+    await writeFile(
+      sourcePath,
+      `import * as cssx from '@cssxio/react-native';
+
+const styles = cssx.create({ page: 'flex-1 p-6', title: 'text-lg' });
+const page: cssx.CompiledNativeStyle = styles.page;
+const props: { readonly style: cssx.NativeStyle } = cssx.props(styles.page, styles.title);
+
+void page;
+void props;
+`,
+    );
+
+    await runCommand(
+      process.execPath,
+      [
+        join(workspaceRoot, 'node_modules', 'typescript', 'bin', 'tsc'),
+        '--noEmit',
+        '--strict',
+        '--skipLibCheck',
+        '--target',
+        'ES2022',
+        '--module',
+        'NodeNext',
+        '--moduleResolution',
+        'NodeNext',
+        sourcePath,
+      ],
+      fixtureDirectory,
+    );
+  });
+
   it('declares only approved dependencies in CSSX package manifests', async () => {
     for (const packageDirectory of packageDirectories) {
       const manifest = await readManifest(packageDirectory);
@@ -146,6 +180,9 @@ void props;
         expect(JSON.stringify(manifest)).not.toContain('workspace:');
         if (manifest.name === '@cssxio/compiler') {
           expect(listing).toContain('package/THIRD_PARTY_NOTICES.md');
+        }
+        if (manifest.name === '@cssxio/html') {
+          expect(listing).toContain('package/dist/cssx.global.js');
         }
       }
 
@@ -304,11 +341,11 @@ void props;
       brotli: 5_200,
     });
     await expectArtifactWithinBudget(`packages/unplugin/dist/${adapterChunk}`, {
-      raw: 18_000,
-      gzip: 6_400,
-      brotli: 5_800,
+      raw: 18_250,
+      gzip: 6_900,
+      brotli: 6_200,
     });
-    await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', { raw: 19_000, gzip: 6_750, brotli: 6_100 });
+    await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', { raw: 19_250, gzip: 7_200, brotli: 6_500 });
   });
 
   it('cold-imports compiler, transform, and adapter packages within the release ceiling', async () => {
@@ -327,17 +364,13 @@ void props;
   it('builds the Astro documentation with its CSSX stylesheet', async () => {
     const html = await readFile(join(workspaceRoot, 'packages/docs/dist/index.html'), 'utf8');
     const css = await readFile(join(workspaceRoot, 'packages/docs/dist/assets/cssx.css'), 'utf8');
-    const installation = await readFile(join(workspaceRoot, 'packages/docs/dist/docs/installation/index.html'), 'utf8');
-    const flexbox = await readFile(
-      join(workspaceRoot, 'packages/docs/dist/docs/utilities/flexbox-grid/index.html'),
-      'utf8',
-    );
+    const docs = await readFile(join(workspaceRoot, 'packages/docs/dist/docs/index.html'), 'utf8');
 
     expect(html).toContain('href="/assets/cssx.css"');
-    expect(html).toContain('Reference by category');
-    expect(installation).toContain('Configure the adapter');
-    expect(flexbox).toContain('Flexbox and grid');
+    expect(html).toContain('Dolor sit amet consectetur.');
+    expect(docs).toContain('Configuration');
     expect(css).toContain('background-color:');
+    expect(css).toContain('border-style:solid');
     expect(css).toContain('padding:');
   });
 });

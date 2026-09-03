@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebenchmark": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && node scripts/assert-compiler-build.mjs",
-    "benchmark": "node benchmark.mjs",
+    "prebenchmark": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && pnpm --dir ../packages/cssx build && pnpm --dir ../packages/unplugin build && node scripts/assert-compiler-build.mjs",
+    "benchmark": "node benchmark.mjs && node scripts/vite-builds.mjs",
     "prebenchmark:small": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && node scripts/assert-compiler-build.mjs",
     "benchmark:small": "node benchmark.mjs small",
     "prebenchmark:medium": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && node scripts/assert-compiler-build.mjs",
@@ -18,7 +18,9 @@
     "prebenchmark:tailwind": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && node scripts/assert-compiler-build.mjs",
     "benchmark:tailwind": "node scripts/tailwind.mjs",
     "prebenchmark:stylex": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && node scripts/assert-compiler-build.mjs",
-    "benchmark:stylex": "node scripts/stylex.mjs"
+    "benchmark:stylex": "node scripts/stylex.mjs",
+    "prebenchmark:vite": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && pnpm --dir ../packages/cssx build && pnpm --dir ../packages/unplugin build && node scripts/assert-compiler-build.mjs",
+    "benchmark:vite": "node scripts/vite-builds.mjs"
   },
   "dependencies": {
     "@babel/core": "^7.29.0",
@@ -26,6 +28,8 @@
     "@stylexjs/babel-plugin": "^0.19.0",
     "@stylexjs/stylex": "^0.19.0",
     "esbuild": "^0.27.7",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "tailwindcss": "^4.3.3"
   }
 }

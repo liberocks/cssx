@@ -7,9 +7,11 @@ CSSX turns static utility strings into class names and CSS when you build your a
 | Package                                                   | Purpose                                                |
 | --------------------------------------------------------- | ------------------------------------------------------ |
 | [`@cssxio/cssx`](packages/cssx/README.md)                 | The `create`, `props`, and `sx` runtime API.           |
+| [`@cssxio/html`](packages/html/README.md)                 | Zero-build runtime styling for ordinary HTML.          |
 | [`@cssxio/compiler`](packages/compiler/README.md)         | Static utility compilation and CSS output.             |
 | [`@cssxio/babel-plugin`](packages/babel-plugin/README.md) | Source transform for static CSSX calls.                |
 | [`@cssxio/unplugin`](packages/unplugin/README.md)         | Build tool adapters that create the CSS file.          |
+| [`@cssxio/react-native`](packages/react-native/README.md) | Native style objects for React Native and Expo.        |
 | [`cssx-intellisense`](packages/intellisense/README.md)    | Editor completion and hover help for static utilities. |
 | [`@cssxio/docs`](packages/docs)                           | The CSSX documentation site.                           |
 
@@ -19,6 +21,54 @@ Install the runtime plus a compiler integration:
 pnpm add @cssxio/cssx
 pnpm add -D @cssxio/unplugin
 ```
+
+## Raw HTML
+
+For a plain HTML page with no build step, load the default-theme runtime from a CDN. It scans the classes present when the page loads, adds the matching CSSX rules to the document, and leaves every class attribute unchanged.
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <script defer src="https://cdn.jsdelivr.net/npm/@cssxio/html@0.2.0/dist/cssx.global.js"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 p-6 text-white">
+    <main class="mx-auto max-w-xl rounded-lg bg-white p-6 text-slate-950 shadow-lg">
+      CSSX styles this ordinary HTML.
+    </main>
+  </body>
+</html>
+```
+
+The CDN runtime includes the default CSSX theme. It ignores custom classes such as `htmx-indicator` and `app-card`, and it does not process content inserted after the initial page load. To use custom `@theme` tokens, bundle `start({ theme })` from `@cssxio/html` and host that script yourself. See the [raw HTML example](examples/html) and the [package README](packages/html/README.md).
+
+For bare React Native or Expo, install the native package instead:
+
+```sh
+pnpm add @cssxio/react-native
+```
+
+```js
+// babel.config.js
+module.exports = {
+  presets: ['module:@react-native/babel-preset'], // use babel-preset-expo in Expo
+  plugins: ['@cssxio/react-native/babel'],
+};
+```
+
+The native compiler turns static utilities into React Native style objects. It
+supports native-mappable layout, spacing, sizing, color, typography, border,
+and transform utilities plus `ios:` and `android:` variants. It fails at build
+time for browser-only selectors, media queries, grid, tables, filters, masks,
+CSS variables, and other values React Native cannot represent. See the
+[`create`, `props`, and `sx` native API](packages/react-native/README.md), the
+[bare React Native example](examples/react-native), and the [Expo example](examples/expo).
+
+Electron renderers use the normal web packages and build adapter. The
+[Electron example](examples/electron) combines Vite with a context-isolated,
+sandboxed renderer and includes a production launch smoke test.
 
 ## Static API
 
@@ -728,9 +778,17 @@ raw class strings or be modeled as explicit static style choices.
 
 - `pnpm test:unit` runs the unit tests.
 - `pnpm test:coverage` runs the tests with coverage checks.
+- `pnpm generate:tailwind-corpus` regenerates the complete Tailwind 4 compatibility manifest from an ignored Tailwind 4.x `experiments/tailwindcss` clone.
 - `pnpm test:package-contract` builds packages and checks their public files, dependencies, file sizes, and import time.
 - `pnpm lint` checks source files and tests with ESLint.
 - `pnpm typecheck` checks workspace types.
 - `pnpm test:release` runs formatting, linting, coverage, package checks, and type checks.
+
+The Tailwind corpus test exercises every finite candidate in the checked-out
+Tailwind 4.x upstream IntelliSense snapshot. The checked-in manifest records
+supported candidates and explicit rejections, so compatibility changes cannot
+be silent. CSSX-only utility families are covered by the compiler
+conformance and capability tests. Statement, branch, function, and line coverage
+thresholds remain 100%; production code is not excluded to meet them.
 
 Historical compatibility references are documented in [`packages/compiler/THIRD_PARTY_NOTICES.md`](packages/compiler/THIRD_PARTY_NOTICES.md).

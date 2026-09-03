@@ -1,5 +1,0 @@
----
-import DocsLayout from '../../layouts/DocsLayout.astro';
-import { classes } from '../../styles';
----
-<DocsLayout title="Build output" description="CSSX creates only the CSS needed by static utilities in used source files."><header><p class={classes.eyebrow}>Core concept</p><h1 class={classes.title}>Build output</h1><p class={classes.lead}>CSSX creates only the CSS needed by static utilities in used source files.</p></header><section class={classes.section}><h2 class={classes.heading}>What ships</h2><p class={classes.copy}>Each static style result uses one composite class. CSSX shares its declarations with internal atomic fallback selectors when runtime composition needs them, and emits used keyframes, compiled style data, a CSS file, and an optional source map. The browser runtime does not include a utility parser.</p></section><section class={classes.section}><h2 class={classes.heading}>Limits</h2><p class={classes.copy}>One build supports 10,000 style keys and 50,000 utilities. One utility list can be 16 KiB. A utility can be 500 characters. Nesting can be 32 levels. Theme input can be 128 KiB.</p></section></DocsLayout>

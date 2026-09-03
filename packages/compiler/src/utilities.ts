@@ -4,6 +4,7 @@ import { parseTheme, resolveThemeValue, serializeThemeKeyframe, serializeThemeTo
 import type { UtilityDeclaration } from './utility-types';
 import { atomizeDeclarations, cloneDeclarations } from './utility-values';
 import { applyVariants } from './utility-variants';
+import type { VariantOptions } from './utility-variants';
 import { EXACT_DECLARATIONS } from './utility-exact-declarations';
 import { compileArbitraryProperty } from './utility-transform';
 import {
@@ -139,6 +140,36 @@ export async function compileUtilities(
   themeCss = '',
   selectorAliases: Readonly<Record<string, readonly string[]>> = {},
   includedClasses?: ReadonlySet<string>,
+  variantOptions: VariantOptions = {},
+): Promise<UtilityCompilation> {
+  return compileUtilityList(candidates, className, themeCss, selectorAliases, includedClasses, variantOptions, false);
+}
+
+/**
+ * Compiles utilities using their original source class names as selectors.
+ *
+ * @param candidates The utility strings to compile.
+ * @param themeCss Optional CSS theme input.
+ * @param variantOptions Options that affect variant rendering.
+ * @returns Generated CSS whose selectors match the source utility strings.
+ */
+export async function compileSourceUtilities(
+  candidates: readonly string[],
+  themeCss = '',
+  variantOptions: VariantOptions = {},
+): Promise<UtilityCompilation> {
+  return compileUtilityList(candidates, (candidate) => candidate, themeCss, {}, undefined, variantOptions, true);
+}
+
+/** Compiles utility candidates with either generated or source class selectors. */
+async function compileUtilityList(
+  candidates: readonly string[],
+  className: (candidate: string) => string,
+  themeCss: string,
+  selectorAliases: Readonly<Record<string, readonly string[]>>,
+  includedClasses: ReadonlySet<string> | undefined,
+  variantOptions: VariantOptions,
+  escapeSourceSelectors: boolean,
 ): Promise<UtilityCompilation> {
   if (candidates.length > 50_000) {
     throw new Error('CSSX supports at most 50,000 utility candidates per compilation.');
@@ -151,7 +182,9 @@ export async function compileUtilities(
 
   for (const candidate of [...new Set(candidates)]) {
     const recipe = describeUtilityRecipe(candidate, theme);
-    const generatedClasses = readGeneratedClassNames(candidate, className(candidate));
+    const generatedClasses = escapeSourceSelectors
+      ? [className(candidate)]
+      : readGeneratedClassNames(candidate, className(candidate));
     classes[candidate] = generatedClasses.join(' ');
     const liveClasses = includedClasses
       ? generatedClasses.filter(
@@ -162,7 +195,15 @@ export async function compileUtilities(
       continue;
     }
     compiled.push(
-      ...compileCandidate(candidate, generatedClasses, theme, recipe.atoms, selectorAliases, includedClasses),
+      ...compileCandidate(
+        candidate,
+        generatedClasses,
+        theme,
+        recipe.atoms,
+        selectorAliases,
+        includedClasses,
+        variantOptions,
+      ),
     );
     for (const keyframe of recipe.resources.keyframes) {
       requiredKeyframes.add(keyframe);
@@ -172,9 +213,12 @@ export async function compileUtilities(
     }
   }
 
-  compiled.sort(
-    (left, right) => left.order.localeCompare(right.order) || left.candidate.localeCompare(right.candidate),
-  );
+  compiled.sort((left, right) => {
+    if (left.order !== right.order) {
+      return left.order < right.order ? -1 : 1;
+    }
+    return left.candidate < right.candidate ? -1 : 1;
+  });
   const uniqueCompiled = [...new Map(compiled.map((entry) => [entry.css, entry] as const)).values()];
   const resources = `${[...requiredProperties].sort().map(propertyRegistration).join('')}${[...requiredKeyframes]
     .sort()
@@ -200,7 +244,10 @@ export async function compileUtilities(
  */
 function readGeneratedClassNames(candidate: string, value: string): readonly string[] {
   const classes = value.split(/\s+/).filter(Boolean);
-  if (classes.length === 0 || classes.some((className) => !/^[A-Za-z_-][A-Za-z0-9_-]*$/.test(className))) {
+  if (
+    classes.length === 0 ||
+    classes.some((className) => !/^(?:[A-Za-z_][A-Za-z0-9_-]*|[0-9][A-Za-z0-9_-]*)$/.test(className))
+  ) {
     throw new Error(`CSSX received an unsafe generated class name for utility "${candidate}".`);
   }
   return classes;
@@ -233,6 +280,7 @@ function compileCandidate(
   atoms: readonly (readonly UtilityDeclaration[])[],
   selectorAliases: Readonly<Record<string, readonly string[]>>,
   includedClasses: ReadonlySet<string> | undefined,
+  variantOptions: VariantOptions,
 ): readonly CompiledUtility[] {
   const candidate = parseCandidate(candidateSource);
   const semantics = classifyCandidate(candidateSource)!;
@@ -244,7 +292,7 @@ function compileCandidate(
       {
         candidate: candidateSource,
         className: generatedClass,
-        css: applyVariants(selectors, declarations, candidate.variants, theme),
+        css: applyVariants(selectors, declarations, candidate.variants, theme, variantOptions),
         order: cssOrder(candidate, semantics.group, declarations),
       },
     ];
@@ -262,7 +310,7 @@ function compileCandidate(
       return {
         candidate: candidateSource,
         className,
-        css: applyVariants(selectors, declarations, candidate.variants, theme),
+        css: applyVariants(selectors, declarations, candidate.variants, theme, variantOptions),
         order: `${cssOrder(candidate, semantics.group, declarations)}\u0000${index}`,
       };
     })
@@ -279,7 +327,31 @@ function classSelectors(
   if (!includedClasses || includedClasses.has(className)) {
     names.add(className);
   }
-  return [...names].sort().map((name) => `.${name}`);
+  return [...names].sort().map((name) => `.${escapeCssIdentifier(name)}`);
+}
+
+/** Escapes a class name for use as one CSS identifier. */
+function escapeCssIdentifier(value: string): string {
+  let output = '';
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    const character = value[index]!;
+    if (index === 0 && code >= 48 && code <= 57) {
+      output += `\\${code.toString(16)} `;
+    } else if (
+      code >= 128 ||
+      code === 45 ||
+      code === 95 ||
+      (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122)
+    ) {
+      output += character;
+    } else {
+      output += `\\${character}`;
+    }
+  }
+  return output;
 }
 
 /**
@@ -350,8 +422,8 @@ function cssOrder(
 ): string {
   const variantOrder = candidate.variants
     .map((variant) => {
-      const known = ['sm', 'md', 'lg', 'xl', '2xl', 'dark', 'print'].indexOf(variant);
-      return `${String(known === -1 ? 99 : known).padStart(2, '0')}:${variant}`;
+      const known = { sm: 100, md: 101, lg: 102, xl: 103, '2xl': 104, dark: 200, print: 300 }[variant];
+      return `${String(known ?? 10).padStart(3, '0')}:${variant}`;
     })
     .join(':');
   const groupOrder = String(CASCADE_GROUP_ORDER[group] ?? 900).padStart(3, '0');

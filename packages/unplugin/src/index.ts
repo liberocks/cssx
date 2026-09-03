@@ -30,8 +30,8 @@ export { transformCssxModule, type IncomingSourceMap, type TransformResult } fro
 
 /** Metadata key used to retain transformed CSSX data until assets are emitted. */
 const RULES_METADATA_KEY = '@cssxio/unplugin/rules';
-/** Matches JavaScript and TypeScript module IDs, with an optional query. */
-const SCRIPT_ID = /\.[cm]?[jt]sx?(?:\?.*)?$/;
+/** Matches JavaScript, TypeScript, and Astro module IDs, with an optional query. */
+const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro)(?:\?.*)?$/;
 
 /** CSSX data collected for one transformed module. */
 interface ModuleCssxData extends CssxSourceModule {
@@ -268,7 +268,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
             const metadata = dataFromMetadata(this.getModuleInfo(id)?.meta);
             return Object.keys(metadata.candidates).length > 0 ? metadata : (rollupDataById.get(id) ?? metadata);
           });
-    const compiled = await compileCssxStylesheet(data, await getTheme(), options.layer, sourceMap);
+    const compiled = await compileCssxStylesheet(data, await getTheme(), options.layer, sourceMap, options.darkMode);
     if (!compiled.css) {
       return;
     }
@@ -318,13 +318,17 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
           cssOnlySignature: transformed?.cssOnlySignature ?? '',
         };
         storeCompilationData(this, data, RULES_METADATA_KEY);
-        rollupDataById.set(moduleId(id), data);
+        const normalizedId = moduleId(id);
+        // Astro transforms component scripts as query modules after the template.
+        // They have no `sx()` calls and must not erase the template's collected CSS.
+        if (transformed || normalizedId === id) {
+          rollupDataById.set(normalizedId, data);
+          esbuildDataById.set(resolve(esbuildWorkingDirectory, normalizedId), data);
+        }
 
         if (meta.framework === 'vite' && viteServer) {
           sendViteStyles(viteServer, viteCssPath('/', cssFileName));
         }
-
-        esbuildDataById.set(resolve(esbuildWorkingDirectory, moduleId(id)), data);
 
         const transformedCode = transformed?.code ?? code;
         return {
@@ -359,7 +363,9 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
             return next();
           }
           void getTheme()
-            .then((theme) => compileCssxStylesheet([...rollupDataById.values()], theme, options.layer, sourceMap))
+            .then((theme) =>
+              compileCssxStylesheet([...rollupDataById.values()], theme, options.layer, sourceMap, options.darkMode),
+            )
             .then((compiled) => {
               if (pathname === `${cssPath}.map`) {
                 response.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -427,6 +433,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
               sourceMap,
               RULES_METADATA_KEY,
               rollupDataById,
+              options.darkMode,
             );
           },
         }
@@ -442,6 +449,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
               sourceMap,
               RULES_METADATA_KEY,
               rollupDataById,
+              options.darkMode,
             );
           },
         }
@@ -471,6 +479,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
                   await getTheme(),
                   options.layer,
                   sourceMap,
+                  options.darkMode,
                 );
                 const assetPath = resolveEsbuildAssetPath(
                   workingDirectory,

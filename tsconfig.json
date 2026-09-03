@@ -14,6 +14,8 @@
     "baseUrl": ".",
     "paths": {
       "@cssxio/cssx": ["packages/cssx/src/index.ts"],
+      "@cssxio/react-native": ["packages/react-native/src/index.ts"],
+      "@cssxio/html": ["packages/html/src/index.ts"],
       "@cssxio/compiler": ["packages/compiler/src/index.ts"],
       "@cssxio/babel-plugin": ["packages/babel-plugin/src/index.ts"]
     }

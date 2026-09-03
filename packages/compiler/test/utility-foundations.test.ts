@@ -1,9 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { compileUtilities } from '../src/index';
+import { compileSourceUtilities, compileUtilities } from '../src/index';
 import { applyVariants } from '../src/utility-variants';
 import { parseTheme } from '../src/theme';
 
 describe('CSSX utility compiler', () => {
+  it('compiles source utility names into escaped CSS selectors', async () => {
+    const result = await compileSourceUtilities(['p-5', '2xl:p-5', 'hover:bg-red-500', '[mask-type:luminance]']);
+
+    expect(result.classes).toEqual({
+      'p-5': 'p-5',
+      '2xl:p-5': '2xl:p-5',
+      'hover:bg-red-500': 'hover:bg-red-500',
+      '[mask-type:luminance]': '[mask-type:luminance]',
+    });
+    expect(result.css).toContain('.p-5{padding:calc(0.25rem * 5);}');
+    expect(result.css).toContain('.\\32 xl\\:p-5');
+    expect(result.css).toContain('.hover\\:bg-red-500:hover');
+    expect(result.css).toContain('.\\[mask-type\\:luminance\\]{mask-type:luminance;}');
+  });
+
   it('compiles default utilities and rewrites only their root selectors', async () => {
     const result = await compileUtilities(
       ['p-5', 'hover:bg-red-500', 'sm:grid-cols-3'],
@@ -33,6 +48,41 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('.x-contents{display:contents;}');
     expect(result.css).toContain('.x-table-header-group{display:table-header-group;}');
     expect(result.css).toContain('.x-table-cell{display:table-cell;}');
+  });
+
+  it('compiles every exact semantic utility in the catalog', async () => {
+    const result = await compileUtilities(
+      ['collapse', 'transform', 'transform-none', 'blur'],
+      (candidate) => `x-${candidate}`,
+    );
+
+    expect(result.css).toContain('.x-collapse{visibility:collapse;}');
+    expect(result.css).toContain('.x-transform{transform:translate(0, 0);}');
+    expect(result.css).toContain('.x-transform-none{transform:none;}');
+    expect(result.css).toContain('.x-blur{--cssx-filter-blur:blur(8px);');
+  });
+
+  it('compiles every named border style and applies variants to it', async () => {
+    const result = await compileUtilities(
+      [
+        'border-none',
+        'border-hidden',
+        'border-dotted',
+        'border-dashed',
+        'border-solid',
+        'border-double',
+        'hover:border-solid',
+      ],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('.x-border-none{border-style:none;}');
+    expect(result.css).toContain('.x-border-hidden{border-style:hidden;}');
+    expect(result.css).toContain('.x-border-dotted{border-style:dotted;}');
+    expect(result.css).toContain('.x-border-dashed{border-style:dashed;}');
+    expect(result.css).toContain('.x-border-solid{border-style:solid;}');
+    expect(result.css).toContain('.x-border-double{border-style:double;}');
+    expect(result.css).toContain('.x-hover-border-solid:hover{border-style:solid;}');
   });
 
   it('compiles columns, breaks, float/clear, object position, sizing, and box-decoration layout utilities', async () => {
@@ -232,14 +282,54 @@ describe('CSSX utility compiler', () => {
 
   it('compiles safe arbitrary selector and at-rule variants', async () => {
     const result = await compileUtilities(
-      ['[&>svg]:block', '[&.is-active]:bg-orange-500', "[&[data-label='&']]:block", '[@supports(display:grid)]:grid'],
+      [
+        '[&>svg]:block',
+        '[&.is-active]:bg-orange-500',
+        "[&[data-label='&']]:block",
+        '[html[data-theme=dark]_&]:text-white',
+        '[&[data-label=hello\\_world]]:block',
+        '[@supports(display:grid)]:grid',
+      ],
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
     );
 
     expect(result.css).toContain('.x----svg--block>svg');
     expect(result.css).toContain('.x----is-active--bg-orange-500.is-active');
     expect(result.css).toContain("[data-label='&']{display:block;}");
+    expect(result.css).toContain('html[data-theme=dark] .x--html-data-theme-dark-----text-white{color:#fff;}');
+    expect(result.css).toContain('[data-label=hello_world]{display:block;}');
     expect(result.css).toContain('@supports (display:grid){.x---supports-display-grid---grid{display:grid;}}');
+  });
+
+  it('supports selector-based dark mode and xs responsive utilities', async () => {
+    const result = await compileUtilities(
+      ['dark:text-white', 'xs:p-5', 'max-md:hidden'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+      '',
+      {},
+      undefined,
+      { darkMode: 'selector' },
+    );
+
+    expect(result.css).toContain('.x-dark-text-white:where([data-theme=dark], [data-theme=dark] *){color:#fff;}');
+    expect(result.css).toContain('@media (width >= 30rem)');
+    expect(result.css).toContain('@media (width < 48rem)');
+  });
+
+  it('emits selector-based dark utilities after their base utilities', async () => {
+    const result = await compileUtilities(
+      ['bg-white', 'hover:bg-slate-100', 'dark:bg-slate-950', 'dark:hover:bg-slate-800'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+      '',
+      {},
+      undefined,
+      { darkMode: 'selector' },
+    );
+
+    expect(result.css.indexOf('.x-bg-white{')).toBeLessThan(result.css.indexOf('.x-dark-bg-slate-950:where'));
+    expect(result.css.indexOf('.x-hover-bg-slate-100:hover')).toBeLessThan(
+      result.css.indexOf('.x-dark-hover-bg-slate-800:where'),
+    );
   });
 
   it('rejects arbitrary selector variants without an anchor', async () => {
