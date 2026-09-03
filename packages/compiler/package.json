@@ -3,6 +3,11 @@
   "version": "0.2.0",
   "description": "Standalone utility compiler for CSSX.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liberocks/cssx.git",
+    "directory": "packages/compiler"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
