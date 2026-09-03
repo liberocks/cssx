@@ -8,12 +8,12 @@ const packages = [
   { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [] },
   { name: '@cssxio/babel-plugin', directory: 'packages/babel-plugin', dependencies: ['@cssxio/compiler'] },
   { name: '@cssxio/cssx', directory: 'packages/cssx', dependencies: [] },
+  { name: '@cssxio/html', directory: 'packages/html', dependencies: ['@cssxio/compiler'] },
   {
     name: '@cssxio/react-native',
     directory: 'packages/react-native',
     dependencies: ['@cssxio/compiler'],
   },
-  { name: 'cssx-intellisense', directory: 'packages/intellisense', dependencies: [] },
   {
     name: '@cssxio/unplugin',
     directory: 'packages/unplugin',

@@ -3,6 +3,11 @@
   "version": "0.2.0",
   "description": "CSSX utility styling runtime and compiler transform for React Native and Expo.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liberocks/cssx.git",
+    "directory": "packages/react-native"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

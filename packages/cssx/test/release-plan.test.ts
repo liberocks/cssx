@@ -18,6 +18,7 @@ describe('release plan', () => {
     expect(selectReleasePackages(['packages/compiler/src/index.ts']).map(({ name }) => name)).toEqual([
       '@cssxio/compiler',
       '@cssxio/babel-plugin',
+      '@cssxio/html',
       '@cssxio/react-native',
       '@cssxio/unplugin',
     ]);
@@ -31,5 +32,9 @@ describe('release plan', () => {
     expect(selectReleasePackages(['packages/react-native/src/index.ts']).map(({ name }) => name)).toEqual([
       '@cssxio/react-native',
     ]);
+  });
+
+  it('does not send the VS Code extension to npm', () => {
+    expect(selectReleasePackages(['packages/intellisense/src/extension.js'])).toEqual([]);
   });
 });

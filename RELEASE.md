@@ -60,6 +60,10 @@ Run the Release workflow manually from `main` and choose `patch`, `minor`, or
 public packages changed under `packages/*`, and adds any public dependents that
 must remain compatible. A compiler release also releases the Babel plugin and
 bundler plugin; a Babel plugin release also releases the bundler plugin.
+The npm plan covers `@cssxio/compiler`, `@cssxio/babel-plugin`,
+`@cssxio/cssx`, `@cssxio/html`, `@cssxio/react-native`, and
+`@cssxio/unplugin`. `cssx-intellisense` is published separately to the VS Code
+Marketplace and must not be sent to npm.
 
 The workflow verifies `main`, makes the deterministic version-bump commit on
 `main`, verifies that exact commit, publishes selected packages with provenance,
