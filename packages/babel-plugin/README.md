@@ -28,3 +28,5 @@ export default {
 ```
 
 The plugin accepts an optional `theme` string containing CSS text with CSSX `@theme` input. Use `themeFile` in the CSSX adapter when the build tool should read theme CSS text from a file.
+
+Set `stableClassNames: true` when development builds need composite class names to remain stable across CSS-only edits. The generated names are derived from the source file and call site, so use the same setting consistently for a given development environment.
