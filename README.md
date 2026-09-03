@@ -778,16 +778,16 @@ raw class strings or be modeled as explicit static style choices.
 
 - `pnpm test:unit` runs the unit tests.
 - `pnpm test:coverage` runs the tests with coverage checks.
-- `pnpm generate:tailwind-corpus` regenerates the complete Tailwind 4.3.3 compatibility manifest from the ignored `experiments/tailwindcss` clone.
+- `pnpm generate:tailwind-corpus` regenerates the complete Tailwind 4 compatibility manifest from an ignored Tailwind 4.x `experiments/tailwindcss` clone.
 - `pnpm test:package-contract` builds packages and checks their public files, dependencies, file sizes, and import time.
 - `pnpm lint` checks source files and tests with ESLint.
 - `pnpm typecheck` checks workspace types.
 - `pnpm test:release` runs formatting, linting, coverage, package checks, and type checks.
 
-The Tailwind corpus test exercises all 12,423 finite candidates in Tailwind
-4.3.3's upstream IntelliSense snapshot. The checked-in manifest records 5,870
-currently supported candidates and 6,553 explicit rejections, so compatibility
-changes cannot be silent. CSSX-only utility families are covered by the compiler
+The Tailwind corpus test exercises every finite candidate in the checked-out
+Tailwind 4.x upstream IntelliSense snapshot. The checked-in manifest records
+supported candidates and explicit rejections, so compatibility changes cannot
+be silent. CSSX-only utility families are covered by the compiler
 conformance and capability tests. Statement, branch, function, and line coverage
 thresholds remain 100%; production code is not excluded to meet them.
 

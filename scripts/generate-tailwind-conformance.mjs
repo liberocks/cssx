@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { compileStyleRecords } from '../packages/compiler/dist/index.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const tailwindMajorVersion = 4;
 const tailwindRoot = path.join(root, 'experiments', 'tailwindcss');
 const snapshotPath = path.join(
   tailwindRoot,
@@ -15,15 +16,24 @@ const snapshotPath = path.join(
   '__snapshots__',
   'intellisense.test.ts.snap',
 );
-const outputPath = path.join(root, 'packages', 'compiler', 'test', 'fixtures', 'tailwind-4.3.3.json');
+const packagePath = path.join(tailwindRoot, 'packages', 'tailwindcss', 'package.json');
+const outputPath = path.join(root, 'packages', 'compiler', 'test', 'fixtures', `tailwind-${tailwindMajorVersion}.json`);
 
 let snapshot;
+let tailwindPackage;
 try {
-  snapshot = await readFile(snapshotPath, 'utf8');
+  [snapshot, tailwindPackage] = await Promise.all([
+    readFile(snapshotPath, 'utf8'),
+    readFile(packagePath, 'utf8').then(JSON.parse),
+  ]);
 } catch {
   throw new Error(
-    'Clone Tailwind first: git clone --branch v4.3.3 --depth 1 https://github.com/tailwindlabs/tailwindcss.git experiments/tailwindcss',
+    `Clone a Tailwind ${tailwindMajorVersion}.x release first: git clone --depth 1 https://github.com/tailwindlabs/tailwindcss.git experiments/tailwindcss`,
   );
+}
+
+if (!new RegExp(`^${tailwindMajorVersion}\\.`).test(tailwindPackage.version)) {
+  throw new Error(`Expected Tailwind ${tailwindMajorVersion}.x, found ${tailwindPackage.version}.`);
 }
 
 const match = /exports\[`getClassList 1`\] = `\n\[\n([\s\S]*?)\n\]\n`;/.exec(snapshot);
@@ -51,7 +61,8 @@ for (const candidate of candidates) {
 const manifest = {
   source: {
     repository: 'https://github.com/tailwindlabs/tailwindcss',
-    version: '4.3.3',
+    major: tailwindMajorVersion,
+    version: tailwindPackage.version,
     commit: execFileSync('git', ['-C', tailwindRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     snapshot: 'packages/tailwindcss/src/__snapshots__/intellisense.test.ts.snap#getClassList-1',
   },
