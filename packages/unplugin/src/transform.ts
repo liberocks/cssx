@@ -43,10 +43,22 @@ export interface IncomingSourceMap {
   readonly file: string;
 }
 
-/** Matches JavaScript, TypeScript, and Astro module IDs, with an optional query. */
-const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro)(?:\?.*)?$/;
-/** Matches Astro module IDs, with an optional query. */
-const ASTRO_ID = /\.astro(?:\?.*)?$/;
+/** Extensions of JavaScript, TypeScript, and Astro modules handled by this transform. */
+const SCRIPT_EXTENSIONS = new Set([
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.cjs',
+  '.cjsx',
+  '.cts',
+  '.ctsx',
+  '.mjs',
+  '.mjsx',
+  '.mts',
+  '.mtsx',
+  '.astro',
+]);
 
 /**
  * Transforms one source module that imports CSSX.
@@ -68,17 +80,18 @@ export async function transformCssxModule(
 ): Promise<TransformResult | null> {
   assertPluginOptions(options);
   const importSource = options.importSource ?? '@cssxio/cssx';
-  if (!SCRIPT_ID.test(id) || !code.includes(importSource)) {
+  const sourceId = id.split('?', 1).join('');
+  if (!SCRIPT_EXTENSIONS.has(sourceId.slice(sourceId.lastIndexOf('.'))) || !code.includes(importSource)) {
     return null;
   }
-  if (ASTRO_ID.test(id)) {
+  if (sourceId.endsWith('.astro')) {
     return transformAstroSxModule(code, id, options);
   }
   const theme = await loadTheme(options);
   const transformed = (await transformAsync(code, {
     babelrc: false,
     configFile: false,
-    filename: id.split('?', 1).join(''),
+    filename: sourceId,
     parserOpts: { plugins: ['jsx', 'typescript'] },
     plugins: [
       [
