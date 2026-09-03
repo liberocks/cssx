@@ -112,9 +112,20 @@ jobs:
           [ -n "$run_id" ] || { printf 'Timed out waiting for CI on %s\n' "$RELEASE_SHA" >&2; exit 1; }
           gh run watch "$run_id" --exit-status
 
-          gh pr merge "$release_pr_number" --squash --delete-branch
+          gh pr merge "$release_pr_number" --squash --auto --delete-branch
+          attempts_remaining=120
+          while [ "$attempts_remaining" -gt 0 ]; do
+            release_state="$(gh pr view "$release_pr_number" --json state --jq '.state')"
+            if [ "$release_state" = MERGED ]; then break; fi
+            if [ "$release_state" = CLOSED ]; then
+              printf 'Release PR %s was closed without merging\n' "$release_pr_number" >&2
+              exit 1
+            fi
+            sleep 5
+            attempts_remaining=$((attempts_remaining - 1))
+          done
           release_sha="$(gh pr view "$release_pr_number" --json mergeCommit --jq '.mergeCommit.oid')"
-          [ -n "$release_sha" ] || { printf 'Release PR %s did not merge\n' "$release_pr_number" >&2; exit 1; }
+          [ -n "$release_sha" ] || { printf 'Timed out waiting for release PR %s to merge\n' "$release_pr_number" >&2; exit 1; }
           printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
         env:
           BUMP: ${{ inputs.bump }}
