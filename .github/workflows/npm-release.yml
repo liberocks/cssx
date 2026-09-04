@@ -16,7 +16,7 @@ on:
           - '@cssxio/react-native'
           - '@cssxio/unplugin'
       bump:
-        description: Version bump for the selected package (ignored when retrying the current version)
+        description: Version bump
         required: true
         type: choice
         options:
@@ -24,12 +24,7 @@ on:
           - minor
           - major
       retry_existing_version:
-        description: Publish the selected package's already-bumped, unpublished current version
-        required: false
-        default: false
-        type: boolean
-      dry_run:
-        description: Simulate the next release without creating GitHub or npm state
+        description: Retry current version
         required: false
         default: false
         type: boolean
@@ -83,15 +78,6 @@ jobs:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      - name: Validate release options
-        run: |
-          if [ "$DRY_RUN" = true ] && [ "$RETRY_EXISTING_VERSION" = true ]; then
-            printf 'A dry run must simulate a new version, not retry the current version.\n' >&2
-            exit 1
-          fi
-        env:
-          DRY_RUN: ${{ inputs.dry_run }}
-          RETRY_EXISTING_VERSION: ${{ inputs.retry_existing_version }}
       - name: Plan npm release
         id: plan
         run: node scripts/release-plan.mjs plan --package "$PACKAGE" --bump "$BUMP" --retry-existing-version "$RETRY_EXISTING_VERSION" --output "$RUNNER_TEMP/release-plan.json"
@@ -107,7 +93,7 @@ jobs:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       - name: Apply and commit release versions
-        if: steps.plan.outputs.requires-version-bump == 'true' && inputs.dry_run == false
+        if: steps.plan.outputs.requires-version-bump == 'true'
         id: release_commit
         run: |
           node scripts/release-plan.mjs apply --input "$RUNNER_TEMP/release-plan.json"
@@ -124,11 +110,8 @@ jobs:
         env:
           BUMP: ${{ inputs.bump }}
           RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}
-      - name: Apply simulated release versions
-        if: steps.plan.outputs.requires-version-bump == 'true' && inputs.dry_run
-        run: node scripts/release-plan.mjs apply --input "$RUNNER_TEMP/release-plan.json"
       - name: Create and merge the release PR
-        if: steps.plan.outputs.requires-version-bump == 'true' && inputs.dry_run == false
+        if: steps.plan.outputs.requires-version-bump == 'true'
         id: release_pr
         run: |
           merge_release_pr() {
@@ -173,7 +156,7 @@ jobs:
         id: release_source
         run: |
           release_sha="$MERGED_RELEASE_SHA"
-          if [ "$DRY_RUN" = true ] || [ "$REQUIRES_VERSION_BUMP" = false ]; then
+          if [ "$REQUIRES_VERSION_BUMP" = false ]; then
             release_sha="$(git rev-parse HEAD)"
           fi
           [ -n "$release_sha" ] || { printf 'No release commit was selected\n' >&2; exit 1; }
@@ -181,7 +164,6 @@ jobs:
         env:
           MERGED_RELEASE_SHA: ${{ steps.release_pr.outputs.release-sha }}
           REQUIRES_VERSION_BUMP: ${{ steps.plan.outputs.requires-version-bump }}
-          DRY_RUN: ${{ inputs.dry_run }}
       - name: Verify the merged release commit
         if: steps.plan.outputs.has-release == 'true'
         run: |
@@ -216,15 +198,18 @@ jobs:
               printf '%s@%s is already published; retry will create its missing tag and GitHub Release\n' "$package" "$version"
             fi
             if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
-              printf 'Tag %s already exists\n' "$tag" >&2
-              exit 1
+              if [ "$release_mode" != retry ]; then
+                printf 'Tag %s already exists\n' "$tag" >&2
+                exit 1
+              fi
+              printf 'Tag %s already exists; retry will check its GitHub Release\n' "$tag"
             fi
           done < <(jq -r '.packages[] | [.name, .nextVersion, .tag] | @tsv' "$RUNNER_TEMP/release-plan.json")
       - name: Build release packages
         if: steps.plan.outputs.has-release == 'true'
         run: pnpm build
       - name: Publish packages
-        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run == false
+        if: steps.plan.outputs.has-release == 'true'
         run: |
           release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
           while IFS=$'\t' read -r package version; do
@@ -238,20 +223,22 @@ jobs:
             fi
             pnpm --filter "$package" publish --access public --no-git-checks --provenance
           done < <(jq -r '.packages[] | [.name, .nextVersion] | @tsv' "$RUNNER_TEMP/release-plan.json")
-          done < <(jq -r '.packages[] | [.name, .nextVersion] | @tsv' "$RUNNER_TEMP/release-plan.json")
-      - name: Simulate package publication
-        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run
-        run: |
-          while IFS= read -r package; do
-            pnpm --filter "$package" publish --dry-run --access public --no-git-checks --provenance
-          done < <(jq -r '.packages[].name' "$RUNNER_TEMP/release-plan.json")
       - name: Tag published packages
-        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run == false
+        if: steps.plan.outputs.has-release == 'true'
         run: |
+          release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
           release_sha="$(git rev-parse HEAD)"
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           while IFS= read -r tag; do
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+              if [ "$release_mode" != retry ]; then
+                printf 'Tag %s already exists\n' "$tag" >&2
+                exit 1
+              fi
+              printf 'Skipping existing tag %s\n' "$tag"
+              continue
+            fi
             git tag --annotate "$tag" "$release_sha" --message "Release $tag"
             git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
             git push origin "$tag"
@@ -259,15 +246,19 @@ jobs:
         env:
           RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}
       - name: Create GitHub Release
-        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run == false
+        if: steps.plan.outputs.has-release == 'true'
         run: |
           first_tag="$(jq -r '.packages[0].tag' "$RUNNER_TEMP/release-plan.json")"
+          release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
+          if gh release view "$first_tag" >/dev/null 2>&1; then
+            if [ "$release_mode" != retry ]; then
+              printf 'GitHub Release %s already exists\n' "$first_tag" >&2
+              exit 1
+            fi
+            printf 'Skipping existing GitHub Release %s\n' "$first_tag"
+            exit 0
+          fi
           jq -r '"## Published packages\n\n" + (.packages | map("- `\(.name)@\(.nextVersion)` ([tag](https://github.com/" + env.GITHUB_REPOSITORY + "/releases/tag/" + .tag + "))") | join("\n"))' "$RUNNER_TEMP/release-plan.json" > "$RUNNER_TEMP/release-notes.md"
           gh release create "$first_tag" --title "Release $first_tag" --notes-file "$RUNNER_TEMP/release-notes.md"
         env:
           GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
-      - name: Report release simulation
-        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run
-        run: |
-          jq -r '.packages[] | "Simulated \(.name)@\(.nextVersion)"' "$RUNNER_TEMP/release-plan.json"
-          printf 'No release branch, pull request, npm package, tag, or GitHub Release was created.\n'
