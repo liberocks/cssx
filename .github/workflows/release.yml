@@ -14,10 +14,8 @@ on:
           - major
 
 permissions:
-  actions: write
-  contents: write
+  contents: read
   id-token: write
-  pull-requests: write
 
 concurrency:
   group: release-main
@@ -74,6 +72,13 @@ jobs:
         env:
           BUMP: ${{ inputs.bump }}
           BASE: ${{ steps.base.outputs.base }}
+      - name: Create release GitHub App token
+        if: steps.plan.outputs.has-release == 'true'
+        id: release_app_token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       - name: Apply and commit release versions
         if: steps.plan.outputs.has-release == 'true'
         id: release_commit
@@ -85,41 +90,69 @@ jobs:
           git switch --create "$release_branch"
           git add packages/*/package.json
           git commit -m "chore(release): publish $BUMP releases"
+          git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --set-upstream origin "$release_branch"
           printf 'release-branch=%s\n' "$release_branch" >> "$GITHUB_OUTPUT"
           printf 'release-sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
         env:
           BUMP: ${{ inputs.bump }}
+          RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}
       - name: Create and merge the release PR
         if: steps.plan.outputs.has-release == 'true'
         id: release_pr
         run: |
+          wait_for_ci() {
+            sha="$1"
+            event="$2"
+            attempts_remaining=120
+            while [ "$attempts_remaining" -gt 0 ]; do
+              run_id="$(gh run list --workflow ci.yml --commit "$sha" --event "$event" --limit 1 --json databaseId --jq '.[0].databaseId')"
+              if [ -n "$run_id" ] && [ "$run_id" != 'null' ]; then break; fi
+              sleep 5
+              attempts_remaining=$((attempts_remaining - 1))
+            done
+            [ -n "$run_id" ] && [ "$run_id" != 'null' ] || {
+              printf 'Timed out waiting for %s CI on %s\n' "$event" "$sha" >&2
+              exit 1
+            }
+            gh run watch "$run_id" --exit-status
+          }
+
+          enable_auto_merge() {
+            gh pr merge "$release_pr_number" --squash --auto --delete-branch || {
+              auto_merge_enabled="$(gh pr view "$release_pr_number" --json autoMergeRequest --jq '.autoMergeRequest != null')"
+              [ "$auto_merge_enabled" = true ] || {
+                printf 'Could not enable auto-merge for release PR %s\n' "$release_pr_number" >&2
+                exit 1
+              }
+            }
+          }
+
           release_pr="$(gh pr create \
             --base main \
             --head "$RELEASE_BRANCH" \
             --title "chore(release): publish $BUMP releases" \
-            --body "Automated release version bump. The release workflow dispatches and waits for the protected checks before merging.")"
+            --body "Automated release version bump. CI runs automatically and GitHub merges this PR after protected checks pass.")"
           release_pr_number="$(gh pr view "$release_pr" --json number --jq '.number')"
 
-          gh workflow run ci.yml --ref "$RELEASE_BRANCH"
-          attempts_remaining=60
-          while [ "$attempts_remaining" -gt 0 ]; do
-            run_id="$(gh run list --workflow ci.yml --commit "$RELEASE_SHA" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId')"
-            if [ -n "$run_id" ]; then break; fi
-            sleep 5
-            attempts_remaining=$((attempts_remaining - 1))
-          done
-          [ -n "$run_id" ] || { printf 'Timed out waiting for CI on %s\n' "$RELEASE_SHA" >&2; exit 1; }
-          gh run watch "$run_id" --exit-status
+          wait_for_ci "$RELEASE_SHA" pull_request
+          enable_auto_merge
 
-          gh pr merge "$release_pr_number" --squash --auto --delete-branch
-          attempts_remaining=120
+          attempts_remaining=360
           while [ "$attempts_remaining" -gt 0 ]; do
-            release_state="$(gh pr view "$release_pr_number" --json state --jq '.state')"
+            release_pr_status="$(gh pr view "$release_pr_number" --json state,mergeStateStatus --jq '[.state, .mergeStateStatus] | @tsv')"
+            release_state="${release_pr_status%%$'\t'*}"
+            merge_state="${release_pr_status#*$'\t'}"
             if [ "$release_state" = MERGED ]; then break; fi
             if [ "$release_state" = CLOSED ]; then
               printf 'Release PR %s was closed without merging\n' "$release_pr_number" >&2
               exit 1
+            fi
+            if [ "$merge_state" = BEHIND ]; then
+              gh pr update-branch "$release_pr_number"
+              release_head_sha="$(gh pr view "$release_pr_number" --json headRefOid --jq '.headRefOid')"
+              wait_for_ci "$release_head_sha" pull_request
+              enable_auto_merge
             fi
             sleep 5
             attempts_remaining=$((attempts_remaining - 1))
@@ -129,7 +162,7 @@ jobs:
           printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
         env:
           BUMP: ${{ inputs.bump }}
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
           RELEASE_BRANCH: ${{ steps.release_commit.outputs.release-branch }}
           RELEASE_SHA: ${{ steps.release_commit.outputs.release-sha }}
       - name: Verify the merged release commit
@@ -138,18 +171,17 @@ jobs:
           release_sha="$RELEASE_SHA"
           git fetch origin main
           git checkout "$release_sha"
-          gh workflow run ci.yml --ref main
-          attempts_remaining=60
+          attempts_remaining=120
           while [ "$attempts_remaining" -gt 0 ]; do
-            run_id="$(gh run list --workflow ci.yml --commit "$release_sha" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId')"
-            if [ -n "$run_id" ]; then break; fi
+            run_id="$(gh run list --workflow ci.yml --commit "$release_sha" --event push --limit 1 --json databaseId --jq '.[0].databaseId')"
+            if [ -n "$run_id" ] && [ "$run_id" != 'null' ]; then break; fi
             sleep 5
             attempts_remaining=$((attempts_remaining - 1))
           done
-          [ -n "$run_id" ] || { printf 'Timed out waiting for CI on %s\n' "$release_sha" >&2; exit 1; }
+          [ -n "$run_id" ] && [ "$run_id" != 'null' ] || { printf 'Timed out waiting for push CI on %s\n' "$release_sha" >&2; exit 1; }
           gh run watch "$run_id" --exit-status
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
           RELEASE_SHA: ${{ steps.release_pr.outputs.release-sha }}
       - name: Install release dependencies
         if: steps.plan.outputs.has-release == 'true'
@@ -182,8 +214,11 @@ jobs:
           release_sha="$(git rev-parse HEAD)"
           while IFS= read -r tag; do
             git tag --annotate "$tag" "$release_sha" --message "Release $tag"
+            git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
             git push origin "$tag"
           done < <(jq -r '.packages[].tag' "$RUNNER_TEMP/release-plan.json")
+        env:
+          RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}
       - name: Create GitHub Release
         if: steps.plan.outputs.has-release == 'true'
         run: |
@@ -191,10 +226,13 @@ jobs:
           jq -r '"## Published packages\n\n" + (.packages | map("- `\(.name)@\(.nextVersion)` ([tag](https://github.com/" + env.GITHUB_REPOSITORY + "/releases/tag/" + .tag + "))") | join("\n"))' "$RUNNER_TEMP/release-plan.json" > "$RUNNER_TEMP/release-notes.md"
           gh release create "$first_tag" --title "Release $first_tag" --notes-file "$RUNNER_TEMP/release-notes.md"
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
       - name: Create a release checkpoint
         if: steps.plan.outputs.has-release == 'true'
         run: |
           checkpoint="release-$(date --utc +%Y%m%d%H%M%S)"
           git tag --annotate "$checkpoint" --message "Release checkpoint $checkpoint"
+          git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push origin "$checkpoint"
+        env:
+          RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}

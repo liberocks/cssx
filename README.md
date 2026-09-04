@@ -784,6 +784,20 @@ raw class strings or be modeled as explicit static style choices.
 - `pnpm typecheck` checks workspace types.
 - `pnpm test:release` runs formatting, linting, coverage, package checks, and type checks.
 
+## Releases
+
+The **Release** workflow first validates `main`, then creates a version-bump PR.
+The PR must merge before packages are built, published, and tagged. Its GitHub
+App token causes the regular PR CI workflow to run normally; once all protected
+checks pass, GitHub auto-merges the PR. If `main` advances while waiting, the
+workflow updates the release branch and waits for CI again.
+
+Create a repository GitHub App with **Contents: read and write** and **Pull
+requests: read and write** permissions, install it on this repository, and add
+its ID and PEM private key as the `RELEASE_APP_ID` and
+`RELEASE_APP_PRIVATE_KEY` Actions secrets. The workflow uses its short-lived
+installation token only for release branches, PRs, tags, and releases.
+
 The Tailwind corpus test exercises every finite candidate in the checked-out
 Tailwind 4.x upstream IntelliSense snapshot. The checked-in manifest records
 supported candidates and explicit rejections, so compatibility changes cannot
