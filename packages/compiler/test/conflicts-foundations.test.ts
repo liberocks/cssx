@@ -13,6 +13,7 @@ describe('CSSX semantic conflict classifier', () => {
     expect(classifyUtility('pr-4')).toMatchObject({ group: 'pr', conflicts: ['pr'] });
     expect(classifyUtility('focus:hover:p-4')).toMatchObject({ scope: 'focus:hover', group: 'p' });
     expect(classifyUtility('hover:focus:p-4')).toMatchObject({ scope: 'focus:hover', group: 'p' });
+    expect(classifyUtility('not-a-cssx-utility')).toBeNull();
   });
 
   it('classifies arbitrary properties without treating them as opaque browser strings', () => {
@@ -35,6 +36,12 @@ describe('CSSX semantic conflict classifier', () => {
     expect(mergeCompiledStyles([base, refined])).toBe(
       [result.classes['p-4'], pxLeftClass, result.classes['pr-1']].join(' '),
     );
+  });
+
+  it('keeps only the final atom when one style repeats a semantic group', () => {
+    const result = compileStyleRecords({ root: 'p-4 p-5' });
+
+    expect(result.composites[result.classNames.root!]).toEqual([result.classes['p-5']]);
   });
 
   it('uses null-class tombstones to clear every semantic domain of reset utilities', () => {

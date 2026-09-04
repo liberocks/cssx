@@ -51,7 +51,8 @@ production.
 
 Configure npm trusted publishing for every public package using repository
 `liberocks/cssx` and workflow file `npm-release.yml`; do not configure an npm
-environment. The workflow uses its OIDC identity and does not read an npm token.
+environment. The release job uses Node 24, which provides the npm CLI version
+required for OIDC trusted publishing; it does not read an npm token.
 
 Run the **npm-release** workflow manually from `main`, select exactly one
 package, then choose `patch`, `minor`, or `major`. The supported npm packages
@@ -69,4 +70,11 @@ publisher configuration and rerun **npm-release** with **retry existing
 version** enabled for that same package. This validates `main` and only
 publishes its current version if npm does not already contain it and its tag
 does not exist. It does not create another bump PR; the selected bump is
-ignored in this guarded recovery mode.
+ignored in this guarded recovery mode. If publication succeeded but tagging or
+the GitHub Release failed, the same retry instead skips republishing and
+finishes the missing tag and release. It also safely skips a tag or GitHub
+Release that already exists.
+
+Release notes include the first-parent commits merged since the previous tag
+for that package. A package's first automated release uses `release-baseline`
+when that tag is available.

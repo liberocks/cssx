@@ -12,8 +12,6 @@ import {
   isPropsCall,
   memberPropertyName,
   objectPropertyName,
-  packedStyleExpression,
-  propertyKey,
   readStaticString,
 } from './ast-helpers';
 import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
@@ -74,6 +72,7 @@ export default function cssxBabelPlugin(
           finalizeFoldedProps(path, t);
           path.scope.crawl();
           markReferencedStyleCandidates(path);
+          materializeLiveStyleMaps(path, t);
           removeDeadStyleMaps(path);
           compactLiveStyleRecords(path);
           for (const statement of path.get('body')) {
@@ -162,18 +161,26 @@ export default function cssxBabelPlugin(
       state.composites.set(className, atomicClasses);
     }
 
-    const replacement = types.objectExpression(
-      Object.entries(result.styles).map(([key, style]) =>
-        types.objectProperty(propertyKey(key, types), packedStyleExpression(style, types)),
-      ),
-    );
-
     if (parent.isVariableDeclarator() && types.isIdentifier(parent.node.id)) {
-      state.styles.set(parent.node.id.name, result.styles);
-      state.styleCandidates.set(parent.node.id.name, result.candidates);
-      state.styleClasses.set(parent.node.id.name, result.classNames);
+      const styleName = parent.node.id.name;
+      state.styles.set(styleName, result.styles);
+      state.styleCandidates.set(styleName, result.candidates);
+      state.styleClasses.set(styleName, result.classNames);
+      path.replaceWith(types.objectExpression([]));
+      return;
     }
-    path.replaceWith(replacement);
+    path.replaceWith(styleMapExpression(result.styles, types));
+  }
+
+  /** Materializes only style maps that could not be completely folded away. */
+  function materializeLiveStyleMaps(program: NodePath<import('@babel/types').Program>, types: typeof t): void {
+    for (const [styleName, styles] of state.styles) {
+      const binding = program.scope.getBinding(styleName);
+      if (!binding?.path.isVariableDeclarator() || binding.referencePaths.length === 0) {
+        continue;
+      }
+      binding.path.node.init = styleMapExpression(styles, types);
+    }
   }
 
   /**
@@ -643,6 +650,14 @@ export default function cssxBabelPlugin(
     }
     return values.filter(Boolean).join(' ');
   }
+}
+
+/** Converts a compiled style map into the corresponding runtime object expression. */
+function styleMapExpression(
+  styles: Readonly<Record<string, CompiledStyle>>,
+  types: typeof babelTypes,
+): import('@babel/types').ObjectExpression {
+  return types.valueToNode(styles) as import('@babel/types').ObjectExpression;
 }
 
 /** Replaces content-addressed composites with source-addressed development names. */

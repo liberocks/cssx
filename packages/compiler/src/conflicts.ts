@@ -1,7 +1,7 @@
-import { splitCandidateList } from './candidate';
-import { classifyCandidate } from './semantics';
+import { parseCandidate, splitCandidateList } from './candidate';
+import { classifyCandidate, classifyParsedCandidate } from './semantics';
 import { parseTheme, resolveThemeValue } from './theme';
-import { getUtilityAtoms } from './utilities';
+import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 
 /** Compiler identity included in generated class-name hashes. */
@@ -192,16 +192,15 @@ export function compileStyleRecordMaps(
       const records: CompiledUtility[] = [];
       for (const candidate of styleCandidates) {
         const compiledCandidate = compiledCandidates.get(candidate)!;
-        const { classification, atoms } = compiledCandidate;
+        const { atoms, atomSemantics: atomWriteSets } = compiledCandidate;
         const names = atomIdentities.symbols[candidate]!;
         for (let index = 0; index < atoms.length; index++) {
-          const atom = atoms[index]!;
           const className = names[index]!;
-          const semantics = atomSemantics(atom, classification);
+          const semantics = atomWriteSets[index]!;
           if (semantics.conflicts.length > 1) {
-            records.push([null, classification.scope, semantics.group, ...semantics.conflicts]);
+            records.push([null, semantics.scope, semantics.group, ...semantics.conflicts]);
           }
-          records.push([className, classification.scope, semantics.group, semantics.group]);
+          records.push([className, semantics.scope, semantics.group, semantics.group]);
         }
       }
       recordsByStyle[name] = records;
@@ -265,6 +264,7 @@ export function compileStyleRecordMaps(
 interface CompiledCandidate {
   readonly classification: UtilityConflictRecord;
   readonly atoms: ReturnType<typeof getUtilityAtoms>;
+  readonly atomSemantics: readonly UtilityConflictRecord[];
 }
 
 /** Resolves each distinct candidate once for the current compilation theme. */
@@ -274,11 +274,17 @@ function compileCandidates(
 ): ReadonlyMap<string, CompiledCandidate> {
   const compiled = new Map<string, CompiledCandidate>();
   for (const candidate of new Set(candidates)) {
-    const classification = classifyUtility(candidate);
+    const parsedCandidate = parseCandidate(candidate);
+    const classification = classifyParsedCandidate(parsedCandidate);
     if (!classification) {
       throw new Error(`CSSX cannot classify utility "${candidate}" for composition.`);
     }
-    compiled.set(candidate, { classification, atoms: getUtilityAtoms(candidate, theme) });
+    const { recipe } = resolveParsedUtilityRecipe(candidate, parsedCandidate, classification, theme);
+    compiled.set(candidate, {
+      classification,
+      atoms: recipe.atoms,
+      atomSemantics: recipe.atoms.map((atom) => atomSemantics(atom, classification)),
+    });
   }
   return compiled;
 }
@@ -318,7 +324,7 @@ function planReusability(
 ): ReusabilityPlan {
   const normalizedBudget = normalizeReusabilityBudget(budget);
   const canonicalCompositions = compositions.map((atomicClasses) => [...new Set(atomicClasses)].sort());
-  const identities = canonicalCompositions.map(compositeIdentity);
+  const identities = canonicalCompositions.map((atomicClasses) => atomicClasses.join('\u0000'));
   const allIdentities = [...new Set(identities.filter(Boolean))];
 
   if (normalizedBudget === 0) {
@@ -912,10 +918,7 @@ function reducePackedUtilities(records: readonly CompiledUtility[]): readonly Co
       continue;
     }
     for (let conflictIndex = 2; conflictIndex < record.length; conflictIndex++) {
-      const conflict = record[conflictIndex];
-      if (conflict) {
-        blocked.add(conflict);
-      }
+      blocked.add(record[conflictIndex]!);
     }
     if (record[0]) {
       output.push(record);
@@ -942,9 +945,23 @@ function composePackedUtilities(
 
 /** Extracts the atomic classes that survive a runtime composition. */
 function packedAtomicClasses(records: readonly CompiledUtility[]): readonly string[] {
-  return reducePackedUtilities(records)
-    .map((record) => record[0])
-    .filter((className): className is string => className !== null);
+  const blockedByScope = new Map<string, Set<string>>();
+  const atomicClasses: string[] = [];
+  for (let index = records.length - 1; index >= 0; index--) {
+    const record = records[index]!;
+    const blocked = blockedByScope.get(record[1]) ?? new Set<string>();
+    blockedByScope.set(record[1], blocked);
+    if (record[0] !== null && blocked.has(record[2])) {
+      continue;
+    }
+    for (let conflictIndex = 2; conflictIndex < record.length; conflictIndex++) {
+      blocked.add(record[conflictIndex]!);
+    }
+    if (record[0]) {
+      atomicClasses.push(record[0]);
+    }
+  }
+  return atomicClasses.reverse();
 }
 
 /** Creates the stable identity of a composite class from its atomic classes. */

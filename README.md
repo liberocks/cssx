@@ -806,7 +806,12 @@ the publish, first correct the trusted-publisher setting. Then rerun
 That guarded mode verifies `main` and publishes only the current version when
 it is still unpublished and has no tag; it neither creates another version-bump
 PR nor skips ahead to a new version. The chosen bump value is ignored in retry
-mode.
+mode. It also detects an existing package-version tag or GitHub Release and
+skips that artifact while completing any missing release artifacts.
+
+Each GitHub Release lists the commits merged since that package's previous tag.
+For a package's first automated release, it uses the `release-baseline` tag
+when available.
 
 Create a repository GitHub App with **Contents: read and write** and **Pull
 requests: read and write** permissions, install it on this repository, and add

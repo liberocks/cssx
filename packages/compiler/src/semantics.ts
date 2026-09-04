@@ -22,7 +22,16 @@ export interface UtilitySemantics {
  * @returns Semantic write data, or null when CSSX does not support the utility.
  */
 export function classifyCandidate(candidateSource: string): UtilitySemantics | null {
-  const candidate = parseCandidate(candidateSource);
+  return classifyParsedCandidate(parseCandidate(candidateSource));
+}
+
+/**
+ * Maps an already parsed utility to CSSX-owned semantic write domains.
+ *
+ * @param candidate Parsed static utility string.
+ * @returns Semantic write data, or null when CSSX does not support the utility.
+ */
+export function classifyParsedCandidate(candidate: ReturnType<typeof parseCandidate>): UtilitySemantics | null {
   const utility = candidate.utility;
   const group = classifyUtilityGroup(utility);
   if (!group) {
