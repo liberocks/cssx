@@ -99,6 +99,18 @@ describe('native bundler helpers', () => {
     ]);
   });
 
+  it('retains anonymous records from both native data sources', () => {
+    expect(
+      mergeCssxSourceModules(
+        [{ id: '', candidates: { 'text-white': 'current' }, origins: {} }],
+        [{ id: '', candidates: { 'p-4': 'sibling' }, origins: {} }],
+      ),
+    ).toEqual([
+      { id: '', candidates: { 'p-4': 'sibling' }, origins: {} },
+      { id: '', candidates: { 'text-white': 'current' }, origins: {} },
+    ]);
+  });
+
   it('emits server records retained outside the current native compilation', async () => {
     let processAssets: (() => Promise<void>) | undefined;
     let css = '';
@@ -156,6 +168,17 @@ describe('native bundler helpers', () => {
 
     configureCompilationAsset(
       createCompiler(compilation, 'server'),
+      'cssx.css',
+      async () => undefined,
+      undefined,
+      false,
+      'cssx',
+    );
+
+    expect(registered).toBe(false);
+
+    configureCompilationAsset(
+      { ...createCompiler(compilation), name: 'edge-server' },
       'cssx.css',
       async () => undefined,
       undefined,
