@@ -61,45 +61,45 @@ export function splitCandidateList(source: string): readonly string[] {
     throw new Error('CSSX utility list exceeds the 16 KiB limit.');
   }
   const candidates: string[] = [];
-  let token = '';
+  let tokenStart = -1;
   let bracketDepth = 0;
   let parenthesisDepth = 0;
-  let quote = '';
+  let quote = 0;
   let escaped = false;
 
-  for (const character of source) {
+  for (let index = 0; index < source.length; index++) {
+    const code = source.charCodeAt(index);
+    if (tokenStart === -1 && !isWhitespaceCode(code)) {
+      tokenStart = index;
+    }
     if (escaped) {
-      token += character;
       escaped = false;
       continue;
     }
-    if (character === '\\') {
-      token += character;
+    if (code === 0x5c) {
       escaped = true;
       continue;
     }
     if (quote) {
-      token += character;
-      if (character === quote) {
-        quote = '';
+      if (code === quote) {
+        quote = 0;
       }
       continue;
     }
-    if (character === '"' || character === "'") {
-      quote = character;
-      token += character;
+    if (code === 0x22 || code === 0x27) {
+      quote = code;
       continue;
     }
-    if (character === '[') {
+    if (code === 0x5b) {
       bracketDepth++;
     }
-    if (character === ']') {
+    if (code === 0x5d) {
       bracketDepth--;
     }
-    if (character === '(') {
+    if (code === 0x28) {
       parenthesisDepth++;
     }
-    if (character === ')') {
+    if (code === 0x29) {
       parenthesisDepth--;
     }
     if (
@@ -110,24 +110,34 @@ export function splitCandidateList(source: string): readonly string[] {
     ) {
       throw new Error(`Invalid utility list "${source}".`);
     }
-    if (/\s/.test(character) && bracketDepth === 0 && parenthesisDepth === 0) {
-      if (token) {
-        candidates.push(token);
+    if (isWhitespaceCode(code) && bracketDepth === 0 && parenthesisDepth === 0) {
+      if (tokenStart !== -1) {
+        candidates.push(source.slice(tokenStart, index));
       }
-      token = '';
+      tokenStart = -1;
       continue;
     }
-    token += character;
   }
 
   if (escaped || quote || bracketDepth !== 0 || parenthesisDepth !== 0) {
     throw new Error(`Invalid utility list "${source}".`);
   }
-  if (token) {
-    candidates.push(token);
+  if (tokenStart !== -1) {
+    candidates.push(source.slice(tokenStart));
   }
   return candidates;
 }
+
+/** Checks JavaScript whitespace without creating a regular-expression match per character. */
+function isWhitespaceCode(code: number): boolean {
+  return WHITESPACE_CODES.has(code);
+}
+
+/** ECMAScript whitespace code points accepted between static utilities. */
+const WHITESPACE_CODES = new Set<number>([
+  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x20, 0xa0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007,
+  0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff,
+]);
 
 /**
  * Parses supported static candidate syntax and rejects CSS injection delimiters.

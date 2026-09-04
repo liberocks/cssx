@@ -1,6 +1,5 @@
 import type { NodePath } from '@babel/core';
 import * as babelTypes from '@babel/types';
-import type { CompiledStyle } from '@cssxio/compiler';
 
 /**
  * Reads a member property written with supported static syntax.
@@ -159,34 +158,6 @@ export function readStaticString(path: NodePath): string | null {
   }
   const initializer = binding.path.get('init');
   return initializer.isStringLiteral() ? initializer.node.value : null;
-}
-
-/**
- * Creates an object key that preserves the supplied property name.
- *
- * @param key Property name to represent.
- * @param t Babel node helpers.
- * @returns An identifier for valid identifier names, otherwise a string literal.
- */
-export function propertyKey(
-  key: string,
-  t: typeof import('@babel/types'),
-): import('@babel/types').Identifier | import('@babel/types').StringLiteral {
-  return t.isValidIdentifier(key) ? t.identifier(key) : t.stringLiteral(key);
-}
-
-/**
- * Converts a compiled style value into an object expression.
- *
- * @param style Compiled style emitted by the compiler.
- * @param t Babel node helpers.
- * @returns An object expression that represents the compiled style.
- */
-export function packedStyleExpression(
-  style: CompiledStyle,
-  t: typeof import('@babel/types'),
-): import('@babel/types').ObjectExpression {
-  return t.valueToNode(style) as import('@babel/types').ObjectExpression;
 }
 
 /**

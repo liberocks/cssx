@@ -1,5 +1,7 @@
 import { parseCandidate } from './candidate';
-import { classifyCandidate } from './semantics';
+import type { ParsedCandidate } from './candidate';
+import { classifyParsedCandidate } from './semantics';
+import type { UtilitySemantics } from './semantics';
 import { parseTheme, resolveThemeValue, serializeThemeKeyframe, serializeThemeTokens } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 import { atomizeDeclarations, cloneDeclarations } from './utility-values';
@@ -99,11 +101,33 @@ export function getUtilityAtoms(candidateSource: string, theme: CssxTheme): read
  * @returns Its CSS declaration groups, resources, and style groups.
  */
 export function describeUtilityRecipe(candidateSource: string, theme: CssxTheme): UtilityRecipe {
+  return resolveUtilityRecipe(candidateSource, theme).recipe;
+}
+
+/** Internal parsed and classified recipe data reused during CSS serialization. */
+export interface ResolvedUtilityRecipe {
+  readonly recipe: UtilityRecipe;
+  readonly parsedCandidate: ParsedCandidate;
+  readonly semantics: UtilitySemantics;
+}
+
+/** Resolves a utility once for both recipe construction and CSS serialization. */
+export function resolveUtilityRecipe(candidateSource: string, theme: CssxTheme): ResolvedUtilityRecipe {
   const candidate = parseCandidate(candidateSource);
-  const semantics = classifyCandidate(candidateSource);
+  const semantics = classifyParsedCandidate(candidate);
   if (!semantics) {
     throw new Error(`CSSX cannot compile utility "${candidateSource}".`);
   }
+  return resolveParsedUtilityRecipe(candidateSource, candidate, semantics, theme);
+}
+
+/** Builds a utility recipe from parsing and classification data already available to the caller. */
+export function resolveParsedUtilityRecipe(
+  candidateSource: string,
+  candidate: ParsedCandidate,
+  semantics: UtilitySemantics,
+  theme: CssxTheme,
+): ResolvedUtilityRecipe {
   const declarations = compileDeclarations(candidate.utility, candidate.negative, theme);
   const keyframes = requiredAnimationKeyframes(declarations, theme);
   if (candidate.important) {
@@ -113,13 +137,17 @@ export function describeUtilityRecipe(candidateSource: string, theme: CssxTheme)
   }
   const atoms = atomizeDeclarations(declarations);
   return {
-    candidate: candidateSource,
-    atoms,
-    resources: { keyframes, properties: requiredPropertyNames(candidateSource) },
-    writes: atoms.map((atom) => {
-      const group = atom[0]?.semanticGroup ?? semantics.group;
-      return { group, conflicts: atom[0]?.semanticConflicts ?? [group] };
-    }),
+    recipe: {
+      candidate: candidateSource,
+      atoms,
+      resources: { keyframes, properties: requiredPropertyNames(candidate.utility) },
+      writes: atoms.map((atom) => {
+        const group = atom[0]?.semanticGroup ?? semantics.group;
+        return { group, conflicts: atom[0]?.semanticConflicts ?? [group] };
+      }),
+    },
+    parsedCandidate: candidate,
+    semantics,
   };
 }
 
@@ -181,7 +209,8 @@ async function compileUtilityList(
   const requiredProperties = new Set<string>();
 
   for (const candidate of [...new Set(candidates)]) {
-    const recipe = describeUtilityRecipe(candidate, theme);
+    const resolvedRecipe = resolveUtilityRecipe(candidate, theme);
+    const { recipe } = resolvedRecipe;
     const generatedClasses = escapeSourceSelectors
       ? [className(candidate)]
       : readGeneratedClassNames(candidate, className(candidate));
@@ -200,6 +229,8 @@ async function compileUtilityList(
         generatedClasses,
         theme,
         recipe.atoms,
+        resolvedRecipe.parsedCandidate,
+        resolvedRecipe.semantics.group,
         selectorAliases,
         includedClasses,
         variantOptions,
@@ -278,14 +309,14 @@ function compileCandidate(
   classNames: readonly string[],
   theme: CssxTheme,
   atoms: readonly (readonly UtilityDeclaration[])[],
+  candidate: ParsedCandidate,
+  semanticGroup: string,
   selectorAliases: Readonly<Record<string, readonly string[]>>,
   includedClasses: ReadonlySet<string> | undefined,
   variantOptions: VariantOptions,
 ): readonly CompiledUtility[] {
-  const candidate = parseCandidate(candidateSource);
-  const semantics = classifyCandidate(candidateSource)!;
   if (classNames.length === 1) {
-    const declarations = atoms.flat();
+    const declarations = atoms.length === 1 ? atoms[0]! : atoms.flat();
     const generatedClass = classNames[0]!;
     const selectors = classSelectors(generatedClass, selectorAliases, includedClasses);
     return [
@@ -293,7 +324,7 @@ function compileCandidate(
         candidate: candidateSource,
         className: generatedClass,
         css: applyVariants(selectors, declarations, candidate.variants, theme, variantOptions),
-        order: cssOrder(candidate, semantics.group, declarations),
+        order: cssOrder(candidate, semanticGroup, declarations),
       },
     ];
   }
@@ -311,7 +342,7 @@ function compileCandidate(
         candidate: candidateSource,
         className,
         css: applyVariants(selectors, declarations, candidate.variants, theme, variantOptions),
-        order: `${cssOrder(candidate, semantics.group, declarations)}\u0000${index}`,
+        order: `${cssOrder(candidate, semanticGroup, declarations)}\u0000${index}`,
       };
     })
     .filter((entry): entry is CompiledUtility => entry !== null);
@@ -323,7 +354,11 @@ function classSelectors(
   selectorAliases: Readonly<Record<string, readonly string[]>>,
   includedClasses: ReadonlySet<string> | undefined,
 ): readonly string[] {
-  const names = new Set(selectorAliases[className] ?? []);
+  const aliases = selectorAliases[className];
+  if (!aliases?.length) {
+    return !includedClasses || includedClasses.has(className) ? [`.${escapeCssIdentifier(className)}`] : [];
+  }
+  const names = new Set(aliases);
   if (!includedClasses || includedClasses.has(className)) {
     names.add(className);
   }
@@ -427,17 +462,19 @@ function cssOrder(
     })
     .join(':');
   const groupOrder = String(CASCADE_GROUP_ORDER[group] ?? 900).padStart(3, '0');
-  const properties = declarations.map((declaration) => declaration.property);
-  const isController = properties.includes('transition-property') && properties.length > 1;
-  const isShorthand = properties.some((property) => SHORTHAND_WRITE_SETS[property] !== undefined);
-  const isEnhancement = properties.some(
-    (property) =>
+  let isController = false;
+  let isShorthand = false;
+  let isEnhancement = false;
+  for (const { property } of declarations) {
+    isController ||= declarations.length > 1 && property === 'transition-property';
+    isShorthand ||= SHORTHAND_WRITE_SETS[property] !== undefined;
+    isEnhancement ||=
       property === 'animation-timeline' ||
       property.startsWith('animation-range') ||
       property.startsWith('scroll-timeline') ||
       property.startsWith('view-timeline') ||
-      property === 'timeline-scope',
-  );
+      property === 'timeline-scope';
+  }
   const isStartingStyle = candidate.variants.includes('starting');
   const isViewTransition = candidate.variants.some((variant) => variant.startsWith('vt-'));
   const phase = isViewTransition
@@ -541,12 +578,11 @@ function resolveAnimationThemeReferences(value: string, theme: CssxTheme): strin
 /**
  * Finds custom properties that need CSS property registration.
  *
- * @param candidateSource Source utility candidate.
+ * @param utility Utility name without variants or modifiers.
  * @returns Required property names.
  */
-function requiredPropertyNames(candidateSource: string): readonly string[] {
-  const candidate = parseCandidate(candidateSource);
-  const part = /^scrollbar-(thumb|track)-/.exec(candidate.utility)?.[1];
+function requiredPropertyNames(utility: string): readonly string[] {
+  const part = /^scrollbar-(thumb|track)-/.exec(utility)?.[1];
   return part ? [`--cssx-scrollbar-${part}`] : [];
 }
 
