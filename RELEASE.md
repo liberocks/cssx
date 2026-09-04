@@ -51,7 +51,8 @@ production.
 
 Configure npm trusted publishing for every public package using repository
 `liberocks/cssx` and workflow file `npm-release.yml`; do not configure an npm
-environment. The workflow uses its OIDC identity and does not read an npm token.
+environment. The release job uses Node 24, which provides the npm CLI version
+required for OIDC trusted publishing; it does not read an npm token.
 
 Run the **npm-release** workflow manually from `main`, select exactly one
 package, then choose `patch`, `minor`, or `major`. The supported npm packages
