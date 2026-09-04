@@ -30,19 +30,32 @@ function run(args, cwd, env = {}) {
 
 /** Starts the persistent framework server and forwards lifecycle signals. */
 function serve(args, cwd, env = {}) {
+  const output = [];
   const child = spawn(command, args, {
     cwd,
     env: { ...process.env, ...env },
     shell: process.platform === 'win32',
-    stdio: 'inherit',
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
+  for (const stream of [child.stdout, child.stderr]) {
+    stream?.on('data', (chunk) => {
+      output.push(chunk);
+      process.stdout.write(chunk);
+    });
+  }
   for (const signal of ['SIGINT', 'SIGTERM']) {
     process.once(signal, () => child.kill(signal));
   }
   child.once('error', (error) => {
     throw error;
   });
-  child.once('exit', (code) => process.exit(code ?? 1));
+  child.once('exit', (code, signal) => {
+    if (code !== 0) {
+      console.error(`${framework} ${mode} server exited with ${signal ?? `code ${code ?? 'unknown'}`}.`);
+      if (output.length === 0) console.error('The framework process produced no startup output.');
+    }
+    process.exit(code ?? 1);
+  });
 }
 
 const example = resolve(root, 'examples', framework);
