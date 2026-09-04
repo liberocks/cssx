@@ -157,7 +157,16 @@ jobs:
         run: |
           release_sha="$MERGED_RELEASE_SHA"
           if [ "$REQUIRES_VERSION_BUMP" = false ]; then
-            release_sha="$(git rev-parse HEAD)"
+            manifest_path="$(jq -r '.packages[0].directory + "/package.json"' "$RUNNER_TEMP/release-plan.json")"
+            release_version="$(jq -r '.packages[0].nextVersion' "$RUNNER_TEMP/release-plan.json")"
+            while IFS= read -r candidate_sha; do
+              candidate_version="$(git show "$candidate_sha:$manifest_path" | jq -r '.version')"
+              parent_version="$(git show "$candidate_sha^:$manifest_path" 2>/dev/null | jq -r '.version' 2>/dev/null || true)"
+              if [ "$candidate_version" = "$release_version" ] && [ "$parent_version" != "$release_version" ]; then
+                release_sha="$candidate_sha"
+                break
+              fi
+            done < <(git log --format=%H -- "$manifest_path")
           fi
           [ -n "$release_sha" ] || { printf 'No release commit was selected\n' >&2; exit 1; }
           printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
@@ -236,6 +245,11 @@ jobs:
                 printf 'Tag %s already exists\n' "$tag" >&2
                 exit 1
               fi
+              tag_commit="$(git ls-remote origin "refs/tags/$tag^{}" | awk 'NR == 1 { print $1 }')"
+              if [ "$tag_commit" != "$release_sha" ]; then
+                printf 'Tag %s points to %s, not release commit %s\n' "$tag" "$tag_commit" "$release_sha" >&2
+                exit 1
+              fi
               printf 'Skipping existing tag %s\n' "$tag"
               continue
             fi
@@ -249,6 +263,7 @@ jobs:
         if: steps.plan.outputs.has-release == 'true'
         run: |
           first_tag="$(jq -r '.packages[0].tag' "$RUNNER_TEMP/release-plan.json")"
+          package="$(jq -r '.packages[0].name' "$RUNNER_TEMP/release-plan.json")"
           release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
           if gh release view "$first_tag" >/dev/null 2>&1; then
             if [ "$release_mode" != retry ]; then
@@ -258,7 +273,28 @@ jobs:
             printf 'Skipping existing GitHub Release %s\n' "$first_tag"
             exit 0
           fi
+          git fetch --tags origin
           jq -r '"## Published packages\n\n" + (.packages | map("- `\(.name)@\(.nextVersion)` ([tag](https://github.com/" + env.GITHUB_REPOSITORY + "/releases/tag/" + .tag + "))") | join("\n"))' "$RUNNER_TEMP/release-plan.json" > "$RUNNER_TEMP/release-notes.md"
+          previous_tag="$(git tag --list "$package@*" --sort=-v:refname | grep -Fvx "$first_tag" | head -n 1 || true)"
+          if [ -z "$previous_tag" ] && git rev-parse --verify --quiet refs/tags/release-baseline >/dev/null; then
+            previous_tag=release-baseline
+          fi
+          release_sha="$(git rev-parse HEAD)"
+          if [ -n "$previous_tag" ]; then
+            printf '\n## Changes since `%s`\n\n' "$previous_tag" >> "$RUNNER_TEMP/release-notes.md"
+            commit_range="$previous_tag..$release_sha"
+          else
+            printf '\n## Changes\n\n' >> "$RUNNER_TEMP/release-notes.md"
+            commit_range="$release_sha"
+          fi
+          commit_count=0
+          while IFS=$'\t' read -r commit subject; do
+            printf -- '- [`%.7s`](https://github.com/%s/commit/%s) %s\n' "$commit" "$GITHUB_REPOSITORY" "$commit" "$subject" >> "$RUNNER_TEMP/release-notes.md"
+            commit_count=$((commit_count + 1))
+          done < <(git log --first-parent --format='%H%x09%s' "$commit_range")
+          if [ "$commit_count" -eq 0 ]; then
+            printf '%s\n' '- No commits were merged in this release range.' >> "$RUNNER_TEMP/release-notes.md"
+          fi
           gh release create "$first_tag" --title "Release $first_tag" --notes-file "$RUNNER_TEMP/release-notes.md"
         env:
           GH_TOKEN: ${{ steps.release_app_token.outputs.token }}

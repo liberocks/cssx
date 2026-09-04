@@ -809,6 +809,10 @@ PR nor skips ahead to a new version. The chosen bump value is ignored in retry
 mode. It also detects an existing package-version tag or GitHub Release and
 skips that artifact while completing any missing release artifacts.
 
+Each GitHub Release lists the commits merged since that package's previous tag.
+For a package's first automated release, it uses the `release-baseline` tag
+when available.
+
 Create a repository GitHub App with **Contents: read and write** and **Pull
 requests: read and write** permissions, install it on this repository, and add
 its ID and PEM private key as the `RELEASE_APP_ID` and

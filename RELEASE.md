@@ -74,3 +74,7 @@ ignored in this guarded recovery mode. If publication succeeded but tagging or
 the GitHub Release failed, the same retry instead skips republishing and
 finishes the missing tag and release. It also safely skips a tag or GitHub
 Release that already exists.
+
+Release notes include the first-parent commits merged since the previous tag
+for that package. A package's first automated release uses `release-baseline`
+when that tag is available.
