@@ -786,13 +786,16 @@ raw class strings or be modeled as explicit static style choices.
 
 ## npm releases
 
-The **npm-release** workflow requires an explicit package and version-bump type.
-It first validates `main`, then creates a version-bump PR for that package. The
-release App is the only actor that can bypass protected checks to merge this
-specific PR, preserving an auditable PR trail without repeating CI for a
-package-version-only change. The merged commit is still verified before the
-package is built, published, and tagged. GitHub repository auto-merge remains
-disabled for ordinary pull requests.
+The **npm-release** workflow defaults to `auto`, which detects every public
+package changed since its last release tag. It applies the selected version bump
+to those packages, adds patch releases for dependents whose internal dependency
+range must advance, and creates one version-bump PR for the complete set. You
+can instead select one package explicitly. The release App is the only actor
+that can bypass protected checks to merge this specific PR, preserving an
+auditable PR trail without repeating CI for a package-version-only change. The
+merged commit is still verified before packages are built, published, and
+tagged. GitHub repository auto-merge remains disabled for ordinary pull
+requests.
 
 Configure npm trusted publishing separately for each public package, with
 repository `liberocks/cssx` and workflow file `npm-release.yml`. Do not select
@@ -802,12 +805,13 @@ without an npm token.
 
 If a release fails after its version-bump PR has merged but before npm accepts
 the publish, first correct the trusted-publisher setting. Then rerun
-**npm-release** for the same package with **retry existing version** enabled.
-That guarded mode verifies `main` and publishes only the current version when
-it is still unpublished and has no tag; it neither creates another version-bump
-PR nor skips ahead to a new version. The chosen bump value is ignored in retry
-mode. It also detects an existing package-version tag or GitHub Release and
-skips that artifact while completing any missing release artifacts.
+**npm-release** for the same explicitly selected package with **retry existing
+version** enabled. That guarded mode verifies `main` and publishes only the
+current version when it is still unpublished and has no tag; it neither creates
+another version-bump PR nor skips ahead to a new version. The chosen bump value
+is ignored in retry mode. It also detects an existing package-version tag or
+GitHub Release and skips that artifact while completing any missing release
+artifacts.
 
 Each GitHub Release lists the commits merged since that package's previous tag.
 For a package's first automated release, it uses the `release-baseline` tag

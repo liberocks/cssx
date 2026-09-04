@@ -295,10 +295,12 @@ void props;
     }
   });
 
-  it('requires npm releases to identify one package explicitly', async () => {
+  it('defaults npm releases to the changed-package selector', async () => {
     const workflow = await readFile(join(workspaceRoot, '.github/workflows/npm-release.yml'), 'utf8');
     expect(workflow).toContain('name: npm-release');
     expect(workflow).toContain('package:');
+    expect(workflow).toContain('default: auto');
+    expect(workflow).toContain('- auto');
     expect(workflow).toContain('--package "$PACKAGE"');
     expect(workflow).toContain('--retry-existing-version "$RETRY_EXISTING_VERSION"');
     expect(workflow).toContain('retry_existing_version:');
@@ -314,7 +316,6 @@ void props;
     expect(workflow).toContain('persist-credentials: false');
     expect(workflow).not.toContain('dry_run');
     expect(workflow).not.toContain('wait_for_ci');
-    expect(workflow).not.toContain('--auto');
     expect(workflow).toContain('queue: max');
   });
 
