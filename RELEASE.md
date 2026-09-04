@@ -70,4 +70,6 @@ publisher configuration and rerun **npm-release** with **retry existing
 version** enabled for that same package. This validates `main` and only
 publishes its current version if npm does not already contain it and its tag
 does not exist. It does not create another bump PR; the selected bump is
-ignored in this guarded recovery mode.
+ignored in this guarded recovery mode. If publication succeeded but tagging or
+the GitHub Release failed, the same retry instead skips republishing and
+finishes the missing tag and release.

@@ -291,6 +291,8 @@ void props;
     expect(workflow).toContain('retry_existing_version:');
     expect(workflow).toContain('requires-version-bump');
     expect(workflow).toContain('node-version: 24');
+    expect(workflow).toContain('retry will create its missing tag and GitHub Release');
+    expect(workflow).toContain('Skipping already-published');
     expect(workflow).toContain('merge_release_pr()');
     expect(workflow).toContain('persist-credentials: false');
     expect(workflow).not.toContain('wait_for_ci');

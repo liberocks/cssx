@@ -185,13 +185,17 @@ jobs:
       - name: Install release dependencies
         if: steps.plan.outputs.has-release == 'true'
         run: pnpm install --frozen-lockfile
-      - name: Check release versions are available
+      - name: Check release versions can be finalized
         if: steps.plan.outputs.has-release == 'true'
         run: |
+          release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
           while IFS=$'\t' read -r package version tag; do
             if pnpm view "$package@$version" version >/dev/null 2>&1; then
-              printf '%s@%s is already published\n' "$package" "$version" >&2
-              exit 1
+              if [ "$release_mode" != retry ]; then
+                printf '%s@%s is already published\n' "$package" "$version" >&2
+                exit 1
+              fi
+              printf '%s@%s is already published; retry will create its missing tag and GitHub Release\n' "$package" "$version"
             fi
             if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
               printf 'Tag %s already exists\n' "$tag" >&2
@@ -204,13 +208,24 @@ jobs:
       - name: Publish packages
         if: steps.plan.outputs.has-release == 'true'
         run: |
-          while IFS= read -r package; do
+          release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
+          while IFS=$'\t' read -r package version; do
+            if pnpm view "$package@$version" version >/dev/null 2>&1; then
+              if [ "$release_mode" != retry ]; then
+                printf '%s@%s is already published\n' "$package" "$version" >&2
+                exit 1
+              fi
+              printf 'Skipping already-published %s@%s\n' "$package" "$version"
+              continue
+            fi
             pnpm --filter "$package" publish --access public --no-git-checks --provenance
-          done < <(jq -r '.packages[].name' "$RUNNER_TEMP/release-plan.json")
+          done < <(jq -r '.packages[] | [.name, .nextVersion] | @tsv' "$RUNNER_TEMP/release-plan.json")
       - name: Tag published packages
         if: steps.plan.outputs.has-release == 'true'
         run: |
           release_sha="$(git rev-parse HEAD)"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           while IFS= read -r tag; do
             git tag --annotate "$tag" "$release_sha" --message "Release $tag"
             git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
