@@ -17,12 +17,13 @@ export default function IndexPage() {
   const [count, setCount] = React.useState(0);
 
   return (
-    <main {...cssx.props(styles.page)}>
+    <main data-cssx-probe="create" {...cssx.props(styles.page)}>
       <section {...cssx.props(styles.card)}>
         <span {...cssx.props(styles.eyebrow)}>Gatsby + webpack</span>
         <h1 {...cssx.props(styles.title)}>CSSX with Gatsby</h1>
         <p {...cssx.props(styles.copy)}>The Gatsby webpack hook registers the CSSX adapter for production builds.</p>
         <button
+          data-cssx-probe="sx"
           className={sx(
             'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-purple-800',
             count > 0 && 'scale-105',

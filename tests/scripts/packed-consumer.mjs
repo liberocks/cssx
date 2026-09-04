@@ -1,0 +1,83 @@
+import { execFile } from 'node:child_process';
+import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { promisify } from 'node:util';
+
+const exec = promisify(execFile);
+const manager = process.argv[2];
+if (!['bun', 'npm', 'pnpm', 'yarn'].includes(manager)) {
+  throw new Error('Usage: node tests/scripts/packed-consumer.mjs <bun|npm|pnpm|yarn>');
+}
+
+const root = resolve(import.meta.dirname, '../..');
+const command = process.platform === 'win32' ? `${manager}.cmd` : manager;
+const packageDirectories = [
+  'packages/compiler',
+  'packages/cssx',
+  'packages/babel-plugin',
+  'packages/html',
+  'packages/react-native',
+  'packages/unplugin',
+];
+const temporary = await mkdtemp(join(tmpdir(), 'cssx-packed-consumer-'));
+const tarballs = join(temporary, 'tarballs');
+const consumer = join(temporary, 'consumer');
+
+async function run(executable, args, cwd) {
+  try {
+    await exec(executable, args, { cwd, windowsHide: true });
+  } catch (error) {
+    const detail = error.stderr || error.message;
+    throw new Error(`${executable} ${args.join(' ')} failed:\n${detail}`);
+  }
+}
+
+try {
+  await mkdir(tarballs);
+  await mkdir(consumer);
+  for (const packageDirectory of packageDirectories) {
+    await run(
+      process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
+      ['pack', '--pack-destination', tarballs],
+      join(root, packageDirectory),
+    );
+  }
+  const dependencies = {};
+  for (const tarball of await readdir(tarballs)) {
+    const packageDirectory = packageDirectories.find((directory) => {
+      const name = directory.split('/').at(-1);
+      return name && tarball.startsWith(`cssxio-${name}-`);
+    });
+    if (!packageDirectory) continue;
+    const manifest = JSON.parse(
+      await (await import('node:fs/promises')).readFile(join(root, packageDirectory, 'package.json'), 'utf8'),
+    );
+    dependencies[manifest.name] = `file:${join(tarballs, tarball)}`;
+  }
+  await writeFile(
+    join(consumer, 'package.json'),
+    `${JSON.stringify({ name: 'cssx-packed-consumer', private: true, type: 'module', dependencies }, null, 2)}\n`,
+  );
+  if (manager === 'yarn') {
+    await writeFile(join(consumer, '.yarnrc.yml'), 'nodeLinker: node-modules\n');
+  }
+  await run(command, ['install', '--ignore-scripts'], consumer);
+  await run(
+    process.execPath,
+    [
+      '--input-type=module',
+      '--eval',
+      `import { sx } from '@cssxio/cssx';
+import { compileStyleMap } from '@cssxio/compiler';
+import { transformCssxModule } from '@cssxio/unplugin';
+if (!sx('p-4') || (await compileStyleMap({ card: 'p-4' })).rules.length === 0) process.exit(1);
+const transformed = await transformCssxModule("import { sx } from '@cssxio/cssx'; sx('p-4')", 'entry.ts');
+if (!transformed?.code) process.exit(1);`,
+    ],
+    consumer,
+  );
+  console.log(`Packed CSSX consumer installed successfully with ${manager}.`);
+} finally {
+  await rm(temporary, { recursive: true, force: true });
+}

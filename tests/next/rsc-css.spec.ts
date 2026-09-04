@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { access } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 test.describe('Next App Router CSSX stylesheet', () => {
   test('includes CSSX rules from both server and client components', async ({ page, request }) => {
@@ -18,5 +20,8 @@ test.describe('Next App Router CSSX stylesheet', () => {
 
     expect(classNames.length).toBeGreaterThan(0);
     expect(classNames.every((className) => css.includes(`.${className}`))).toBe(true);
+    await expect(
+      access(resolve(import.meta.dirname, '../../examples/next/.next/server/static/cssx.css')),
+    ).rejects.toThrow();
   });
 });

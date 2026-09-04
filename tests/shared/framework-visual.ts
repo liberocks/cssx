@@ -74,7 +74,24 @@ export function frameworkVisualSuite(framework: string): void {
 
       const stylesheet = page.locator('link[rel="stylesheet"][href*="cssx"]');
       await expect(stylesheet).toHaveAttribute('href', /cssx\.css/);
-      await expect(page).toHaveScreenshot(`${framework}-${mode}-home.png`, { fullPage: true });
+      const href = await stylesheet.getAttribute('href');
+      expect(href).toBeTruthy();
+      const response = await page.request.get(new URL(href!, page.url()).href);
+      expect(response.ok()).toBe(true);
+      const css = await response.text();
+      const classNames = await page
+        .locator('[data-cssx-probe]')
+        .evaluateAll((elements) =>
+          elements.flatMap((element) => (element.getAttribute('class') ?? '').split(/\s+/).filter(Boolean)),
+        );
+      expect(classNames.length).toBeGreaterThan(0);
+      for (const className of classNames) {
+        expect(css).toContain(`.${className}`);
+      }
+
+      if (process.env.CSSX_VISUAL_SCREENSHOTS !== '0') {
+        await expect(page).toHaveScreenshot(`${framework}-${mode}-home.png`, { fullPage: true });
+      }
     });
 
     test('hot-reloads CSSX styles without navigating', async ({ page }) => {
