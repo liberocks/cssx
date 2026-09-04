@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/babel-plugin",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Babel compiler transform for CSSX.",
   "license": "MIT",
   "repository": {
