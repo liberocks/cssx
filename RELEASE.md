@@ -15,8 +15,9 @@ types now use `CompiledStyle` and `CompiledUtility` names.
 `main` is the protected, production-ready trunk. All human-authored changes
 enter it through a focused feature PR; direct pushes are blocked. Require the
 `format`, `lint`, `coverage`, and `verify` checks, and allow squash merges.
-Only the release workflow may bypass the branch rule to write its deterministic
-version-bump commit and merge its own version-bump PR after CI succeeds.
+Only the release App may bypass the branch rules, and only when merging the
+release workflow's deterministic version-bump PR. It cannot push directly to
+`main`.
 
 Every internal feature PR receives a separately named Cloudflare Worker preview
 for the documentation site. The deployment URL appears in the workflow summary
@@ -59,6 +60,6 @@ are `@cssxio/compiler`, `@cssxio/babel-plugin`, `@cssxio/cssx`, `@cssxio/html`,
 published separately to the VS Code Marketplace and must not be sent to npm.
 
 The workflow verifies `main`, opens a deterministic version-bump PR for the
-selected package, waits for its protected checks, and merges it automatically.
-Only then does it build and publish that package with provenance, create its
-annotated tag such as `@cssxio/compiler@0.2.1`.
+selected package, then merges it with the release App's PR-only bypass. Only
+then does it verify the merged commit, build and publish that package with
+provenance, and create its annotated tag such as `@cssxio/compiler@0.2.1`.

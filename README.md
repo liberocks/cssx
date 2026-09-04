@@ -788,11 +788,11 @@ raw class strings or be modeled as explicit static style choices.
 
 The **npm-release** workflow requires an explicit package and version-bump type.
 It first validates `main`, then creates a version-bump PR for that package. The
-PR must merge before the package is built, published, and tagged. Its GitHub
-App token causes the regular PR CI workflow to run normally; once all protected
-checks pass, the release workflow merges the PR. If `main` advances while
-waiting, the workflow updates the release branch and waits for CI again. GitHub
-repository auto-merge remains disabled for ordinary pull requests.
+release App is the only actor that can bypass protected checks to merge this
+specific PR, preserving an auditable PR trail without repeating CI for a
+package-version-only change. The merged commit is still verified before the
+package is built, published, and tagged. GitHub repository auto-merge remains
+disabled for ordinary pull requests.
 
 Create a repository GitHub App with **Contents: read and write** and **Pull
 requests: read and write** permissions, install it on this repository, and add
