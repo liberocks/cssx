@@ -27,6 +27,6 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@cssxio/compiler": "workspace:*"
+    "@cssxio/compiler": "^0.2.0"
   }
 }
