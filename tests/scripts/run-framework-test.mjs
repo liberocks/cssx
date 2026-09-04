@@ -7,10 +7,9 @@ if (!framework || !['development', 'production'].includes(mode)) {
 }
 
 const root = resolve(import.meta.dirname, '../..');
-const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const child = spawn(
-  command,
-  ['--dir', 'tests', 'exec', 'playwright', 'test', framework, '--config', 'playwright.config.ts'],
+  process.execPath,
+  [resolve(root, 'tests/node_modules/@playwright/test/cli.js'), 'test', framework, '--config', 'playwright.config.ts'],
   {
     cwd: root,
     env: {
@@ -18,7 +17,6 @@ const child = spawn(
       CSSX_VISUAL_FRAMEWORK: framework,
       CSSX_VISUAL_MODE: mode,
     },
-    shell: process.platform === 'win32',
     stdio: 'inherit',
   },
 );
