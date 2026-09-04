@@ -49,7 +49,9 @@ function serve(args, cwd, env = {}) {
   child.once('error', (error) => {
     throw error;
   });
-  child.once('exit', (code, signal) => {
+  // `close` waits for stdout and stderr to flush; `exit` can happen first and
+  // otherwise hides the framework's startup failure from the CI log.
+  child.once('close', (code, signal) => {
     if (code !== 0) {
       console.error(`${framework} ${mode} server exited with ${signal ?? `code ${code ?? 'unknown'}`}.`);
       if (output.length === 0) console.error('The framework process produced no startup output.');
