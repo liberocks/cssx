@@ -28,6 +28,11 @@ on:
         required: false
         default: false
         type: boolean
+      dry_run:
+        description: Simulate the next release without creating GitHub or npm state
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -78,6 +83,15 @@ jobs:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
+      - name: Validate release options
+        run: |
+          if [ "$DRY_RUN" = true ] && [ "$RETRY_EXISTING_VERSION" = true ]; then
+            printf 'A dry run must simulate a new version, not retry the current version.\n' >&2
+            exit 1
+          fi
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          RETRY_EXISTING_VERSION: ${{ inputs.retry_existing_version }}
       - name: Plan npm release
         id: plan
         run: node scripts/release-plan.mjs plan --package "$PACKAGE" --bump "$BUMP" --retry-existing-version "$RETRY_EXISTING_VERSION" --output "$RUNNER_TEMP/release-plan.json"
@@ -93,7 +107,7 @@ jobs:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       - name: Apply and commit release versions
-        if: steps.plan.outputs.requires-version-bump == 'true'
+        if: steps.plan.outputs.requires-version-bump == 'true' && inputs.dry_run == false
         id: release_commit
         run: |
           node scripts/release-plan.mjs apply --input "$RUNNER_TEMP/release-plan.json"
@@ -110,8 +124,11 @@ jobs:
         env:
           BUMP: ${{ inputs.bump }}
           RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}
+      - name: Apply simulated release versions
+        if: steps.plan.outputs.requires-version-bump == 'true' && inputs.dry_run
+        run: node scripts/release-plan.mjs apply --input "$RUNNER_TEMP/release-plan.json"
       - name: Create and merge the release PR
-        if: steps.plan.outputs.requires-version-bump == 'true'
+        if: steps.plan.outputs.requires-version-bump == 'true' && inputs.dry_run == false
         id: release_pr
         run: |
           merge_release_pr() {
@@ -156,7 +173,7 @@ jobs:
         id: release_source
         run: |
           release_sha="$MERGED_RELEASE_SHA"
-          if [ "$REQUIRES_VERSION_BUMP" = false ]; then
+          if [ "$DRY_RUN" = true ] || [ "$REQUIRES_VERSION_BUMP" = false ]; then
             release_sha="$(git rev-parse HEAD)"
           fi
           [ -n "$release_sha" ] || { printf 'No release commit was selected\n' >&2; exit 1; }
@@ -164,6 +181,7 @@ jobs:
         env:
           MERGED_RELEASE_SHA: ${{ steps.release_pr.outputs.release-sha }}
           REQUIRES_VERSION_BUMP: ${{ steps.plan.outputs.requires-version-bump }}
+          DRY_RUN: ${{ inputs.dry_run }}
       - name: Verify the merged release commit
         if: steps.plan.outputs.has-release == 'true'
         run: |
@@ -206,7 +224,7 @@ jobs:
         if: steps.plan.outputs.has-release == 'true'
         run: pnpm build
       - name: Publish packages
-        if: steps.plan.outputs.has-release == 'true'
+        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run == false
         run: |
           release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
           while IFS=$'\t' read -r package version; do
@@ -220,8 +238,15 @@ jobs:
             fi
             pnpm --filter "$package" publish --access public --no-git-checks --provenance
           done < <(jq -r '.packages[] | [.name, .nextVersion] | @tsv' "$RUNNER_TEMP/release-plan.json")
+          done < <(jq -r '.packages[] | [.name, .nextVersion] | @tsv' "$RUNNER_TEMP/release-plan.json")
+      - name: Simulate package publication
+        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run
+        run: |
+          while IFS= read -r package; do
+            pnpm --filter "$package" publish --dry-run --access public --no-git-checks --provenance
+          done < <(jq -r '.packages[].name' "$RUNNER_TEMP/release-plan.json")
       - name: Tag published packages
-        if: steps.plan.outputs.has-release == 'true'
+        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run == false
         run: |
           release_sha="$(git rev-parse HEAD)"
           git config user.name github-actions[bot]
@@ -234,10 +259,15 @@ jobs:
         env:
           RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}
       - name: Create GitHub Release
-        if: steps.plan.outputs.has-release == 'true'
+        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run == false
         run: |
           first_tag="$(jq -r '.packages[0].tag' "$RUNNER_TEMP/release-plan.json")"
           jq -r '"## Published packages\n\n" + (.packages | map("- `\(.name)@\(.nextVersion)` ([tag](https://github.com/" + env.GITHUB_REPOSITORY + "/releases/tag/" + .tag + "))") | join("\n"))' "$RUNNER_TEMP/release-plan.json" > "$RUNNER_TEMP/release-notes.md"
           gh release create "$first_tag" --title "Release $first_tag" --notes-file "$RUNNER_TEMP/release-notes.md"
         env:
           GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
+      - name: Report release simulation
+        if: steps.plan.outputs.has-release == 'true' && inputs.dry_run
+        run: |
+          jq -r '.packages[] | "Simulated \(.name)@\(.nextVersion)"' "$RUNNER_TEMP/release-plan.json"
+          printf 'No release branch, pull request, npm package, tag, or GitHub Release was created.\n'
