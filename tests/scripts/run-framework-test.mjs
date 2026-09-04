@@ -18,6 +18,7 @@ const child = spawn(
       CSSX_VISUAL_FRAMEWORK: framework,
       CSSX_VISUAL_MODE: mode,
     },
+    shell: process.platform === 'win32',
     stdio: 'inherit',
   },
 );

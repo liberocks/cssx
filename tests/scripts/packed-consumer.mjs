@@ -1,10 +1,7 @@
-import { execFile } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { promisify } from 'node:util';
-
-const exec = promisify(execFile);
 const manager = process.argv[2];
 if (!['bun', 'npm', 'pnpm', 'yarn'].includes(manager)) {
   throw new Error('Usage: node tests/scripts/packed-consumer.mjs <bun|npm|pnpm|yarn>');
@@ -25,12 +22,22 @@ const tarballs = join(temporary, 'tarballs');
 const consumer = join(temporary, 'consumer');
 
 async function run(executable, args, cwd) {
-  try {
-    await exec(executable, args, { cwd, windowsHide: true });
-  } catch (error) {
-    const detail = error.stderr || error.message;
-    throw new Error(`${executable} ${args.join(' ')} failed:\n${detail}`);
-  }
+  await new Promise((resolveRun, reject) => {
+    const child = spawn(executable, args, {
+      cwd,
+      shell: process.platform === 'win32',
+      stdio: 'inherit',
+      windowsHide: true,
+    });
+    child.once('error', reject);
+    child.once('exit', (code, signal) => {
+      if (code === 0) {
+        resolveRun();
+        return;
+      }
+      reject(new Error(`${executable} ${args.join(' ')} failed with ${signal ?? `code ${code ?? 'unknown'}`}.`));
+    });
+  });
 }
 
 try {

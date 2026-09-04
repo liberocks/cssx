@@ -14,6 +14,7 @@ function run(args, cwd, env = {}) {
     const child = spawn(command, args, {
       cwd,
       env: { ...process.env, ...env },
+      shell: process.platform === 'win32',
       stdio: 'inherit',
     });
     child.once('error', reject);
@@ -32,6 +33,7 @@ function serve(args, cwd, env = {}) {
   const child = spawn(command, args, {
     cwd,
     env: { ...process.env, ...env },
+    shell: process.platform === 'win32',
     stdio: 'inherit',
   });
   for (const signal of ['SIGINT', 'SIGTERM']) {
