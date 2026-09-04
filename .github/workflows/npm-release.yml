@@ -8,7 +8,9 @@ on:
         description: npm package to release
         required: true
         type: choice
+        default: auto
         options:
+          - auto
           - '@cssxio/compiler'
           - '@cssxio/babel-plugin'
           - '@cssxio/cssx'
@@ -101,7 +103,7 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           release_branch="release/$BUMP-$GITHUB_RUN_ID"
           git switch --create "$release_branch"
-          git add packages/*/package.json
+          git add packages/*/package.json examples/*/package.json
           git commit -m "chore(release): publish $BUMP releases"
           git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --set-upstream origin "$release_branch"

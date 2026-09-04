@@ -1,4 +1,6 @@
 import { appendFile, readFile, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,6 +22,7 @@ const packages = [
   },
 ];
 const packageByName = new Map(packages.map((packageInfo) => [packageInfo.name, packageInfo]));
+const execute = promisify(execFile);
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [command, ...argumentList] = process.argv.slice(2);
@@ -48,7 +51,14 @@ async function createPlan({
   assertBump(bump);
   const retry = parseBooleanOption(retryExistingVersion ?? 'false', 'retry-existing-version');
 
-  const selectedPackages = [await planPackage(requirePackage(selectedPackageName), bump, retry)];
+  if (retry && selectedPackageName === 'auto') {
+    fail('The auto package selection cannot retry existing versions.');
+  }
+  const selectedPackageInfos =
+    selectedPackageName === 'auto' ? await selectChangedPackages() : [requirePackage(selectedPackageName)];
+  const selectedPackages = await Promise.all(
+    selectedPackageInfos.map((packageInfo) => planPackage(packageInfo, bump, retry)),
+  );
   const plan = { bump, mode: retry ? 'retry' : 'version-bump', packages: selectedPackages };
   await writeFile(output, `${JSON.stringify(plan, null, 2)}\n`);
   await writeGitHubOutput('has-release', String(selectedPackages.length > 0));
@@ -100,6 +110,75 @@ async function applyPlan({ input }) {
     manifest.version = releasePackage.nextVersion;
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   }
+
+  await updateDependencyVersions(plan.packages);
+}
+
+/** Selects changed packages and their published dependents for an auto release. */
+async function selectChangedPackages() {
+  const selected = new Set();
+  for (const packageInfo of packages) {
+    if (await packageChangedSinceRelease(packageInfo)) selected.add(packageInfo.name);
+  }
+
+  let added = true;
+  while (added) {
+    added = false;
+    for (const packageInfo of packages) {
+      if (selected.has(packageInfo.name) || !packageInfo.dependencies.some((dependency) => selected.has(dependency)))
+        continue;
+      selected.add(packageInfo.name);
+      added = true;
+    }
+  }
+  return packages.filter((packageInfo) => selected.has(packageInfo.name));
+}
+
+async function packageChangedSinceRelease(packageInfo) {
+  const { stdout } = await execute('git', ['tag', '--list', `${packageInfo.name}@*`, '--sort=-v:refname'], {
+    cwd: workspaceRoot,
+  });
+  const previousTag = stdout.trim().split('\n').find(Boolean);
+  if (!previousTag) return true;
+  try {
+    await execute('git', ['diff', '--quiet', previousTag, 'HEAD', '--', packageInfo.directory], { cwd: workspaceRoot });
+    return false;
+  } catch (error) {
+    if (error.code === 1) return true;
+    throw error;
+  }
+}
+
+/** Updates published CSSX dependency ranges in packages and runnable examples. */
+async function updateDependencyVersions(releasePackages) {
+  const releasedVersions = new Map(releasePackages.map((packageInfo) => [packageInfo.name, packageInfo.nextVersion]));
+  const manifestPaths = [
+    ...packages.map((packageInfo) => resolve(workspaceRoot, packageInfo.directory, 'package.json')),
+    ...['astro', 'electron', 'expo', 'gatsby', 'next', 'react', 'react-native', 'remix', 'solid', 'vite'].map(
+      (example) => resolve(workspaceRoot, 'examples', example, 'package.json'),
+    ),
+  ];
+
+  for (const manifestPath of manifestPaths) {
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    let changed = false;
+    for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
+      if (!manifest[section]) continue;
+      for (const [name, version] of Object.entries(manifest[section])) {
+        const nextVersion = releasedVersions.get(name);
+        const nextRange = nextVersion && updateVersionRange(version, nextVersion);
+        if (!nextRange || nextRange === version) continue;
+        manifest[section][name] = nextRange;
+        changed = true;
+      }
+    }
+    if (changed) await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  }
+}
+
+function updateVersionRange(version, nextVersion) {
+  const match = /^(\^|~)?\d+\.\d+\.\d+$/.exec(version);
+  return match ? `${match[1] ?? ''}${nextVersion}` : undefined;
 }
 
 export function incrementVersion(version, bump) {
