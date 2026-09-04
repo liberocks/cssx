@@ -20,8 +20,8 @@ const components = Array.from({ length: 2_000 }, (_, index) => {
   };
 });
 
-if (!['cssx', 'tailwind', 'stylex'].includes(target)) {
-  throw new Error('Choose one target: cssx, tailwind, stylex.');
+if (!['cssx', 'tailwind', 'styled-components', 'stylex'].includes(target)) {
+  throw new Error('Choose one target: cssx, tailwind, styled-components, stylex.');
 }
 
 const cards = (classNames) => `
@@ -48,6 +48,26 @@ ${cards((index) => `cssx.props(styles.component${index}).className`)}
 } else if (target === 'tailwind') {
   source = `${cards((index) => JSON.stringify(components[index].candidates.join(' ')))}
 `;
+} else if (target === 'styled-components') {
+  source = `import styled from 'styled-components';
+${components
+  .map(
+    (component, index) => `const Component${index} = styled.div\`
+${styledComponentCss(component.stylex)}
+\`;`,
+  )
+  .join('\n')}
+export function Corpus() {
+  return <section aria-label="Canonical 200,000-component corpus" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+    {Array.from({ length: ${REPEAT_COUNT} }, (_, copy) => <>${components
+      .map(
+        (_, index) =>
+          `<Component${index} key={\`${'${copy}'}-${index}\`}>Component {${index + 1} + copy * ${components.length}}</Component${index}>`,
+      )
+      .join('')}</>)}
+  </section>;
+}
+`;
 } else {
   source = `import * as stylex from '@stylexjs/stylex';
 const styles = stylex.create({
@@ -58,3 +78,9 @@ ${cards((index) => `stylex.props(styles.component${index}).className`)}
 }
 
 await writeFile(resolve(root, target, 'src/corpus.tsx'), source);
+
+function styledComponentCss(style) {
+  return Object.entries(style)
+    .map(([property, value]) => `  ${property.replaceAll(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${value};`)
+    .join('\n');
+}

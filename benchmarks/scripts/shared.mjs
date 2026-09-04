@@ -93,8 +93,8 @@ function serializeArtifacts(artifacts) {
 function artifactSizes(artifacts) {
   const js = artifacts.js ?? '';
   const css = artifacts.css ?? '';
-  const jsGzip = gzipSync(js, GZIP_OPTIONS).byteLength;
-  const cssGzip = gzipSync(css, GZIP_OPTIONS).byteLength;
+  const jsGzip = js ? gzipSync(js, GZIP_OPTIONS).byteLength : 0;
+  const cssGzip = css ? gzipSync(css, GZIP_OPTIONS).byteLength : 0;
   return {
     js: { bytes: Buffer.byteLength(js), gzip: jsGzip },
     css: { bytes: Buffer.byteLength(css), gzip: cssGzip },
