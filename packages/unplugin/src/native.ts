@@ -49,6 +49,12 @@ interface CompilationLike {
 
 /** Native compiler API shared by webpack and Rspack adapters. */
 export interface NativeCompiler {
+  /** Compiler name when a multi-compiler build exposes one. */
+  readonly name?: string;
+  /** Root directory of the native compilation when exposed by the bundler. */
+  readonly context?: string;
+  /** Native compiler options when the root directory is nested there. */
+  readonly options?: { readonly context?: string; readonly name?: string };
   /** Bundler constructors, asset stage constants, and source constructors. */
   readonly webpack: {
     /** Compilation constants used to select a build lifecycle stage. */
@@ -123,6 +129,13 @@ export function configureCompilationAsset(
   transformedDataById?: ReadonlyMap<string, CssxSourceModule>,
   darkMode?: DarkMode,
 ): void {
+  // Next writes server compiler assets beneath `.next/server`, where browsers
+  // cannot load them. Its client compiler emits the public stylesheet, using
+  // the shared transformed records to include server component rules.
+  const compilerName = compiler.name ?? compiler.options?.name;
+  if (compilerName === 'server' || compilerName === 'edge-server') {
+    return;
+  }
   compiler.hooks.thisCompilation.tap('@cssxio/unplugin', (compilation) => {
     compilation.hooks.processAssets.tapPromise(
       {
@@ -130,18 +143,11 @@ export function configureCompilationAsset(
         stage: compiler.webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONS,
       },
       async () => {
-        const sourceData = [...compilation.modules].map((module) =>
-          sourceDataFromModule(module, metadataKey, transformedDataById),
-        );
-        const compiled = await compileCssxStylesheet(
-          sourceData.some((data) => Object.keys(data.candidates).length > 0)
-            ? sourceData
-            : [...(transformedDataById?.values() ?? [])],
-          await getTheme(),
-          layer,
-          sourceMap,
-          darkMode,
-        );
+        const sourceData = [...compilation.modules]
+          .map((module) => sourceDataFromModule(module, metadataKey))
+          .filter((data): data is CssxSourceModule => data !== undefined);
+        const allData = mergeCssxSourceModules(sourceData, transformedDataById?.values() ?? []);
+        const compiled = await compileCssxStylesheet(allData, await getTheme(), layer, sourceMap, darkMode);
         if (!compiled.css) {
           return;
         }
@@ -169,27 +175,46 @@ export function configureCompilationAsset(
 }
 
 /**
+ * Combines current compilation metadata with transformed records from sibling native compilers.
+ *
+ * @param sourceData Records attached to modules in the current compilation.
+ * @param transformedData Records retained while every native compiler transforms modules.
+ * @returns One record per module, preferring current compilation metadata for duplicate IDs.
+ */
+export function mergeCssxSourceModules(
+  sourceData: readonly CssxSourceModule[],
+  transformedData: Iterable<CssxSourceModule>,
+): CssxSourceModule[] {
+  const dataById = new Map<string, CssxSourceModule>();
+  const anonymousData: CssxSourceModule[] = [];
+  for (const data of transformedData) {
+    if (data.id) {
+      dataById.set(data.id, data);
+    } else {
+      anonymousData.push(data);
+    }
+  }
+  for (const data of sourceData) {
+    if (data.id) {
+      dataById.set(data.id, data);
+    } else {
+      anonymousData.push(data);
+    }
+  }
+  return [...dataById.values(), ...anonymousData];
+}
+
+/**
  * Reads CSSX source data stored on one native bundler module.
  *
  * @param module Native bundler module to read.
  * @param metadataKey Key used to store CSSX metadata.
- * @returns Valid source data or an empty record when no valid data exists.
+ * @returns Valid source data, or undefined when the module has no valid metadata.
  */
-function sourceDataFromModule(
-  module: ModuleWithCssxRules,
-  metadataKey: string,
-  transformedDataById: ReadonlyMap<string, CssxSourceModule> | undefined,
-): CssxSourceModule {
+function sourceDataFromModule(module: ModuleWithCssxRules, metadataKey: string): CssxSourceModule | undefined {
   const value = module.buildInfo?.[metadataKey];
   if (!value || typeof value !== 'object') {
-    return (
-      transformedDataById?.get(module.resource?.split('?', 1)[0] ?? '') ?? {
-        id: '',
-        candidates: {},
-        composites: {},
-        origins: {},
-      }
-    );
+    return undefined;
   }
   const { id, candidates, composites, atomicClasses, origins } = value as Partial<CssxSourceModule>;
   return {

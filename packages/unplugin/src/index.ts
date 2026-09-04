@@ -1,4 +1,4 @@
-import { createClassNameAllocator, type CssxRule } from '@cssxio/compiler';
+import { createClassNameAllocator, type ClassNameAllocator, type CssxRule } from '@cssxio/compiler';
 import { createUnplugin } from 'unplugin';
 import type { UnpluginFactory } from 'unplugin';
 import { Buffer } from 'node:buffer';
@@ -39,6 +39,43 @@ interface ModuleCssxData extends CssxSourceModule {
   readonly rules: readonly CssxRule[];
   /** Signature used to distinguish declaration-only development changes. */
   readonly cssOnlySignature: string;
+}
+
+/** CSSX state shared by native compiler instances in one project build. */
+interface NativeBuildState {
+  /** Serial allocator shared so server and client transforms cannot collide. */
+  readonly classNameAllocator: ClassNameAllocator;
+  /** Module records merged into the public client stylesheet. */
+  readonly transformedDataById: Map<string, ModuleCssxData>;
+}
+
+/** Native state indexed by project root and equivalent plugin options. */
+const nativeBuildStates = new Map<string, NativeBuildState>();
+
+/** Creates a stable key for native compiler state shared by equivalent plugin instances. */
+function nativeBuildStateKey(root: string, options: CssxPluginOptions): string {
+  return `${root}\u0000${JSON.stringify(options)}`;
+}
+
+/** Gets the native state shared by sibling compiler instances in one project build. */
+function nativeBuildState(root: string, options: CssxPluginOptions): NativeBuildState {
+  const key = nativeBuildStateKey(root, options);
+  let state = nativeBuildStates.get(key);
+  if (!state) {
+    state = { classNameAllocator: createClassNameAllocator(), transformedDataById: new Map() };
+    nativeBuildStates.set(key, state);
+  }
+  return state;
+}
+
+/** Resolves the project root attached to a native loader transform context. */
+function nativeBuildRoot(context: { getNativeBuildContext?: (() => unknown) | undefined }): string | undefined {
+  const native = context.getNativeBuildContext?.() as
+    | { readonly framework: 'webpack' | 'rspack'; readonly loaderContext?: { readonly rootContext?: string } }
+    | undefined;
+  return native && (native.framework === 'webpack' || native.framework === 'rspack')
+    ? (native.loaderContext?.rootContext ?? process.cwd())
+    : undefined;
 }
 
 /** Rollup-compatible context used to read metadata and emit final assets. */
@@ -299,12 +336,14 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         if (options.themeFile) {
           this.addWatchFile?.(resolve(process.cwd(), options.themeFile));
         }
+        const root = nativeBuildRoot(this);
+        const sharedNativeState = root ? nativeBuildState(root, options) : undefined;
         const transformed = await transformCssxModule(
           code,
           id,
           {
             ...options,
-            classNameAllocator,
+            classNameAllocator: sharedNativeState?.classNameAllocator ?? classNameAllocator,
           },
           sourceMapFromContext(this, id),
         );
@@ -324,6 +363,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         if (transformed || normalizedId === id) {
           rollupDataById.set(normalizedId, data);
           esbuildDataById.set(resolve(esbuildWorkingDirectory, normalizedId), data);
+          sharedNativeState?.transformedDataById.set(normalizedId, data);
         }
 
         if (meta.framework === 'vite' && viteServer) {
@@ -425,6 +465,10 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
     ...(meta.framework === 'webpack'
       ? {
           webpack(compiler) {
+            const sharedNativeState = nativeBuildState(
+              compiler.context ?? compiler.options?.context ?? process.cwd(),
+              options,
+            );
             configureCompilationAsset(
               compiler as unknown as NativeCompiler,
               cssFileName,
@@ -432,7 +476,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
               options.layer,
               sourceMap,
               RULES_METADATA_KEY,
-              rollupDataById,
+              sharedNativeState.transformedDataById,
               options.darkMode,
             );
           },
@@ -441,6 +485,10 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
     ...(meta.framework === 'rspack'
       ? {
           rspack(compiler) {
+            const sharedNativeState = nativeBuildState(
+              compiler.context ?? compiler.options?.context ?? process.cwd(),
+              options,
+            );
             configureCompilationAsset(
               compiler as unknown as NativeCompiler,
               cssFileName,
@@ -448,7 +496,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
               options.layer,
               sourceMap,
               RULES_METADATA_KEY,
-              rollupDataById,
+              sharedNativeState.transformedDataById,
               options.darkMode,
             );
           },

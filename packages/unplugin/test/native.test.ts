@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { configureCompilationAsset, storeCompilationData, type NativeCompiler } from '../src/native';
+import {
+  configureCompilationAsset,
+  mergeCssxSourceModules,
+  storeCompilationData,
+  type NativeCompiler,
+} from '../src/native';
 
 interface TestCompilation {
   modules: { buildInfo?: Record<string, unknown>; resource?: string }[];
   hooks: { processAssets: { tapPromise(_options: unknown, handler: () => Promise<void>): void } };
   getAsset(): unknown;
-  emitAsset(fileName: string): void;
+  emitAsset(fileName: string, source: unknown): void;
 }
 
 describe('native bundler helpers', () => {
@@ -79,6 +84,88 @@ describe('native bundler helpers', () => {
     expect(emitted).toEqual(['cssx.css', 'cssx.css.map']);
   });
 
+  it('merges sibling compiler data while preferring current compilation records', () => {
+    expect(
+      mergeCssxSourceModules(
+        [{ id: '/project/client.tsx', candidates: { 'text-white': 'client-current' }, origins: {} }],
+        [
+          { id: '/project/server.tsx', candidates: { 'p-4': 'server' }, origins: {} },
+          { id: '/project/client.tsx', candidates: { 'text-white': 'client-stale' }, origins: {} },
+        ],
+      ),
+    ).toEqual([
+      { id: '/project/server.tsx', candidates: { 'p-4': 'server' }, origins: {} },
+      { id: '/project/client.tsx', candidates: { 'text-white': 'client-current' }, origins: {} },
+    ]);
+  });
+
+  it('emits server records retained outside the current native compilation', async () => {
+    let processAssets: (() => Promise<void>) | undefined;
+    let css = '';
+    const compilation: TestCompilation = {
+      modules: [
+        {
+          buildInfo: {
+            cssx: { id: '/project/client.tsx', candidates: { 'text-white': 'client' }, origins: {} },
+          },
+        },
+      ],
+      hooks: {
+        processAssets: {
+          tapPromise: (_options: unknown, handler: () => Promise<void>) => {
+            processAssets = handler;
+          },
+        },
+      },
+      getAsset: () => undefined,
+      emitAsset: (_fileName: string, source: unknown) => {
+        css = (source as { readonly source: string }).source;
+      },
+    };
+    const compiler = createCompiler(compilation);
+    configureCompilationAsset(
+      compiler,
+      'cssx.css',
+      async () => undefined,
+      undefined,
+      false,
+      'cssx',
+      new Map([['/project/server.tsx', { id: '/project/server.tsx', candidates: { 'p-4': 'server' }, origins: {} }]]),
+    );
+
+    await processAssets?.();
+
+    expect(css).toContain('.client');
+    expect(css).toContain('.server');
+  });
+
+  it('leaves stylesheet emission to the public Next client compiler', () => {
+    let registered = false;
+    const compilation: TestCompilation = {
+      modules: [],
+      hooks: {
+        processAssets: {
+          tapPromise: () => {
+            registered = true;
+          },
+        },
+      },
+      getAsset: () => undefined,
+      emitAsset: () => {},
+    };
+
+    configureCompilationAsset(
+      createCompiler(compilation, 'server'),
+      'cssx.css',
+      async () => undefined,
+      undefined,
+      false,
+      'cssx',
+    );
+
+    expect(registered).toBe(false);
+  });
+
   it('omits a native CSS source map when disabled', async () => {
     let processAssets: (() => Promise<void>) | undefined;
     const emitted: string[] = [];
@@ -102,11 +189,16 @@ describe('native bundler helpers', () => {
   });
 });
 
-function createCompiler(compilation: TestCompilation): NativeCompiler {
+function createCompiler(compilation: TestCompilation, name?: string): NativeCompiler {
   return {
+    ...(name ? { options: { name } } : {}),
     webpack: {
       Compilation: { PROCESS_ASSETS_STAGE_ADDITIONS: 0 },
-      sources: { RawSource: class RawSource {} },
+      sources: {
+        RawSource: class RawSource {
+          constructor(readonly source: string) {}
+        },
+      },
     },
     hooks: {
       thisCompilation: {
