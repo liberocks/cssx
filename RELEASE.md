@@ -54,20 +54,25 @@ Configure npm trusted publishing for every public package using repository
 environment. The release job uses Node 24, which provides the npm CLI version
 required for OIDC trusted publishing; it does not read an npm token.
 
-Run the **npm-release** workflow manually from `main`, select exactly one
-package, then choose `patch`, `minor`, or `major`. The supported npm packages
-are `@cssxio/compiler`, `@cssxio/babel-plugin`, `@cssxio/cssx`, `@cssxio/html`,
+Run the **npm-release** workflow manually from `main`, leave **package** set to
+its default `auto` value, then choose `patch`, `minor`, or `major`. Auto detects
+every changed public package, adds any dependents whose internal dependency
+range must change, and makes one version-bump PR for the whole release. Select
+one package explicitly only when releasing it alone or retrying an interrupted
+release. The supported npm packages are `@cssxio/compiler`,
+`@cssxio/babel-plugin`, `@cssxio/cssx`, `@cssxio/html`,
 `@cssxio/react-native`, and `@cssxio/unplugin`. `cssx-intellisense` is
 published separately to the VS Code Marketplace and must not be sent to npm.
 
-The workflow verifies `main`, opens a deterministic version-bump PR for the
-selected package, then merges it with the release App's PR-only bypass. Only
-then does it verify the merged commit, build and publish that package with
-provenance, and create its annotated tag such as `@cssxio/compiler@0.2.1`.
+The workflow verifies `main`, opens one deterministic version-bump PR for the
+selected package set, then merges it with the release App's PR-only bypass.
+Only then does it verify the merged commit, build and publish every selected
+package with provenance, and create annotated tags such as
+`@cssxio/compiler@0.2.1`.
 
 If npm publication fails after the version bump has merged, correct the trusted
 publisher configuration and rerun **npm-release** with **retry existing
-version** enabled for that same package. This validates `main` and only
+version** enabled for that same explicitly selected package. This validates `main` and only
 publishes its current version if npm does not already contain it and its tag
 does not exist. It does not create another bump PR; the selected bump is
 ignored in this guarded recovery mode. If publication succeeded but tagging or

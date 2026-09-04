@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: npm package to release
+        description: npm package to release, or auto to release every changed package
         required: true
         type: choice
         default: auto
@@ -26,7 +26,7 @@ on:
           - minor
           - major
       retry_existing_version:
-        description: Retry current version
+        description: Retry the current version for one explicitly selected package
         required: false
         default: false
         type: boolean
