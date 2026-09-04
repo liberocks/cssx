@@ -290,6 +290,7 @@ void props;
     expect(workflow).toContain('--retry-existing-version "$RETRY_EXISTING_VERSION"');
     expect(workflow).toContain('retry_existing_version:');
     expect(workflow).toContain('requires-version-bump');
+    expect(workflow).toContain('node-version: 24');
     expect(workflow).toContain('merge_release_pr()');
     expect(workflow).toContain('persist-credentials: false');
     expect(workflow).not.toContain('wait_for_ci');
