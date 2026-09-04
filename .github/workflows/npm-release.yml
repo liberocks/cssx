@@ -16,7 +16,7 @@ on:
           - '@cssxio/react-native'
           - '@cssxio/unplugin'
       bump:
-        description: Version bump for the selected package (ignored when retrying the current version)
+        description: Version bump
         required: true
         type: choice
         options:
@@ -24,7 +24,7 @@ on:
           - minor
           - major
       retry_existing_version:
-        description: Publish the selected package's already-bumped, unpublished current version
+        description: Retry current version
         required: false
         default: false
         type: boolean
@@ -74,7 +74,8 @@ jobs:
           version: 10.17.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22
+          # npm trusted publishing requires npm 11.5.1+, supplied by Node 24.
+          node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - name: Plan npm release
@@ -156,7 +157,16 @@ jobs:
         run: |
           release_sha="$MERGED_RELEASE_SHA"
           if [ "$REQUIRES_VERSION_BUMP" = false ]; then
-            release_sha="$(git rev-parse HEAD)"
+            manifest_path="$(jq -r '.packages[0].directory + "/package.json"' "$RUNNER_TEMP/release-plan.json")"
+            release_version="$(jq -r '.packages[0].nextVersion' "$RUNNER_TEMP/release-plan.json")"
+            while IFS= read -r candidate_sha; do
+              candidate_version="$(git show "$candidate_sha:$manifest_path" | jq -r '.version')"
+              parent_version="$(git show "$candidate_sha^:$manifest_path" 2>/dev/null | jq -r '.version' 2>/dev/null || true)"
+              if [ "$candidate_version" = "$release_version" ] && [ "$parent_version" != "$release_version" ]; then
+                release_sha="$candidate_sha"
+                break
+              fi
+            done < <(git log --format=%H -- "$manifest_path")
           fi
           [ -n "$release_sha" ] || { printf 'No release commit was selected\n' >&2; exit 1; }
           printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
@@ -184,17 +194,24 @@ jobs:
       - name: Install release dependencies
         if: steps.plan.outputs.has-release == 'true'
         run: pnpm install --frozen-lockfile
-      - name: Check release versions are available
+      - name: Check release versions can be finalized
         if: steps.plan.outputs.has-release == 'true'
         run: |
+          release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
           while IFS=$'\t' read -r package version tag; do
             if pnpm view "$package@$version" version >/dev/null 2>&1; then
-              printf '%s@%s is already published\n' "$package" "$version" >&2
-              exit 1
+              if [ "$release_mode" != retry ]; then
+                printf '%s@%s is already published\n' "$package" "$version" >&2
+                exit 1
+              fi
+              printf '%s@%s is already published; retry will create its missing tag and GitHub Release\n' "$package" "$version"
             fi
             if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
-              printf 'Tag %s already exists\n' "$tag" >&2
-              exit 1
+              if [ "$release_mode" != retry ]; then
+                printf 'Tag %s already exists\n' "$tag" >&2
+                exit 1
+              fi
+              printf 'Tag %s already exists; retry will check its GitHub Release\n' "$tag"
             fi
           done < <(jq -r '.packages[] | [.name, .nextVersion, .tag] | @tsv' "$RUNNER_TEMP/release-plan.json")
       - name: Build release packages
@@ -203,14 +220,39 @@ jobs:
       - name: Publish packages
         if: steps.plan.outputs.has-release == 'true'
         run: |
-          while IFS= read -r package; do
+          release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
+          while IFS=$'\t' read -r package version; do
+            if pnpm view "$package@$version" version >/dev/null 2>&1; then
+              if [ "$release_mode" != retry ]; then
+                printf '%s@%s is already published\n' "$package" "$version" >&2
+                exit 1
+              fi
+              printf 'Skipping already-published %s@%s\n' "$package" "$version"
+              continue
+            fi
             pnpm --filter "$package" publish --access public --no-git-checks --provenance
-          done < <(jq -r '.packages[].name' "$RUNNER_TEMP/release-plan.json")
+          done < <(jq -r '.packages[] | [.name, .nextVersion] | @tsv' "$RUNNER_TEMP/release-plan.json")
       - name: Tag published packages
         if: steps.plan.outputs.has-release == 'true'
         run: |
+          release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
           release_sha="$(git rev-parse HEAD)"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           while IFS= read -r tag; do
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+              if [ "$release_mode" != retry ]; then
+                printf 'Tag %s already exists\n' "$tag" >&2
+                exit 1
+              fi
+              tag_commit="$(git ls-remote origin "refs/tags/$tag^{}" | awk 'NR == 1 { print $1 }')"
+              if [ "$tag_commit" != "$release_sha" ]; then
+                printf 'Tag %s points to %s, not release commit %s\n' "$tag" "$tag_commit" "$release_sha" >&2
+                exit 1
+              fi
+              printf 'Skipping existing tag %s\n' "$tag"
+              continue
+            fi
             git tag --annotate "$tag" "$release_sha" --message "Release $tag"
             git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
             git push origin "$tag"
@@ -221,7 +263,38 @@ jobs:
         if: steps.plan.outputs.has-release == 'true'
         run: |
           first_tag="$(jq -r '.packages[0].tag' "$RUNNER_TEMP/release-plan.json")"
+          package="$(jq -r '.packages[0].name' "$RUNNER_TEMP/release-plan.json")"
+          release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
+          if gh release view "$first_tag" >/dev/null 2>&1; then
+            if [ "$release_mode" != retry ]; then
+              printf 'GitHub Release %s already exists\n' "$first_tag" >&2
+              exit 1
+            fi
+            printf 'Skipping existing GitHub Release %s\n' "$first_tag"
+            exit 0
+          fi
+          git fetch --tags origin
           jq -r '"## Published packages\n\n" + (.packages | map("- `\(.name)@\(.nextVersion)` ([tag](https://github.com/" + env.GITHUB_REPOSITORY + "/releases/tag/" + .tag + "))") | join("\n"))' "$RUNNER_TEMP/release-plan.json" > "$RUNNER_TEMP/release-notes.md"
+          previous_tag="$(git tag --list "$package@*" --sort=-v:refname | grep -Fvx "$first_tag" | head -n 1 || true)"
+          if [ -z "$previous_tag" ] && git rev-parse --verify --quiet refs/tags/release-baseline >/dev/null; then
+            previous_tag=release-baseline
+          fi
+          release_sha="$(git rev-parse HEAD)"
+          if [ -n "$previous_tag" ]; then
+            printf '\n## Changes since `%s`\n\n' "$previous_tag" >> "$RUNNER_TEMP/release-notes.md"
+            commit_range="$previous_tag..$release_sha"
+          else
+            printf '\n## Changes\n\n' >> "$RUNNER_TEMP/release-notes.md"
+            commit_range="$release_sha"
+          fi
+          commit_count=0
+          while IFS=$'\t' read -r commit subject; do
+            printf -- '- [`%.7s`](https://github.com/%s/commit/%s) %s\n' "$commit" "$GITHUB_REPOSITORY" "$commit" "$subject" >> "$RUNNER_TEMP/release-notes.md"
+            commit_count=$((commit_count + 1))
+          done < <(git log --first-parent --format='%H%x09%s' "$commit_range")
+          if [ "$commit_count" -eq 0 ]; then
+            printf '%s\n' '- No commits were merged in this release range.' >> "$RUNNER_TEMP/release-notes.md"
+          fi
           gh release create "$first_tag" --title "Release $first_tag" --notes-file "$RUNNER_TEMP/release-notes.md"
         env:
           GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
