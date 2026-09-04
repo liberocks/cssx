@@ -61,6 +61,9 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          # Release branch and tag pushes must authenticate with RELEASE_TOKEN,
+          # not the read-only workflow GITHUB_TOKEN persisted by checkout.
+          persist-credentials: false
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 10.17.1
