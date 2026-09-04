@@ -60,6 +60,12 @@ are `@cssxio/compiler`, `@cssxio/babel-plugin`, `@cssxio/cssx`, `@cssxio/html`,
 `@cssxio/react-native`, and `@cssxio/unplugin`. `cssx-intellisense` is
 published separately to the VS Code Marketplace and must not be sent to npm.
 
+To simulate the next release, select the package and bump, and enable **dry
+run**. This runs verification, computes and applies the next version inside
+the runner, builds it, and uses `npm publish --dry-run`. It creates no branch,
+PR, npm package, tag, or GitHub Release. A dry run does not validate the live
+npm OIDC exchange because it does not contact npm's publish endpoint.
+
 The workflow verifies `main`, opens a deterministic version-bump PR for the
 selected package, then merges it with the release App's PR-only bypass. Only
 then does it verify the merged commit, build and publish that package with
