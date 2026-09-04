@@ -7,6 +7,7 @@ const TRIALS = 6;
 const runners = [
   { framework: 'CSSX', suite: 'Final bundled output', path: './scripts/cssx.mjs' },
   { framework: 'Tailwind', suite: 'Final bundled output', path: './scripts/tailwind.mjs' },
+  { framework: 'styled-components', suite: 'Final bundled output', path: './scripts/styled-components.mjs' },
   { framework: 'StyleX', suite: 'Final bundled output', path: './scripts/stylex.mjs' },
 ];
 const selectedVariant = readVariantArgument(process.argv.slice(2));

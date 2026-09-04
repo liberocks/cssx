@@ -2,6 +2,7 @@ packages:
   - packages/*
   - benchmarks
   - benchmarks/cssx
+  - benchmarks/styled-components
   - benchmarks/stylex
   - benchmarks/tailwind
   - tests

@@ -88,7 +88,22 @@ export function createWorkload(variant = 'large') {
       ...components.map((component) => `  ${component.name}: stylex.props(styles.${component.name}),`),
       '};',
     ].join('\n'),
+    styledComponentsSource: [
+      "import styled from 'styled-components';",
+      ...components.map(
+        (component, index) => `const Component${index} = styled.div\`\n${styledComponentCss(component.stylex)}\n\`;`,
+      ),
+      'export const props = {',
+      ...components.map((_, index) => `  component${index}: Component${index},`),
+      '};',
+    ].join('\n'),
   };
+}
+
+function styledComponentCss(style) {
+  return Object.entries(style)
+    .map(([property, value]) => `  ${property.replaceAll(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${value};`)
+    .join('\n');
 }
 
 /** Builds one canonical declaration set and its framework-specific source forms. */

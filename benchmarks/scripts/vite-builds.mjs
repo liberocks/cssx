@@ -9,6 +9,7 @@ const gzipOptions = Object.freeze({ level: 6 });
 const projects = [
   { name: 'CSSX', directory: 'cssx', stylesheet: 'cssx.css' },
   { name: 'Tailwind', directory: 'tailwind' },
+  { name: 'styled-components', directory: 'styled-components' },
   { name: 'StyleX', directory: 'stylex' },
 ];
 

@@ -27,15 +27,18 @@ pnpm --dir benchmarks benchmark:medium
 
 ### Final bundled output
 
-This compares CSSX, Tailwind, and StyleX as final build artifacts. Each
-implementation exports the same component-to-`className` data and keeps style
-definitions internal. JavaScript and CSS are minified before each
-implementation's final CSS is measured separately.
+This compares CSSX, Tailwind, styled-components, and StyleX as final build artifacts. Each
+implementation receives the same component corpus and keeps style definitions
+internal. JavaScript and CSS are minified before each implementation's final
+artifacts are measured separately.
 CSSX uses its default serial names and automatic reusability planning. StyleX
 rules are converted to final CSS with `processStylexRules`; intermediate
 metadata is never counted. Tailwind receives the same component utility
 occurrences as its generated consumer JavaScript and imports its utilities
 layer without preflight or base CSS.
+styled-components uses its standard runtime-tagged component definitions, so
+its rules are included in the JavaScript artifact rather than a separately
+extracted CSS artifact.
 
 Reported output consists of separate JavaScript and CSS artifacts. Gzip size is
 the sum of independently compressed artifacts, matching normal delivery rather
@@ -68,14 +71,15 @@ Individual runners default to `large`:
 ```sh
 pnpm --dir benchmarks benchmark:cssx
 pnpm --dir benchmarks benchmark:stylex
+pnpm --dir benchmarks benchmark:styled-components
 pnpm --dir benchmarks benchmark:cssx-utilities
 pnpm --dir benchmarks benchmark:tailwind
 ```
 
 ### Vite application output
 
-`benchmark:vite` builds three matching React/Vite applications in `cssx`,
-`tailwind`, and `stylex`. They share the exact component tree and content while
+`benchmark:vite` builds four matching React/Vite applications in `cssx`,
+`tailwind`, `styled-components`, and `stylex`. They share the exact component tree and content while
 each project uses its native styling integration.
 
 ```sh
