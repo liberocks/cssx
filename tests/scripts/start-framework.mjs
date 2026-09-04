@@ -74,7 +74,7 @@ if (mode === 'development') {
       serve(local('next', 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', String(definition.port)), example);
       break;
     case 'react':
-      serve(local('react-app-rewired', 'start'), example, {
+      serve(['run', 'dev'], example, {
         BROWSER: 'none',
         HOST: '127.0.0.1',
         PORT: String(definition.port),
@@ -109,7 +109,7 @@ if (mode === 'development') {
         serve(local('next', 'start', '--hostname', '127.0.0.1', '--port', String(definition.port)), example);
         break;
       case 'react':
-        await run(local('react-app-rewired', 'build'), example);
+        await run(['run', 'build'], example);
         serve(
           ['exec', 'node', resolve(root, 'tests/scripts/static-server.mjs'), 'build', String(definition.port)],
           example,
