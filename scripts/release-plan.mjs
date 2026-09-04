@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,25 +31,28 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     await applyPlan(options);
   } else {
     fail(
-      'Usage: node scripts/release-plan.mjs <plan|apply> [--base <ref>] [--bump <major|minor|patch>] --output <path>',
+      'Usage: node scripts/release-plan.mjs <plan|apply> --package <npm-package> --bump <major|minor|patch> --output <path>',
     );
   }
 }
 
-async function createPlan({ base, bump, output }) {
-  if (!base || !bump || !output) fail('The plan command requires --base, --bump, and --output.');
+async function createPlan({ bump, output, package: selectedPackageName }) {
+  if (!bump || !output || !selectedPackageName) {
+    fail('The plan command requires --package, --bump, and --output.');
+  }
   assertBump(bump);
 
-  const changedFiles = git(['diff', '--name-only', `${base}...HEAD`, '--', 'packages'])
-    .split('\n')
-    .filter(Boolean);
-  const selectedPackages = await Promise.all(
-    selectReleasePackages(changedFiles).map((packageInfo) => planPackage(packageInfo, bump)),
-  );
-  const plan = { base, bump, packages: selectedPackages };
+  const selectedPackages = [await planPackage(requirePackage(selectedPackageName), bump)];
+  const plan = { bump, packages: selectedPackages };
   await writeFile(output, `${JSON.stringify(plan, null, 2)}\n`);
   await writeGitHubOutput('has-release', String(selectedPackages.length > 0));
   await writeGitHubOutput('release-count', String(selectedPackages.length));
+}
+
+function requirePackage(packageName) {
+  const packageInfo = packageByName.get(packageName);
+  if (!packageInfo) fail(`Unknown release package: ${packageName}`);
+  return packageInfo;
 }
 
 async function planPackage(packageInfo, bump) {
@@ -92,30 +94,6 @@ async function applyPlan({ input }) {
   }
 }
 
-export function selectReleasePackages(changedFiles) {
-  const selectedNames = new Set(
-    packages
-      .filter((packageInfo) => changedFiles.some((file) => file.startsWith(`${packageInfo.directory}/`)))
-      .map((packageInfo) => packageInfo.name),
-  );
-
-  let addedDependency;
-  do {
-    addedDependency = false;
-    for (const packageInfo of packages) {
-      if (
-        !selectedNames.has(packageInfo.name) &&
-        packageInfo.dependencies.some((dependency) => selectedNames.has(dependency))
-      ) {
-        selectedNames.add(packageInfo.name);
-        addedDependency = true;
-      }
-    }
-  } while (addedDependency);
-
-  return packages.filter((packageInfo) => selectedNames.has(packageInfo.name));
-}
-
 export function incrementVersion(version, bump) {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
   if (!match) fail(`Version ${version} must use stable MAJOR.MINOR.PATCH format.`);
@@ -129,10 +107,6 @@ export function incrementVersion(version, bump) {
 
 function assertBump(bump) {
   if (!['major', 'minor', 'patch'].includes(bump)) fail(`Unsupported bump type: ${bump}`);
-}
-
-function git(args) {
-  return execFileSync('git', args, { cwd: workspaceRoot, encoding: 'utf8' });
 }
 
 function parseArguments(args) {

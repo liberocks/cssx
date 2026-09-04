@@ -30,9 +30,6 @@ Workers in the account. `main` deploys the configured `cssx-docs` Worker;
 previews use `cssx-docs-pr-<PR number>` and therefore cannot overwrite
 production.
 
-Protect the `release-*` tag namespace so only the release workflow can create
-release checkpoints.
-
 ### One-time migration
 
 1. Stop merging feature PRs into `next`.
@@ -52,22 +49,16 @@ release checkpoints.
 ## Publication
 
 Configure npm trusted publishing for every public package using this repository
-and `.github/workflows/release.yml`. The workflow uses its OIDC identity and
-does not read an npm token.
+and `.github/workflows/npm-release.yml`. The workflow uses its OIDC identity
+and does not read an npm token.
 
-Run the Release workflow manually from `main` and choose `patch`, `minor`, or
-`major`. It compares `main` with the latest `release-*` checkpoint, selects
-public packages changed under `packages/*`, and adds any public dependents that
-must remain compatible. A compiler release also releases the Babel plugin and
-bundler plugin; a Babel plugin release also releases the bundler plugin.
-The npm plan covers `@cssxio/compiler`, `@cssxio/babel-plugin`,
-`@cssxio/cssx`, `@cssxio/html`, `@cssxio/react-native`, and
-`@cssxio/unplugin`. `cssx-intellisense` is published separately to the VS Code
-Marketplace and must not be sent to npm.
+Run the **npm-release** workflow manually from `main`, select exactly one
+package, then choose `patch`, `minor`, or `major`. The supported npm packages
+are `@cssxio/compiler`, `@cssxio/babel-plugin`, `@cssxio/cssx`, `@cssxio/html`,
+`@cssxio/react-native`, and `@cssxio/unplugin`. `cssx-intellisense` is
+published separately to the VS Code Marketplace and must not be sent to npm.
 
-The workflow verifies `main`, makes the deterministic version-bump commit on
-`main`, verifies that exact commit, publishes selected packages with provenance,
-and creates one annotated package tag per published package such as
-`@cssxio/compiler@0.2.1`. It also creates an immutable `release-<UTC timestamp>`
-checkpoint for the next release calculation. If no public package changed, it
-does not publish, tag, or create a checkpoint.
+The workflow verifies `main`, opens a deterministic version-bump PR for the
+selected package, waits for its protected checks, and merges it automatically.
+Only then does it build and publish that package with provenance, create its
+annotated tag such as `@cssxio/compiler@0.2.1`.

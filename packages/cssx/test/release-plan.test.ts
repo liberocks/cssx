@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { incrementVersion, selectReleasePackages } from '../../../scripts/release-plan.mjs';
+import { incrementVersion } from '../../../scripts/release-plan.mjs';
 import type { ReleaseBump } from '../../../scripts/release-plan.mjs';
 
 const releases: readonly [ReleaseBump, string, string][] = [
@@ -12,29 +12,5 @@ const releases: readonly [ReleaseBump, string, string][] = [
 describe('release plan', () => {
   it.each(releases)('increments a %s release', (bump, currentVersion, nextVersion) => {
     expect(incrementVersion(currentVersion, bump)).toBe(nextVersion);
-  });
-
-  it('releases changed packages and their internal dependents', () => {
-    expect(selectReleasePackages(['packages/compiler/src/index.ts']).map(({ name }) => name)).toEqual([
-      '@cssxio/compiler',
-      '@cssxio/babel-plugin',
-      '@cssxio/html',
-      '@cssxio/react-native',
-      '@cssxio/unplugin',
-    ]);
-  });
-
-  it('does not release packages for non-package changes', () => {
-    expect(selectReleasePackages(['README.md', 'benchmarks/benchmark.mjs'])).toEqual([]);
-  });
-
-  it('releases the React Native package when its source changes', () => {
-    expect(selectReleasePackages(['packages/react-native/src/index.ts']).map(({ name }) => name)).toEqual([
-      '@cssxio/react-native',
-    ]);
-  });
-
-  it('does not send the VS Code extension to npm', () => {
-    expect(selectReleasePackages(['packages/intellisense/src/extension.js'])).toEqual([]);
   });
 });

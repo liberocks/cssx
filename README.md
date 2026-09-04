@@ -784,10 +784,11 @@ raw class strings or be modeled as explicit static style choices.
 - `pnpm typecheck` checks workspace types.
 - `pnpm test:release` runs formatting, linting, coverage, package checks, and type checks.
 
-## Releases
+## npm releases
 
-The **Release** workflow first validates `main`, then creates a version-bump PR.
-The PR must merge before packages are built, published, and tagged. Its GitHub
+The **npm-release** workflow requires an explicit package and version-bump type.
+It first validates `main`, then creates a version-bump PR for that package. The
+PR must merge before the package is built, published, and tagged. Its GitHub
 App token causes the regular PR CI workflow to run normally; once all protected
 checks pass, GitHub auto-merges the PR. If `main` advances while waiting, the
 workflow updates the release branch and waits for CI again.
