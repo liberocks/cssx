@@ -1,11 +1,22 @@
-name: Release
-run-name: Release ${{ inputs.bump }} from main by @${{ github.actor }}
+name: npm-release
+run-name: npm-release ${{ inputs.package }} (${{ inputs.bump }}) from main by @${{ github.actor }}
 
 on:
   workflow_dispatch:
     inputs:
+      package:
+        description: npm package to release
+        required: true
+        type: choice
+        options:
+          - '@cssxio/compiler'
+          - '@cssxio/babel-plugin'
+          - '@cssxio/cssx'
+          - '@cssxio/html'
+          - '@cssxio/react-native'
+          - '@cssxio/unplugin'
       bump:
-        description: Version bump for every changed package
+        description: Version bump for the selected package
         required: true
         type: choice
         options:
@@ -18,7 +29,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: release-main
+  group: npm-release-main
   cancel-in-progress: false
 
 jobs:
@@ -57,21 +68,12 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      - name: Find the previous release checkpoint
-        id: base
-        run: |
-          base="$(git tag --list 'release-*' --sort=-creatordate | head -1)"
-          [ -n "$base" ] || {
-            printf '%s\n' 'No release checkpoint exists. Create release-baseline at the commit matching the packages already published to npm.' >&2
-            exit 1
-          }
-          printf 'base=%s\n' "$base" >> "$GITHUB_OUTPUT"
-      - name: Plan release
+      - name: Plan npm release
         id: plan
-        run: node scripts/release-plan.mjs plan --base "$BASE" --bump "$BUMP" --output "$RUNNER_TEMP/release-plan.json"
+        run: node scripts/release-plan.mjs plan --package "$PACKAGE" --bump "$BUMP" --output "$RUNNER_TEMP/release-plan.json"
         env:
           BUMP: ${{ inputs.bump }}
-          BASE: ${{ steps.base.outputs.base }}
+          PACKAGE: ${{ inputs.package }}
       - name: Create release GitHub App token
         if: steps.plan.outputs.has-release == 'true'
         id: release_app_token
@@ -227,12 +229,3 @@ jobs:
           gh release create "$first_tag" --title "Release $first_tag" --notes-file "$RUNNER_TEMP/release-notes.md"
         env:
           GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
-      - name: Create a release checkpoint
-        if: steps.plan.outputs.has-release == 'true'
-        run: |
-          checkpoint="release-$(date --utc +%Y%m%d%H%M%S)"
-          git tag --annotate "$checkpoint" --message "Release checkpoint $checkpoint"
-          git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push origin "$checkpoint"
-        env:
-          RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}

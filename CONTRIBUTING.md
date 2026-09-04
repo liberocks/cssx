@@ -38,5 +38,5 @@ output intentionally changed and the review explains why.
 ## Releases
 
 Do not manually change versions for publication. Maintainers release `main`
-through the manual Release workflow. See [RELEASE.md](RELEASE.md) for package
-selection and trusted publication.
+through the manual **npm-release** workflow. See [RELEASE.md](RELEASE.md) for
+package selection and trusted publication.

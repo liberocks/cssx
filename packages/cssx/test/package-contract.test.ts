@@ -274,12 +274,19 @@ void props;
   });
 
   it('pins all GitHub Actions workflow dependencies to immutable commit revisions', async () => {
-    for (const workflow of ['.github/workflows/ci.yml', '.github/workflows/release.yml']) {
+    for (const workflow of ['.github/workflows/ci.yml', '.github/workflows/npm-release.yml']) {
       const content = await readFile(join(workspaceRoot, workflow), 'utf8');
       const actions = [...content.matchAll(/^\s*- uses:\s+[^@\s]+@([^\s#]+)/gm)].map((match) => match[1]);
       expect(actions.length, `${workflow} has no actions`).toBeGreaterThan(0);
       expect(actions.every((revision) => /^[a-f0-9]{40}$/i.test(revision ?? ''))).toBe(true);
     }
+  });
+
+  it('requires npm releases to identify one package explicitly', async () => {
+    const workflow = await readFile(join(workspaceRoot, '.github/workflows/npm-release.yml'), 'utf8');
+    expect(workflow).toContain('name: npm-release');
+    expect(workflow).toContain('package:');
+    expect(workflow).toContain('--package "$PACKAGE"');
   });
 
   it('keeps the built runtime and a fixed generated-CSS fixture within budget', async () => {
