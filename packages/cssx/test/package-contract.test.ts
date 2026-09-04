@@ -289,6 +289,7 @@ void props;
     expect(workflow).toContain('--package "$PACKAGE"');
     expect(workflow).toContain('merge_release_pr()');
     expect(workflow).toContain('persist-credentials: false');
+    expect(workflow).not.toContain('wait_for_ci');
     expect(workflow).not.toContain('--auto');
     expect(workflow).toContain('queue: max');
   });
