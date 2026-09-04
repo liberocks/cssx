@@ -287,6 +287,8 @@ void props;
     expect(workflow).toContain('name: npm-release');
     expect(workflow).toContain('package:');
     expect(workflow).toContain('--package "$PACKAGE"');
+    expect(workflow).toContain('merge_release_pr()');
+    expect(workflow).not.toContain('--auto');
   });
 
   it('keeps the built runtime and a fixed generated-CSS fixture within budget', async () => {

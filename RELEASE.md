@@ -14,9 +14,9 @@ types now use `CompiledStyle` and `CompiledUtility` names.
 
 `main` is the protected, production-ready trunk. All human-authored changes
 enter it through a focused feature PR; direct pushes are blocked. Require the
-`format`, `lint`, `coverage`, and `verify` checks, and enable squash auto-merge.
+`format`, `lint`, `coverage`, and `verify` checks, and allow squash merges.
 Only the release workflow may bypass the branch rule to write its deterministic
-version-bump commit.
+version-bump commit and merge its own version-bump PR after CI succeeds.
 
 Every internal feature PR receives a separately named Cloudflare Worker preview
 for the documentation site. The deployment URL appears in the workflow summary
