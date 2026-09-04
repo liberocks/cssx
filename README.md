@@ -794,6 +794,20 @@ package-version-only change. The merged commit is still verified before the
 package is built, published, and tagged. GitHub repository auto-merge remains
 disabled for ordinary pull requests.
 
+Configure npm trusted publishing separately for each public package, with
+repository `liberocks/cssx` and workflow file `npm-release.yml`. Do not select
+an npm environment: this workflow does not use a GitHub Actions environment.
+It has the required OIDC `id-token: write` permission and therefore publishes
+without an npm token.
+
+If a release fails after its version-bump PR has merged but before npm accepts
+the publish, first correct the trusted-publisher setting. Then rerun
+**npm-release** for the same package with **retry existing version** enabled.
+That guarded mode verifies `main` and publishes only the current version when
+it is still unpublished and has no tag; it neither creates another version-bump
+PR nor skips ahead to a new version. The chosen bump value is ignored in retry
+mode.
+
 Create a repository GitHub App with **Contents: read and write** and **Pull
 requests: read and write** permissions, install it on this repository, and add
 its ID and PEM private key as the `RELEASE_APP_ID` and

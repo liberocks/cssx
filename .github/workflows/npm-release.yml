@@ -16,13 +16,18 @@ on:
           - '@cssxio/react-native'
           - '@cssxio/unplugin'
       bump:
-        description: Version bump for the selected package
+        description: Version bump for the selected package (ignored when retrying the current version)
         required: true
         type: choice
         options:
           - patch
           - minor
           - major
+      retry_existing_version:
+        description: Publish the selected package's already-bumped, unpublished current version
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -74,10 +79,11 @@ jobs:
           registry-url: https://registry.npmjs.org
       - name: Plan npm release
         id: plan
-        run: node scripts/release-plan.mjs plan --package "$PACKAGE" --bump "$BUMP" --output "$RUNNER_TEMP/release-plan.json"
+        run: node scripts/release-plan.mjs plan --package "$PACKAGE" --bump "$BUMP" --retry-existing-version "$RETRY_EXISTING_VERSION" --output "$RUNNER_TEMP/release-plan.json"
         env:
           BUMP: ${{ inputs.bump }}
           PACKAGE: ${{ inputs.package }}
+          RETRY_EXISTING_VERSION: ${{ inputs.retry_existing_version }}
       - name: Create release GitHub App token
         if: steps.plan.outputs.has-release == 'true'
         id: release_app_token
@@ -86,7 +92,7 @@ jobs:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       - name: Apply and commit release versions
-        if: steps.plan.outputs.has-release == 'true'
+        if: steps.plan.outputs.requires-version-bump == 'true'
         id: release_commit
         run: |
           node scripts/release-plan.mjs apply --input "$RUNNER_TEMP/release-plan.json"
@@ -104,7 +110,7 @@ jobs:
           BUMP: ${{ inputs.bump }}
           RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}
       - name: Create and merge the release PR
-        if: steps.plan.outputs.has-release == 'true'
+        if: steps.plan.outputs.requires-version-bump == 'true'
         id: release_pr
         run: |
           merge_release_pr() {
@@ -144,6 +150,19 @@ jobs:
           GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
           RELEASE_BRANCH: ${{ steps.release_commit.outputs.release-branch }}
           RELEASE_SHA: ${{ steps.release_commit.outputs.release-sha }}
+      - name: Select the release commit
+        if: steps.plan.outputs.has-release == 'true'
+        id: release_source
+        run: |
+          release_sha="$MERGED_RELEASE_SHA"
+          if [ "$REQUIRES_VERSION_BUMP" = false ]; then
+            release_sha="$(git rev-parse HEAD)"
+          fi
+          [ -n "$release_sha" ] || { printf 'No release commit was selected\n' >&2; exit 1; }
+          printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
+        env:
+          MERGED_RELEASE_SHA: ${{ steps.release_pr.outputs.release-sha }}
+          REQUIRES_VERSION_BUMP: ${{ steps.plan.outputs.requires-version-bump }}
       - name: Verify the merged release commit
         if: steps.plan.outputs.has-release == 'true'
         run: |
@@ -161,7 +180,7 @@ jobs:
           gh run watch "$run_id" --exit-status
         env:
           GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
-          RELEASE_SHA: ${{ steps.release_pr.outputs.release-sha }}
+          RELEASE_SHA: ${{ steps.release_source.outputs.release-sha }}
       - name: Install release dependencies
         if: steps.plan.outputs.has-release == 'true'
         run: pnpm install --frozen-lockfile

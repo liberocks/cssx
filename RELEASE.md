@@ -49,9 +49,9 @@ production.
 
 ## Publication
 
-Configure npm trusted publishing for every public package using this repository
-and `.github/workflows/npm-release.yml`. The workflow uses its OIDC identity
-and does not read an npm token.
+Configure npm trusted publishing for every public package using repository
+`liberocks/cssx` and workflow file `npm-release.yml`; do not configure an npm
+environment. The workflow uses its OIDC identity and does not read an npm token.
 
 Run the **npm-release** workflow manually from `main`, select exactly one
 package, then choose `patch`, `minor`, or `major`. The supported npm packages
@@ -63,3 +63,10 @@ The workflow verifies `main`, opens a deterministic version-bump PR for the
 selected package, then merges it with the release App's PR-only bypass. Only
 then does it verify the merged commit, build and publish that package with
 provenance, and create its annotated tag such as `@cssxio/compiler@0.2.1`.
+
+If npm publication fails after the version bump has merged, correct the trusted
+publisher configuration and rerun **npm-release** with **retry existing
+version** enabled for that same package. This validates `main` and only
+publishes its current version if npm does not already contain it and its tag
+does not exist. It does not create another bump PR; the selected bump is
+ignored in this guarded recovery mode.

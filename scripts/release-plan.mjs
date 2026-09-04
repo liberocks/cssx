@@ -36,17 +36,24 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
 }
 
-async function createPlan({ bump, output, package: selectedPackageName }) {
+async function createPlan({
+  bump,
+  output,
+  package: selectedPackageName,
+  'retry-existing-version': retryExistingVersion,
+}) {
   if (!bump || !output || !selectedPackageName) {
     fail('The plan command requires --package, --bump, and --output.');
   }
   assertBump(bump);
+  const retry = parseBooleanOption(retryExistingVersion ?? 'false', 'retry-existing-version');
 
-  const selectedPackages = [await planPackage(requirePackage(selectedPackageName), bump)];
-  const plan = { bump, packages: selectedPackages };
+  const selectedPackages = [await planPackage(requirePackage(selectedPackageName), bump, retry)];
+  const plan = { bump, mode: retry ? 'retry' : 'version-bump', packages: selectedPackages };
   await writeFile(output, `${JSON.stringify(plan, null, 2)}\n`);
   await writeGitHubOutput('has-release', String(selectedPackages.length > 0));
   await writeGitHubOutput('release-count', String(selectedPackages.length));
+  await writeGitHubOutput('requires-version-bump', String(!retry));
 }
 
 function requirePackage(packageName) {
@@ -55,7 +62,7 @@ function requirePackage(packageName) {
   return packageInfo;
 }
 
-async function planPackage(packageInfo, bump) {
+async function planPackage(packageInfo, bump, retry) {
   const manifestPath = resolve(workspaceRoot, packageInfo.directory, 'package.json');
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
   if (manifest.name !== packageInfo.name) fail(`Expected ${manifestPath} to name ${packageInfo.name}.`);
@@ -64,7 +71,7 @@ async function planPackage(packageInfo, bump) {
   const version = manifest.version;
   if (typeof version !== 'string') fail(`${packageInfo.name} does not declare a version.`);
 
-  const nextVersion = incrementVersion(version, bump);
+  const nextVersion = retry ? version : incrementVersion(version, bump);
   return { ...packageInfo, version, nextVersion, tag: `${packageInfo.name}@${nextVersion}` };
 }
 
@@ -72,6 +79,7 @@ async function applyPlan({ input }) {
   if (!input) fail('The apply command requires --input.');
   const plan = JSON.parse(await readFile(input, 'utf8'));
   if (!Array.isArray(plan.packages)) fail('Release plan has no packages array.');
+  if (plan.mode !== 'version-bump') fail('Only version-bump release plans can be applied.');
   assertBump(plan.bump);
 
   for (const releasePackage of plan.packages) {
@@ -107,6 +115,12 @@ export function incrementVersion(version, bump) {
 
 function assertBump(bump) {
   if (!['major', 'minor', 'patch'].includes(bump)) fail(`Unsupported bump type: ${bump}`);
+}
+
+function parseBooleanOption(value, name) {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  fail(`--${name} must be true or false.`);
 }
 
 function parseArguments(args) {
