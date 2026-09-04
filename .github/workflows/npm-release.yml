@@ -120,28 +120,23 @@ jobs:
             gh run watch "$run_id" --exit-status
           }
 
-          enable_auto_merge() {
-            gh pr merge "$release_pr_number" --squash --auto --delete-branch || {
-              auto_merge_enabled="$(gh pr view "$release_pr_number" --json autoMergeRequest --jq '.autoMergeRequest != null')"
-              [ "$auto_merge_enabled" = true ] || {
-                printf 'Could not enable auto-merge for release PR %s\n' "$release_pr_number" >&2
-                exit 1
-              }
-            }
+          merge_release_pr() {
+            gh pr merge "$release_pr_number" --squash --delete-branch
           }
 
           release_pr="$(gh pr create \
             --base main \
             --head "$RELEASE_BRANCH" \
             --title "chore(release): publish $BUMP releases" \
-            --body "Automated release version bump. CI runs automatically and GitHub merges this PR after protected checks pass.")"
+            --body "Automated release version bump. CI runs automatically; the release workflow merges this PR after protected checks pass.")"
           release_pr_number="$(gh pr view "$release_pr" --json number --jq '.number')"
 
           wait_for_ci "$RELEASE_SHA" pull_request
-          enable_auto_merge
 
           attempts_remaining=360
           while [ "$attempts_remaining" -gt 0 ]; do
+            if merge_release_pr; then break; fi
+
             release_pr_status="$(gh pr view "$release_pr_number" --json state,mergeStateStatus --jq '[.state, .mergeStateStatus] | @tsv')"
             release_state="${release_pr_status%%$'\t'*}"
             merge_state="${release_pr_status#*$'\t'}"
@@ -154,7 +149,6 @@ jobs:
               gh pr update-branch "$release_pr_number"
               release_head_sha="$(gh pr view "$release_pr_number" --json headRefOid --jq '.headRefOid')"
               wait_for_ci "$release_head_sha" pull_request
-              enable_auto_merge
             fi
             sleep 5
             attempts_remaining=$((attempts_remaining - 1))
