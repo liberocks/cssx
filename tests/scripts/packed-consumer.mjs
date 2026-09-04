@@ -8,7 +8,8 @@ if (!['bun', 'npm', 'pnpm', 'yarn'].includes(manager)) {
 }
 
 const root = resolve(import.meta.dirname, '../..');
-const command = process.platform === 'win32' ? `${manager}.cmd` : manager;
+const packageCommand = (name) => (process.platform === 'win32' && name !== 'bun' ? `${name}.cmd` : name);
+const command = packageCommand(manager);
 const packageDirectories = [
   'packages/compiler',
   'packages/cssx',
@@ -25,7 +26,10 @@ async function run(executable, args, cwd) {
   await new Promise((resolveRun, reject) => {
     const child = spawn(executable, args, {
       cwd,
-      shell: process.platform === 'win32',
+      // npm, pnpm, and Yarn are batch files on Windows, while bun.exe and
+      // node.exe must be launched directly. Running every command through a
+      // shell also corrupts the multiline ESM assertion below.
+      shell: process.platform === 'win32' && executable.endsWith('.cmd'),
       stdio: 'inherit',
       windowsHide: true,
     });
@@ -44,11 +48,7 @@ try {
   await mkdir(tarballs);
   await mkdir(consumer);
   for (const packageDirectory of packageDirectories) {
-    await run(
-      process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
-      ['pack', '--pack-destination', tarballs],
-      join(root, packageDirectory),
-    );
+    await run(packageCommand('pnpm'), ['pack', '--pack-destination', tarballs], join(root, packageDirectory));
   }
   const dependencies = {};
   for (const tarball of await readdir(tarballs)) {
