@@ -295,6 +295,8 @@ void props;
     expect(workflow).toContain('Skipping already-published');
     expect(workflow).toContain('Skipping existing tag');
     expect(workflow).toContain('Skipping existing GitHub Release');
+    expect(workflow).toContain('Changes since');
+    expect(workflow).toContain('git log --first-parent');
     expect(workflow).toContain('merge_release_pr()');
     expect(workflow).toContain('persist-credentials: false');
     expect(workflow).not.toContain('dry_run');
