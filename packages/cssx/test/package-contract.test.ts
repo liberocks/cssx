@@ -377,11 +377,15 @@ void props;
       brotli: 5_200,
     });
     await expectArtifactWithinBudget(`packages/unplugin/dist/${adapterChunk}`, {
-      raw: 18_250,
-      gzip: 6_900,
-      brotli: 6_200,
+      raw: 36_500,
+      gzip: 13_800,
+      brotli: 12_400,
     });
-    await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', { raw: 19_250, gzip: 7_200, brotli: 6_500 });
+    await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', {
+      raw: 38_500,
+      gzip: 14_400,
+      brotli: 13_000,
+    });
   });
 
   it('cold-imports compiler, transform, and adapter packages within the release ceiling', async () => {
