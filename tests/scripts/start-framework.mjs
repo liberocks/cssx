@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { frameworkDefinition } from '../shared/frameworks.js';
@@ -53,6 +54,9 @@ function serve(args, cwd, env = {}) {
   // otherwise hides the framework's startup failure from the CI log.
   child.once('close', (code, signal) => {
     if (code !== 0) {
+      const logs = resolve(root, 'tests/test-results', `${framework}-${mode}-server.log`);
+      mkdirSync(resolve(root, 'tests/test-results'), { recursive: true });
+      writeFileSync(logs, Buffer.concat(output));
       console.error(`${framework} ${mode} server exited with ${signal ?? `code ${code ?? 'unknown'}`}.`);
       if (output.length === 0) console.error('The framework process produced no startup output.');
     }
