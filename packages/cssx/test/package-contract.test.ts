@@ -155,6 +155,19 @@ void props;
     }
   });
 
+  it('uses publishable versions for internal package dependencies', async () => {
+    for (const packageDirectory of packageDirectories) {
+      const manifest = await readManifest(packageDirectory);
+      for (const field of dependencyFields) {
+        for (const [dependency, version] of Object.entries(manifest[field] ?? {})) {
+          if (dependency.startsWith('@cssxio/')) {
+            expect(version, `${packageDirectory} ${field} ${dependency}`).not.toMatch(/^workspace:/);
+          }
+        }
+      }
+    }
+  });
+
   it('ships clean packed tarballs with licenses, built exports, and rewritten workspace versions', async () => {
     const packDirectory = await mkdtemp(join(tmpdir(), 'cssx-packed-artifacts-'));
     const installDirectory = await mkdtemp(join(tmpdir(), 'cssx-packed-install-'));

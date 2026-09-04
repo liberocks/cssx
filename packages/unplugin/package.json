@@ -53,8 +53,8 @@
   },
   "dependencies": {
     "@babel/core": "^7.29.7",
-    "@cssxio/babel-plugin": "workspace:*",
-    "@cssxio/compiler": "workspace:*",
+    "@cssxio/babel-plugin": "^0.2.1",
+    "@cssxio/compiler": "^0.2.0",
     "unplugin": "^3.3.0"
   },
   "peerDependencies": {
