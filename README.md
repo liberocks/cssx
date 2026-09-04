@@ -806,14 +806,8 @@ the publish, first correct the trusted-publisher setting. Then rerun
 That guarded mode verifies `main` and publishes only the current version when
 it is still unpublished and has no tag; it neither creates another version-bump
 PR nor skips ahead to a new version. The chosen bump value is ignored in retry
-mode.
-
-To safely simulate the next release, select a package and bump, then enable
-**dry run**. It validates `main`, calculates the next version, applies it only
-inside the runner, builds the package, and runs `npm publish --dry-run`. It
-does not create a branch, pull request, npm package, tag, or GitHub Release.
-Because it does not contact npm's publish endpoint, this is not an OIDC
-authentication test.
+mode. It also detects an existing package-version tag or GitHub Release and
+skips that artifact while completing any missing release artifacts.
 
 Create a repository GitHub App with **Contents: read and write** and **Pull
 requests: read and write** permissions, install it on this repository, and add
