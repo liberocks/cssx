@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/cssx",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Compile-time utility styling runtime for CSSX.",
   "license": "MIT",
   "repository": {
