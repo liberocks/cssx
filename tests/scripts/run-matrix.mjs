@@ -5,13 +5,15 @@ import { frameworks } from '../shared/frameworks.js';
 
 const root = resolve(import.meta.dirname, '../..');
 const tests = resolve(root, 'tests');
-const update = process.env.CSSX_UPDATE_SNAPSHOTS === '1';
+const update = process.argv.includes('--update') || process.env.CSSX_UPDATE_SNAPSHOTS === '1';
+const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 const run = (arguments_, env = {}) => {
-  const result = spawnSync('pnpm', arguments_, {
+  const result = spawnSync(command, arguments_, {
     cwd: tests,
     stdio: 'inherit',
     env: { ...process.env, ...env },
+    shell: process.platform === 'win32',
   });
   if (result.status !== 0) process.exit(result.status ?? 1);
 };

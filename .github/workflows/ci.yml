@@ -119,10 +119,10 @@ jobs:
         run: pnpm --dir tests exec playwright install chromium
       - run: node tests/scripts/run-framework-test.mjs ${{ matrix.framework }} development
         env:
-          CSSX_VISUAL_SCREENSHOTS: '0'
+          CSSX_VISUAL_SCREENSHOTS: ${{ runner.os == 'macOS' && '1' || '0' }}
       - run: node tests/scripts/run-framework-test.mjs ${{ matrix.framework }} production
         env:
-          CSSX_VISUAL_SCREENSHOTS: '0'
+          CSSX_VISUAL_SCREENSHOTS: ${{ runner.os == 'macOS' && '1' || '0' }}
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
