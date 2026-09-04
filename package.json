@@ -10,6 +10,7 @@
     "build": "pnpm --recursive run build",
     "benchmark": "pnpm --dir benchmarks benchmark",
     "benchmark:vite": "pnpm --dir benchmarks benchmark:vite",
+    "build:packages": "node scripts/build-packages.mjs",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "generate:tailwind-corpus": "pnpm --filter @cssxio/compiler build && node scripts/generate-tailwind-conformance.mjs",

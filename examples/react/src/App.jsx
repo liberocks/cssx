@@ -15,7 +15,7 @@ export default function App() {
   const [count, setCount] = useState(0);
 
   return (
-    <main {...cssx.props(styles.page)}>
+    <main data-cssx-probe="create" {...cssx.props(styles.page)}>
       <section {...cssx.props(styles.card)}>
         <span {...cssx.props(styles.eyebrow)}>Create React App</span>
         <h1 {...cssx.props(styles.title)}>CSSX through webpack</h1>
@@ -23,6 +23,7 @@ export default function App() {
           This example adds the CSSX webpack adapter through the Create React App configuration override.
         </p>
         <button
+          data-cssx-probe="sx"
           className={sx(
             'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-cyan-700',
             count > 0 && 'scale-105',

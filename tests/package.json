@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node ./scripts/run-matrix.mjs",
-    "test:update": "CSSX_UPDATE_SNAPSHOTS=1 node ./scripts/run-matrix.mjs",
+    "test:update": "node ./scripts/run-matrix.mjs --update",
     "test:coverage": "playwright test coverage --config playwright.config.ts",
     "test:motion": "playwright test motion --config playwright.config.ts"
   },

@@ -13,8 +13,8 @@ import { styleProps } from '../styles';
     <link rel="stylesheet" href="/assets/cssx.css" />
     <title>Astro + CSSX</title>
   </head>
-  <body class={sx('min-h-screen')}>
-    <main {...styleProps.page}>
+  <body data-cssx-probe="sx" class={sx('min-h-screen')}>
+    <main data-cssx-probe="create" {...styleProps.page}>
       <img {...styleProps.background} src={background.src} alt="" />
       <section {...styleProps.hero}>
         <a href="https://astro.build"><img src={astroLogo.src} width="115" height="48" alt="Astro Homepage" /></a>

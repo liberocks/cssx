@@ -18,7 +18,7 @@ const styles = cssx.create({
 export default function Page() {
   return (
     <div {...cssx.props(styles.page)}>
-      <main {...cssx.props(styles.main)}>
+      <main data-cssx-probe="create" {...cssx.props(styles.main)}>
         <span data-cssx-server className={sx('hidden bg-red-500')} />
         <ClientCssx />
         <Image {...cssx.props(styles.logo)} src="/next.svg" alt="Next.js logo" width={100} height={20} priority />

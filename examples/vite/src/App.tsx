@@ -19,7 +19,7 @@ export default function App() {
   const [count, setCount] = useState(0);
 
   return (
-    <main {...cssx.props(styles.page)}>
+    <main data-cssx-probe="create" {...cssx.props(styles.page)}>
       <div {...cssx.props(styles.logos)}>
         <a {...cssx.props(styles.logoLink)} href="https://vite.dev" target="_blank" rel="noreferrer">
           <img {...cssx.props(styles.logo)} src="/vite.svg" alt="Vite logo" />
@@ -31,6 +31,7 @@ export default function App() {
       <h1 {...cssx.props(styles.title)}>Vite + React</h1>
       <div {...cssx.props(styles.card)}>
         <button
+          data-cssx-probe="sx"
           className={sx(
             'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-blue-700',
             count > 0 && 'scale-105',
