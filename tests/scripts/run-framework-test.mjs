@@ -9,7 +9,13 @@ if (!framework || !['development', 'production'].includes(mode)) {
 const root = resolve(import.meta.dirname, '../..');
 const child = spawn(
   process.execPath,
-  [resolve(root, 'tests/node_modules/@playwright/test/cli.js'), 'test', framework, '--config', 'playwright.config.ts'],
+  [
+    resolve(root, 'tests/node_modules/@playwright/test/cli.js'),
+    'test',
+    framework,
+    '--config',
+    resolve(root, 'tests/playwright.config.ts'),
+  ],
   {
     cwd: root,
     env: {
