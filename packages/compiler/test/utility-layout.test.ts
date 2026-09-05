@@ -2,6 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { compileUtilities } from '../src/index';
 
 describe('CSSX utility compiler', () => {
+  it('compiles arbitrary and custom-property letter spacing', async () => {
+    const result = await compileUtilities(
+      ['tracking-[0.03em]', 'tracking-(--headline-spacing)'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('.x-tracking--0-03em-{letter-spacing:0.03em;}');
+    expect(result.css).toContain('.x-tracking----headline-spacing-{letter-spacing:var(--headline-spacing);}');
+  });
+
+  it('compiles numeric line height against the spacing scale', async () => {
+    const result = await compileUtilities(['leading-6'], (candidate) => `x-${candidate}`);
+
+    expect(result.css).toContain('.x-leading-6{line-height:calc(0.25rem * 6);}');
+  });
+
   it('compiles flex and grid alignment/distribution utilities', async () => {
     const result = await compileUtilities(
       [
@@ -84,6 +100,16 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('.x-focus-outline-hidden:focus{outline:2px solid transparent;outline-offset:2px;}');
   });
 
+  it('distinguishes arbitrary border width from arbitrary border color', async () => {
+    const result = await compileUtilities(
+      ['border-[3px]', 'border-[#123456]'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('.x-border--3px-{border-width:3px;}');
+    expect(result.css).toContain('.x-border---123456-{border-color:#123456;}');
+  });
+
   it('compiles logical spacing and inset utilities without lowering them to physical sides', async () => {
     const result = await compileUtilities(
       ['px-4', 'ps-4', '-me-2', 'inset-s-1/2', 'inset-e-4'],
@@ -95,6 +121,27 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('.x--me-2{margin-inline-end:calc(0.25rem * -2);}');
     expect(result.css).toContain('.x-inset-s-1-2{inset-inline-start:50%;}');
     expect(result.css).toContain('.x-inset-e-4{inset-inline-end:calc(0.25rem * 4);}');
+  });
+
+  it('compiles physical positional fractions and named dimensions', async () => {
+    const result = await compileUtilities(
+      ['left-1/2', '-right-full', 'top-auto'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('.x-left-1-2{left:50%;}');
+    expect(result.css).toContain('.x--right-full{right:-100%;}');
+    expect(result.css).toContain('.x-top-auto{top:auto;}');
+  });
+
+  it('compiles arbitrary and custom-property grid tracks', async () => {
+    const result = await compileUtilities(
+      ['grid-cols-[350px_1fr]', 'grid-rows-(--dashboard-rows)'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('grid-template-columns:350px 1fr');
+    expect(result.css).toContain('grid-template-rows:var(--dashboard-rows)');
   });
 
   it('compiles declared layout, fit, interaction, and logical position utility families', async () => {

@@ -19,6 +19,7 @@ describe('CSSX semantic conflict classifier', () => {
   it('classifies arbitrary properties without treating them as opaque browser strings', () => {
     expect(classifyUtility('[paint-order:markers]')).toMatchObject({ group: 'arbitrary..paint-order' });
     expect(classifyUtility('border-red-500/50')).toMatchObject({ group: 'border-color' });
+    expect(classifyUtility('outline-[3px]')).toMatchObject({ group: 'outline-width' });
   });
 
   it('emits complete source-utility records for dynamic composition', () => {
@@ -74,16 +75,21 @@ describe('CSSX semantic conflict classifier', () => {
   });
 
   it('keeps independently writable border width and color records during dynamic composition', () => {
-    const result = compileStyleRecords({ width: 'border', color: 'border-red-500' });
+    const result = compileStyleRecords({ width: 'border', arbitraryWidth: 'border-[3px]', color: 'border-red-500' });
     const width = result.styles.width;
+    const arbitraryWidth = result.styles.arbitraryWidth;
     const color = result.styles.color;
-    if (!width || !color) {
+    if (!width || !arbitraryWidth || !color) {
       throw new Error('Expected compiled border styles.');
     }
 
     expect(width._[0]?.[2]).toBe('border-width');
+    expect(arbitraryWidth._[0]?.[2]).toBe('border-width');
     expect(color._[0]?.[2]).toBe('border-color');
     expect(mergeCompiledStyles([width, color])).toBe(`${result.classes.border} ${result.classes['border-red-500']}`);
+    expect(mergeCompiledStyles([arbitraryWidth, color])).toBe(
+      `${result.classes['border-[3px]']} ${result.classes['border-red-500']}`,
+    );
   });
 
   it('partially overrides multi-side border-width utilities atom by atom', () => {

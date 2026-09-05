@@ -2,6 +2,7 @@ import { candidateScope, parseCandidate } from './candidate';
 import { DIRECTIONAL_CONFLICTS } from './semantics-directional-conflicts';
 import { EXACT_GROUPS } from './semantics-exact-groups';
 import { PREFIX_GROUPS } from './semantics-prefix-groups';
+import { isLengthCssValue } from './utility-resolvers';
 
 /** Style groups used to merge one utility with later utilities. */
 export interface UtilitySemantics {
@@ -91,10 +92,18 @@ function classifyArbitraryProperty(utility: string): string | null {
  */
 function refineAmbiguousGroup(prefix: string, group: string, utility: string): string {
   if (prefix === 'border-') {
-    return isBorderColorValue(utility.slice(prefix.length)) ? 'border-color' : group;
+    const value = utility.slice(prefix.length);
+    if (value.startsWith('[') && value.endsWith(']') && isLengthArbitraryValue(value.slice(1, -1))) {
+      return 'border-width';
+    }
+    return isBorderColorValue(value) ? 'border-color' : group;
   }
   if (prefix === 'outline-') {
-    return isBorderColorValue(utility.slice(prefix.length)) ? 'outline-color' : group;
+    const value = utility.slice(prefix.length);
+    if (value.startsWith('[') && value.endsWith(']') && isLengthArbitraryValue(value.slice(1, -1))) {
+      return 'outline-width';
+    }
+    return isBorderColorValue(value) ? 'outline-color' : group;
   }
   if (prefix === 'decoration-') {
     const value = utility.slice(prefix.length);
@@ -130,7 +139,10 @@ function refineAmbiguousGroup(prefix: string, group: string, utility: string): s
  */
 function isBorderColorValue(value: string): boolean {
   const color = value.split('/', 1)[0]!;
-  return color.startsWith('[') || /^(?:transparent|current|black|white|[a-z-]+-\d{1,3})$/i.test(color);
+  if (color.startsWith('[') && color.endsWith(']')) {
+    return !isLengthArbitraryValue(color.slice(1, -1));
+  }
+  return /^(?:transparent|current|black|white|[a-z-]+-\d{1,3})$/i.test(color);
 }
 
 /**
@@ -140,9 +152,5 @@ function isBorderColorValue(value: string): boolean {
  * @returns Whether the value is a supported length expression.
  */
 function isLengthArbitraryValue(value: string): boolean {
-  const normalized = value.replace(/^(?:length|size):/, '');
-  return (
-    /^-?(?:\d+(?:\.\d+)?)(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|%|cm|mm|in|pt|pc)$/i.test(normalized) ||
-    normalized.startsWith('calc(')
-  );
+  return isLengthCssValue(value);
 }

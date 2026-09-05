@@ -7,6 +7,7 @@ import {
 } from '../src/utility-paint';
 import {
   flexValue,
+  isLengthCssValue,
   resolveBorderWidthValue,
   resolveDimensionValue,
   resolveOpacityModifier,
@@ -41,6 +42,10 @@ describe('utility helper edge cases', () => {
   const emptyTheme = { tokens: {}, keyframes: {}, mode: 'inline' as const, prefix: '' };
 
   it('resolves arbitrary, edge, and invalid numeric values without accepting unsafe fallbacks', () => {
+    expect(isLengthCssValue('0')).toBe(true);
+    expect(isLengthCssValue('min(1rem,2vw)')).toBe(true);
+    expect(isLengthCssValue('length:var(--border-width)')).toBe(true);
+    expect(isLengthCssValue('var(--ambiguous)')).toBe(false);
     expect(resolveBorderWidthValue('[3px]')).toBe('3px');
     expect(resolveSpacingValue('px', true, theme)).toBe('-1px');
     expect(resolveSpacingValue('full', false, theme)).toBe('100%');
@@ -61,6 +66,11 @@ describe('utility helper edge cases', () => {
     expect(compileColorUtility('text-xs', theme)).toBeNull();
     expect(compileColorUtility('bg-red-500/101', theme)).toBeNull();
     expect(compileAnimationUtility('none', theme)).toEqual({ property: 'animation', value: 'none' });
+    expect(compilePrefixedUtility('leading-6', false, emptyTheme)).toBeNull();
+    expect(compileTransformUtility('translate-x-1/2', true, theme)?.[0]).toEqual({
+      property: '--cssx-translate-x',
+      value: '-50%',
+    });
     expect(compileTransformUtility('translate-x-invalid', false, theme)).toBeNull();
     expect(compileTransformUtility('scale-invalid', false, theme)).toBeNull();
     expect(compileTransformUtility('skew-x-invalid', false, theme)).toBeNull();
@@ -278,8 +288,10 @@ describe('utility helper edge cases', () => {
       'line-clamp-none',
       'line-clamp-3',
       'grid-cols-subgrid',
+      'grid-cols-[18rem_1fr]',
       'grid-rows-3',
       'grid-rows-subgrid',
+      'grid-rows-(--dashboard-rows)',
       'col-span-full',
       'row-span-2',
       'col-start-auto',
@@ -292,8 +304,12 @@ describe('utility helper edge cases', () => {
       'opacity-50',
       'z-auto',
       'leading-[1.25]',
+      'leading-6',
       'font-[Inter]',
       'tracking-widest',
+      'tracking-[0.03em]',
+      'tracking-(--headline-spacing)',
+      'shadow-[inset_0_0_0_1px_#36c]',
       'animate-none',
       'translate-x-2',
       'rotate-45',

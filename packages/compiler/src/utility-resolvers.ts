@@ -14,6 +14,23 @@ export function resolveArbitraryCssValue(value: string): string {
   const raw = value.slice(1, -1);
   return raw.replaceAll('\\_', '\u0000').replaceAll('_', ' ').replaceAll('\u0000', '_');
 }
+
+/**
+ * Checks whether arbitrary CSS text unambiguously represents a length.
+ *
+ * @param value Arbitrary value without brackets.
+ * @returns Whether the value is safe to compile as a length.
+ */
+export function isLengthCssValue(value: string): boolean {
+  const hasLengthHint = /^(?:length|size):/.test(value);
+  const normalized = value.replace(/^(?:length|size):/, '');
+  return (
+    normalized === '0' ||
+    /^-?(?:\d+(?:\.\d+)?)(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|%|cm|mm|in|pt|pc)$/i.test(normalized) ||
+    /^(?:calc|min|max|clamp)\(/.test(normalized) ||
+    (hasLengthHint && normalized.startsWith('var('))
+  );
+}
 /**
  * Resolves a supported border-width value.
  *
