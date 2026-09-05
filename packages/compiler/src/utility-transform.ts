@@ -2,7 +2,7 @@ import { resolveThemeToken } from './theme';
 import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 import { resolveAngleValue, resolveScaleValue } from './utility-values';
-import { resolveArbitraryCssValue, resolveDimensionValue, resolveSpacingValue } from './utility-resolvers';
+import { resolveArbitraryCssValue, resolveDimensionValue } from './utility-resolvers';
 
 /**
  * Compiles width, height, and logical dimension utilities.
@@ -97,7 +97,7 @@ export function compileTransformUtility(
   const translate = /^(translate-x|translate-y)-(.+)$/.exec(utility);
   if (translate) {
     const axis = translate[1] === 'translate-x' ? '--cssx-translate-x' : '--cssx-translate-y';
-    const value = resolveSpacingValue(translate[2]!, negative, theme);
+    const value = resolveDimensionValue(translate[2]!, negative, theme, 'translate');
     if (!value) {
       return null;
     }

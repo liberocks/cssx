@@ -1,6 +1,11 @@
 import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
-import { resolveBorderWidthValue, resolveOpacityModifier, splitColorModifier } from './utility-resolvers';
+import {
+  resolveArbitraryCssValue,
+  resolveBorderWidthValue,
+  resolveOpacityModifier,
+  splitColorModifier,
+} from './utility-resolvers';
 import { resolveUtilityColor } from './utility-paint';
 
 /** Shared box-shadow value that combines shadow, ring offset, and ring channels. */
@@ -12,6 +17,23 @@ const CSSX_FILTER_SINK =
 /** Shared backdrop-filter value that combines all backdrop filter channels. */
 const CSSX_BACKDROP_FILTER_SINK =
   'var(--cssx-backdrop-blur,) var(--cssx-backdrop-brightness,) var(--cssx-backdrop-contrast,) var(--cssx-backdrop-grayscale,) var(--cssx-backdrop-hue-rotate,) var(--cssx-backdrop-invert,) var(--cssx-backdrop-opacity,) var(--cssx-backdrop-saturate,) var(--cssx-backdrop-sepia,)';
+
+/**
+ * Compiles arbitrary and custom-property box-shadow utilities.
+ *
+ * @param utility Utility name without variants.
+ * @returns Shadow declarations, or null when unsupported.
+ */
+export function compileShadowUtility(utility: string): UtilityDeclaration[] | null {
+  const match = /^shadow-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
+  if (!match) {
+    return null;
+  }
+  return [
+    { property: '--cssx-shadow', value: resolveArbitraryCssValue(match[1]!), semanticGroup: 'shadow' },
+    { property: 'box-shadow', value: CSSX_SHADOW_SINK, semanticGroup: 'shadow' },
+  ];
+}
 
 /**
  * Compiles standard filter utilities.

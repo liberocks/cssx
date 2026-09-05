@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { compileUtilities } from '../src/index';
 
 describe('CSSX utility compiler', () => {
+  it('compiles arbitrary and custom-property shadows through the shared shadow sink', async () => {
+    const result = await compileUtilities(
+      ['shadow-[inset_0_0_0_1px_#36c]', 'shadow-(--focus-shadow)'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('--cssx-shadow:inset 0 0 0 1px #36c');
+    expect(result.css).toContain('--cssx-shadow:var(--focus-shadow)');
+    expect(result.css).toContain('box-shadow:var(--cssx-shadow, 0 0 #0000)');
+  });
+
   it('compiles borders, transition values, and transform channels without replacing sibling axes', async () => {
     const result = await compileUtilities(
       [

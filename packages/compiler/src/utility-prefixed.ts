@@ -1,7 +1,12 @@
 import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 import { compileBorderWidthUtility, compileSpacingUtility } from './utility-box-model';
-import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility } from './utility-effects';
+import {
+  compileBackdropFilterUtility,
+  compileFilterUtility,
+  compileRingUtility,
+  compileShadowUtility,
+} from './utility-effects';
 import { compileColorUtility, compileGradientUtility, compileTextDecorationUtility } from './utility-paint';
 import { compileAnimationUtility, compileDimensionUtility, compileTransformUtility } from './utility-transform';
 import { compileModernUtility } from './utility-modern';
@@ -64,6 +69,10 @@ export function compilePrefixedUtility(
   const borderWidth = compileBorderWidthUtility(utility);
   if (borderWidth) {
     return borderWidth;
+  }
+  const shadow = compileShadowUtility(utility);
+  if (shadow) {
+    return shadow;
   }
   const ring = compileRingUtility(utility, theme);
   if (ring) {
@@ -159,16 +168,24 @@ export function compilePrefixedUtility(
         ];
   }
 
-  const grid = /^grid-cols-(\d+)$/.exec(utility);
+  const grid = /^grid-cols-(\d+|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (grid) {
-    return { property: 'grid-template-columns', value: `repeat(${grid[1]}, minmax(0, 1fr))` };
+    const value = grid[1]!;
+    return {
+      property: 'grid-template-columns',
+      value: /^\d+$/.test(value) ? `repeat(${value}, minmax(0, 1fr))` : resolveArbitraryCssValue(value),
+    };
   }
   if (utility === 'grid-cols-subgrid') {
     return { property: 'grid-template-columns', value: 'subgrid' };
   }
-  const gridRows = /^grid-rows-(\d+)$/.exec(utility);
+  const gridRows = /^grid-rows-(\d+|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (gridRows) {
-    return { property: 'grid-template-rows', value: `repeat(${gridRows[1]}, minmax(0, 1fr))` };
+    const value = gridRows[1]!;
+    return {
+      property: 'grid-template-rows',
+      value: /^\d+$/.test(value) ? `repeat(${value}, minmax(0, 1fr))` : resolveArbitraryCssValue(value),
+    };
   }
   if (utility === 'grid-rows-subgrid') {
     return { property: 'grid-template-rows', value: 'subgrid' };
@@ -215,17 +232,23 @@ export function compilePrefixedUtility(
   if (zIndex) {
     return { property: 'z-index', value: zIndex[1]! };
   }
-  const leading = /^leading-(none|tight|snug|normal|relaxed|loose|\[[^\]]+\])$/.exec(utility);
+  const leading = /^leading-(none|tight|snug|normal|relaxed|loose|\d+(?:\.\d+)?|\[[^\]]+\])$/.exec(utility);
   if (leading) {
-    return { property: 'line-height', value: leadingValue(leading[1]!) };
+    const value = leading[1]!;
+    const resolved = /^\d/.test(value) ? resolveSpacingValue(value, false, theme) : leadingValue(value);
+    return resolved ? { property: 'line-height', value: resolved } : null;
   }
   const font = /^font-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (font) {
     return { property: 'font-family', value: resolveArbitraryCssValue(font[1]!) };
   }
-  const tracking = /^tracking-(tighter|tight|normal|wide|wider|widest)$/.exec(utility);
+  const tracking = /^tracking-(tighter|tight|normal|wide|wider|widest|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (tracking) {
-    return { property: 'letter-spacing', value: trackingValue(tracking[1]!) };
+    const value = tracking[1]!;
+    return {
+      property: 'letter-spacing',
+      value: value.startsWith('[') || value.startsWith('(') ? resolveArbitraryCssValue(value) : trackingValue(value),
+    };
   }
   const animation = /^animate-(.+)$/.exec(utility);
   if (animation) {

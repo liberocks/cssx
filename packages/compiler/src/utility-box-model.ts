@@ -2,6 +2,8 @@ import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 import { cloneDeclarations } from './utility-values';
 import {
+  isLengthCssValue,
+  resolveArbitraryCssValue,
   resolveBorderWidthValue,
   resolveColorValue,
   resolveOpacityModifier,
@@ -17,6 +19,14 @@ import {
  * @returns Border-width declarations, or null when unsupported.
  */
 export function compileBorderWidthUtility(utility: string): UtilityDeclaration | UtilityDeclaration[] | null {
+  const allSides = /^border-(\[[^\]]+\])$/.exec(utility);
+  if (allSides) {
+    const value = resolveArbitraryCssValue(allSides[1]!);
+    if (!isLengthCssValue(value)) {
+      return null;
+    }
+    return { property: 'border-width', value: value.replace(/^(?:length|size):/, '') };
+  }
   const match = /^border-(x|y|t|r|b|l)-(0|2|4|8)$/.exec(utility);
   if (!match) {
     return null;
@@ -56,7 +66,8 @@ export function compileSpacingUtility(
   }
   const prefix = match[1]!;
   const rawValue = match[2]!;
-  const value = prefix.startsWith('inset')
+  const positional = prefix.startsWith('inset') || ['top', 'right', 'bottom', 'left'].includes(prefix);
+  const value = positional
     ? resolveDimensionValue(rawValue, negative, theme, 'inset')
     : rawValue === 'auto' && prefix.startsWith('m') && !negative
       ? 'auto'
