@@ -250,7 +250,7 @@ importers:
         specifier: ^0.4.3
         version: link:../babel-plugin
       '@cssxio/compiler':
-        specifier: ^0.4.3
+        specifier: ^0.4.4
         version: link:../compiler
       esbuild:
         specifier: '>=0.27.0'
