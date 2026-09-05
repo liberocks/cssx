@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/react-native",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "CSSX utility styling runtime and compiler transform for React Native and Expo.",
   "license": "MIT",
   "repository": {
