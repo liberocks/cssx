@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@cssxio/babel-plugin": "^0.4.3",
-    "@cssxio/unplugin": "^0.4.4",
+    "@cssxio/unplugin": "^0.4.5",
     "@types/react": "^18.3.12",
     "typescript": "^5.9.0"
   }
