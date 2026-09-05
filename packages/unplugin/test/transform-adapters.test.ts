@@ -11,8 +11,31 @@ describe('CSSX unplugin transform', () => {
     expect(transformed.code).toMatch(/c: "[a-z0-9]+"/);
   });
 
-  it('does not emit a Rollup or Vite asset for an empty final graph', async () => {
+  it('emits the default Tailwind-compatible baseline for an empty final graph', async () => {
     const plugin = pluginFor('vite');
+    const emitted: unknown[] = [];
+    await plugin.rollup.generateBundle.call(
+      {
+        emitFile(asset: unknown) {
+          emitted.push(asset);
+        },
+        getModuleInfo() {
+          return null;
+        },
+      },
+      {},
+      { 'entry.js': { type: 'chunk', modules: {} } },
+    );
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0]).toMatchObject({
+      fileName: 'cssx.css',
+      source: expect.stringContaining('box-sizing:border-box'),
+    });
+  });
+
+  it('does not emit a Rollup or Vite asset for an empty graph when preflight is disabled', async () => {
+    const plugin = pluginFor('vite', { preflight: false });
     const emitted: unknown[] = [];
     await plugin.rollup.generateBundle.call(
       {
@@ -212,12 +235,12 @@ describe('CSSX unplugin transform', () => {
 
     expect(emitted).toHaveLength(2);
     expect(emitted[0].name).toBe('cssx.css');
-    expect(emitted[0].asset.source).toContain('background-color:#ef4444');
+    expect(emitted[0].asset.source).toContain('background-color:oklch(63.71% 0.237 25.331)');
     expect(emitted[1].name).toBe('cssx.css.map');
   });
 
   it('prunes esbuild rules using the metafile and returns CSS for write: false', async () => {
-    const plugin = pluginFor('esbuild');
+    const plugin = pluginFor('esbuild', { preflight: false });
     const build: any = {
       initialOptions: { absWorkingDir: '/project', outdir: 'dist', write: false },
       onEnd(callback: (result: any) => Promise<void>) {

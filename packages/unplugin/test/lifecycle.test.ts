@@ -258,7 +258,7 @@ describe('unplugin lifecycle edges', () => {
   it('exercises universal esbuild output, cleanup, and collision lifecycle branches', async () => {
     const root = await mkdtemp(join(tmpdir(), 'cssx-unplugin-esbuild-'));
     try {
-      const plugin = pluginFor('esbuild');
+      const plugin = pluginFor('esbuild', { preflight: false });
       let onEnd: ((result: any) => Promise<void>) | undefined;
       const build: any = {
         initialOptions: { absWorkingDir: root, outfile: 'dist/app.js', write: true },
@@ -312,7 +312,7 @@ describe('unplugin lifecycle edges', () => {
           onEnd = callback;
         },
       };
-      cssxEsbuild().setup(build);
+      cssxEsbuild({ preflight: false }).setup(build);
       expect((await onLoad?.({ path: paths[0]! }))?.loader).toBe('js');
       expect((await onLoad?.({ path: paths[1]! }))?.loader).toBe('js');
       expect(await onLoad?.({ path: paths[2]! })).toBeUndefined();
@@ -321,11 +321,25 @@ describe('unplugin lifecycle edges', () => {
       const map = `${asset}.map`;
       await expect(readFile(asset, 'utf8')).resolves.toContain('padding:calc(0.25rem * 5)');
       await expect(readFile(map, 'utf8')).resolves.toContain('"version":3');
-      await rm(asset);
-      await rm(map);
       await onEnd?.({ metafile: { inputs: {} } });
       await expect(readFile(asset, 'utf8')).rejects.toThrow();
       await expect(readFile(map, 'utf8')).rejects.toThrow();
+
+      await onLoad?.({ path: paths[0]! });
+      await onEnd?.({ metafile: { inputs: { 'entry.mjs': {} } } });
+      await rm(asset);
+      await rm(map);
+      await onEnd?.({ metafile: { inputs: {} } });
+
+      let emptyOnEnd: ((result: any) => Promise<void>) | undefined;
+      cssxEsbuild({ preflight: false }).setup({
+        initialOptions: { absWorkingDir: root, outdir: 'empty', write: true },
+        onLoad() {},
+        onEnd(callback: (result: any) => Promise<void>) {
+          emptyOnEnd = callback;
+        },
+      } as never);
+      await emptyOnEnd?.({ metafile: { inputs: {} } });
 
       let withoutMapLoad: ((args: { path: string }) => Promise<any>) | undefined;
       let withoutMapEnd: ((result: any) => Promise<void>) | undefined;

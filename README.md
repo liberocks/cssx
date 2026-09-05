@@ -133,21 +133,17 @@ export default {
 
 ### Global CSS and dark mode
 
-CSSX emits utility rules only. It does not include a browser reset or Tailwind
-Preflight, and it does not load fonts or add global element styles. Keep global
-styles such as `box-sizing`, body margin, inherited typography, link treatment,
-and form-control normalization in your application stylesheet. This makes a
-reset an explicit application choice instead of changing the defaults of every
-CSSX project.
+CSSX emits a Tailwind-compatible browser baseline before utility rules by
+default. This preserves Tailwind's box sizing, body margin, inherited
+typography, link treatment, and form-control normalization for zero-configuration
+migrations while keeping a visible browser focus indicator. CSSX does not load
+fonts: `font-*` utilities and any application-selected font remain explicit.
 
-Set `preflight: true` in a build adapter to add CSSX's opt-in browser baseline
-before generated utilities. It resets common box-model, link, form-control,
-and button defaults for utility-framework migrations while preserving a visible
-browser focus indicator. Leave it off when your application already supplies a
-global reset.
+Set `preflight: false` in a build adapter only when an application deliberately
+supplies a different global reset.
 
 ```ts
-cssx({ preflight: true });
+cssx({ preflight: false });
 ```
 
 The `dark:` variant defaults to the operating-system preference:

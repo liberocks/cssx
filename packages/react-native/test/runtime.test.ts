@@ -13,7 +13,7 @@ describe('React Native runtime', () => {
       $$cssx: 3,
       style: expect.objectContaining({
         alignItems: 'center',
-        backgroundColor: '#2563eb',
+        backgroundColor: '#155dfc',
         borderRadius: 8,
         flex: 1,
         flexDirection: 'row',
@@ -72,12 +72,13 @@ describe('React Native runtime', () => {
     expect(() => props({ style: {} } as never)).toThrow('not compiled by CSSX');
   });
 
-  it('rejects browser-only declarations and unresolved values with explicit candidates', () => {
+  it('rejects browser-only declarations while converting default OKLCH colors to native values', () => {
     expect(() => create({ value: 'grid' })).toThrow('display value');
     expect(() => create({ value: 'overflow-scroll' })).toThrow('overflow value');
     expect(() => create({ value: 'cursor-pointer' })).toThrow('cursor is browser-only');
     expect(() => create({ value: 'before:block' })).toThrow('cannot represent the variant');
-    expect(() => create({ value: 'bg-slate-500' })).toThrow('resolve to a native color');
+    expect(create({ value: 'bg-slate-500' }).value.style).toEqual({ backgroundColor: '#62748e' });
+    expect(create({ value: 'bg-[oklch(0%_0_0)]' }).value.style).toEqual({ backgroundColor: '#000000' });
   });
 
   it('supports custom native-safe theme values', () => {

@@ -248,7 +248,7 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('.x-not-first-opacity-50:not(*:first-child)');
     expect(result.css).toContain('.x-required-border-red-500:required');
     expect(result.css).toContain(
-      '.x-before-bg-blue-500::before{content:var(--cssx-content, "");background-color:#3b82f6;}',
+      '.x-before-bg-blue-500::before{content:var(--cssx-content, "");background-color:oklch(62.27% 0.214 259.815);}',
     );
     expect(result.css).toContain('.x-selection-text-white::selection{color:#fff;}');
     expect(result.css).toContain('.x-file-mr-4::file-selector-button{margin-right:calc(0.25rem * 4);}');

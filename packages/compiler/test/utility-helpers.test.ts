@@ -206,7 +206,7 @@ describe('utility helper edge cases', () => {
     });
     expect(compileTextDecorationUtility('decoration-red-500', theme)).toEqual({
       property: 'text-decoration-color',
-      value: '#ef4444',
+      value: 'oklch(63.71% 0.237 25.331)',
     });
     expect(compileFilterUtility('opacity-50', false)).toBeNull();
     expect(compileFilterUtility('hue-rotate-45', true)?.[0]?.value).toBe('hue-rotate(-45deg)');

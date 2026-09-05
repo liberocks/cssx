@@ -44,7 +44,7 @@ describe('CSSX Rspack fixture', () => {
       const css = await readFile(join(outputPath, 'cssx.css'), 'utf8');
       const map = JSON.parse(await readFile(join(outputPath, 'cssx.css.map'), 'utf8')) as { sources: string[] };
       expect(css).toContain('padding:calc(0.25rem * 1)');
-      expect(css).toContain('background-color:#ef4444');
+      expect(css).toContain('background-color:oklch(63.71% 0.237 25.331)');
       expect(map.sources.some((source) => source.endsWith('/src/main.js'))).toBe(true);
 
       await writeFile(
@@ -70,7 +70,7 @@ describe('CSSX Rspack fixture', () => {
       expect(rebuilt.hasErrors()).toBe(false);
       const rebuiltCss = await readFile(join(outputPath, 'cssx.css'), 'utf8');
       expect(rebuiltCss).toContain('color:#fff');
-      expect(rebuiltCss).not.toContain('background-color:#ef4444');
+      expect(rebuiltCss).not.toContain('background-color:oklch(63.71% 0.237 25.331)');
     } finally {
       await new Promise<void>((resolvePromise, reject) =>
         compiler.close((error) => (error ? reject(error) : resolvePromise())),

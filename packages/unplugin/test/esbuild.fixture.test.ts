@@ -31,7 +31,7 @@ describe('CSSX esbuild fixture', () => {
       expect(result.outputFiles?.[0]?.text).not.toContain('@cssxio/cssx');
       expect(result.outputFiles?.map((file) => file.path)).toContain(join(root, 'dist', 'assets', 'cssx.css'));
       expect(css?.text).toContain('padding:calc(0.25rem * 2)');
-      expect(css?.text).toContain('background-color:#ef4444');
+      expect(css?.text).toContain('background-color:oklch(63.71% 0.237 25.331)');
       expect(
         (JSON.parse(map?.text ?? '') as { sources: string[] }).sources.some(
           (source) => source.endsWith('/main.ts') || source === 'main.ts',
@@ -72,12 +72,14 @@ describe('CSSX esbuild fixture', () => {
       );
       const updated = await buildContext.rebuild();
       const updatedCss = updated.outputFiles?.find((file) => file.path.endsWith('cssx.css'))?.text ?? '';
-      expect(updatedCss).toContain('background-color:#ef4444');
+      expect(updatedCss).toContain('background-color:oklch(63.71% 0.237 25.331)');
       expect(updatedCss).not.toContain('padding:calc(0.25rem * 4)');
 
       await writeFile(entry, 'export const noStyles = true;');
       const removed = await buildContext.rebuild();
-      expect(removed.outputFiles?.some((file) => file.path.endsWith('cssx.css'))).toBe(false);
+      expect(removed.outputFiles?.find((file) => file.path.endsWith('cssx.css'))?.text).toContain(
+        'box-sizing:border-box',
+      );
     } finally {
       await buildContext.dispose();
       await rm(root, { recursive: true, force: true });
@@ -138,7 +140,7 @@ describe('CSSX esbuild fixture', () => {
       );
       await rebuilt;
       const css = await readFile(join(output, 'cssx.css'), 'utf8');
-      expect(css).toContain('background-color:#ef4444');
+      expect(css).toContain('background-color:oklch(63.71% 0.237 25.331)');
       expect(css).not.toContain('padding:calc(0.25rem * 4)');
     } finally {
       await buildContext.dispose();
