@@ -361,7 +361,8 @@ void props;
     if (!adapterChunk) {
       throw new Error('Expected the unplugin shared adapter chunk.');
     }
-    await expectArtifactWithinBudget('packages/compiler/dist/index.js', { raw: 130_000, gzip: 35_500, brotli: 29_500 });
+    // Class-based dark-mode activation adds a small selector-rendering branch.
+    await expectArtifactWithinBudget('packages/compiler/dist/index.js', { raw: 130_000, gzip: 35_550, brotli: 29_500 });
     await expectArtifactWithinBudget('packages/compiler/dist/index.cjs', {
       raw: 131_000,
       gzip: 36_000,
