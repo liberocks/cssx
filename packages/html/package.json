@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/html",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Zero-build runtime utility styling for static HTML.",
   "license": "MIT",
   "repository": {
