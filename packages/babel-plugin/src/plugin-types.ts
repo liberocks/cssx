@@ -18,8 +18,10 @@ export interface CssxPluginOptions {
   readonly classNameAllocator?: ClassNameAllocator;
   /** Controls how aggressively static styles share generated class fragments. */
   readonly reusabilityBudget?: ReusabilityBudget;
-  /** Uses source-addressed composite names for development stylesheet updates. */
+  /** Uses source-addressed composite names across independently transformed modules. */
   readonly stableClassNames?: boolean;
+  /** Canonical source identifier used when deriving stable composite class names. */
+  readonly stableClassNameFileName?: string;
   /** Controls how the `dark` variant is activated. */
   readonly darkMode?: DarkMode;
 }

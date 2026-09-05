@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, normalize, resolve, sep } from 'node:path';
-import type { DarkMode, ReusabilityBudget } from '@cssxio/compiler';
+import type { ClassNameOptions, DarkMode, ReusabilityBudget } from '@cssxio/compiler';
 
 /** Options for a CSSX bundler adapter. */
 export interface CssxPluginOptions {
@@ -18,6 +18,10 @@ export interface CssxPluginOptions {
   readonly layer?: string;
   /** Controls how aggressively static styles share generated class fragments. */
   readonly reusabilityBudget?: ReusabilityBudget;
+  /** Options that control generated class names. */
+  readonly className?: ClassNameOptions;
+  /** Uses source-addressed composite class names across independent compiler processes. */
+  readonly stableClassNames?: boolean;
   /** Activates `dark` variants with a media query, `[data-theme=dark]`, or a `.dark` class. */
   readonly darkMode?: DarkMode;
   /** Adds CSSX's optional browser reset before generated utility rules. */

@@ -151,6 +151,50 @@ describe('native bundler helpers', () => {
     expect(css).toContain('.server');
   });
 
+  it('uses complete project source data when stable classes cross compiler processes', async () => {
+    let processAssets: (() => Promise<void>) | undefined;
+    let css = '';
+    const compilation: TestCompilation = {
+      modules: [],
+      hooks: {
+        processAssets: {
+          tapPromise: (_options: unknown, handler: () => Promise<void>) => {
+            processAssets = handler;
+          },
+        },
+      },
+      getAsset: () => undefined,
+      emitAsset: (_fileName: string, source: unknown) => {
+        css = (source as { readonly source: string }).source;
+      },
+    };
+    configureCompilationAsset(
+      createCompiler(compilation),
+      'cssx.css',
+      async () => undefined,
+      undefined,
+      false,
+      'cssx',
+      undefined,
+      undefined,
+      false,
+      async () => [
+        {
+          id: '/project/server-component.tsx',
+          candidates: { 'p-4': 'atom' },
+          composites: { stable: ['atom'] },
+          atomicClasses: [],
+          origins: {},
+        },
+      ],
+    );
+
+    await processAssets?.();
+
+    expect(css).toContain('.stable');
+    expect(css).not.toContain('.atom');
+  });
+
   it('leaves stylesheet emission to the public Next client compiler', () => {
     let registered = false;
     const compilation: TestCompilation = {
@@ -214,6 +258,7 @@ describe('native bundler helpers', () => {
 
 function createCompiler(compilation: TestCompilation, name?: string): NativeCompiler {
   return {
+    context: '/project',
     ...(name ? { options: { name } } : {}),
     webpack: {
       Compilation: { PROCESS_ASSETS_STAGE_ADDITIONS: 0 },

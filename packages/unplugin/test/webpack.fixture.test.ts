@@ -15,7 +15,7 @@ describe('CSSX Webpack fixture', () => {
       mode: 'production',
       optimization: { minimize: false },
       output: { clean: true, filename: 'bundle.js', path: outputPath },
-      plugins: [cssxWebpack()],
+      plugins: [cssxWebpack({ stableClassNames: true })],
     });
     try {
       await mkdir(join(root, 'src'));

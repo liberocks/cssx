@@ -69,16 +69,17 @@ const stylesheet = await compileCssxStylesheet([
 
 ## Options
 
-| Option         | Default        | What it does                                                                                                                                                                                              |
-| -------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `importSource` | `@cssxio/cssx` | Module specifier that identifies source files to transform. A source file must contain this text and have a JavaScript or TypeScript extension.                                                           |
-| `cssFileName`  | `cssx.css`     | Relative CSS output path. It must be non-empty, end in `.css`, and stay within the bundler output directory. `[hash]` is replaced with a stable hash of the generated CSS.                                |
-| `sourceMap`    | `true`         | Whether to generate a separate CSS source map. Set it to `false` to omit both the `.css.map` file and source-map comment.                                                                                 |
-| `layer`        | —              | CSS layer name that wraps generated CSS. It must be a single valid layer identifier, such as `cssx`.                                                                                                      |
-| `theme`        | —              | Inline CSSX `@theme` source used while transforming and compiling CSS. The theme is compiled into generated rules; it does not add a global stylesheet.                                                   |
-| `themeFile`    | —              | Path, relative to the current working directory, to a CSSX `@theme` file. It is reread when CSS is generated; Rollup-compatible adapters register it as a watched dependency. Do not use it with `theme`. |
-| `darkMode`     | `media`        | Activates `dark:` utilities with the system color-scheme media query (`media`), `[data-theme=dark]` (`selector`), or a `.dark` ancestor (`class`). Use the selector that matches your theme controller.   |
-| `preflight`    | `false`        | Adds CSSX's opt-in browser baseline before utilities. It resets common element, link, form-control, button, and box-model defaults for utility-framework migrations.                                      |
+| Option             | Default        | What it does                                                                                                                                                                                              |
+| ------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `importSource`     | `@cssxio/cssx` | Module specifier that identifies source files to transform. A source file must contain this text and have a JavaScript or TypeScript extension.                                                           |
+| `cssFileName`      | `cssx.css`     | Relative CSS output path. It must be non-empty, end in `.css`, and stay within the bundler output directory. `[hash]` is replaced with a stable hash of the generated CSS.                                |
+| `stableClassNames` | `false`        | Uses source-addressed composite selectors. Enable it for native multi-process builds, such as a Next.js App Router build that transforms server and client modules independently.                         |
+| `sourceMap`        | `true`         | Whether to generate a separate CSS source map. Set it to `false` to omit both the `.css.map` file and source-map comment.                                                                                 |
+| `layer`            | —              | CSS layer name that wraps generated CSS. It must be a single valid layer identifier, such as `cssx`.                                                                                                      |
+| `theme`            | —              | Inline CSSX `@theme` source used while transforming and compiling CSS. The theme is compiled into generated rules; it does not add a global stylesheet.                                                   |
+| `themeFile`        | —              | Path, relative to the current working directory, to a CSSX `@theme` file. It is reread when CSS is generated; Rollup-compatible adapters register it as a watched dependency. Do not use it with `theme`. |
+| `darkMode`         | `media`        | Activates `dark:` utilities with the system color-scheme media query (`media`), `[data-theme=dark]` (`selector`), or a `.dark` ancestor (`class`). Use the selector that matches your theme controller.   |
+| `preflight`        | `false`        | Adds CSSX's opt-in browser baseline before utilities. It resets common element, link, form-control, button, and box-model defaults for utility-framework migrations.                                      |
 
 The universal adapter validates options when it is created. `theme` and `themeFile` cannot be used together. Invalid CSS paths and layer names fail the build before CSS is emitted.
 
@@ -89,6 +90,8 @@ already owns global element styles.
 ## Extracted CSS
 
 Each production adapter collects CSS from the source files used by the final build. It does not create a CSS file when no used file has CSSX utilities. The default file is `cssx.css`. Set `cssFileName` to use another relative path. CSSX emits one composite class in markup for each static style composition while sharing declarations across composite selectors in the stylesheet.
+
+When `stableClassNames: true` is used with webpack or Rspack, CSSX scans the project source tree before emitting its public stylesheet. This ensures one stylesheet includes server and client utility selectors even when the framework runs those transformations in separate processes.
 
 The Rollup-compatible adapters retain transformed module metadata until `generateBundle`, then emit CSS and its map as build assets. The webpack and Rspack adapters retain metadata on native modules and emit assets at the additions stage of `processAssets`. The direct esbuild adapter enables the metafile, removes data for source files absent from it, and generates CSS in `onEnd`.
 

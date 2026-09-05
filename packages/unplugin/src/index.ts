@@ -3,8 +3,9 @@ import { createUnplugin } from 'unplugin';
 import type { UnpluginFactory } from 'unplugin';
 import { Buffer } from 'node:buffer';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import { basename, dirname, resolve } from 'node:path';
+import { basename, dirname, relative, resolve, sep } from 'node:path';
 import { configureCompilationAsset, storeCompilationData, type NativeCompiler } from './native';
+import { scanProjectCssxSourceModules } from './project-scan';
 import {
   assertPluginOptions,
   loadTheme,
@@ -351,6 +352,9 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
           {
             ...options,
             classNameAllocator: sharedNativeState?.classNameAllocator ?? classNameAllocator,
+            ...(options.stableClassNames
+              ? { stableClassNameFileName: relative(root ?? process.cwd(), moduleId(id)).replaceAll(sep, '/') }
+              : {}),
           },
           sourceMapFromContext(this, id),
         );
@@ -479,10 +483,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
     ...(meta.framework === 'webpack'
       ? {
           webpack(compiler) {
-            const sharedNativeState = nativeBuildState(
-              compiler.context ?? compiler.options?.context ?? process.cwd(),
-              options,
-            );
+            const sharedNativeState = nativeBuildState(compiler.context, options);
             configureCompilationAsset(
               compiler as unknown as NativeCompiler,
               cssFileName,
@@ -493,6 +494,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
               sharedNativeState.transformedDataById,
               options.darkMode,
               options.preflight,
+              options.stableClassNames ? () => scanProjectCssxSourceModules(compiler.context, options) : undefined,
             );
           },
         }
@@ -500,10 +502,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
     ...(meta.framework === 'rspack'
       ? {
           rspack(compiler) {
-            const sharedNativeState = nativeBuildState(
-              compiler.context ?? compiler.options?.context ?? process.cwd(),
-              options,
-            );
+            const sharedNativeState = nativeBuildState(compiler.context, options);
             configureCompilationAsset(
               compiler as unknown as NativeCompiler,
               cssFileName,
@@ -514,6 +513,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
               sharedNativeState.transformedDataById,
               options.darkMode,
               options.preflight,
+              options.stableClassNames ? () => scanProjectCssxSourceModules(compiler.context, options) : undefined,
             );
           },
         }

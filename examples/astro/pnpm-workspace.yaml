@@ -1,3 +1,5 @@
+packages: []
+
 overrides:
   '@cssxio/cssx': link:../../packages/cssx
   '@cssxio/unplugin': link:../../packages/unplugin
