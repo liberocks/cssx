@@ -442,6 +442,7 @@ describe('unplugin lifecycle edges', () => {
 
 function nativeCompiler(compilation: any): NativeCompiler {
   return {
+    context: '/project',
     webpack: {
       Compilation: { PROCESS_ASSETS_STAGE_ADDITIONS: 0 },
       sources: {

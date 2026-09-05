@@ -75,6 +75,7 @@ export async function transformCssxModule(
   options: CssxPluginOptions & {
     readonly classNameAllocator?: ClassNameAllocator;
     readonly stableClassNames?: boolean;
+    readonly stableClassNameFileName?: string;
   } = {},
   inputSourceMap?: IncomingSourceMap,
 ): Promise<TransformResult | null> {
@@ -102,6 +103,7 @@ export async function transformCssxModule(
           theme,
           reusabilityBudget: options.reusabilityBudget,
           stableClassNames: options.stableClassNames,
+          stableClassNameFileName: options.stableClassNameFileName,
           darkMode: options.darkMode,
         },
       ],
@@ -153,6 +155,7 @@ async function transformAstroSxModule(
   options: CssxPluginOptions & {
     readonly classNameAllocator?: ClassNameAllocator;
     readonly stableClassNames?: boolean;
+    readonly stableClassNameFileName?: string;
   },
 ): Promise<TransformResult | null> {
   const calls = astroSxCalls(code);

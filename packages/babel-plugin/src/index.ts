@@ -52,7 +52,7 @@ export default function cssxBabelPlugin(
     visitor: {
       Program: {
         enter(_path, babelState) {
-          fileName = babelState.file.opts.filename ?? '';
+          fileName = options.stableClassNameFileName ?? babelState.file.opts.filename ?? '';
           state = {
             classNameAllocator: options.classNameAllocator ?? createClassNameAllocator(options.className),
             styles: new Map(),

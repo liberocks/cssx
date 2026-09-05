@@ -51,8 +51,8 @@ interface CompilationLike {
 export interface NativeCompiler {
   /** Compiler name when a multi-compiler build exposes one. */
   readonly name?: string;
-  /** Root directory of the native compilation when exposed by the bundler. */
-  readonly context?: string;
+  /** Root directory of the native compilation. */
+  readonly context: string;
   /** Native compiler options when the root directory is nested there. */
   readonly options?: { readonly context?: string; readonly name?: string };
   /** Bundler constructors, asset stage constants, and source constructors. */
@@ -130,6 +130,7 @@ export function configureCompilationAsset(
   transformedDataById?: ReadonlyMap<string, CssxSourceModule>,
   darkMode?: DarkMode,
   preflight = false,
+  projectSourceData?: (() => Promise<readonly CssxSourceModule[]>) | undefined,
 ): void {
   // Next writes server compiler assets beneath `.next/server`, where browsers
   // cannot load them. Its client compiler emits the public stylesheet, using
@@ -145,11 +146,22 @@ export function configureCompilationAsset(
         stage: compiler.webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONS,
       },
       async () => {
-        const sourceData = [...compilation.modules]
-          .map((module) => sourceDataFromModule(module, metadataKey))
-          .filter((data): data is CssxSourceModule => data !== undefined);
-        const allData = mergeCssxSourceModules(sourceData, transformedDataById?.values() ?? []);
-        const compiled = await compileCssxStylesheet(allData, await getTheme(), layer, sourceMap, darkMode, preflight);
+        const sourceData = projectSourceData
+          ? await projectSourceData()
+          : mergeCssxSourceModules(
+              [...compilation.modules]
+                .map((module) => sourceDataFromModule(module, metadataKey))
+                .filter((data): data is CssxSourceModule => data !== undefined),
+              transformedDataById?.values() ?? [],
+            );
+        const compiled = await compileCssxStylesheet(
+          sourceData,
+          await getTheme(),
+          layer,
+          sourceMap,
+          darkMode,
+          preflight,
+        );
         if (!compiled.css) {
           return;
         }

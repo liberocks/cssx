@@ -15,7 +15,7 @@ describe('CSSX Rspack fixture', () => {
       mode: 'production',
       optimization: { minimize: false },
       output: { clean: true, filename: 'bundle.js', path: outputPath },
-      plugins: [cssxRspack()],
+      plugins: [cssxRspack({ stableClassNames: true })],
     });
     try {
       await mkdir(join(root, 'src'));

@@ -4,6 +4,13 @@ import { unpluginFactory } from '../src/index';
 import { pluginFor, source, transformRequired } from './transform-helpers';
 
 describe('CSSX unplugin transform', () => {
+  it('uses source-addressed class names outside native compiler contexts', async () => {
+    const plugin = unpluginFactory({ stableClassNames: true }, { framework: 'vite', versions: {} } as never) as any;
+    const transformed = await plugin.transform.handler(source, '/project/styles.ts');
+
+    expect(transformed.code).toMatch(/c: "[a-z0-9]+"/);
+  });
+
   it('does not emit a Rollup or Vite asset for an empty final graph', async () => {
     const plugin = pluginFor('vite');
     const emitted: unknown[] = [];
