@@ -99,11 +99,12 @@ jobs:
         id: release_commit
         run: |
           node scripts/release-plan.mjs apply --input "$RUNNER_TEMP/release-plan.json"
+          pnpm install --lockfile-only --no-frozen-lockfile --config.link-workspace-packages=true
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           release_branch="release/$BUMP-$GITHUB_RUN_ID"
           git switch --create "$release_branch"
-          git add packages/*/package.json examples/*/package.json
+          git add pnpm-lock.yaml packages/*/package.json examples/*/package.json
           git commit -m "chore(release): publish $BUMP releases"
           git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --set-upstream origin "$release_branch"
