@@ -244,7 +244,7 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('border-color:oklch(92.49% 0.005 214.3)');
 
     const addedFamilies = await compileUtilities(
-      ['bg-deep-orange-500', 'text-blue-gray-950', 'border-light-green-200'],
+      ['bg-vermilion-500', 'text-steel-950', 'border-mint-200'],
       (candidate) => `x-${candidate}`,
     );
 
