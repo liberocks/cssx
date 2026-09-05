@@ -316,6 +316,19 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('@media (width < 48rem)');
   });
 
+  it('supports class-based dark mode', async () => {
+    const result = await compileUtilities(
+      ['dark:text-white'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+      '',
+      {},
+      undefined,
+      { darkMode: 'class' },
+    );
+
+    expect(result.css).toContain('.x-dark-text-white:where(.dark, .dark *){color:#fff;}');
+  });
+
   it('emits selector-based dark utilities after their base utilities', async () => {
     const result = await compileUtilities(
       ['bg-white', 'hover:bg-slate-100', 'dark:bg-slate-950', 'dark:hover:bg-slate-800'],

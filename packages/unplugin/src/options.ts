@@ -18,7 +18,7 @@ export interface CssxPluginOptions {
   readonly layer?: string;
   /** Controls how aggressively static styles share generated class fragments. */
   readonly reusabilityBudget?: ReusabilityBudget;
-  /** Activates `dark` variants with a media query or a `[data-theme=dark]` selector. */
+  /** Activates `dark` variants with a media query, `[data-theme=dark]`, or a `.dark` class. */
   readonly darkMode?: DarkMode;
   /** Adds CSSX's optional browser reset before generated utility rules. */
   readonly preflight?: boolean;
@@ -53,8 +53,13 @@ export function assertPluginOptions(options: CssxPluginOptions): void {
   if (options.sourceMap !== undefined && typeof options.sourceMap !== 'boolean') {
     throw new Error('CSSX sourceMap must be a boolean.');
   }
-  if (options.darkMode !== undefined && options.darkMode !== 'media' && options.darkMode !== 'selector') {
-    throw new Error('CSSX darkMode must be "media" or "selector".');
+  if (
+    options.darkMode !== undefined &&
+    options.darkMode !== 'media' &&
+    options.darkMode !== 'selector' &&
+    options.darkMode !== 'class'
+  ) {
+    throw new Error('CSSX darkMode must be "media", "selector", or "class".');
   }
   if (options.preflight !== undefined && typeof options.preflight !== 'boolean') {
     throw new Error('CSSX preflight must be a boolean.');

@@ -25,8 +25,9 @@ describe('unplugin options', () => {
     expect(() => assertPluginOptions({ cssFileName: 'styles.txt' })).toThrow('must end in .css');
     expect(() => assertPluginOptions({ sourceMap: 'false' } as never)).toThrow('sourceMap must be a boolean');
     expect(() => assertPluginOptions({ darkMode: 'system' as never })).toThrow(
-      'darkMode must be "media" or "selector"',
+      'darkMode must be "media", "selector", or "class"',
     );
+    expect(() => assertPluginOptions({ darkMode: 'class' })).not.toThrow();
     expect(() => assertPluginOptions({ preflight: 'true' as never })).toThrow('preflight must be a boolean');
     expect(() => assertPluginOptions({ preflight: true })).not.toThrow();
     expect(() => assertPluginOptions({ reusabilityBudget: Number.NaN })).toThrow('reusabilityBudget');

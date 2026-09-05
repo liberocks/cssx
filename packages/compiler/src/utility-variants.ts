@@ -3,11 +3,11 @@ import { resolveThemeValue, type CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 
 /** Controls how the `dark` variant is activated. */
-export type DarkMode = 'media' | 'selector';
+export type DarkMode = 'media' | 'selector' | 'class';
 
 /** Options that affect how variants are rendered. */
 export interface VariantOptions {
-  /** Activates `dark` variants with a media query or a `[data-theme=dark]` selector. */
+  /** Activates `dark` variants with a media query, `[data-theme=dark]`, or a `.dark` class. */
   readonly darkMode?: DarkMode;
 }
 
@@ -92,9 +92,10 @@ export function applyVariants(
         selectorSuffix = '';
       }
     } else if (variant === 'dark') {
-      if (options.darkMode === 'selector') {
+      if (options.darkMode && options.darkMode !== 'media') {
+        const darkSelector = options.darkMode === 'class' ? '.dark' : '[data-theme=dark]';
         renderedSelectors = renderedSelectors.map(
-          (selector) => `${selector}:where([data-theme=dark], [data-theme=dark] *)`,
+          (selector) => `${selector}:where(${darkSelector}, ${darkSelector} *)`,
         );
       } else {
         atRules.push('@media (prefers-color-scheme: dark)');

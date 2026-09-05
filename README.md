@@ -169,6 +169,15 @@ Selector mode emits rules that match an element with `data-theme="dark"` or a
 descendant of it. Use `media` (or omit `darkMode`) when the operating-system
 preference should control dark utilities.
 
+For class-based theme controllers such as `next-themes`, use class mode:
+
+```ts
+cssx({ darkMode: 'class' });
+```
+
+Class mode emits rules that match an element with the `dark` class or a
+descendant of it.
+
 ## Custom tokens
 
 Load custom fonts in your app stylesheet when you need them. CSSX does not
