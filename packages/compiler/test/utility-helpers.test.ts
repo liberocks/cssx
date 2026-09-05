@@ -93,7 +93,27 @@ describe('utility helper edge cases', () => {
     expect(compileOutlineUtility('outline-hidden', false, theme)).toHaveLength(2);
     expect(compileOutlineUtility('outline-offset-2', true, theme)?.[0]).toEqual({
       property: 'outline-offset',
-      value: 'calc(0.25rem * -2)',
+      value: '-2px',
+    });
+    expect(compileOutlineUtility('outline-offset-8', false, theme)?.[0]).toEqual({
+      property: 'outline-offset',
+      value: '8px',
+    });
+    expect(compileOutlineUtility('outline-offset-[3px]', true, theme)?.[0]).toEqual({
+      property: 'outline-offset',
+      value: '-3px',
+    });
+    expect(compileOutlineUtility('outline-offset-[var(--offset)]', true, theme)?.[0]).toEqual({
+      property: 'outline-offset',
+      value: 'calc(var(--offset) * -1)',
+    });
+    expect(compileOutlineUtility('outline-offset-[calc(1px+2px)]', true, theme)?.[0]).toEqual({
+      property: 'outline-offset',
+      value: 'calc(calc(1px+2px) * -1)',
+    });
+    expect(compileOutlineUtility('outline-offset-0', true, theme)?.[0]).toEqual({
+      property: 'outline-offset',
+      value: '0',
     });
     expect(compileOutlineUtility('outline-[3px]', false, theme)?.[0]).toEqual({
       property: 'outline-width',

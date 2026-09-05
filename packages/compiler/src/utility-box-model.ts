@@ -241,8 +241,19 @@ export function compileOutlineUtility(
 
   const offset = /^outline-offset-(.+)$/.exec(utility);
   if (offset) {
-    const value = resolveSpacingValue(offset[1]!, negative, theme);
-    return value ? [{ property: 'outline-offset', value }] : null;
+    const raw = offset[1]!;
+    // Tailwind's numbered outline offsets are literal pixels, not spacing units.
+    const value = raw === '1' ? '1px' : resolveBorderWidthValue(raw);
+    if (!value) {
+      return null;
+    }
+    const offsetValue =
+      negative && value !== '0'
+        ? value.startsWith('var(') || value.startsWith('calc(')
+          ? `calc(${value} * -1)`
+          : `-${value}`
+        : value;
+    return [{ property: 'outline-offset', value: offsetValue }];
   }
   const width = /^outline-(0|1|2|4|8|\[[^\]]+\])$/.exec(utility);
   if (width) {

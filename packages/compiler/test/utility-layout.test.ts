@@ -77,7 +77,7 @@ describe('CSSX utility compiler', () => {
 
     expect(result.css).toContain('.x-outline-2{outline-width:2px;}');
     expect(result.css).toContain('.x-outline-dashed{outline-style:dashed;}');
-    expect(result.css).toContain('.x-outline-offset-2{outline-offset:calc(0.25rem * 2);}');
+    expect(result.css).toContain('.x-outline-offset-2{outline-offset:2px;}');
     expect(result.css).toContain('.x-outline-blue-500-50{outline-color:color-mix(in srgb, #3b82f6 50%, transparent);}');
     expect(result.css).toContain('.x-focus-outline-hidden:focus{outline:2px solid transparent;outline-offset:2px;}');
   });
