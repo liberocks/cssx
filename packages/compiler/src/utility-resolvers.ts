@@ -49,7 +49,10 @@ export function resolveSpacingValue(raw: string, negative: boolean, theme: CssxT
     return null;
   }
   const spacing = resolveThemeToken(theme, '--spacing');
-  return spacing ? `${sign}calc(${spacing} * ${raw})` : null;
+  if (!spacing) {
+    return null;
+  }
+  return negative ? `calc(${spacing} * -${raw})` : `calc(${spacing} * ${raw})`;
 }
 
 /**

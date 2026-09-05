@@ -90,7 +90,7 @@ describe('CSSX utility compiler', () => {
 
     expect(result.css).toContain('.x-px-4{padding-left:calc(0.25rem * 4);padding-right:calc(0.25rem * 4);}');
     expect(result.css).toContain('.x-ps-4{padding-inline-start:calc(0.25rem * 4);}');
-    expect(result.css).toContain('.x--me-2{margin-inline-end:-calc(0.25rem * 2);}');
+    expect(result.css).toContain('.x--me-2{margin-inline-end:calc(0.25rem * -2);}');
     expect(result.css).toContain('.x-inset-s-1-2{inset-inline-start:50%;}');
     expect(result.css).toContain('.x-inset-e-4{inset-inline-end:calc(0.25rem * 4);}');
   });
@@ -161,7 +161,7 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('grid-auto-columns:minmax(0, 1fr)');
     expect(result.css).toContain('grid-auto-rows:max-content');
     expect(result.css).toContain('scroll-margin-left:calc(0.25rem * 4);scroll-margin-right:calc(0.25rem * 4)');
-    expect(result.css).toContain('scroll-padding-top:-calc(0.25rem * 2)');
+    expect(result.css).toContain('scroll-padding-top:calc(0.25rem * -2)');
     expect(result.css).toContain('scroll-padding:calc(0.25rem * 1)');
   });
 

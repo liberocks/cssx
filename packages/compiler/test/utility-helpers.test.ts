@@ -45,6 +45,7 @@ describe('utility helper edge cases', () => {
     expect(resolveSpacingValue('px', true, theme)).toBe('-1px');
     expect(resolveSpacingValue('full', false, theme)).toBe('100%');
     expect(resolveSpacingValue('[3ch]', false, theme)).toBe('3ch');
+    expect(resolveSpacingValue('2', true, theme)).toBe('calc(0.25rem * -2)');
     expect(flexValue('1/0')).toBeNull();
     expect(resolveDimensionValue('1/0', false, theme, 'w')).toBeNull();
     expect(splitColorModifier('[url("a/b")]/50')).toEqual({ value: '[url("a/b")]', opacity: '50' });
@@ -92,7 +93,7 @@ describe('utility helper edge cases', () => {
     expect(compileOutlineUtility('outline-hidden', false, theme)).toHaveLength(2);
     expect(compileOutlineUtility('outline-offset-2', true, theme)?.[0]).toEqual({
       property: 'outline-offset',
-      value: '-calc(0.25rem * 2)',
+      value: 'calc(0.25rem * -2)',
     });
     expect(compileOutlineUtility('outline-[3px]', false, theme)?.[0]).toEqual({
       property: 'outline-width',

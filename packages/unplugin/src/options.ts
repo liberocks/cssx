@@ -20,6 +20,8 @@ export interface CssxPluginOptions {
   readonly reusabilityBudget?: ReusabilityBudget;
   /** Activates `dark` variants with a media query or a `[data-theme=dark]` selector. */
   readonly darkMode?: DarkMode;
+  /** Adds CSSX's optional browser reset before generated utility rules. */
+  readonly preflight?: boolean;
 }
 
 /**
@@ -53,6 +55,9 @@ export function assertPluginOptions(options: CssxPluginOptions): void {
   }
   if (options.darkMode !== undefined && options.darkMode !== 'media' && options.darkMode !== 'selector') {
     throw new Error('CSSX darkMode must be "media" or "selector".');
+  }
+  if (options.preflight !== undefined && typeof options.preflight !== 'boolean') {
+    throw new Error('CSSX preflight must be a boolean.');
   }
   if (
     options.reusabilityBudget !== undefined &&

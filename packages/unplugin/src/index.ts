@@ -305,7 +305,14 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
             const metadata = dataFromMetadata(this.getModuleInfo(id)?.meta);
             return Object.keys(metadata.candidates).length > 0 ? metadata : (rollupDataById.get(id) ?? metadata);
           });
-    const compiled = await compileCssxStylesheet(data, await getTheme(), options.layer, sourceMap, options.darkMode);
+    const compiled = await compileCssxStylesheet(
+      data,
+      await getTheme(),
+      options.layer,
+      sourceMap,
+      options.darkMode,
+      options.preflight,
+    );
     if (!compiled.css) {
       return;
     }
@@ -404,7 +411,14 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
           }
           void getTheme()
             .then((theme) =>
-              compileCssxStylesheet([...rollupDataById.values()], theme, options.layer, sourceMap, options.darkMode),
+              compileCssxStylesheet(
+                [...rollupDataById.values()],
+                theme,
+                options.layer,
+                sourceMap,
+                options.darkMode,
+                options.preflight,
+              ),
             )
             .then((compiled) => {
               if (pathname === `${cssPath}.map`) {
@@ -478,6 +492,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
               RULES_METADATA_KEY,
               sharedNativeState.transformedDataById,
               options.darkMode,
+              options.preflight,
             );
           },
         }
@@ -498,6 +513,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
               RULES_METADATA_KEY,
               sharedNativeState.transformedDataById,
               options.darkMode,
+              options.preflight,
             );
           },
         }
@@ -528,6 +544,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
                   options.layer,
                   sourceMap,
                   options.darkMode,
+                  options.preflight,
                 );
                 const assetPath = resolveEsbuildAssetPath(
                   workingDirectory,

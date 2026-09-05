@@ -131,6 +131,44 @@ export default {
 };
 ```
 
+### Global CSS and dark mode
+
+CSSX emits utility rules only. It does not include a browser reset or Tailwind
+Preflight, and it does not load fonts or add global element styles. Keep global
+styles such as `box-sizing`, body margin, inherited typography, link treatment,
+and form-control normalization in your application stylesheet. This makes a
+reset an explicit application choice instead of changing the defaults of every
+CSSX project.
+
+Set `preflight: true` in a build adapter to add CSSX's opt-in browser baseline
+before generated utilities. It resets common box-model, link, form-control,
+and button defaults for utility-framework migrations while preserving a visible
+browser focus indicator. Leave it off when your application already supplies a
+global reset.
+
+```ts
+cssx({ preflight: true });
+```
+
+The `dark:` variant defaults to the operating-system preference:
+
+```css
+@media (prefers-color-scheme: dark) {
+  /* dark utility rules */
+}
+```
+
+For an application-controlled theme switcher that sets `data-theme="dark"`,
+configure selector mode in the build adapter:
+
+```ts
+cssx({ darkMode: 'selector' });
+```
+
+Selector mode emits rules that match an element with `data-theme="dark"` or a
+descendant of it. Use `media` (or omit `darkMode`) when the operating-system
+preference should control dark utilities.
+
 ## Custom tokens
 
 Load custom fonts in your app stylesheet when you need them. CSSX does not

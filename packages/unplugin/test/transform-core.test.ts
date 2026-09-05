@@ -102,6 +102,25 @@ describe('CSSX unplugin transform', () => {
     expect(stylesheet.map).toBeUndefined();
   });
 
+  it('adds the opt-in preflight before utility rules, including when no utilities are present', async () => {
+    const stylesheet = await compileCssxStylesheet(
+      [{ id: '/project/button.ts', candidates: { 'p-4': 'cssx-padding' } }],
+      undefined,
+      undefined,
+      false,
+      undefined,
+      true,
+    );
+
+    expect(stylesheet.css).toContain('box-sizing:border-box');
+    expect(stylesheet.css).toContain('button,input,select,optgroup,textarea');
+    expect(stylesheet.css.indexOf('box-sizing:border-box')).toBeLessThan(stylesheet.css.indexOf('.cssx-padding{'));
+    const resetOnly = await compileCssxStylesheet([], undefined, undefined, false, undefined, true);
+    expect(resetOnly.css).toContain('body{margin:0;line-height:inherit}');
+    const layeredResetOnly = await compileCssxStylesheet([], undefined, 'cssx', false, undefined, true);
+    expect(layeredResetOnly.css).toMatch(/^@layer cssx\{/);
+  });
+
   it('retains candidate source locations in final CSS mappings', async () => {
     const transformed = await transformRequired(
       "import * as cssx from '@cssxio/cssx';\nexport const styles = cssx.create({ root: 'p-4' });",
