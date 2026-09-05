@@ -117,6 +117,8 @@ describe('CSSX unplugin transform', () => {
     expect(stylesheet.css.indexOf('box-sizing:border-box')).toBeLessThan(stylesheet.css.indexOf('.cssx-padding{'));
     const resetOnly = await compileCssxStylesheet([], undefined, undefined, false, undefined, true);
     expect(resetOnly.css).toContain('body{margin:0;line-height:inherit}');
+    const layeredResetOnly = await compileCssxStylesheet([], undefined, 'cssx', false, undefined, true);
+    expect(layeredResetOnly.css).toMatch(/^@layer cssx\{/);
   });
 
   it('retains candidate source locations in final CSS mappings', async () => {
