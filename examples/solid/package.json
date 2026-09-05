@@ -12,7 +12,7 @@
     "solid-js": "^1.9.0"
   },
   "devDependencies": {
-    "@cssxio/unplugin": "^0.4.4",
+    "@cssxio/unplugin": "^0.4.5",
     "typescript": "^5.9.0",
     "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.0"

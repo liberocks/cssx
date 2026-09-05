@@ -14,7 +14,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@cssxio/unplugin": "^0.4.4",
+    "@cssxio/unplugin": "^0.4.5",
     "@types/react": "19.2.18",
     "typescript": "^5.9.0"
   }
