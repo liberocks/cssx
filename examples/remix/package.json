@@ -8,7 +8,7 @@
     "start": "remix-serve ./build/server/index.js"
   },
   "dependencies": {
-    "@cssxio/cssx": "^0.4.1",
+    "@cssxio/cssx": "^0.4.2",
     "@remix-run/node": "^2.17.0",
     "@remix-run/react": "^2.17.0",
     "@remix-run/serve": "^2.17.0",
