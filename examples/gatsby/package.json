@@ -14,8 +14,8 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@cssxio/babel-plugin": "^0.4.1",
-    "@cssxio/unplugin": "^0.4.1",
+    "@cssxio/babel-plugin": "^0.4.2",
+    "@cssxio/unplugin": "^0.4.2",
     "@types/react": "^18.3.12",
     "typescript": "^5.9.0"
   }
