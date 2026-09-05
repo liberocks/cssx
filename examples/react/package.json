@@ -12,7 +12,7 @@
     "react-scripts": "^5.0.1"
   },
   "devDependencies": {
-    "@cssxio/unplugin": "^0.4.3",
+    "@cssxio/unplugin": "^0.4.4",
     "react-app-rewired": "^2.2.1"
   },
   "browserslist": {
