@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/react-native",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "CSSX utility styling runtime and compiler transform for React Native and Expo.",
   "license": "MIT",
   "repository": {
@@ -32,7 +32,7 @@
     "build": "tsup src/index.ts src/babel.ts --format esm,cjs --dts --external @babel/core --clean"
   },
   "dependencies": {
-    "@cssxio/compiler": "^0.2.0"
+    "@cssxio/compiler": "^0.4.1"
   },
   "peerDependencies": {
     "@babel/core": "^7.28.0"
