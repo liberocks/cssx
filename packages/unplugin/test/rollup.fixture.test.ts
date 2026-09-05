@@ -100,7 +100,7 @@ describe('CSSX Rollup fixture', () => {
       const rebuiltCss = rebuilt.output.find(
         (output): output is OutputAsset => output.type === 'asset' && output.fileName === 'cssx.css',
       );
-      expect(String(rebuiltCss?.source)).toContain('background-color:#ef4444');
+      expect(String(rebuiltCss?.source)).toContain('background-color:oklch(63.71% 0.237 25.331)');
       expect(String(rebuiltCss?.source)).not.toContain('padding:calc(0.25rem * 4)');
     } finally {
       await rebuiltBundle?.close();
@@ -130,7 +130,7 @@ describe('CSSX Rollup fixture', () => {
       );
       await rebuilt;
       const css = await readFile(join(output, 'cssx.css'), 'utf8');
-      expect(css).toContain('background-color:#ef4444');
+      expect(css).toContain('background-color:oklch(63.71% 0.237 25.331)');
       expect(css).not.toContain('padding:calc(0.25rem * 4)');
     } finally {
       await watcher?.close();

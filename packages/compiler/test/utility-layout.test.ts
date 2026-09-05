@@ -53,7 +53,7 @@ describe('CSSX utility compiler', () => {
     );
     expect(result.css).toContain('.x-divide-y-reverse > :not(:last-child){--cssx-divide-y-reverse:1;}');
     expect(result.css).toContain(
-      '.x-divide-red-500-50 > :not(:last-child){border-color:color-mix(in srgb, #ef4444 50%, transparent);}',
+      '.x-divide-red-500-50 > :not(:last-child){border-color:color-mix(in srgb, oklch(63.71% 0.237 25.331) 50%, transparent);}',
     );
   });
 
@@ -66,7 +66,7 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain(
       '.x-placeholder-slate-500-75::placeholder{color:color-mix(in srgb, oklch(55.42% 0.046 257.417) 75%, transparent);}',
     );
-    expect(result.css).toContain('.x-focus-placeholder-red-500:focus::placeholder{color:#ef4444;}');
+    expect(result.css).toContain('.x-focus-placeholder-red-500:focus::placeholder{color:oklch(63.71% 0.237 25.331);}');
   });
 
   it('compiles outline width, style, offset, and colors as independent declarations', async () => {
@@ -78,7 +78,9 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('.x-outline-2{outline-width:2px;}');
     expect(result.css).toContain('.x-outline-dashed{outline-style:dashed;}');
     expect(result.css).toContain('.x-outline-offset-2{outline-offset:2px;}');
-    expect(result.css).toContain('.x-outline-blue-500-50{outline-color:color-mix(in srgb, #3b82f6 50%, transparent);}');
+    expect(result.css).toContain(
+      '.x-outline-blue-500-50{outline-color:color-mix(in srgb, oklch(62.27% 0.214 259.815) 50%, transparent);}',
+    );
     expect(result.css).toContain('.x-focus-outline-hidden:focus{outline:2px solid transparent;outline-offset:2px;}');
   });
 
@@ -192,17 +194,19 @@ describe('CSSX utility compiler', () => {
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
     );
 
-    expect(result.css).toContain('accent-color:#3b82f6');
+    expect(result.css).toContain('accent-color:oklch(62.27% 0.214 259.815)');
     expect(result.css).toContain('appearance:none');
-    expect(result.css).toContain('caret-color:#ef4444');
+    expect(result.css).toContain('caret-color:oklch(63.71% 0.237 25.331)');
     expect(result.css).toContain('color-scheme:only dark');
     expect(result.css).toContain('field-sizing:content');
     expect(result.css).toContain('resize:horizontal');
     expect(result.css).toContain('scroll-behavior:smooth');
     expect(result.css).toContain('scrollbar-gutter:stable both-edges');
     expect(result.css).toContain('scrollbar-width:thin');
-    expect(result.css).toContain('--cssx-scrollbar-thumb:#ef4444');
-    expect(result.css).toContain('--cssx-scrollbar-track:color-mix(in srgb, #3b82f6 50%, transparent)');
+    expect(result.css).toContain('--cssx-scrollbar-thumb:oklch(63.71% 0.237 25.331)');
+    expect(result.css).toContain(
+      '--cssx-scrollbar-track:color-mix(in srgb, oklch(62.27% 0.214 259.815) 50%, transparent)',
+    );
     expect(result.css).toContain(
       'scrollbar-color:var(--cssx-scrollbar-thumb, #0000) var(--cssx-scrollbar-track, #0000)',
     );
@@ -212,8 +216,8 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('scroll-snap-stop:normal');
     expect(result.css).toContain('scroll-snap-stop:always');
     expect(result.css).toContain('scroll-snap-align:center');
-    expect(result.css).toContain('fill:#22c55e');
-    expect(result.css).toContain('stroke:#3b82f6');
+    expect(result.css).toContain('fill:oklch(72.32% 0.219 149.579)');
+    expect(result.css).toContain('stroke:oklch(62.27% 0.214 259.815)');
     expect(result.css).toContain('stroke-width:3px');
     expect(result.css).toContain('forced-color-adjust:none');
   });
@@ -294,7 +298,7 @@ describe('CSSX utility compiler', () => {
       (candidate) => `x-${candidate}`,
     );
 
-    expect(result.css).toContain('text-decoration-color:#ef4444');
+    expect(result.css).toContain('text-decoration-color:oklch(63.71% 0.237 25.331)');
     expect(result.css).toContain('text-decoration-style:wavy');
     expect(result.css).toContain('text-decoration-thickness:2px');
     expect(result.css).toContain('text-underline-offset:calc(0.25rem * 4)');

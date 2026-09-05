@@ -65,7 +65,7 @@ describe('CSSX Webpack fixture', () => {
       });
       expect(rebuilt.hasErrors()).toBe(false);
       const rebuiltCss = await readFile(join(outputPath, 'cssx.css'), 'utf8');
-      expect(rebuiltCss).toContain('background-color:#ef4444');
+      expect(rebuiltCss).toContain('background-color:oklch(63.71% 0.237 25.331)');
       expect(rebuiltCss).not.toContain('padding:calc(0.25rem * 3)');
     } finally {
       await new Promise<void>((resolvePromise, reject) =>

@@ -24,7 +24,7 @@ export interface CssxPluginOptions {
   readonly stableClassNames?: boolean;
   /** Activates `dark` variants with a media query, `[data-theme=dark]`, or a `.dark` class. */
   readonly darkMode?: DarkMode;
-  /** Adds CSSX's optional browser reset before generated utility rules. */
+  /** Adds Tailwind-compatible browser baseline rules before generated utilities. Defaults to `true`. */
   readonly preflight?: boolean;
 }
 

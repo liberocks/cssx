@@ -117,7 +117,7 @@ export function storeCompilationData(
  * @param metadataKey Key used to read transformed module data.
  * @param transformedDataById Transformed source data retained outside native loader metadata.
  * @param darkMode Controls how the `dark` variant is activated.
- * @param preflight Whether to add the optional browser baseline before utility rules.
+ * @param preflight Whether to add the Tailwind-compatible browser baseline before utility rules.
  * @returns Nothing after registering the compilation asset handler.
  */
 export function configureCompilationAsset(
@@ -129,7 +129,7 @@ export function configureCompilationAsset(
   metadataKey: string,
   transformedDataById?: ReadonlyMap<string, CssxSourceModule>,
   darkMode?: DarkMode,
-  preflight = false,
+  preflight = true,
   projectSourceData?: (() => Promise<readonly CssxSourceModule[]>) | undefined,
 ): void {
   // Next writes server compiler assets beneath `.next/server`, where browsers

@@ -2,8 +2,8 @@ import { transformCssxModule, unpluginFactory } from '../src/index';
 
 export const source = `import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'p-5 bg-red-500' });`;
 
-export function pluginFor(framework: 'vite' | 'webpack' | 'rspack' | 'esbuild') {
-  return unpluginFactory({}, { framework, versions: {} } as never) as any;
+export function pluginFor(framework: 'vite' | 'webpack' | 'rspack' | 'esbuild', options: Record<string, unknown> = {}) {
+  return unpluginFactory(options, { framework, versions: {} } as never) as any;
 }
 
 export async function transformRequired(

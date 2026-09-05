@@ -24,7 +24,7 @@ describe('CSSX utility compiler', () => {
     );
 
     expect(result.css).toContain('border-width:1px');
-    expect(result.css).toContain('border-color:#ef4444');
+    expect(result.css).toContain('border-color:oklch(63.71% 0.237 25.331)');
     expect(result.css).toContain('--cssx-shadow:0 4px 6px -1px');
     expect(result.css).toContain('transition-duration:200ms');
     expect(result.css).toContain('transition-behavior:normal');
@@ -154,9 +154,9 @@ describe('CSSX utility compiler', () => {
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
     );
 
-    expect(result.css).toContain('background-color:color-mix(in srgb, #ef4444 50%, transparent)');
+    expect(result.css).toContain('background-color:color-mix(in srgb, oklch(63.71% 0.237 25.331) 50%, transparent)');
     expect(result.css).toContain('color:color-mix(in srgb, #fff 37.5%, transparent)');
-    expect(result.css).toContain('border-color:color-mix(in srgb, #2563eb 0%, transparent)');
+    expect(result.css).toContain('border-color:color-mix(in srgb, oklch(54.62% 0.245 262.881) 0%, transparent)');
   });
 
   it('compiles linear gradients, color stops, opacity, and stop positions', async () => {
@@ -168,9 +168,11 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain(
       'background-image:linear-gradient(in oklch to right, var(--cssx-gradient-via-stops, var(--cssx-gradient-stops)))',
     );
-    expect(result.css).toContain('--cssx-gradient-from:color-mix(in srgb, #ef4444 50%, transparent)');
+    expect(result.css).toContain(
+      '--cssx-gradient-from:color-mix(in srgb, oklch(63.71% 0.237 25.331) 50%, transparent)',
+    );
     expect(result.css).toContain('--cssx-gradient-from-position:10%');
-    expect(result.css).toContain('--cssx-gradient-via:#3b82f6');
+    expect(result.css).toContain('--cssx-gradient-via:oklch(62.27% 0.214 259.815)');
     expect(result.css).toContain('--cssx-gradient-via-position:45%');
     expect(result.css).toContain('--cssx-gradient-to:transparent');
     expect(result.css).toContain('--cssx-gradient-to-position:90%');
@@ -184,7 +186,7 @@ describe('CSSX utility compiler', () => {
 
     expect(result.css).toContain('--cssx-shadow:0 1px 2px 0 rgb(0 0 0 / .05)');
     expect(result.css).toContain('--cssx-ring-width:2px');
-    expect(result.css).toContain('--cssx-ring-color:color-mix(in srgb, #3b82f6 50%, transparent)');
+    expect(result.css).toContain('--cssx-ring-color:color-mix(in srgb, oklch(62.27% 0.214 259.815) 50%, transparent)');
     expect(result.css).toContain('--cssx-ring-offset-width:2px');
     expect(result.css).toContain('--cssx-ring-offset-color:#fff');
     expect(result.css).toContain(

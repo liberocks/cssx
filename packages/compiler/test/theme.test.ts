@@ -6,7 +6,7 @@ describe('CSSX theme parsing', () => {
     const theme = parseTheme('@theme { --spacing: 2px; --color-brand: #123456; }');
     expect(resolveThemeToken(theme, '--spacing')).toBe('2px');
     expect(resolveThemeToken(theme, '--color-brand')).toBe('#123456');
-    expect(resolveThemeToken(theme, '--color-red-500')).toBe('#ef4444');
+    expect(resolveThemeToken(theme, '--color-red-500')).toBe('oklch(63.71% 0.237 25.331)');
   });
 
   it('includes every documented color family and its full 50–950 scale', () => {

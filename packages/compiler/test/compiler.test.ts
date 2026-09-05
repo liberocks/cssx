@@ -320,7 +320,7 @@ describe('CSSX compiler', () => {
 
     expect(mergeCompiledStyles([style])).toBe(`${result.classes['p-5']} ${result.classes['bg-red-500']}`);
     expect(css).toContain('padding:calc(0.25rem * 5)');
-    expect(css).toContain('background-color:#ef4444');
+    expect(css).toContain('background-color:oklch(63.71% 0.237 25.331)');
     expect(css).not.toContain('.p-5');
     expect(css).not.toContain('.bg-red-500');
   });

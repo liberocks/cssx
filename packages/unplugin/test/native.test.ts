@@ -29,7 +29,7 @@ describe('native bundler helpers', () => {
     expect(module.buildInfo).toEqual({ cssx: { candidates: { 'p-4': 'x' } } });
   });
 
-  it('skips empty stylesheets and rejects occupied native asset names', async () => {
+  it('skips empty stylesheets when preflight is explicitly disabled and rejects occupied native asset names', async () => {
     let processAssets: (() => Promise<void>) | undefined;
     const emitted: string[] = [];
     const compilation: TestCompilation = {
@@ -45,7 +45,17 @@ describe('native bundler helpers', () => {
       emitAsset: (fileName: string) => emitted.push(fileName),
     };
     const compiler = createCompiler(compilation);
-    configureCompilationAsset(compiler, 'cssx.css', async () => undefined, undefined, true, 'cssx');
+    configureCompilationAsset(
+      compiler,
+      'cssx.css',
+      async () => undefined,
+      undefined,
+      true,
+      'cssx',
+      undefined,
+      undefined,
+      false,
+    );
     await processAssets?.();
     expect(emitted).toEqual([]);
 

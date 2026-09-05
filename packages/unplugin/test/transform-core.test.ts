@@ -102,23 +102,38 @@ describe('CSSX unplugin transform', () => {
     expect(stylesheet.map).toBeUndefined();
   });
 
-  it('adds the opt-in preflight before utility rules, including when no utilities are present', async () => {
+  it('adds the Tailwind-compatible preflight by default before utility rules, including when no utilities are present', async () => {
     const stylesheet = await compileCssxStylesheet(
       [{ id: '/project/button.ts', candidates: { 'p-4': 'cssx-padding' } }],
       undefined,
       undefined,
       false,
       undefined,
-      true,
     );
 
     expect(stylesheet.css).toContain('box-sizing:border-box');
+    expect(stylesheet.css).toContain('font-family:ui-sans-serif,system-ui,sans-serif');
     expect(stylesheet.css).toContain('button,input,select,optgroup,textarea');
     expect(stylesheet.css.indexOf('box-sizing:border-box')).toBeLessThan(stylesheet.css.indexOf('.cssx-padding{'));
-    const resetOnly = await compileCssxStylesheet([], undefined, undefined, false, undefined, true);
+    const resetOnly = await compileCssxStylesheet([], undefined, undefined, false);
     expect(resetOnly.css).toContain('body{margin:0;line-height:inherit}');
-    const layeredResetOnly = await compileCssxStylesheet([], undefined, 'cssx', false, undefined, true);
+    const layeredResetOnly = await compileCssxStylesheet([], undefined, 'cssx', false);
     expect(layeredResetOnly.css).toMatch(/^@layer cssx\{/);
+  });
+
+  it('allows applications with their own global baseline to opt out of preflight', async () => {
+    const stylesheet = await compileCssxStylesheet(
+      [{ id: '/project/button.ts', candidates: { 'p-4': 'cssx-padding' } }],
+      undefined,
+      undefined,
+      false,
+      undefined,
+      false,
+    );
+
+    expect(stylesheet.css).toContain('.cssx-padding');
+    expect(stylesheet.css).not.toContain('box-sizing:border-box');
+    expect(stylesheet.css).not.toContain('button,input,select,optgroup,textarea');
   });
 
   it('retains candidate source locations in final CSS mappings', async () => {
@@ -131,7 +146,7 @@ describe('CSSX unplugin transform', () => {
     const stylesheet = await compileCssxStylesheet([
       { id: '/project/located.ts', candidates: transformed.candidates, origins: transformed.origins },
     ]);
-    expect(decodeFirstMapping(stylesheet.map?.mappings ?? '')).toEqual([0, 0, 1, 22]);
+    expect(decodeFirstMapping(stylesheet.map?.mappings ?? '')).toEqual([expect.any(Number), 0, 1, 22]);
   });
 
   it('extracts static sx literals while retaining dynamic conditional class joining', async () => {
@@ -314,7 +329,9 @@ describe('CSSX unplugin transform', () => {
       { 'entry.js': { type: 'chunk', modules: {} } },
     );
 
-    expect(emitted).toEqual([]);
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0]).toMatchObject({ fileName: 'cssx.css' });
+    expect(String((emitted[0] as { source: unknown }).source)).toContain('box-sizing:border-box');
   });
 
   it('serves a virtual Vite stylesheet and refreshes it after module transforms', async () => {

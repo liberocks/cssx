@@ -21,7 +21,7 @@ describe('React Native Babel transform', () => {
     );
     expect(output).toContain('$$cssx: 3');
     expect(output).toContain('padding: 16');
-    expect(output).toContain('backgroundColor: "#2563eb"');
+    expect(output).toContain('backgroundColor: "#155dfc"');
   });
 
   it('ignores unrelated calls and supports custom import sources', async () => {

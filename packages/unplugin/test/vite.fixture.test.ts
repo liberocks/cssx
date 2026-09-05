@@ -101,7 +101,7 @@ describe('CSSX Vite fixture', () => {
       server.watcher.emit('unlink', active.file);
       server.environments.client.moduleGraph.onFileDelete(active.file);
       const deleted = await fetch(`${origin}cssx.css`);
-      expect(await deleted.text()).toBe('');
+      expect(await deleted.text()).toContain('box-sizing:border-box');
     } finally {
       await server.close();
       await rm(root, { recursive: true, force: true });

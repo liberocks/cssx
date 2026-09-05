@@ -53,7 +53,7 @@ export interface CssxStylesheet {
  * @param layer Optional CSS layer for the output.
  * @param sourceMap Whether to generate a CSS source map.
  * @param darkMode Controls how the `dark` variant is activated.
- * @param preflight Whether to add the optional browser baseline before utility rules.
+ * @param preflight Whether to add the Tailwind-compatible browser baseline before utility rules.
  * @returns The generated CSS and its source map when source locations exist.
  */
 export async function compileCssxStylesheet(
@@ -62,7 +62,7 @@ export async function compileCssxStylesheet(
   layer?: string,
   sourceMap = true,
   darkMode?: DarkMode,
-  preflight = false,
+  preflight = true,
 ): Promise<CssxStylesheet> {
   const candidates: Record<string, string> = Object.create(null) as Record<string, string>;
   const composites: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
