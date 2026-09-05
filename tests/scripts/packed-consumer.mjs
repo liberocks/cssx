@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 const manager = process.argv[2];
@@ -20,6 +20,7 @@ const packageDirectories = [
 ];
 const temporary = await mkdtemp(join(tmpdir(), 'cssx-packed-consumer-'));
 const tarballs = join(temporary, 'tarballs');
+const patchedTarballs = join(temporary, 'patched-tarballs');
 const consumer = join(temporary, 'consumer');
 
 async function run(executable, args, cwd) {
@@ -46,26 +47,64 @@ async function run(executable, args, cwd) {
 
 try {
   await mkdir(tarballs);
+  await mkdir(patchedTarballs);
   await mkdir(consumer);
   for (const packageDirectory of packageDirectories) {
     await run(packageCommand('pnpm'), ['pack', '--pack-destination', tarballs], join(root, packageDirectory));
   }
-  const dependencies = {};
+
+  const packages = [];
+  const tarballByPackage = new Map();
   for (const tarball of await readdir(tarballs)) {
     const packageDirectory = packageDirectories.find((directory) => {
       const name = directory.split('/').at(-1);
       return name && tarball.startsWith(`cssxio-${name}-`);
     });
     if (!packageDirectory) continue;
-    const manifest = JSON.parse(
-      await (await import('node:fs/promises')).readFile(join(root, packageDirectory, 'package.json'), 'utf8'),
-    );
-    dependencies[manifest.name] = `file:${join(tarballs, tarball)}`;
+    const manifest = JSON.parse(await readFile(join(root, packageDirectory, 'package.json'), 'utf8'));
+    const source = join(tarballs, tarball);
+    const destination = join(patchedTarballs, tarball);
+    packages.push({ manifest, source, destination, temporaryDirectory: join(temporary, tarball) });
+    tarballByPackage.set(manifest.name, destination);
   }
-  await writeFile(
-    join(consumer, 'package.json'),
-    `${JSON.stringify({ name: 'cssx-packed-consumer', private: true, type: 'module', dependencies }, null, 2)}\n`,
-  );
+
+  for (const packageInfo of packages) {
+    await mkdir(packageInfo.temporaryDirectory);
+    await run(
+      process.platform === 'win32' ? 'tar.exe' : 'tar',
+      ['-xzf', packageInfo.source, '-C', packageInfo.temporaryDirectory],
+      root,
+    );
+    const manifestPath = join(packageInfo.temporaryDirectory, 'package', 'package.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    for (const [name, tarball] of tarballByPackage) {
+      if (manifest.dependencies?.[name]) manifest.dependencies[name] = `file:${tarball}`;
+    }
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    await run(
+      process.platform === 'win32' ? 'tar.exe' : 'tar',
+      ['-czf', packageInfo.destination, '-C', packageInfo.temporaryDirectory, 'package'],
+      root,
+    );
+  }
+
+  const dependencies = {};
+  for (const packageInfo of packages) {
+    dependencies[packageInfo.manifest.name] =
+      `file:${['bun', 'yarn'].includes(manager) ? packageInfo.source : packageInfo.destination}`;
+  }
+  const consumerManifest = { name: 'cssx-packed-consumer', private: true, type: 'module', dependencies };
+  if (manager === 'yarn') {
+    consumerManifest.resolutions = Object.fromEntries(
+      packages.map((packageInfo) => [packageInfo.manifest.name, `file:${packageInfo.source}`]),
+    );
+  }
+  if (manager === 'bun') {
+    consumerManifest.overrides = Object.fromEntries(
+      packages.map((packageInfo) => [packageInfo.manifest.name, `file:${packageInfo.source}`]),
+    );
+  }
+  await writeFile(join(consumer, 'package.json'), `${JSON.stringify(consumerManifest, null, 2)}\n`);
   if (manager === 'yarn') {
     await writeFile(join(consumer, '.yarnrc.yml'), 'nodeLinker: node-modules\n');
   }
