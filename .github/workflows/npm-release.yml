@@ -208,7 +208,7 @@ jobs:
                 printf '%s@%s is already published\n' "$package" "$version" >&2
                 exit 1
               fi
-              printf '%s@%s is already published; retry will create its missing tag and GitHub Release\n' "$package" "$version"
+              printf '%s@%s is already published; retry will create its missing package tag and update its commit release\n' "$package" "$version"
             fi
             if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
               if [ "$release_mode" != retry ]; then
@@ -263,27 +263,53 @@ jobs:
           done < <(jq -r '.packages[].tag' "$RUNNER_TEMP/release-plan.json")
         env:
           RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}
-      - name: Create GitHub Release
+      - name: Create or update GitHub Release
         if: steps.plan.outputs.has-release == 'true'
         run: |
-          first_tag="$(jq -r '.packages[0].tag' "$RUNNER_TEMP/release-plan.json")"
-          package="$(jq -r '.packages[0].name' "$RUNNER_TEMP/release-plan.json")"
-          release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
-          if gh release view "$first_tag" >/dev/null 2>&1; then
-            if [ "$release_mode" != retry ]; then
-              printf 'GitHub Release %s already exists\n' "$first_tag" >&2
-              exit 1
-            fi
-            printf 'Skipping existing GitHub Release %s\n' "$first_tag"
-            exit 0
-          fi
           git fetch --tags origin
-          jq -r '"## Published packages\n\n" + (.packages | map("- `\(.name)@\(.nextVersion)` ([tag](https://github.com/" + env.GITHUB_REPOSITORY + "/releases/tag/" + .tag + "))") | join("\n"))' "$RUNNER_TEMP/release-plan.json" > "$RUNNER_TEMP/release-notes.md"
-          previous_tag="$(git tag --list "$package@*" --sort=-v:refname | grep -Fvx "$first_tag" | head -n 1 || true)"
+          release_sha="$(git rev-parse HEAD)"
+          release_short_sha="${release_sha:0:7}"
+          first_package="$(jq -r '.packages[0].name' "$RUNNER_TEMP/release-plan.json")"
+          first_package_tag="$(jq -r '.packages[0].tag' "$RUNNER_TEMP/release-plan.json")"
+
+          published_packages="$({
+            for manifest_path in packages/*/package.json; do
+              package_name="$(jq -r 'select(.private != true) | .name // empty' "$manifest_path")"
+              package_version="$(jq -r 'select(.private != true) | .version // empty' "$manifest_path")"
+              if [ -z "$package_name" ] || [ -z "$package_version" ]; then continue; fi
+
+              package_tag="$package_name@$package_version"
+              package_sha="$(git rev-list -n 1 "refs/tags/$package_tag" 2>/dev/null || true)"
+              if [ "$package_sha" = "$release_sha" ]; then
+                jq -cn \
+                  --arg name "$package_name" \
+                  --arg version "$package_version" \
+                  --arg tag "$package_tag" \
+                  '{ name: $name, version: $version, tag: $tag }'
+              fi
+            done
+          } | jq -s 'sort_by(.name)')"
+
+          package_count="$(jq 'length' <<< "$published_packages")"
+          if [ "$package_count" -eq 0 ]; then
+            printf 'No published package tags point to release commit %s\n' "$release_sha" >&2
+            exit 1
+          fi
+
+          release_title="$(
+            jq -r \
+              --arg short_sha "$release_short_sha" \
+              '"Release " + $short_sha + ": " + (map(.name + "@" + .version) | join(", "))' \
+              <<< "$published_packages"
+          )"
+          jq -r \
+            '"## Published packages\n\n" + (map("- `\(.name)@\(.version)` (package tag `\(.tag)`)") | join("\n"))' \
+            <<< "$published_packages" > "$RUNNER_TEMP/release-notes.md"
+
+          previous_tag="$(git tag --list "$first_package@*" --sort=-v:refname | grep -Fvx "$first_package_tag" | head -n 1 || true)"
           if [ -z "$previous_tag" ] && git rev-parse --verify --quiet refs/tags/release-baseline >/dev/null; then
             previous_tag=release-baseline
           fi
-          release_sha="$(git rev-parse HEAD)"
           if [ -n "$previous_tag" ]; then
             printf '\n## Changes since `%s`\n\n' "$previous_tag" >> "$RUNNER_TEMP/release-notes.md"
             commit_range="$previous_tag..$release_sha"
@@ -299,6 +325,27 @@ jobs:
           if [ "$commit_count" -eq 0 ]; then
             printf '%s\n' '- No commits were merged in this release range.' >> "$RUNNER_TEMP/release-notes.md"
           fi
-          gh release create "$first_tag" --title "Release $first_tag" --notes-file "$RUNNER_TEMP/release-notes.md"
+
+          existing_release_tag=''
+          while IFS= read -r candidate_tag; do
+            candidate_sha="$(git rev-list -n 1 "refs/tags/$candidate_tag" 2>/dev/null || true)"
+            if [ "$candidate_sha" != "$release_sha" ]; then continue; fi
+            existing_release_tag="$candidate_tag"
+            if [ "$candidate_tag" = "$release_sha" ]; then break; fi
+          done < <(gh release list --limit 1000 --json tagName --jq '.[].tagName')
+
+          if [ -n "$existing_release_tag" ]; then
+            gh release edit "$existing_release_tag" \
+              --tag "$release_sha" \
+              --target "$release_sha" \
+              --title "$release_title" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+            printf 'Updated GitHub Release for commit %s (was tagged %s)\n' "$release_sha" "$existing_release_tag"
+          else
+            gh release create "$release_sha" \
+              --target "$release_sha" \
+              --title "$release_title" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
         env:
           GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
