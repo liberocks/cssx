@@ -247,7 +247,7 @@ importers:
         specifier: ^7.29.7
         version: 7.29.7
       '@cssxio/babel-plugin':
-        specifier: ^0.4.2
+        specifier: ^0.4.3
         version: link:../babel-plugin
       '@cssxio/compiler':
         specifier: ^0.4.3
