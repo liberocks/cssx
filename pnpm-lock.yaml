@@ -195,7 +195,7 @@ importers:
         specifier: ^7.28.0
         version: 7.29.7
       '@cssxio/compiler':
-        specifier: ^0.4.1
+        specifier: ^0.4.2
         version: link:../compiler
 
   packages/compiler: {}
@@ -227,7 +227,7 @@ importers:
   packages/html:
     dependencies:
       '@cssxio/compiler':
-        specifier: ^0.4.1
+        specifier: ^0.4.2
         version: link:../compiler
 
   packages/intellisense: {}
@@ -238,7 +238,7 @@ importers:
         specifier: ^7.28.0
         version: 7.29.7
       '@cssxio/compiler':
-        specifier: ^0.4.1
+        specifier: ^0.4.2
         version: link:../compiler
 
   packages/unplugin:
@@ -247,10 +247,10 @@ importers:
         specifier: ^7.29.7
         version: 7.29.7
       '@cssxio/babel-plugin':
-        specifier: ^0.4.1
+        specifier: ^0.4.2
         version: link:../babel-plugin
       '@cssxio/compiler':
-        specifier: ^0.4.1
+        specifier: ^0.4.2
         version: link:../compiler
       esbuild:
         specifier: '>=0.27.0'

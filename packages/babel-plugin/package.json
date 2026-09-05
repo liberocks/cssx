@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/babel-plugin",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Babel compiler transform for CSSX.",
   "license": "MIT",
   "repository": {
@@ -27,7 +27,7 @@
     "@babel/core": "^7.28.0"
   },
   "dependencies": {
-    "@cssxio/compiler": "^0.4.1"
+    "@cssxio/compiler": "^0.4.2"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --external @babel/core --clean"
