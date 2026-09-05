@@ -117,6 +117,7 @@ export function storeCompilationData(
  * @param metadataKey Key used to read transformed module data.
  * @param transformedDataById Transformed source data retained outside native loader metadata.
  * @param darkMode Controls how the `dark` variant is activated.
+ * @param preflight Whether to add the optional browser baseline before utility rules.
  * @returns Nothing after registering the compilation asset handler.
  */
 export function configureCompilationAsset(
@@ -128,6 +129,7 @@ export function configureCompilationAsset(
   metadataKey: string,
   transformedDataById?: ReadonlyMap<string, CssxSourceModule>,
   darkMode?: DarkMode,
+  preflight = false,
 ): void {
   // Next writes server compiler assets beneath `.next/server`, where browsers
   // cannot load them. Its client compiler emits the public stylesheet, using
@@ -147,7 +149,7 @@ export function configureCompilationAsset(
           .map((module) => sourceDataFromModule(module, metadataKey))
           .filter((data): data is CssxSourceModule => data !== undefined);
         const allData = mergeCssxSourceModules(sourceData, transformedDataById?.values() ?? []);
-        const compiled = await compileCssxStylesheet(allData, await getTheme(), layer, sourceMap, darkMode);
+        const compiled = await compileCssxStylesheet(allData, await getTheme(), layer, sourceMap, darkMode, preflight);
         if (!compiled.css) {
           return;
         }

@@ -140,6 +140,16 @@ and form-control normalization in your application stylesheet. This makes a
 reset an explicit application choice instead of changing the defaults of every
 CSSX project.
 
+Set `preflight: true` in a build adapter to add CSSX's opt-in browser baseline
+before generated utilities. It resets common box-model, link, form-control,
+and button defaults for utility-framework migrations while preserving a visible
+browser focus indicator. Leave it off when your application already supplies a
+global reset.
+
+```ts
+cssx({ preflight: true });
+```
+
 The `dark:` variant defaults to the operating-system preference:
 
 ```css

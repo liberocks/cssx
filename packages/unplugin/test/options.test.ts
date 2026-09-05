@@ -27,6 +27,8 @@ describe('unplugin options', () => {
     expect(() => assertPluginOptions({ darkMode: 'system' as never })).toThrow(
       'darkMode must be "media" or "selector"',
     );
+    expect(() => assertPluginOptions({ preflight: 'true' as never })).toThrow('preflight must be a boolean');
+    expect(() => assertPluginOptions({ preflight: true })).not.toThrow();
     expect(() => assertPluginOptions({ reusabilityBudget: Number.NaN })).toThrow('reusabilityBudget');
     expect(() => assertPluginOptions({ reusabilityBudget: -1 })).toThrow('reusabilityBudget');
     expect(() => assertPluginOptions({ reusabilityBudget: 101 })).toThrow('reusabilityBudget');

@@ -78,12 +78,13 @@ const stylesheet = await compileCssxStylesheet([
 | `theme`        | —              | Inline CSSX `@theme` source used while transforming and compiling CSS. The theme is compiled into generated rules; it does not add a global stylesheet.                                                   |
 | `themeFile`    | —              | Path, relative to the current working directory, to a CSSX `@theme` file. It is reread when CSS is generated; Rollup-compatible adapters register it as a watched dependency. Do not use it with `theme`. |
 | `darkMode`     | `media`        | Activates `dark:` utilities with the system color-scheme media query (`media`) or with `[data-theme=dark]` (`selector`). Use `selector` for an application-controlled `data-theme` switcher.              |
+| `preflight`    | `false`        | Adds CSSX's opt-in browser baseline before utilities. It resets common element, link, form-control, button, and box-model defaults for utility-framework migrations.                                      |
 
 The universal adapter validates options when it is created. `theme` and `themeFile` cannot be used together. Invalid CSS paths and layer names fail the build before CSS is emitted.
 
-CSSX generates utility CSS only; it does not add a reset, Tailwind Preflight,
-or global font and element styles. Put those application-specific choices in a
-separate stylesheet loaded alongside the generated CSS.
+CSSX generates utility CSS only by default. Set `preflight: true` to add its
+opt-in browser baseline; leave it disabled when an existing app stylesheet
+already owns global element styles.
 
 ## Extracted CSS
 

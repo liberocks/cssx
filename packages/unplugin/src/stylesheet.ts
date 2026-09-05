@@ -1,6 +1,7 @@
 import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
 import type { DarkMode } from '@cssxio/compiler';
 import { basename } from 'node:path';
+import { CSSX_PREFLIGHT } from './preflight';
 
 /** The source location of one utility string. */
 export interface CssxCandidateOrigin {
@@ -52,6 +53,7 @@ export interface CssxStylesheet {
  * @param layer Optional CSS layer for the output.
  * @param sourceMap Whether to generate a CSS source map.
  * @param darkMode Controls how the `dark` variant is activated.
+ * @param preflight Whether to add the optional browser baseline before utility rules.
  * @returns The generated CSS and its source map when source locations exist.
  */
 export async function compileCssxStylesheet(
@@ -60,6 +62,7 @@ export async function compileCssxStylesheet(
   layer?: string,
   sourceMap = true,
   darkMode?: DarkMode,
+  preflight = false,
 ): Promise<CssxStylesheet> {
   const candidates: Record<string, string> = Object.create(null) as Record<string, string>;
   const composites: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
@@ -91,8 +94,10 @@ export async function compileCssxStylesheet(
     }
   }
   const names = Object.keys(candidates).sort();
+  const preflightCss = preflight ? CSSX_PREFLIGHT : '';
   if (names.length === 0) {
-    return { css: '' };
+    const css = preflightCss && layer ? `@layer ${layer}{${preflightCss}}` : preflightCss;
+    return { css };
   }
   const compiled = await compileUtilities(
     names,
@@ -102,10 +107,10 @@ export async function compileCssxStylesheet(
     hasAtomicClassMetadata ? atomicClasses : undefined,
     { darkMode },
   );
-  const layerPrefix = compiled.css && layer ? `@layer ${layer}{` : '';
-  const css = `${layerPrefix}${compiled.css}${layerPrefix ? '}' : ''}`;
+  const layerPrefix = layer ? `@layer ${layer}{` : '';
+  const css = `${layerPrefix}${preflightCss}${compiled.css}${layerPrefix ? '}' : ''}`;
   const map = sourceMap
-    ? createCssSourceMap(`${layerPrefix}${compiled.prefixCss}`, compiled.entries, origins)
+    ? createCssSourceMap(`${layerPrefix}${preflightCss}${compiled.prefixCss}`, compiled.entries, origins)
     : undefined;
   return { css, ...(map ? { map } : {}) };
 }
