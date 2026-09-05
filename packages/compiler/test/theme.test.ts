@@ -38,12 +38,12 @@ describe('CSSX theme parsing', () => {
       'olive',
       'mist',
       'taupe',
-      'blue-gray',
+      'steel',
       'brown',
-      'deep-orange',
-      'light-green',
-      'light-blue',
-      'deep-purple',
+      'vermilion',
+      'mint',
+      'azure',
+      'amethyst',
     ];
     const shades = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
 
@@ -54,7 +54,7 @@ describe('CSSX theme parsing', () => {
     }
     expect(resolveThemeToken(theme, '--color-orange-500')).toBe('oklch(70.49% 0.213 47.604)');
     expect(resolveThemeToken(theme, '--color-mauve-950')).toBe('oklch(14.53% 0.008 326)');
-    expect(resolveThemeToken(theme, '--color-deep-purple-950')).toBe('oklch(30.00% 0.178 274.080)');
+    expect(resolveThemeToken(theme, '--color-amethyst-950')).toBe('oklch(30.00% 0.178 274.080)');
   });
 
   it('reuses one immutable default design system across compiler calls', () => {

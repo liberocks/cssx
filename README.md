@@ -519,10 +519,10 @@ const styles = cssx.create({
 The default palette has 50-950 shades for `red`, `orange`, `amber`, `yellow`,
 `lime`, `green`, `emerald`, `teal`, `cyan`, `sky`, `blue`, `indigo`, `violet`,
 `purple`, `fuchsia`, `pink`, `rose`, `slate`, `gray`, `zinc`, `neutral`,
-`stone`, `mauve`, `olive`, `mist`, `taupe`, `blue-gray`, `brown`, `deep-orange`,
-`light-green`, `light-blue`, and `deep-purple`, plus `black`, `white`, and
-`transparent`. Hyphenated family names work in every color utility, such as
-`bg-deep-orange-500`, `text-blue-gray-950`, and `border-light-green-200`.
+`stone`, `mauve`, `olive`, `mist`, `taupe`, `steel`, `brown`, `vermilion`,
+`mint`, `azure`, and `amethyst`, plus `black`, `white`, and `transparent`.
+Every family name works in every color utility, such as `bg-vermilion-500`,
+`text-steel-950`, and `border-mint-200`.
 
 #### Example
 
