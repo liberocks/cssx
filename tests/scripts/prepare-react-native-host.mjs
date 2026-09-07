@@ -22,6 +22,10 @@ await writeFile(resolve(vendorPackage, 'package.json'), `${JSON.stringify(packag
 manifest.dependencies['@cssxio/react-native'] = 'file:vendor/cssx-react-native';
 manifest.dependencies['@cssxio/compiler'] = 'file:vendor/cssx-compiler';
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+// Keep pnpm installs in the generated host from selecting the parent repository workspace.
+await writeFile(resolve(hostRoot, 'pnpm-workspace.yaml'), 'packages:\n  - .\n');
+// Native build files resolve transitive Gradle and Codegen packages directly in node_modules.
+await writeFile(resolve(hostRoot, '.npmrc'), 'node-linker=hoisted\n');
 
 await cp(resolve(root, 'examples/react-native/src/App.tsx'), resolve(hostRoot, 'App.tsx'));
 await cp(resolve(root, 'examples/react-native/babel.config.js'), resolve(hostRoot, 'babel.config.js'));

@@ -18,6 +18,7 @@ env:
 jobs:
   android:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
@@ -33,28 +34,32 @@ jobs:
       - run: node tests/scripts/prepare-react-native-host.mjs "$CSSX_RN_HOST"
       - run: pnpm install --no-frozen-lockfile
         working-directory: ${{ env.CSSX_RN_HOST }}
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm && test -w /dev/kvm
       - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
-          script: |
-            cd "$CSSX_RN_HOST"
-            pnpm start -- --port 8081 > "$RUNNER_TEMP/cssx-metro.log" 2>&1 &
-            pnpm exec react-native run-android --no-packager
-            adb shell am force-stop com.cssxnativeharness
-            adb shell monkey -p com.cssxnativeharness 1
-            sleep 15
-            adb exec-out uiautomator dump /dev/tty | grep -F 'Vanilla React Native'
+          disable-linux-hw-accel: false
+          script: bash tests/scripts/run-react-native-android.sh
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: react-native-android-logs
-          path: ${{ runner.temp }}/cssx-metro.log
+          path: |
+            ${{ runner.temp }}/cssx-metro.log
+            ${{ runner.temp }}/cssx-android.log
+            ${{ runner.temp }}/cssx-android-ui.xml
           if-no-files-found: ignore
 
   ios:
     runs-on: macos-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
@@ -70,13 +75,19 @@ jobs:
       - run: node tests/scripts/prepare-react-native-host.mjs "$CSSX_RN_HOST"
       - run: pnpm install --no-frozen-lockfile
         working-directory: ${{ env.CSSX_RN_HOST }}
-      - run: pod install
+      - run: |
+          bundle install
+          bundle exec pod install
         working-directory: ${{ env.CSSX_RN_HOST }}/ios
+      - name: Select an available iPhone simulator
+        run: |
+          simulator_id="$(xcrun simctl list devices available --json | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid // empty')"
+          [ -n "$simulator_id" ] || { printf 'No available iPhone simulator\n' >&2; exit 1; }
+          printf 'CSSX_IOS_SIMULATOR=%s\n' "$simulator_id" >> "$GITHUB_ENV"
       - run: |
           cd "$CSSX_RN_HOST"
-          pnpm start -- --port 8081 > "$RUNNER_TEMP/cssx-metro.log" 2>&1 &
-          pnpm exec react-native run-ios --simulator 'iPhone 16' --no-packager
-          xcrun simctl launch booted com.cssxnativeharness
+          pnpm exec react-native start --port 8081 --max-workers 2 > "$RUNNER_TEMP/cssx-metro.log" 2>&1 &
+          pnpm exec react-native run-ios --udid "$CSSX_IOS_SIMULATOR" --no-packager
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
