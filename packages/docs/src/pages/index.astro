@@ -1,43 +1,54 @@
 ---
-import HomeLayout from '../layouts/HomeLayout.astro';
 import { sx } from '@cssxio/cssx';
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
 ---
 
-<HomeLayout>
-  <article class:list={['docs-article', sx('text-slate-950 dark:text-slate-50')]}>
-    <header class="docs-intro">
-      <p class="home-eyebrow">Lorem ipsum</p>
-      <h1>Dolor sit amet consectetur.</h1>
-      <p>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore
-        magna aliqua.
-      </p>
-    </header>
-    <section class="docs-section home-details">
-      <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-      <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
-    </section>
-  </article>
-</HomeLayout>
+<BaseLayout title="cssx">
+  <div class={sx('max-w-full mx-auto md:max-w-xl min-h-screen flex flex-col justify-center p-4')}>
+    <div class={sx('flex flex-col gap-10')}>
+      <div>
+        <img src="/images/logo.png" alt="Logo" class={sx('w-auto h-8 opacity-80 dark:invert')} />
+      </div>
 
-<style>
-  .docs-intro .home-eyebrow {
-    margin-bottom: 12px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--docs-green);
-  }
-  .home-details {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 32px;
-    border-top: 1px solid var(--docs-line);
-    padding-top: 32px;
-  }
-  @media (max-width: 767px) {
-    .home-details {
-      grid-template-columns: 1fr;
-      gap: 24px;
-    }
-  }
-</style>
+      <h1 class={sx('text-2xl text-gray-900 dark:text-gray-50')}>
+        The leanest style engine in the internet for your ultrafast applications<sup>*</sup>
+      </h1>
+
+      <p class={sx('text-lg font-light text-gray-600 dark:text-gray-300')}>
+        Do not let boilerplate gets shipped to production. In average, one third of the CSS in your app is unused. CSSX
+        strips away the unused styles and minimizes it. There is no need for long utility class names again in
+        production. But don't worry, it keeps your developmente experiencee remain enjoyable since in your code editor
+        you still see the full, readable CSS.
+      </p>
+
+      <p class={sx('text-xs -mt-5 tracking-wider text-gray-400')}>
+        <sup>*</sup>Our benchmark said so, but you should benchmark yourself to make sure.
+      </p>
+
+      <div>
+        <a
+          class={sx(
+            'bg-black dark:bg-white dark:text-black text-white text-base font-light px-6 py-2.5 rounded-full tracking-wide hover:bg-black/50 dark:hover:bg-white/50',
+          )}
+          href="/docs">Read Documentation</a
+        >
+      </div>
+      <div class={sx('flex justify-start items-center gap-4')}>
+        <ThemeToggle />
+        <a href="https://github.com/liberocks/cssx"
+          ><Icon name="brand-github" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
+        >
+        <a href="https://www.npmjs.com/package/@cssxio/cssx"
+          ><Icon name="brand-npm" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
+        >
+        <a href="https://x.com/liberocks"
+          ><Icon name="brand-x" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
+        >
+        <a href="#"><Icon name="brand-vscode" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

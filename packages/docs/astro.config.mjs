@@ -1,10 +1,22 @@
 import { defineConfig } from 'astro/config';
 import cssx from '@cssxio/unplugin/vite';
 
+const theme = `
+@theme reference {
+  --color-brand: #3245ff;
+  --font-display: ui-rounded, "Avenir Next", "Segoe UI", sans-serif;
+}
+`;
+
 export default defineConfig({
-  output: 'static',
   vite: {
-    plugins: [cssx({ cssFileName: 'assets/cssx.css', darkMode: 'selector' })],
+    plugins: [
+      cssx({
+        cssFileName: 'assets/cssx.css',
+        theme,
+        darkMode: 'selector',
+      }),
+    ],
     build: {
       rollupOptions: {
         onwarn(warning, warn) {

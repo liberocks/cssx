@@ -1,0 +1,16 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#000000"/>
+  <g transform="translate(326.5 231)">
+    <g transform="scale(0.47516198704103674)">
+      <path d="M166 64H296V194H166V64Z" fill="#ffffff"/>
+<path d="M186 264H276V354H186V264Z" fill="#ffffff"/>
+<path d="M359 77H463V181H359V77Z" fill="#ffffff"/>
+<path d="M0 78H104V182H0V78Z" fill="#ffffff"/>
+<path d="M89 167H193V271H89V167Z" fill="#ffffff"/>
+<path d="M269 167H373V271H269V167Z" fill="#ffffff"/>
+<path d="M282 0H360V78H282V0Z" fill="#ffffff"/>
+<path d="M102 0H180V78H102V0Z" fill="#ffffff"/>
+    </g>
+  </g>
+  <text x="592.5" y="369" font-family="Avenir Next, Avenir, Helvetica Neue, Arial, sans-serif" font-size="150" font-weight="500" fill="#ffffff">cssx</text>
+</svg>
