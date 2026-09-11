@@ -269,6 +269,7 @@ jobs:
           git fetch --tags origin
           release_sha="$(git rev-parse HEAD)"
           release_short_sha="${release_sha:0:7}"
+          release_tag="release-$release_sha"
           first_package="$(jq -r '.packages[0].name' "$RUNNER_TEMP/release-plan.json")"
           first_package_tag="$(jq -r '.packages[0].tag' "$RUNNER_TEMP/release-plan.json")"
 
@@ -331,18 +332,18 @@ jobs:
             candidate_sha="$(git rev-list -n 1 "refs/tags/$candidate_tag" 2>/dev/null || true)"
             if [ "$candidate_sha" != "$release_sha" ]; then continue; fi
             existing_release_tag="$candidate_tag"
-            if [ "$candidate_tag" = "$release_sha" ]; then break; fi
+            if [ "$candidate_tag" = "$release_tag" ]; then break; fi
           done < <(gh release list --limit 1000 --json tagName --jq '.[].tagName')
 
           if [ -n "$existing_release_tag" ]; then
             gh release edit "$existing_release_tag" \
-              --tag "$release_sha" \
+              --tag "$release_tag" \
               --target "$release_sha" \
               --title "$release_title" \
               --notes-file "$RUNNER_TEMP/release-notes.md"
             printf 'Updated GitHub Release for commit %s (was tagged %s)\n' "$release_sha" "$existing_release_tag"
           else
-            gh release create "$release_sha" \
+            gh release create "$release_tag" \
               --target "$release_sha" \
               --title "$release_title" \
               --notes-file "$RUNNER_TEMP/release-notes.md"
