@@ -1,43 +1,43 @@
 ---
 import HomeLayout from '../layouts/HomeLayout.astro';
-import ThemeToggle from '../components/ThemeToggle.astro';
 import { sx } from '@cssxio/cssx';
 ---
 
 <HomeLayout>
-  <a
-    slot="header"
-    class={sx('text-sm font-bold tracking-tight text-slate-950 no-underline dark:text-slate-50')}
-    href="/">CSSX</a
-  >
-  <nav slot="header" class={sx('flex items-center gap-6 text-sm font-medium')} aria-label="Primary navigation">
-    <a
-      class={sx(
-        'inline-flex min-h-11 items-center text-slate-600 no-underline hover:text-slate-950 focus-visible:text-slate-950 dark:text-slate-300 dark:hover:text-slate-50 dark:focus-visible:text-slate-50',
-      )}
-      href="/docs/">Docs</a
-    >
-  </nav>
-  <ThemeToggle slot="header" />
-
-  <section class={sx('mx-auto grid max-w-5xl gap-10 py-12 xs:gap-12 xs:py-16 sm:py-24')}>
-    <div class={sx('grid max-w-3xl gap-6')}>
-      <p class={sx('text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400')}>Lorem ipsum</p>
-      <h1 class={sx('text-[2.25rem] font-semibold tracking-tight text-slate-950 xs:text-[2.75rem] sm:text-[3.75rem] dark:text-slate-50')}>
-        Dolor sit amet consectetur.
-      </h1>
-      <p class={sx('max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-300')}>
+  <article class:list={['docs-article', sx('text-slate-950 dark:text-slate-50')]}>
+    <header class="docs-intro">
+      <p class="home-eyebrow">Lorem ipsum</p>
+      <h1>Dolor sit amet consectetur.</h1>
+      <p>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore
         magna aliqua.
       </p>
-    </div>
-    <div class={sx('grid gap-6 border-t border-slate-200 pt-8 sm:grid-cols-2 dark:border-slate-800')}>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-      </p>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-      </p>
-    </div>
-  </section>
+    </header>
+    <section class="docs-section home-details">
+      <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+      <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+    </section>
+  </article>
 </HomeLayout>
+
+<style>
+  .docs-intro .home-eyebrow {
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--docs-green);
+  }
+  .home-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px;
+    border-top: 1px solid var(--docs-line);
+    padding-top: 32px;
+  }
+  @media (max-width: 767px) {
+    .home-details {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+  }
+</style>

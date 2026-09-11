@@ -1,0 +1,6 @@
+Use case: logo-brand.
+Asset type: a single original symbol for CSSX, serious dependable developer infrastructure.
+Input image 1 is STYLE REFERENCE ONLY: use its visual language of disciplined abstract geometric emblems and powerful negative space; do not copy an existing mark.
+Primary request: Design STRATA, a bold abstract X built from four opposing groups of exactly three strong parallel 45-degree bands converging into one compact coherent emblem. Several authored declarations become one resolved output. Organize the thick bands into a compact square/diamond silhouette with crisp central negative space. Symmetrical, optically balanced, strong solid masses and precise evenly spaced cuts. The whole silhouette should read as a distinctive X with structural density and authority, with the complexity kept inside the silhouette. Substantial strokes readable as a tiny emblem, not fine decorative lines.
+Style: flat vector-like pure white mark on pure black square background, no tonal variation. Centered, logo occupies about 55–60% of canvas width and height. Only one logo.
+Avoid: text, wordmarks, letters spelled out, labels, borders, grid sheets, asterisk, starburst, swastika-like rotational arms, sparkle, circuit chip, generic fast-forward, rounded flower, gradients, shadows, texture, mockups.

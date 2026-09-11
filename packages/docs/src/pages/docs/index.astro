@@ -1,113 +1,217 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
-import ThemeToggle from '../../components/ThemeToggle.astro';
+import DocsIcon from '../../components/DocsIcon.astro';
 import { sx } from '@cssxio/cssx';
+
+const guides = [
+  { title: 'Quickstart', description: 'Install CSSX and compile your first utility string.', href: '#quickstart' },
+  { title: 'Build integration', description: 'Connect CSSX to your existing build tool.', href: '#configuration' },
+  { title: 'Styling patterns', description: 'Compose reusable styles and conditional variants.', href: '#patterns' },
+  { title: 'Runtime API', description: 'Explore the sx, create, and props helpers.', href: '#reference' },
+];
+const packages = [
+  {
+    title: 'Core runtime',
+    name: '@cssxio/cssx',
+    description: 'Write static utilities and compose styles with a small runtime helper.',
+    icon: 'code-bracket',
+    href: 'cssx',
+  },
+  {
+    title: 'Build integrations',
+    name: '@cssxio/unplugin',
+    description: 'Extract CSS with adapters for Vite, Rollup, webpack, Rspack, and esbuild.',
+    icon: 'square-3-stack-3d',
+    href: 'unplugin',
+  },
+  {
+    title: 'Plain HTML',
+    name: '@cssxio/html',
+    description: 'Style ordinary HTML with the default theme and no build step.',
+    icon: 'command-line',
+    href: 'html',
+  },
+  {
+    title: 'React Native',
+    name: '@cssxio/react-native',
+    description: 'Compile utilities to native style objects for React Native and Expo.',
+    icon: 'device-phone-mobile',
+    href: 'react-native',
+  },
+];
+import { install, config, usage, patterns } from '../../code-examples';
 ---
 
 <DocsLayout>
-  <a
-    slot="header"
-    class={sx('text-sm font-bold tracking-tight text-slate-950 no-underline dark:text-slate-50')}
-    href="/">CSSX</a
-  >
-  <nav slot="header" class={sx('flex items-center gap-6 text-sm font-medium')} aria-label="Primary navigation">
-    <a class={sx('inline-flex min-h-11 items-center text-slate-950 no-underline dark:text-slate-50')} href="/docs/" aria-current="page">
-      Docs
-    </a>
-  </nav>
-  <ThemeToggle slot="header" />
-
-  <nav slot="sidebar" class={sx('grid gap-5')} aria-label="Documentation navigation">
-    <p class={sx('text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400')}>Documentation</p>
-    <div class={sx('grid gap-1')}>
-      <a
-        class={sx(
-          'rounded-sm bg-slate-100 px-3 py-3 text-sm font-medium text-slate-950 no-underline dark:bg-slate-800 dark:text-slate-50',
-        )}
-        href="#overview"
-      >
-        Overview
-      </a>
-      <a
-        class={sx(
-          'rounded-sm px-3 py-3 text-sm text-slate-600 no-underline hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50',
-        )}
-        href="#usage"
-      >
-        Usage
-      </a>
-      <a
-        class={sx(
-          'rounded-sm px-3 py-3 text-sm text-slate-600 no-underline hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50',
-        )}
-        href="#reference"
-      >
-        Reference
-      </a>
-    </div>
-  </nav>
-
-  <article class={sx('mx-auto grid max-w-3xl gap-10 py-10 xs:py-12 sm:py-16')}>
-    <header class={sx('grid gap-5')} id="overview">
-      <p class={sx('text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400')}>Overview</p>
-      <h1 class={sx('text-[2.25rem] font-semibold tracking-tight text-slate-950 xs:text-[2.75rem] dark:text-slate-50')}>
-        Lorem ipsum dolor sit amet.
-      </h1>
-      <p class={sx('text-lg leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
-        magna aliqua.
+  <article class:list={['docs-article', sx('text-slate-950 dark:text-slate-50')]}>
+    <header id="overview" class="docs-intro">
+      <h1>CSSX Documentation</h1>
+      <p>
+        Write familiar utility classes. Ship compiled CSS. CSSX turns static utility strings into class names and styles
+        at build time, with a small helper for the things that change.
       </p>
+      <div class="docs-actions">
+        <a class="docs-primary" href="#quickstart">Quickstart <DocsIcon name="arrow-right" /></a>
+        <a class="docs-secondary" href="#reference">Explore the API</a>
+      </div>
     </header>
 
-    <section class={sx('grid gap-4')} id="usage">
-      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Usage</h2>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+    <section class="docs-section" aria-labelledby="getting-started">
+      <h2 id="getting-started">Getting started</h2>
+      <p>
+        Install the runtime and a build integration, then use <code>sx</code> directly in your components. CSSX compiles your
+        static utilities into CSS and keeps conditional styles easy to compose. Start with your current app and the build
+        tool you already use.
       </p>
+      <div class="docs-actions">
+        <a class="docs-link" href="#quickstart">Build your first component <DocsIcon name="arrow-right" /></a>
+      </div>
     </section>
 
-    <section class={sx('grid gap-4 border-t border-slate-200 pt-10 dark:border-slate-800')} id="reference">
-      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Reference</h2>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-      </p>
+    <section class="docs-section" aria-labelledby="guides">
+      <h2 id="guides">Guides</h2>
+      <div class="guide-grid">
+        {
+          guides.map((guide) => (
+            <div>
+              <>
+                <h3>{guide.title}</h3>
+                <p>{guide.description}</p>
+              </>
+              <a class="docs-link" href={guide.href} aria-label={`Read more: ${guide.title}`}>
+                Read more <DocsIcon name="arrow-right" />
+              </a>
+            </div>
+          ))
+        }
+      </div>
     </section>
 
-    <section class={sx('grid gap-4 border-t border-slate-200 pt-10 dark:border-slate-800')} id="configuration">
-      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Configuration</h2>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem
-        aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-      </p>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores
-        eos qui ratione voluptatem sequi nesciunt.
-      </p>
+    <section class="docs-section" id="packages">
+      <h2>Packages</h2>
+      <p>The right tools for the way you build.</p>
+      <div class="reference-grid">
+        {
+          packages.map((pkg) => (
+            <a class="reference-card" href={`https://github.com/liberocks/cssx/tree/main/packages/${pkg.href}`}>
+              <span class="reference-icon">
+                <DocsIcon name={pkg.icon} />
+              </span>
+              <>
+                <h3>{pkg.title}</h3>
+                <p>{pkg.description}</p>
+              </>
+              <span class={sx('mt-4 block font-mono text-xs text-emerald-600 dark:text-emerald-400')}>{pkg.name}</span>
+            </a>
+          ))
+        }
+      </div>
     </section>
 
-    <section class={sx('grid gap-4 border-t border-slate-200 pt-10 dark:border-slate-800')} id="patterns">
-      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Patterns</h2>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non
-        numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
-      </p>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex
-        ea commodi consequatur.
-      </p>
+    <section class="docs-section" id="quickstart">
+      <h2>Quickstart</h2>
+      <p>Add the runtime and compiler integration to your project.</p>
+      <div class="docs-code">
+        <div class="code-title">
+          <span>Terminal</span><button
+            type="button"
+            class="copy-code"
+            data-copy-code
+            aria-label="Copy installation commands">Copy</button>
+        </div><pre><code>{install}</code></pre>
+      </div>
+      <div class={sx('mt-6')}>
+        <p>
+          Configure your build adapter below and include <code
+            >&lt;link rel="stylesheet" href="/assets/cssx.css" /&gt;</code
+          > in your HTML document. Then write your first component.
+        </p>
+      </div>
+      <div class="docs-code">
+        <div class="code-title">
+          <span>Button.tsx</span><button type="button" class="copy-code" data-copy-code aria-label="Copy button example"
+            >Copy</button>
+        </div><pre><code>{usage}</code></pre>
+      </div>
     </section>
 
-    <section class={sx('grid gap-4 border-t border-slate-200 pt-10 dark:border-slate-800')} id="next-steps">
-      <h2 class={sx('text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50')}>Next steps</h2>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel
-        illum qui dolorem eum fugiat quo voluptas nulla pariatur?
+    <section class="docs-section" id="configuration">
+      <h2>Build integration</h2>
+      <p>
+        Add the adapter to your build tool’s plugins. This Vite example writes the generated stylesheet to <code
+          >assets/cssx.css</code
+        > and serves the same path during development.
       </p>
-      <p class={sx('leading-relaxed text-slate-600 dark:text-slate-300')}>
-        At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque
-        corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
-      </p>
+      <div class="docs-code">
+        <div class="code-title">
+          <span>vite.config.ts</span><button
+            type="button"
+            class="copy-code"
+            data-copy-code
+            aria-label="Copy Vite configuration">Copy</button>
+        </div><pre><code>{config}</code></pre>
+      </div>
+      <div class="docs-actions">
+        <a class="docs-link" href="https://github.com/liberocks/cssx/tree/main/packages/unplugin"
+          >All build adapters and options <DocsIcon name="arrow-right" /></a>
+      </div>
     </section>
+
+    <section class="docs-section" id="patterns">
+      <h2>Styling patterns</h2>
+      <p>
+        Use <code>create</code> to name reusable styles and <code>props</code> to combine them. Conditional styles keep their
+        runtime behavior while static utilities are compiled during the build.
+      </p>
+      <div class="docs-code">
+        <div class="code-title">
+          <span>Conditional styles</span><button
+            type="button"
+            class="copy-code"
+            data-copy-code
+            aria-label="Copy conditional styles example">Copy</button>
+        </div><pre><code>{patterns}</code></pre>
+      </div>
+    </section>
+
+    <section class="docs-section" id="reference">
+      <h2>Runtime API</h2>
+      <p>Three helpers cover inline utilities, reusable styles, and composition.</p>
+      <div class="api-method" id="sx">
+        <h3>sx(...inputs)</h3><p>
+          Returns a class string from utility strings, arrays, and conditional values. Static utility strings compile at
+          build time. Dynamic inputs use a small runtime string join.
+        </p>
+      </div>
+      <div class="api-method" id="create">
+        <h3>create(styles)</h3><p>
+          Accepts a plain object of named static utility strings and returns compiled styles. This is a build-time
+          marker: configure a compiler integration before using it. It throws if it reaches the browser uncompiled.
+        </p>
+      </div>
+      <div class="api-method" id="props">
+        <h3>props(...inputs)</h3><p>
+          Combines compiled styles from left to right and returns a <code>className</code> object. Accepts nested arrays,
+          strings, and empty values. Raw strings stay as written; their classes are not parsed or merged.
+        </p>
+      </div>
+    </section>
+
+    <section class="docs-section" id="next-steps">
+      <h2>Next steps</h2>
+      <p>
+        Explore runnable examples for React, Next.js, Astro, Vite, and more. Read the project reference for supported
+        utilities, variants, theme configuration, and current limitations.
+      </p>
+      <div class="docs-actions">
+        <a class="docs-primary" href="https://github.com/liberocks/cssx/tree/main/examples"
+          >Explore examples <DocsIcon name="arrow-right" /></a
+        ><a class="docs-secondary" href="https://github.com/liberocks/cssx#readme">Project reference</a>
+      </div>
+    </section>
+    <footer class:list={['docs-footer', sx('py-10 xs:py-12')]}>
+      <span>CSSX · Styles compiled at build time.</span><a href="https://github.com/liberocks/cssx"
+        >Contribute on GitHub</a>
+    </footer>
   </article>
 </DocsLayout>

@@ -27,6 +27,7 @@ describe('documentation catalog', () => {
     const layout = await readFile(fromDocs('../src/layouts/DocsLayout.astro'), 'utf8');
 
     expect(layout).toContain('sticky top-0 z-10');
-    expect(layout).toContain('md:sticky md:top-16');
+    expect(layout).toMatch(/\.docs-sidebar\s*\{\s*position:\s*fixed/);
+    expect(layout).toContain('id="docs-sidebar"');
   });
 });
