@@ -2,9 +2,14 @@
 import { sx } from '@cssxio/cssx';
 
 import Icon from './Icon.astro';
+
+interface Props {
+  class?: string;
+}
+
 ---
 
-<div class="theme-toggle">
+<div class="theme-toggle" class={Astro.props.class}>
   <button data-theme-toggle type="button" aria-label="Switch color theme between light, dark, and system" class={sx('pt-1.2')}>
     <span data-theme-label class="theme-toggle-sun">
       <Icon name="sun" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
