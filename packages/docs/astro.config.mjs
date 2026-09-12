@@ -5,6 +5,10 @@ const theme = `
 @theme reference {
   --color-brand: #3245ff;
   --font-display: ui-rounded, "Avenir Next", "Segoe UI", sans-serif;
+  --animate-marquee: marquee 40s linear infinite;
+  @keyframes marquee {
+    to { translate: -50% 0; }
+  }
 }
 `;
 

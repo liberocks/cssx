@@ -4,6 +4,21 @@ import { sx } from '@cssxio/cssx';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
 import ThemeToggle from '../components/ThemeToggle.astro';
+
+const logos = [
+  { src: '/images/logos/react.svg', name: 'React' },
+  { src: '/images/logos/expo.svg', name: 'Expo' },
+  { src: '/images/logos/svelte.svg', name: 'Svelte' },
+  { src: '/images/logos/solid.svg', name: 'Solid' },
+  { src: '/images/logos/astro.svg', name: 'Astro' },
+  { src: '/images/logos/gatsby.svg', name: 'Gatsby' },
+  { src: '/images/logos/electron.svg', name: 'Electron' },
+  { src: '/images/logos/html.svg', name: 'HTML' },
+  { src: '/images/logos/nextjs.svg', name: 'Next.js' },
+  { src: '/images/logos/remix.svg', name: 'Remix' },
+  { src: '/images/logos/vite.svg', name: 'Vite' },
+  { src: '/images/logos/vue.svg', name: 'Vue' },
+];
 ---
 
 <BaseLayout title="cssx">
@@ -18,10 +33,10 @@ import ThemeToggle from '../components/ThemeToggle.astro';
       </h1>
 
       <p class={sx('text-lg font-light text-gray-600 dark:text-gray-300')}>
-        Do not let boilerplate gets shipped to production. In average, one third of the CSS in your app is unused. CSSX
-        strips away the unused styles and minimizes it. There is no need for long utility class names again in
-        production. But don't worry, it keeps your developmente experiencee remain enjoyable since in your code editor
-        you still see the full, readable CSS.
+        Don’t let boilerplate ship to production. On average, one-third of your app’s CSS goes unused. <span
+          class={sx('font-mono')}>cssx</span
+        > strips unused styles, minifies the rest, and eliminates long utility class names in production while keeping your
+        development experience intact. In your editor, you’ll still see the full, readable CSS you know and love.
       </p>
 
       <p class={sx('text-xs -mt-5 tracking-wider text-gray-400')}>
@@ -36,6 +51,42 @@ import ThemeToggle from '../components/ThemeToggle.astro';
           href="/docs">Read Documentation</a
         >
       </div>
+
+      <div class={sx('flex flex-col gap-5')}>
+        <div class={sx('flex items-center')}>
+          <div class={sx('mt-0.5 border-t border-solid border-gray-300 dark:border-gray-700 w-full')}></div>
+          <p class={sx('font-light text-sm text-gray-600 dark:text-gray-300 text-center min-w-30')}>
+            <span class={sx('font-mono')}>cssx</span> works with
+          </p>
+          <div class={sx('mt-0.5 border-t border-solid border-gray-300 dark:border-gray-700 w-full')}></div>
+        </div>
+        <div
+          class:list={[
+            'group',
+            sx(
+              'relative flex overflow-hidden mask-[linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]',
+            ),
+          ]}
+        >
+          <div
+            class={sx(
+              'flex w-[max-content] shrink-0 animate-marquee group-hover:animation-paused motion-reduce:animation-name-none grayscale dark:invert',
+            )}
+          >
+            {
+              [0, 1].map((half) => (
+                <div class={sx('flex shrink-0 gap-10 pr-10')} aria-hidden={half === 1}>
+                  {logos.map((logo) => (
+                    <img src={logo.src} alt={logo.name} class={sx('h-10 w-auto')} />
+                  ))}
+                </div>
+              ))
+            }
+          </div>
+        </div>
+        <div class={sx('mt-2 border-t border-solid border-gray-300 dark:border-gray-700 w-full')}></div>
+      </div>
+
       <div class={sx('flex justify-start items-center gap-4')}>
         <ThemeToggle />
         <a href="https://github.com/liberocks/cssx"
