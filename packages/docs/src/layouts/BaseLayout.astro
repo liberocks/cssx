@@ -4,16 +4,17 @@ import { sx } from '@cssxio/cssx';
 
 interface Props {
   title: string;
+  lang?: string;
 }
 
-const { title } = Astro.props;
+const { title, lang = 'en' } = Astro.props;
 const description = 'Leanest style engine in the internet for your ultrafast applications.';
 const ogImage = Astro.site ? new URL('/images/og-image.png', Astro.site).href : '/images/og-image.png';
 const ogUrl = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : Astro.url.pathname;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />

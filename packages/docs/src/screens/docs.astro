@@ -1,0 +1,55 @@
+---
+import { sx } from '@cssxio/cssx';
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
+import LanguageToggle from '../components/LanguageToggle.astro';
+import { defaultLocale, locales, plainText, renderRich } from '../localization/index.ts';
+import type { Locale } from '../localization/index.ts';
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = locales[lang];
+const homePath = lang === defaultLocale ? '/' : `/${lang}`;
+---
+
+<BaseLayout title={plainText(t.docs.title)} lang={lang}>
+  <div class={sx('max-w-full mx-auto md:max-w-xl min-h-screen flex flex-col p-4')}>
+    <header class={sx('flex flex-row-reverse justify-between items-center gap-4 py-4')}>
+      <div class={sx('flex justify-start items-center gap-4')}>
+        <LanguageToggle />
+        <ThemeToggle />
+      </div>
+      <a href={homePath}>
+        <img src="/images/logo.png" alt="cssx" class={sx('w-auto h-6 opacity-80 dark:invert')} />
+      </a>
+    </header>
+
+    <main class={sx('flex flex-col gap-10 justify-center flex-1')}>
+      <div class={sx('flex flex-col gap-4')}>
+        <h1
+          class={sx('text-2xl text-gray-900 dark:text-gray-50')}
+          set:html={renderRich(t.docs.title)}
+        />
+        <p
+          class={sx('text-lg font-light text-gray-600 dark:text-gray-300 leading-relaxed')}
+          set:html={renderRich(t.docs.description)}
+        />
+      </div>
+      <div>
+        <a
+          class={sx(
+            'bg-black dark:bg-white dark:text-black text-white text-base font-light px-6 py-2.5',
+            'rounded-full tracking-wide hover:bg-black/50 dark:hover:bg-white/50',
+            'flex w-full items-center justify-center md:inline-flex md:w-auto',
+          )}
+          href={homePath}
+          set:html={renderRich(t.docs.backHome)}
+        ></a>
+      </div>
+    </main>
+  </div>
+</BaseLayout>

@@ -1,0 +1,45 @@
+---
+import { sx } from '@cssxio/cssx';
+
+import Icon from './Icon.astro';
+import { defaultLocale, localeCodes } from '../localization/index.ts';
+
+interface Props {
+  class?: string;
+}
+---
+
+<button
+  data-language-toggle
+  type="button"
+  aria-label="Switch language"
+  data-locales={localeCodes.join(',')}
+  data-default={defaultLocale}
+  class={Astro.props.class}  
+>
+  <Icon name="language" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} />
+</button>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-language-toggle]');
+
+  for (const button of buttons) {
+    const defaultLocaleCode = button.dataset.default ?? 'en';
+    const orderedLocales = (button.dataset.locales ?? 'en').split(',');
+
+    button.addEventListener('click', () => {
+      const current = document.documentElement.lang || defaultLocaleCode;
+      const currentIndex = orderedLocales.indexOf(current);
+      const next = orderedLocales[(currentIndex + 1) % orderedLocales.length];
+      const prefixed = new Set(orderedLocales.filter((code) => code !== defaultLocaleCode));
+      const pathname = window.location.pathname;
+      const firstSegment = pathname.replace(/^\/+/, '').split('/').find(Boolean) ?? '';
+      const rest = firstSegment && prefixed.has(firstSegment) ? pathname.slice(firstSegment.length + 1) || '/' : pathname;
+      const prefix = next === defaultLocaleCode ? '' : `/${next}`;
+      const target = rest === '/' ? prefix || '/' : `${prefix}${rest}`;
+      if (target !== pathname) {
+        window.location.assign(target);
+      }
+    });
+  }
+</script>
