@@ -5,29 +5,45 @@ import Icon from './Icon.astro';
 ---
 
 <div class="theme-toggle">
-  <button data-theme-toggle type="button" aria-label="Toggle dark or light color theme" class={sx('pt-1.2')}>
+  <button data-theme-toggle type="button" aria-label="Switch color theme between light, dark, and system" class={sx('pt-1.2')}>
     <span data-theme-label class="theme-toggle-sun">
       <Icon name="sun" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
     </span>
     <span data-theme-label class="theme-toggle-moon">
       <Icon name="moon" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
     </span>
+    <span data-theme-label class="theme-toggle-system">
+      <Icon name="device-desktop" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
+    </span>
   </button>
 </div>
 
 <style>
-  .theme-toggle-sun {
+  .theme-toggle-sun,
+  .theme-toggle-system {
     display: none;
   }
   .theme-toggle-moon {
     display: block;
   }
-  :where([data-theme='light']) .theme-toggle-sun,
-  :where([data-theme='light'] *) .theme-toggle-sun {
+  :where([data-theme-mode='light']) .theme-toggle-sun,
+  :where([data-theme-mode='light'] *) .theme-toggle-sun {
     display: block;
   }
-  :where([data-theme='light']) .theme-toggle-moon,
-  :where([data-theme='light'] *) .theme-toggle-moon {
+  :where([data-theme-mode='light']) .theme-toggle-moon,
+  :where([data-theme-mode='light'] *) .theme-toggle-moon,
+  :where([data-theme-mode='light']) .theme-toggle-system,
+  :where([data-theme-mode='light'] *) .theme-toggle-system {
+    display: none;
+  }
+  :where([data-theme-mode='system']) .theme-toggle-system,
+  :where([data-theme-mode='system'] *) .theme-toggle-system {
+    display: block;
+  }
+  :where([data-theme-mode='system']) .theme-toggle-sun,
+  :where([data-theme-mode='system'] *) .theme-toggle-sun,
+  :where([data-theme-mode='system']) .theme-toggle-moon,
+  :where([data-theme-mode='system'] *) .theme-toggle-moon {
     display: none;
   }
   .theme-toggle-caption {
@@ -41,37 +57,51 @@ import Icon from './Icon.astro';
       display: inline;
     }
   }
-  @media (prefers-color-scheme: dark) {
-    :where([data-theme='light']) .theme-toggle-sun,
-    :where([data-theme='light'] *) .theme-toggle-sun {
-      display: none;
-    }
-    :where([data-theme='light']) .theme-toggle-moon,
-    :where([data-theme='light'] *) .theme-toggle-moon {
-      display: block;
-    }
-  }
 </style>
 
 <script>
   const buttons = document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]');
+  const modes = ['light', 'dark', 'system'] as const;
+  type ThemeMode = (typeof modes)[number];
+  const prefersDark = matchMedia('(prefers-color-scheme: dark)');
+
+  function currentMode(): ThemeMode {
+    const value = document.documentElement.dataset.themeMode as ThemeMode | undefined;
+    return value && modes.includes(value) ? value : 'dark';
+  }
+
+  function applyMode(mode: ThemeMode) {
+    const isDark = mode === 'dark' || (mode === 'system' && prefersDark.matches);
+    document.documentElement.dataset.themeMode = mode;
+    document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+  }
 
   function updateLabels() {
+    const mode = currentMode();
     const isDark = document.documentElement.dataset.theme === 'dark';
     for (const button of buttons) {
       button.setAttribute('aria-pressed', String(isDark));
       const caption = button.querySelector('[data-theme-label="caption"]');
-      if (caption) caption.textContent = isDark ? 'Light' : 'Dark';
+      if (caption) caption.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
     }
   }
 
+  applyMode(currentMode());
   updateLabels();
+
+  prefersDark.addEventListener('change', () => {
+    if (currentMode() === 'system') {
+      applyMode('system');
+      updateLabels();
+    }
+  });
+
   for (const button of buttons) {
     button.addEventListener('click', () => {
-      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-      document.documentElement.dataset.theme = next;
-      document.documentElement.style.colorScheme = next;
-      localStorage.setItem('cssx-theme', next);
+      const mode = modes[(modes.indexOf(currentMode()) + 1) % modes.length];
+      applyMode(mode);
+      localStorage.setItem('cssx-theme', mode);
       updateLabels();
     });
   }

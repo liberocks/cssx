@@ -36,7 +36,8 @@ const logos = [
         Don’t let boilerplate ship to production. On average, one-third of your app’s CSS goes unused. <span
           class={sx('font-mono')}>cssx</span
         > strips unused styles, minifies the rest, and eliminates long utility class names in production while keeping your
-        development experience intact. In your editor, you’ll still see the full, readable CSS class utilities you know and love.
+        development experience intact. In your editor, you’ll still see the full, readable CSS class utilities you know and
+        love.
       </p>
 
       <p class={sx('text-xs -mt-5 tracking-wider text-gray-400')}>
@@ -46,7 +47,9 @@ const logos = [
       <div>
         <a
           class={sx(
-            'bg-black dark:bg-white dark:text-black text-white text-base font-light px-6 py-2.5 rounded-full tracking-wide hover:bg-black/50 dark:hover:bg-white/50',
+            'bg-black dark:bg-white dark:text-black text-white text-base font-light px-6 py-2.5',
+            'rounded-full tracking-wide hover:bg-black/50 dark:hover:bg-white/50',
+            'flex w-full items-center justify-center md:inline-flex md:w-auto',
           )}
           href="/docs">Read Documentation</a
         >
@@ -70,7 +73,7 @@ const logos = [
         >
           <div
             class={sx(
-              'flex w-[max-content] shrink-0 animate-marquee group-hover:animation-paused motion-reduce:animation-name-none grayscale dark:invert',
+              'flex w-[max-content] shrink-0 animate-marquee [@media (hover: hover)]:group-hover:animation-paused grayscale dark:invert',
             )}
           >
             {
@@ -91,16 +94,17 @@ const logos = [
         <ThemeToggle />
 
         <div class={sx('flex justify-start items-center gap-4')}>
-        <a href="https://github.com/liberocks/cssx"
-          ><Icon name="brand-github" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
-        >
-        <a href="https://www.npmjs.com/package/@cssxio/cssx"
-          ><Icon name="brand-npm" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
-        >
-        <a href="https://x.com/liberocks"
-          ><Icon name="brand-x" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
-        >
-        <a href="#"><Icon name="brand-vscode" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a></div>
+          <a href="https://github.com/liberocks/cssx"
+            ><Icon name="brand-github" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
+          >
+          <a href="https://www.npmjs.com/package/@cssxio/cssx"
+            ><Icon name="brand-npm" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
+          >
+          <a href="https://x.com/liberocks"
+            ><Icon name="brand-x" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
+          >
+          <a href="#"><Icon name="brand-vscode" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a>
+        </div>
       </div>
     </div>
   </div>
