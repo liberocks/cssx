@@ -1,7 +1,11 @@
 import { DEFAULT_DOCUMENTED_COLOR_TOKENS } from './theme-colors';
+import { TAILWIND_4_DEFAULT_THEME } from './tailwind-theme-defaults.generated';
 
 /** Built-in theme tokens used unless a theme block overrides or resets them. */
 export const DEFAULT_THEME: Readonly<Record<string, string>> = {
+  ...TAILWIND_4_DEFAULT_THEME,
+  // CSSX's documented palette includes its own additional color families and
+  // preserves its existing precision contract for public output.
   ...DEFAULT_DOCUMENTED_COLOR_TOKENS,
   '--spacing': '0.25rem',
   '--breakpoint-xs': '30rem',
@@ -13,6 +17,32 @@ export const DEFAULT_THEME: Readonly<Record<string, string>> = {
   '--color-black': '#000',
   '--color-white': '#fff',
   '--color-transparent': 'transparent',
+  '--text-xs': '0.75rem',
+  '--text-xs--line-height': '1rem',
+  '--text-sm': '0.875rem',
+  '--text-sm--line-height': '1.25rem',
+  '--text-base': '1rem',
+  '--text-base--line-height': '1.5rem',
+  '--text-lg': '1.125rem',
+  '--text-lg--line-height': '1.75rem',
+  '--text-xl': '1.25rem',
+  '--text-xl--line-height': '1.75rem',
+  '--text-2xl': '1.5rem',
+  '--text-2xl--line-height': '2rem',
+  '--text-3xl': '1.875rem',
+  '--text-3xl--line-height': '2.25rem',
+  '--text-4xl': '2.25rem',
+  '--text-4xl--line-height': '2.5rem',
+  '--text-5xl': '3rem',
+  '--text-5xl--line-height': '1',
+  '--text-6xl': '3.75rem',
+  '--text-6xl--line-height': '1',
+  '--text-7xl': '4.5rem',
+  '--text-7xl--line-height': '1',
+  '--text-8xl': '6rem',
+  '--text-8xl--line-height': '1',
+  '--text-9xl': '8rem',
+  '--text-9xl--line-height': '1',
   '--duration-instant': '0ms',
   '--duration-fast': '100ms',
   '--duration-normal': '200ms',

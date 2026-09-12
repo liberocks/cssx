@@ -18,6 +18,20 @@ import cssx from '@cssxio/unplugin/vite';
 export default { plugins: [cssx()] };
 ```
 
+### Vue 3 with Vite
+
+Place CSSX before Vue in the Vite plugin list. CSSX transforms `create` and
+`sx` calls in `<script>`, `<script setup>`, and `:class="sx(...)"` template
+bindings. Static plain `class="..."` attributes are intentionally left alone.
+
+```ts
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import cssx from '@cssxio/unplugin/vite';
+
+export default defineConfig({ plugins: [cssx(), vue()] });
+```
+
 ```js
 // rollup.config.js
 import cssx from '@cssxio/unplugin/rollup';

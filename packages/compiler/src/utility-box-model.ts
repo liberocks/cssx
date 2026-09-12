@@ -27,7 +27,7 @@ export function compileBorderWidthUtility(utility: string): UtilityDeclaration |
     }
     return { property: 'border-width', value: value.replace(/^(?:length|size):/, '') };
   }
-  const match = /^border-(x|y|t|r|b|l)-(0|2|4|8)$/.exec(utility);
+  const match = /^border-(x|y|t|r|b|l|s|e|bs|be)-(0|2|4|8)$/.exec(utility);
   if (!match) {
     return null;
   }
@@ -40,6 +40,10 @@ export function compileBorderWidthUtility(utility: string): UtilityDeclaration |
     r: ['border-right-width'],
     b: ['border-bottom-width'],
     l: ['border-left-width'],
+    s: ['border-inline-start-width'],
+    e: ['border-inline-end-width'],
+    bs: ['border-block-start-width'],
+    be: ['border-block-end-width'],
   };
   return properties[side]!.map((property) => ({ property, value }));
 }
@@ -58,7 +62,7 @@ export function compileSpacingUtility(
   theme: CssxTheme,
 ): UtilityDeclaration | UtilityDeclaration[] | null {
   const match =
-    /^(px|py|pt|pr|pb|pl|ps|pe|p|mx|my|mt|mr|mb|ml|ms|me|m|gap-x|gap-y|gap|inset-x|inset-y|inset-s|inset-e|inset|top|right|bottom|left)-(.+)$/.exec(
+    /^(px|py|pt|pr|pb|pl|ps|pe|pbs|pbe|p|mx|my|mt|mr|mb|ml|ms|me|mbs|mbe|m|gap-x|gap-y|gap|inset-x|inset-y|inset-s|inset-e|inset-bs|inset-be|inset|top|right|bottom|left)-(.+)$/.exec(
       utility,
     );
   if (!match) {
@@ -85,6 +89,8 @@ export function compileSpacingUtility(
     pl: ['padding-left'],
     ps: ['padding-inline-start'],
     pe: ['padding-inline-end'],
+    pbs: ['padding-block-start'],
+    pbe: ['padding-block-end'],
     m: ['margin'],
     mx: ['margin-left', 'margin-right'],
     my: ['margin-top', 'margin-bottom'],
@@ -94,6 +100,8 @@ export function compileSpacingUtility(
     ml: ['margin-left'],
     ms: ['margin-inline-start'],
     me: ['margin-inline-end'],
+    mbs: ['margin-block-start'],
+    mbe: ['margin-block-end'],
     gap: ['gap'],
     'gap-x': ['column-gap'],
     'gap-y': ['row-gap'],
@@ -106,6 +114,8 @@ export function compileSpacingUtility(
     'inset-y': ['top', 'bottom'],
     'inset-s': ['inset-inline-start'],
     'inset-e': ['inset-inline-end'],
+    'inset-bs': ['inset-block-start'],
+    'inset-be': ['inset-block-end'],
   };
   const targets = properties[prefix];
   return targets!.map((property) => ({ property, value }));

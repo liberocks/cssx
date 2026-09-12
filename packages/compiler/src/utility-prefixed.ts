@@ -90,7 +90,7 @@ export function compilePrefixedUtility(
   if (background) {
     return background;
   }
-  const mask = compileMaskUtility(utility);
+  const mask = compileMaskUtility(utility, theme);
   if (mask) {
     return mask;
   }
@@ -237,6 +237,11 @@ export function compilePrefixedUtility(
     const value = leading[1]!;
     const resolved = /^\d/.test(value) ? resolveSpacingValue(value, false, theme) : leadingValue(value);
     return resolved ? { property: 'line-height', value: resolved } : null;
+  }
+  const indent = /^indent-(.+)$/.exec(utility);
+  if (indent) {
+    const value = resolveSpacingValue(indent[1]!, negative, theme);
+    return value ? { property: 'text-indent', value } : null;
   }
   const font = /^font-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
   if (font) {

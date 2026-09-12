@@ -150,30 +150,6 @@ export const EXACT_VISUAL_DECLARATIONS: Readonly<Record<string, readonly Utility
   'ease-in': [{ property: 'transition-timing-function', value: 'cubic-bezier(.4, 0, 1, 1)' }],
   'ease-out': [{ property: 'transition-timing-function', value: 'cubic-bezier(0, 0, .2, 1)' }],
   'ease-in-out': [{ property: 'transition-timing-function', value: 'cubic-bezier(.4, 0, .2, 1)' }],
-  'text-xs': [
-    { property: 'font-size', value: '0.75rem' },
-    { property: 'line-height', value: '1rem' },
-  ],
-  'text-sm': [
-    { property: 'font-size', value: '0.875rem' },
-    { property: 'line-height', value: '1.25rem' },
-  ],
-  'text-base': [
-    { property: 'font-size', value: '1rem' },
-    { property: 'line-height', value: '1.5rem' },
-  ],
-  'text-lg': [
-    { property: 'font-size', value: '1.125rem' },
-    { property: 'line-height', value: '1.75rem' },
-  ],
-  'text-xl': [
-    { property: 'font-size', value: '1.25rem' },
-    { property: 'line-height', value: '1.75rem' },
-  ],
-  'text-2xl': [
-    { property: 'font-size', value: '1.5rem' },
-    { property: 'line-height', value: '2rem' },
-  ],
   truncate: [
     { property: 'overflow', value: 'hidden', semanticGroup: 'truncate' },
     { property: 'text-overflow', value: 'ellipsis', semanticGroup: 'truncate' },

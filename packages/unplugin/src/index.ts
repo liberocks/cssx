@@ -31,8 +31,8 @@ export { transformCssxModule, type IncomingSourceMap, type TransformResult } fro
 
 /** Metadata key used to retain transformed CSSX data until assets are emitted. */
 const RULES_METADATA_KEY = '@cssxio/unplugin/rules';
-/** Matches JavaScript, TypeScript, and Astro module IDs, with an optional query. */
-const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro)(?:\?.*)?$/;
+/** Matches JavaScript, TypeScript, Astro, and Vue module IDs, with an optional query. */
+const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro|vue)(?:\?.*)?$/;
 
 /** CSSX data collected for one transformed module. */
 interface ModuleCssxData extends CssxSourceModule {

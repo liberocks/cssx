@@ -40,6 +40,15 @@ export function compileGradientUtility(
   negative: boolean,
   theme: CssxTheme,
 ): UtilityDeclaration[] | null {
+  const interpolation = (raw: string | undefined): string => {
+    if (!raw) {
+      return '';
+    }
+    if (raw === 'longer' || raw === 'shorter' || raw === 'increasing' || raw === 'decreasing') {
+      return `in oklch ${raw} hue `;
+    }
+    return `in ${raw} `;
+  };
   const direction =
     /^bg-linear-to-(t|tr|r|br|b|bl|l|tl)(?:\/(srgb|oklch|oklab|hsl|longer|shorter|increasing|decreasing))?$/.exec(
       utility,
@@ -55,25 +64,55 @@ export function compileGradientUtility(
       l: 'to left',
       tl: 'to top left',
     };
-    const interpolation = direction[2] ? `in ${direction[2]} ` : '';
     const value = directions[direction[1]!];
     return [
       {
         property: 'background-image',
-        value: `linear-gradient(${interpolation}${value}, var(--cssx-gradient-via-stops, var(--cssx-gradient-stops)))`,
+        value: `linear-gradient(${interpolation(direction[2])}${value}, var(--cssx-gradient-via-stops, var(--cssx-gradient-stops)))`,
         semanticGroup: 'background-image',
       },
     ];
   }
 
-  const angle = /^bg-linear-(\d+|\[[^\]]+\])$/.exec(utility);
+  const radial = /^bg-radial(?:\/(srgb|oklch|oklab|hsl|longer|shorter|increasing|decreasing))?$/.exec(utility);
+  if (radial) {
+    return [
+      {
+        property: 'background-image',
+        value: `radial-gradient(${interpolation(radial[1])}var(--cssx-gradient-via-stops, var(--cssx-gradient-stops)))`,
+        semanticGroup: 'background-image',
+      },
+    ];
+  }
+
+  const conic =
+    /^bg-conic(?:-(\d+|\[[^\]]+\]))?(?:\/(srgb|oklch|oklab|hsl|longer|shorter|increasing|decreasing))?$/.exec(utility);
+  if (conic) {
+    const rawAngle = conic[1];
+    const angle = rawAngle
+      ? rawAngle.startsWith('[')
+        ? rawAngle.slice(1, -1)
+        : `${negative ? '-' : ''}${rawAngle}deg`
+      : '';
+    return [
+      {
+        property: 'background-image',
+        value: `conic-gradient(from ${angle || '0deg'} ${interpolation(conic[2])}at center, var(--cssx-gradient-via-stops, var(--cssx-gradient-stops)))`,
+        semanticGroup: 'background-image',
+      },
+    ];
+  }
+
+  const angle = /^bg-linear-(\d+|\[[^\]]+\])(?:\/(srgb|oklch|oklab|hsl|longer|shorter|increasing|decreasing))?$/.exec(
+    utility,
+  );
   if (angle) {
     const rawAngle = angle[1]!;
     const value = rawAngle.startsWith('[') ? rawAngle.slice(1, -1) : `${negative ? '-' : ''}${rawAngle}deg`;
     return [
       {
         property: 'background-image',
-        value: `linear-gradient(${value}, var(--cssx-gradient-via-stops, var(--cssx-gradient-stops)))`,
+        value: `linear-gradient(${interpolation(angle[2])}${value}, var(--cssx-gradient-via-stops, var(--cssx-gradient-stops)))`,
         semanticGroup: 'background-image',
       },
     ];
@@ -142,13 +181,16 @@ export function resolveGradientPosition(value: string): string | null {
  * @param theme Active resolved theme.
  * @returns Color declaration, or null when unsupported.
  */
-export function compileColorUtility(utility: string, theme: CssxTheme): UtilityDeclaration | null {
-  const match = /^(bg|text|border|accent|caret|fill|stroke)-(.+)$/.exec(utility);
+export function compileColorUtility(
+  utility: string,
+  theme: CssxTheme,
+): UtilityDeclaration | UtilityDeclaration[] | null {
+  const match = /^(bg|text|border(?:-(x|y|s|e|bs|be|t|r|b|l))?|accent|caret|fill|stroke)-(.+)$/.exec(utility);
   if (!match) {
     return null;
   }
   const family = match[1]!;
-  const modifier = splitColorModifier(match[2]!);
+  const modifier = splitColorModifier(match[3]!);
   const value = modifier.value;
   if (family === 'text' && /^(xs|sm|base|lg|xl|\d+xl)$/.test(value)) {
     return null;
@@ -174,17 +216,27 @@ export function compileColorUtility(utility: string, theme: CssxTheme): UtilityD
     return null;
   }
   const color = opacity === null ? resolved : `color-mix(in srgb, ${resolved} ${opacity}%, transparent)`;
-  const properties: Readonly<Record<string, string>> = {
-    bg: 'background-color',
-    text: 'color',
-    border: 'border-color',
-    accent: 'accent-color',
-    caret: 'caret-color',
-    fill: 'fill',
-    stroke: 'stroke',
+  const properties: Readonly<Record<string, readonly string[]>> = {
+    bg: ['background-color'],
+    text: ['color'],
+    border: ['border-color'],
+    'border-x': ['border-left-color', 'border-right-color'],
+    'border-y': ['border-top-color', 'border-bottom-color'],
+    'border-s': ['border-inline-start-color'],
+    'border-e': ['border-inline-end-color'],
+    'border-bs': ['border-block-start-color'],
+    'border-be': ['border-block-end-color'],
+    'border-t': ['border-top-color'],
+    'border-r': ['border-right-color'],
+    'border-b': ['border-bottom-color'],
+    'border-l': ['border-left-color'],
+    accent: ['accent-color'],
+    caret: ['caret-color'],
+    fill: ['fill'],
+    stroke: ['stroke'],
   };
-  const property = properties[family];
-  return { property: property!, value: color };
+  const propertiesForFamily = properties[family];
+  return propertiesForFamily!.map((property) => ({ property, value: color }));
 }
 
 /**

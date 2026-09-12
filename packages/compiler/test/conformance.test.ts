@@ -155,7 +155,7 @@ const INVALID_CANDIDATES = [
   ['containment', 'contain-layout-paint'],
   ['SVG rendering', 'stroke-cap-rounded'],
   ['writing mode', 'writing-vertical'],
-  ['transform', 'translate-z-4'],
+  ['transform', 'translate-depth-4'],
   ['interaction', 'touch-pan-z'],
   ['scrolling', 'snap-forever'],
   ['SVG', 'stroke-width-2'],

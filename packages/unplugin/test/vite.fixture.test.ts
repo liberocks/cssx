@@ -1,11 +1,57 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import vue from '@vitejs/plugin-vue';
 import { build, createServer } from 'vite';
 import { describe, expect, it } from 'vitest';
 import cssxVite from '../src/vite';
 
+const require = createRequire(import.meta.url);
+
 describe('CSSX Vite fixture', () => {
+  it('extracts CSSX calls from Vue SFC script setup and template bindings', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cssx-vite-vue-'));
+    try {
+      await mkdir(join(root, 'src'));
+      await writeFile(
+        join(root, 'src/App.vue'),
+        `<script setup lang="ts">
+import * as cssx from '@cssxio/cssx';
+import { sx } from '@cssxio/cssx';
+const styles = cssx.create({ title: 'text-3xl font-semibold' });
+const title = cssx.props(styles.title);
+const active = true;
+</script>
+<template><main :class="sx(title.className, 'p-4', active && 'text-blue-500')">CSSX</main></template>`,
+      );
+      await writeFile(
+        join(root, 'src/main.ts'),
+        "import { createApp } from 'vue'; import App from './App.vue'; createApp(App).mount('#app');",
+      );
+      await writeFile(
+        join(root, 'index.html'),
+        '<div id="app"></div><script type="module" src="/src/main.ts"></script>',
+      );
+
+      await build({
+        root,
+        logLevel: 'silent',
+        plugins: [cssxVite({ cssFileName: 'assets/cssx.css', sourceMap: false }), vue()],
+        resolve: { alias: { vue: require.resolve('vue') } },
+        build: { emptyOutDir: true, outDir: 'dist' },
+      });
+
+      const css = await readFile(join(root, 'dist/assets/cssx.css'), 'utf8');
+      expect(css).toContain('font-size:1.875rem');
+      expect(css).toContain('font-weight:600');
+      expect(css).toContain('padding:calc(0.25rem * 4)');
+      expect(css).toContain('color:oklch(62.27% 0.214 259.815)');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('emits CSS from a real Vite production library build', async () => {
     const root = await mkdtemp(join(tmpdir(), 'cssx-vite-'));
     try {

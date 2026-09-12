@@ -175,6 +175,22 @@ describe('CSSX unplugin transform', () => {
     expect(css).toContain('opacity:0.5');
   });
 
+  it('extracts CSSX calls from Vue SFC script setup and template bindings', async () => {
+    const result = await transformRequired(
+      `<script setup lang="ts">\nimport * as cssx from '@cssxio/cssx';\nimport { sx } from '@cssxio/cssx';\nconst styles = cssx.create({ title: 'text-3xl font-semibold' });\nconst title = cssx.props(styles.title);\nconst enabled = true;\n</script>\n<template><h1 :class="sx(title.className, 'text-3xl', enabled && 'text-blue-500')">CSSX</h1></template>`,
+      '/project/App.vue',
+    );
+    const css = serializeCss(result.rules);
+
+    expect(result.code).toContain('<script setup lang="ts">');
+    expect(result.code).toContain('<template><h1 :class="sx(title.className, \'s');
+    expect(result.code).not.toContain("'text-3xl'");
+    expect(css).toContain('font-size:1.875rem');
+    expect(css).toContain('line-height:2.25rem');
+    expect(css).toContain('font-weight:600');
+    expect(css).toContain('color:oklch(62.27% 0.214 259.815)');
+  });
+
   it('skips Astro templates without sx calls and handles escaped strings in dynamic expressions', async () => {
     await expect(
       transformCssxModule("---\nimport { sx } from '@cssxio/cssx';\n---\n<main />", '/project/empty.astro'),

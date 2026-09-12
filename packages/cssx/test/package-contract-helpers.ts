@@ -77,6 +77,7 @@ export const approvedDependencies = new Set([
   '@babel/core',
   '@cssxio/babel-plugin',
   '@cssxio/compiler',
+  '@vue/compiler-sfc',
   'esbuild',
   'unplugin',
 ]);

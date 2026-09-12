@@ -3,6 +3,7 @@ import { DIRECTIONAL_CONFLICTS } from './semantics-directional-conflicts';
 import { EXACT_GROUPS } from './semantics-exact-groups';
 import { PREFIX_GROUPS } from './semantics-prefix-groups';
 import { isLengthCssValue } from './utility-resolvers';
+import { tailwindFallback } from './tailwind-fallback';
 
 /** Style groups used to merge one utility with later utilities. */
 export interface UtilitySemantics {
@@ -35,13 +36,14 @@ export function classifyCandidate(candidateSource: string): UtilitySemantics | n
 export function classifyParsedCandidate(candidate: ReturnType<typeof parseCandidate>): UtilitySemantics | null {
   const utility = candidate.utility;
   const group = classifyUtilityGroup(utility);
-  if (!group) {
+  const fallback = group ? undefined : tailwindFallback(candidate.raw);
+  if (!group && !fallback) {
     return null;
   }
   return {
     scope: candidateScope(candidate),
-    group,
-    conflicts: DIRECTIONAL_CONFLICTS[group] ?? [group],
+    group: group ?? fallback!.group,
+    conflicts: group ? (DIRECTIONAL_CONFLICTS[group] ?? [group]) : [fallback!.group],
   };
 }
 

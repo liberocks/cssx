@@ -133,7 +133,7 @@ export function compileCoreLayoutUtility(
       value: values[autoTracks[2]!]!,
     };
   }
-  const scroll = /^scroll-(mx|my|mt|mr|mb|ml|m|px|py|pt|pr|pb|pl|p)-(.+)$/.exec(utility);
+  const scroll = /^scroll-(mx|my|mt|mr|mb|ml|ms|me|mbs|mbe|m|px|py|pt|pr|pb|pl|ps|pe|pbs|pbe|p)-(.+)$/.exec(utility);
   if (scroll) {
     const prefix = scroll[1]!;
     const value = resolveSpacingValue(scroll[2]!, negative, theme);
@@ -148,6 +148,10 @@ export function compileCoreLayoutUtility(
       mr: ['scroll-margin-right'],
       mb: ['scroll-margin-bottom'],
       ml: ['scroll-margin-left'],
+      ms: ['scroll-margin-inline-start'],
+      me: ['scroll-margin-inline-end'],
+      mbs: ['scroll-margin-block-start'],
+      mbe: ['scroll-margin-block-end'],
       p: ['scroll-padding'],
       px: ['scroll-padding-left', 'scroll-padding-right'],
       py: ['scroll-padding-top', 'scroll-padding-bottom'],
@@ -155,6 +159,10 @@ export function compileCoreLayoutUtility(
       pr: ['scroll-padding-right'],
       pb: ['scroll-padding-bottom'],
       pl: ['scroll-padding-left'],
+      ps: ['scroll-padding-inline-start'],
+      pe: ['scroll-padding-inline-end'],
+      pbs: ['scroll-padding-block-start'],
+      pbe: ['scroll-padding-block-end'],
     };
     return properties[prefix]!.map((property) => ({ property, value }));
   }

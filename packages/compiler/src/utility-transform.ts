@@ -94,24 +94,46 @@ export function compileTransformUtility(
   negative: boolean,
   theme: CssxTheme,
 ): UtilityDeclaration[] | null {
-  const translate = /^(translate-x|translate-y)-(.+)$/.exec(utility);
+  const translate = /^(translate-x|translate-y|translate-z)-(.+)$/.exec(utility);
   if (translate) {
-    const axis = translate[1] === 'translate-x' ? '--cssx-translate-x' : '--cssx-translate-y';
+    const axis = `--cssx-${translate[1]}`;
     const value = resolveDimensionValue(translate[2]!, negative, theme, 'translate');
     if (!value) {
       return null;
     }
     return [
       { property: axis, value },
-      { property: 'translate', value: 'var(--cssx-translate-x, 0) var(--cssx-translate-y, 0)' },
+      {
+        property: 'translate',
+        value: 'var(--cssx-translate-x, 0) var(--cssx-translate-y, 0) var(--cssx-translate-z, 0)',
+      },
     ];
+  }
+  const translateBoth = /^translate-(.+)$/.exec(utility);
+  if (translateBoth) {
+    const value = resolveDimensionValue(translateBoth[1]!, negative, theme, 'translate');
+    return value
+      ? [
+          { property: '--cssx-translate-x', value },
+          { property: '--cssx-translate-y', value },
+          {
+            property: 'translate',
+            value: 'var(--cssx-translate-x, 0) var(--cssx-translate-y, 0) var(--cssx-translate-z, 0)',
+          },
+        ]
+      : null;
+  }
+  const rotate3d = /^rotate-(x|y|z)-(.+)$/.exec(utility);
+  if (rotate3d) {
+    const value = resolveAngleValue(rotate3d[2]!, negative);
+    return value ? [{ property: 'rotate', value: `${rotate3d[1]} ${value}` }] : null;
   }
   const rotate = /^rotate-(.+)$/.exec(utility);
   if (rotate) {
     const value = resolveAngleValue(rotate[1]!, negative);
     return value ? [{ property: 'rotate', value }] : null;
   }
-  const scale = /^(scale-x|scale-y|scale)-(.+)$/.exec(utility);
+  const scale = /^(scale-x|scale-y|scale-z|scale)-(.+)$/.exec(utility);
   if (scale) {
     const axis = scale[1]!;
     const value = resolveScaleValue(scale[2]!, negative);
@@ -130,10 +152,16 @@ export function compileTransformUtility(
         { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1)' },
       ];
     }
+    if (axis === 'scale-z') {
+      return [
+        { property: '--cssx-scale-z', value },
+        { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1) var(--cssx-scale-z, 1)' },
+      ];
+    }
     return [
       { property: '--cssx-scale-x', value },
       { property: '--cssx-scale-y', value },
-      { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1)' },
+      { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1) var(--cssx-scale-z, 1)' },
     ];
   }
   const skew = /^skew-(x|y)-(.+)$/.exec(utility);
@@ -147,6 +175,17 @@ export function compileTransformUtility(
       { property: `--cssx-skew-${axis}`, value },
       { property: 'transform', value: 'skewX(var(--cssx-skew-x, 0deg)) skewY(var(--cssx-skew-y, 0deg))' },
     ];
+  }
+  const skewBoth = /^skew-(.+)$/.exec(utility);
+  if (skewBoth) {
+    const value = resolveAngleValue(skewBoth[1]!, negative);
+    return value
+      ? [
+          { property: '--cssx-skew-x', value },
+          { property: '--cssx-skew-y', value },
+          { property: 'transform', value: 'skewX(var(--cssx-skew-x, 0deg)) skewY(var(--cssx-skew-y, 0deg))' },
+        ]
+      : null;
   }
   return null;
 }

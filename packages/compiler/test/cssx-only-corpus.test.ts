@@ -37,7 +37,7 @@ const tailwind = JSON.parse(
 
 describe('CSSX-only complete utility-family corpus', () => {
   it('stays distinct from the Tailwind corpus and compiles every family', () => {
-    const tailwindCandidates = new Set([...tailwind.supported, ...tailwind.unsupported]);
+    const tailwindCandidates = new Set(tailwind.candidates);
 
     for (const candidate of CSSX_ONLY_CANDIDATES) {
       expect(tailwindCandidates.has(candidate), candidate).toBe(false);

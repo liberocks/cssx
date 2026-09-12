@@ -1,4 +1,4 @@
-import { parseCandidate } from './candidate';
+import { candidateScope, parseCandidate } from './candidate';
 import type { ParsedCandidate } from './candidate';
 import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
@@ -17,7 +17,9 @@ import {
 } from './utility-box-model';
 import { compileContainerUtility, compileCoreLayoutUtility } from './utility-layout';
 import { compilePrefixedUtility } from './utility-prefixed';
+import { compileFontSizeUtility } from './utility-typography';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
+import { tailwindFallback } from './tailwind-fallback';
 
 export type { UtilityDeclaration } from './utility-types';
 import type { CssxTheme } from './theme';
@@ -68,6 +70,8 @@ export interface UtilityRecipe {
   readonly resources: UtilityRecipeResources;
   /** Semantic write behavior for each declaration atom. */
   readonly writes: readonly UtilityWriteSet[];
+  /** Pinned Tailwind CSS for a data-backed recipe, if one is required. */
+  readonly fallbackCss?: string;
 }
 
 /** Internal CSS entry before final ordering and result projection. */
@@ -115,10 +119,22 @@ export interface ResolvedUtilityRecipe {
 export function resolveUtilityRecipe(candidateSource: string, theme: CssxTheme): ResolvedUtilityRecipe {
   const candidate = parseCandidate(candidateSource);
   const semantics = classifyParsedCandidate(candidate);
-  if (!semantics) {
+  if (semantics) {
+    try {
+      return resolveParsedUtilityRecipe(candidateSource, candidate, semantics, theme);
+    } catch (error) {
+      const fallback = tailwindFallback(candidateSource);
+      if (!fallback) {
+        throw error;
+      }
+      return fallbackRecipe(candidateSource, candidate, fallback.group, fallback.css);
+    }
+  }
+  const fallback = tailwindFallback(candidateSource);
+  if (!fallback) {
     throw new Error(`CSSX cannot compile utility "${candidateSource}".`);
   }
-  return resolveParsedUtilityRecipe(candidateSource, candidate, semantics, theme);
+  return fallbackRecipe(candidateSource, candidate, fallback.group, fallback.css);
 }
 
 /** Builds a utility recipe from parsing and classification data already available to the caller. */
@@ -128,7 +144,19 @@ export function resolveParsedUtilityRecipe(
   semantics: UtilitySemantics,
   theme: CssxTheme,
 ): ResolvedUtilityRecipe {
-  const declarations = compileDeclarations(candidate.utility, candidate.negative, theme);
+  const fallback = tailwindFallback(candidateSource);
+  if (fallback && !classifyParsedCandidate(candidate)) {
+    return fallbackRecipe(candidateSource, candidate, fallback.group, fallback.css);
+  }
+  let declarations: UtilityDeclaration[];
+  try {
+    declarations = compileDeclarations(candidate.utility, candidate.negative, theme);
+  } catch (error) {
+    if (!fallback) {
+      throw error;
+    }
+    return fallbackRecipe(candidateSource, candidate, fallback.group, fallback.css);
+  }
   const keyframes = requiredAnimationKeyframes(declarations, theme);
   if (candidate.important) {
     for (const declaration of declarations) {
@@ -145,6 +173,34 @@ export function resolveParsedUtilityRecipe(
         const group = atom[0]?.semanticGroup ?? semantics.group;
         return { group, conflicts: atom[0]?.semanticConflicts ?? [group] };
       }),
+    },
+    parsedCandidate: candidate,
+    semantics,
+  };
+}
+
+/** Builds a CSSX recipe from checked-in Tailwind semantics. */
+function fallbackRecipe(
+  candidateSource: string,
+  candidate: ParsedCandidate,
+  group: string,
+  css: string,
+): ResolvedUtilityRecipe {
+  const semantics: UtilitySemantics = {
+    scope: candidateScope(candidate),
+    group,
+    conflicts: [group],
+  };
+  const atoms = css
+    ? [[{ property: '--cssx-tailwind-fallback', value: 'initial', semanticGroup: group } satisfies UtilityDeclaration]]
+    : [];
+  return {
+    recipe: {
+      candidate: candidateSource,
+      atoms,
+      resources: { keyframes: [], properties: [] },
+      writes: atoms.map(() => ({ group, conflicts: [group] })),
+      fallbackCss: css,
     },
     parsedCandidate: candidate,
     semantics,
@@ -211,6 +267,10 @@ async function compileUtilityList(
   for (const candidate of [...new Set(candidates)]) {
     const resolvedRecipe = resolveUtilityRecipe(candidate, theme);
     const { recipe } = resolvedRecipe;
+    if (recipe.atoms.length === 0) {
+      classes[candidate] = '';
+      continue;
+    }
     const generatedClasses = escapeSourceSelectors
       ? [className(candidate)]
       : readGeneratedClassNames(candidate, className(candidate));
@@ -231,6 +291,7 @@ async function compileUtilityList(
         recipe.atoms,
         resolvedRecipe.parsedCandidate,
         resolvedRecipe.semantics.group,
+        recipe.fallbackCss,
         selectorAliases,
         includedClasses,
         variantOptions,
@@ -311,10 +372,26 @@ function compileCandidate(
   atoms: readonly (readonly UtilityDeclaration[])[],
   candidate: ParsedCandidate,
   semanticGroup: string,
+  fallbackCss: string | undefined,
   selectorAliases: Readonly<Record<string, readonly string[]>>,
   includedClasses: ReadonlySet<string> | undefined,
   variantOptions: VariantOptions,
 ): readonly CompiledUtility[] {
+  if (fallbackCss !== undefined) {
+    if (classNames.length !== 1) {
+      throw new Error(`CSSX expected one generated class for fallback utility "${candidateSource}".`);
+    }
+    return fallbackCss
+      ? [
+          {
+            candidate: candidateSource,
+            className: classNames[0]!,
+            css: replaceFallbackSelector(fallbackCss, candidateSource, classNames[0]!),
+            order: cssOrder(candidate, semanticGroup, atoms.flat()),
+          },
+        ]
+      : [];
+  }
   if (classNames.length === 1) {
     const declarations = atoms.length === 1 ? atoms[0]! : atoms.flat();
     const generatedClass = classNames[0]!;
@@ -346,6 +423,11 @@ function compileCandidate(
       };
     })
     .filter((entry): entry is CompiledUtility => entry !== null);
+}
+
+/** Rebinds an oracle CSS rule from its source utility selector to a CSSX class. */
+function replaceFallbackSelector(css: string, candidate: string, className: string): string {
+  return css.split(`.${escapeCssIdentifier(candidate)}`).join(`.${escapeCssIdentifier(className)}`);
 }
 
 /** Returns the required atomic selector and stable composite aliases. */
@@ -498,6 +580,10 @@ function cssOrder(
  * @returns Mutable declarations for the utility.
  */
 function compileDeclarations(utility: string, negative: boolean, theme: CssxTheme): UtilityDeclaration[] {
+  const fontSize = compileFontSizeUtility(utility, theme);
+  if (fontSize) {
+    return fontSize;
+  }
   const exact = EXACT_DECLARATIONS[utility];
   if (exact) {
     return cloneDeclarations(exact);

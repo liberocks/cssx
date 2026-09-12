@@ -371,10 +371,10 @@ void props;
       throw new Error('Expected the unplugin shared adapter chunk.');
     }
     // Class-based dark-mode activation adds a small selector-rendering branch.
-    await expectArtifactWithinBudget('packages/compiler/dist/index.js', { raw: 130_000, gzip: 35_552, brotli: 29_500 });
+    await expectArtifactWithinBudget('packages/compiler/dist/index.js', { raw: 130_000, gzip: 35_650, brotli: 29_500 });
     await expectArtifactWithinBudget('packages/compiler/dist/index.cjs', {
       raw: 131_000,
-      gzip: 36_000,
+      gzip: 36_050,
       brotli: 30_000,
     });
     await expectArtifactWithinBudget('packages/babel-plugin/dist/index.js', {
@@ -418,8 +418,8 @@ void props;
     const docs = await readFile(join(workspaceRoot, 'packages/docs/dist/docs/index.html'), 'utf8');
 
     expect(html).toContain('href="/assets/cssx.css"');
-    expect(html).toContain('Dolor sit amet consectetur.');
-    expect(docs).toContain('Configuration');
+    expect(html).toContain('Leanest style engine in the internet for your ultrafast applications.');
+    expect(docs).toContain('documentation is still taking shape.');
     expect(css).toContain('background-color:');
     expect(css).toContain('border-style:solid');
     expect(css).toContain('padding:');

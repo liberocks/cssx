@@ -53,8 +53,9 @@
   },
   "dependencies": {
     "@babel/core": "^7.29.7",
-    "@cssxio/babel-plugin": "^0.4.5",
-    "@cssxio/compiler": "^0.6.0",
+    "@cssxio/babel-plugin": "workspace:^",
+    "@cssxio/compiler": "workspace:^",
+    "@vue/compiler-sfc": "^3.5.0",
     "unplugin": "^3.3.0"
   },
   "peerDependencies": {

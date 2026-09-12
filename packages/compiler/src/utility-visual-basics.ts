@@ -1,6 +1,13 @@
+import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 import { cloneDeclarations } from './utility-values';
-import { resolveArbitraryCssValue } from './utility-resolvers';
+import {
+  resolveArbitraryCssValue,
+  resolveColorValue,
+  resolveOpacityModifier,
+  resolveSpacingValue,
+  splitColorModifier,
+} from './utility-resolvers';
 
 /** Combined numeric font-variant value fed by independent utility channels. */
 const CSSX_NUMERIC_SINK =
@@ -109,7 +116,10 @@ export function compileBackgroundUtility(utility: string): UtilityDeclaration | 
  * @param utility Utility name without variants.
  * @returns Mask declaration, or null when unsupported.
  */
-export function compileMaskUtility(utility: string): UtilityDeclaration | null {
+export function compileMaskUtility(
+  utility: string,
+  theme: CssxTheme,
+): UtilityDeclaration | UtilityDeclaration[] | null {
   const exact: Readonly<Record<string, readonly [property: string, value: string]>> = {
     'mask-none': ['mask-image', 'none'],
     'mask-cover': ['mask-size', 'cover'],
@@ -127,6 +137,15 @@ export function compileMaskUtility(utility: string): UtilityDeclaration | null {
     'mask-origin-border': ['mask-origin', 'border-box'],
     'mask-origin-padding': ['mask-origin', 'padding-box'],
     'mask-origin-content': ['mask-origin', 'content-box'],
+    'mask-add': ['mask-composite', 'add'],
+    'mask-subtract': ['mask-composite', 'subtract'],
+    'mask-intersect': ['mask-composite', 'intersect'],
+    'mask-exclude': ['mask-composite', 'exclude'],
+    'mask-alpha': ['mask-mode', 'alpha'],
+    'mask-luminance': ['mask-mode', 'luminance'],
+    'mask-match': ['mask-mode', 'match-source'],
+    'mask-type-alpha': ['mask-type', 'alpha'],
+    'mask-type-luminance': ['mask-type', 'luminance'],
   };
   const declaration = exact[utility];
   if (declaration) {
@@ -140,5 +159,80 @@ export function compileMaskUtility(utility: string): UtilityDeclaration | null {
   if (image) {
     return { property: 'mask-image', value: resolveArbitraryCssValue(image[1]!) };
   }
+  const gradient = /^mask-(x|y|t|r|b|l|linear|radial|conic)-(from|to)-(.+)$/.exec(utility);
+  if (gradient) {
+    const family = gradient[1]!;
+    const stop = gradient[2]!;
+    const raw = gradient[3]!;
+    const position = resolveMaskPosition(raw, theme);
+    const color = resolveMaskColor(raw, theme);
+    if (!position && !color) {
+      return null;
+    }
+    const semanticGroup = `mask-${family}-${stop}`;
+    return [
+      {
+        property: `--cssx-mask-${family}-${stop}-${position ? 'position' : 'color'}`,
+        value: position ?? color!,
+        semanticGroup,
+      },
+      ...maskGradientSink(family, semanticGroup),
+    ];
+  }
+  const angle = /^mask-(linear|conic)-(\d+)$/.exec(utility);
+  if (angle) {
+    const family = angle[1]!;
+    const semanticGroup = `mask-${family}-angle`;
+    return [
+      { property: `--cssx-mask-${family}-angle`, value: `${angle[2]}deg`, semanticGroup },
+      ...maskGradientSink(family, semanticGroup),
+    ];
+  }
   return null;
+}
+
+/** Resolves Tailwind mask-stop positions from spacing and percentage forms. */
+function resolveMaskPosition(raw: string, theme: CssxTheme): string | null {
+  if (/^\d+(?:\.\d+)?%$/.test(raw)) {
+    return raw;
+  }
+  return resolveSpacingValue(raw, false, theme);
+}
+
+/** Resolves Tailwind mask-stop colors including slash-opacity modifiers. */
+function resolveMaskColor(raw: string, theme: CssxTheme): string | null {
+  const modifier = splitColorModifier(raw);
+  const color = resolveColorValue(modifier.value, theme);
+  if (!color) {
+    return null;
+  }
+  if (modifier.opacity === undefined) {
+    return color;
+  }
+  const opacity = resolveOpacityModifier(modifier.opacity);
+  return opacity === null ? null : `color-mix(in srgb, ${color} ${opacity}%, transparent)`;
+}
+
+/** Builds a self-contained mask-gradient channel and image sink. */
+function maskGradientSink(family: string, semanticGroup: string): UtilityDeclaration[] {
+  const direction: Readonly<Record<string, string>> = {
+    t: 'to top',
+    r: 'to right',
+    b: 'to bottom',
+    l: 'to left',
+    x: 'to right',
+    y: 'to bottom',
+  };
+  const from = `var(--cssx-mask-${family}-from-color, black) var(--cssx-mask-${family}-from-position, 0%)`;
+  const to = `var(--cssx-mask-${family}-to-color, transparent) var(--cssx-mask-${family}-to-position, 100%)`;
+  const image =
+    family === 'radial'
+      ? `radial-gradient(${from}, ${to})`
+      : family === 'conic'
+        ? `conic-gradient(from var(--cssx-mask-conic-angle, 0deg), ${from}, ${to})`
+        : `linear-gradient(${family === 'linear' ? 'var(--cssx-mask-linear-angle, 0deg)' : direction[family]!}, ${from}, ${to})`;
+  return [
+    { property: `--cssx-mask-${family}`, value: image, semanticGroup },
+    { property: 'mask-image', value: `var(--cssx-mask-${family})`, semanticGroup },
+  ];
 }

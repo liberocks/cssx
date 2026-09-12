@@ -110,6 +110,34 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('background-color:#123456');
   });
 
+  it('compiles the complete default text scale and custom theme text tokens', async () => {
+    const result = await compileUtilities(
+      [
+        'text-3xl',
+        'text-4xl',
+        'text-5xl',
+        'text-6xl',
+        'text-7xl',
+        'text-8xl',
+        'text-9xl',
+        'text-hero',
+        'text-hero/loose',
+        'text-hero/[2]',
+        'text-hero/2',
+      ],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+      '@theme { --text-hero: 4.25rem; --text-hero--line-height: 1.1; --text-hero--letter-spacing: -0.02em; --text-hero--font-weight: 700; --leading-loose: 2; }',
+    );
+
+    expect(result.css).toContain('font-size:1.875rem');
+    expect(result.css).toContain('font-size:8rem');
+    expect(result.css).toContain('font-size:4.25rem');
+    expect(result.css).toContain('line-height:1.1');
+    expect(result.css).toContain('line-height:2');
+    expect(result.css).toContain('letter-spacing:-0.02em');
+    expect(result.css).toContain('font-weight:700');
+  });
+
   it('compiles common background placement, repetition, attachment, clip, and origin utilities', async () => {
     const result = await compileUtilities(
       [
@@ -157,6 +185,30 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('mask-origin:padding-box');
     expect(result.css).toContain('mask-position:25% 75%');
     expect(result.css).toContain('mask-size:var(--mask-size)');
+  });
+
+  it('compiles logical spacing, directional border colors, and composable mask gradient stops', async () => {
+    const result = await compileUtilities(
+      [
+        'pbs-4',
+        '-mbe-2',
+        'inset-bs-1/2',
+        'scroll-pbe-6',
+        'border-bs-red-500',
+        'mask-b-from-20%',
+        'mask-b-to-transparent',
+      ],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('padding-block-start:calc(0.25rem * 4)');
+    expect(result.css).toContain('margin-block-end:calc(0.25rem * -2)');
+    expect(result.css).toContain('inset-block-start:50%');
+    expect(result.css).toContain('scroll-padding-block-end:calc(0.25rem * 6)');
+    expect(result.css).toContain('border-block-start-color:oklch(63.71% 0.237 25.331)');
+    expect(result.css).toContain('--cssx-mask-b-from-position:20%');
+    expect(result.css).toContain('--cssx-mask-b-to-color:transparent');
+    expect(result.css).toContain('mask-image:var(--cssx-mask-b)');
   });
 
   it('supports numeric slash opacity modifiers for color utilities', async () => {

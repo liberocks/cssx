@@ -2,6 +2,7 @@ import { transformAsync } from '@babel/core';
 import cssxBabelPlugin from '@cssxio/babel-plugin';
 import { compileUtilities, createClassNameAllocator, createSelectorAliases } from '@cssxio/compiler';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
+import { parse as parseVueSfc } from '@vue/compiler-sfc';
 import { assertPluginOptions, loadTheme, stableId, type CssxPluginOptions } from './options';
 import type { CssxCandidateOrigin } from './stylesheet';
 
@@ -43,7 +44,7 @@ export interface IncomingSourceMap {
   readonly file: string;
 }
 
-/** Extensions of JavaScript, TypeScript, and Astro modules handled by this transform. */
+/** Extensions of JavaScript, TypeScript, Astro, and Vue modules handled by this transform. */
 const SCRIPT_EXTENSIONS = new Set([
   '.js',
   '.jsx',
@@ -58,6 +59,7 @@ const SCRIPT_EXTENSIONS = new Set([
   '.mts',
   '.mtsx',
   '.astro',
+  '.vue',
 ]);
 
 /**
@@ -87,6 +89,9 @@ export async function transformCssxModule(
   }
   if (sourceId.endsWith('.astro')) {
     return transformAstroSxModule(code, id, options);
+  }
+  if (sourceId.endsWith('.vue')) {
+    return transformVueSfcModule(code, id, options);
   }
   const theme = await loadTheme(options);
   const transformed = (await transformAsync(code, {
@@ -139,6 +144,172 @@ export async function transformCssxModule(
     cssOnlySignature,
     map: transformed.map!,
   };
+}
+
+/**
+ * Transforms CSSX calls inside Vue Single-File Component script and template blocks.
+ *
+ * Vue templates expose imports from `script setup` to template expressions, so
+ * `:class="sx(...)"` uses the same CSSX API as JSX while retaining native SFC
+ * syntax for the Vue plugin that runs later in Vite's transform pipeline.
+ */
+async function transformVueSfcModule(
+  code: string,
+  id: string,
+  options: CssxPluginOptions & {
+    readonly classNameAllocator?: ClassNameAllocator;
+    readonly stableClassNames?: boolean;
+    readonly stableClassNameFileName?: string;
+  },
+): Promise<TransformResult | null> {
+  const sourceId = id.split('?', 1).join('');
+  const parsed = parseVueSfc(code, { filename: sourceId });
+  if (parsed.errors.length > 0) {
+    const error = parsed.errors[0];
+    throw new Error(typeof error === 'string' ? error : (error?.message ?? 'Unable to parse Vue SFC.'));
+  }
+
+  const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator();
+  const replacements: Array<{ readonly start: number; readonly end: number; readonly code: string }> = [];
+  const candidates: Record<string, string> = {};
+  const composites: Record<string, readonly string[]> = {};
+  const rules: CssxRule[] = [];
+  const atomicClasses = new Set<string>();
+
+  for (const block of [parsed.descriptor.script, parsed.descriptor.scriptSetup]) {
+    if (!block?.content.includes(options.importSource ?? '@cssxio/cssx')) {
+      continue;
+    }
+    const extension = block.lang === 'js' || block.lang === 'jsx' || block.lang === 'tsx' ? block.lang : 'ts';
+    const transformed = await transformCssxModule(block.content, `${sourceId}.cssx-vue-script.${extension}`, {
+      ...options,
+      classNameAllocator,
+    });
+    if (!transformed) {
+      continue;
+    }
+    replacements.push({ start: block.loc.start.offset, end: block.loc.end.offset, code: transformed.code });
+    Object.assign(candidates, transformed.candidates);
+    Object.assign(composites, transformed.composites);
+    rules.push(...transformed.rules);
+    for (const className of transformed.atomicClasses) {
+      atomicClasses.add(className);
+    }
+  }
+
+  const template = parsed.descriptor.template;
+  if (template?.content.includes('sx')) {
+    const transformed = await transformVueTemplateSx(template.content, sourceId, options, classNameAllocator);
+    if (transformed) {
+      replacements.push({ start: template.loc.start.offset, end: template.loc.end.offset, code: transformed.code });
+      Object.assign(candidates, transformed.candidates);
+      Object.assign(composites, transformed.composites);
+      rules.push(...transformed.rules);
+      for (const className of transformed.atomicClasses) {
+        atomicClasses.add(className);
+      }
+    }
+  }
+
+  if (replacements.length === 0) {
+    return null;
+  }
+  let transformedCode = code;
+  for (const replacement of replacements.sort((left, right) => right.start - left.start)) {
+    transformedCode = `${transformedCode.slice(0, replacement.start)}${replacement.code}${transformedCode.slice(replacement.end)}`;
+  }
+  return {
+    code: transformedCode,
+    rules,
+    candidates,
+    composites,
+    atomicClasses: [...atomicClasses],
+    origins: {},
+    cssOnlySignature: transformedCode,
+  };
+}
+
+/** Transforms static CSSX `sx()` calls embedded in a Vue template. */
+async function transformVueTemplateSx(
+  code: string,
+  sourceId: string,
+  options: CssxPluginOptions & {
+    readonly classNameAllocator?: ClassNameAllocator;
+    readonly stableClassNames?: boolean;
+    readonly stableClassNameFileName?: string;
+  },
+  classNameAllocator: ClassNameAllocator,
+): Promise<TransformResult | null> {
+  const calls = astroSxCalls(code);
+  if (calls.length === 0) {
+    return null;
+  }
+  const importSource = options.importSource ?? '@cssxio/cssx';
+  const candidates: Record<string, string> = {};
+  const composites: Record<string, readonly string[]> = {};
+  const rules: CssxRule[] = [];
+  const atomicClasses = new Set<string>();
+  let transformedCode = code;
+
+  for (const call of [...calls].reverse()) {
+    const transformed = (await transformCssxModule(
+      `import { sx } from ${JSON.stringify(importSource)};\nconst style = ${call.code};`,
+      `${sourceId}.cssx-vue-template.ts`,
+      { ...options, classNameAllocator },
+    )) as TransformResult;
+    const expression = quoteVueTemplateExpression(
+      transformedExpression(transformed.code),
+      templateAttributeQuote(code, call.start),
+    );
+    transformedCode = `${transformedCode.slice(0, call.start)}${expression}${transformedCode.slice(call.end)}`;
+    Object.assign(candidates, transformed.candidates);
+    Object.assign(composites, transformed.composites);
+    rules.push(...transformed.rules);
+    for (const className of transformed.atomicClasses) {
+      atomicClasses.add(className);
+    }
+  }
+  return {
+    code: transformedCode,
+    rules,
+    candidates,
+    composites,
+    atomicClasses: [...atomicClasses],
+    origins: {},
+    cssOnlySignature: transformedCode,
+  };
+}
+
+/** Finds the quote delimiter of the attribute containing a template expression. */
+function templateAttributeQuote(source: string, expressionStart: number): '"' | "'" | undefined {
+  const tagStart = source.lastIndexOf('<', expressionStart);
+  const attributeSource = source.slice(tagStart + 1, expressionStart);
+  const doubleQuote = attributeSource.lastIndexOf('"');
+  const singleQuote = attributeSource.lastIndexOf("'");
+  if (doubleQuote === -1 && singleQuote === -1) {
+    return undefined;
+  }
+  return doubleQuote > singleQuote ? '"' : "'";
+}
+
+/** Requotes generated JavaScript strings so transformed code remains valid inside a Vue attribute. */
+function quoteVueTemplateExpression(expression: string, attributeQuote: '"' | "'" | undefined): string {
+  if (!attributeQuote) {
+    return expression;
+  }
+  const quote = attributeQuote === '"' ? "'" : '"';
+  return expression.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, (literal) => {
+    const value = literal[0] === '"' ? JSON.parse(literal) : readSingleQuotedJavaScriptString(literal);
+    return `${quote}${value.replaceAll('\\', '\\\\').replaceAll(quote, `\\${quote}`)}${quote}`;
+  });
+}
+
+/** Decodes the limited single-quoted string syntax emitted by Babel. */
+function readSingleQuotedJavaScriptString(literal: string): string {
+  return literal.slice(1, -1).replace(/\\(['"\\bnfrtv])/g, (_match, escaped: string) => {
+    const escapes: Readonly<Record<string, string>> = { b: '\b', n: '\n', f: '\f', r: '\r', t: '\t', v: '\v' };
+    return escapes[escaped] ?? escaped;
+  });
 }
 
 /**

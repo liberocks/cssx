@@ -4,13 +4,13 @@ import { join } from 'node:path';
 
 const root = '/Volumes/Workspace/git/cssx';
 
-const pluginPath =
-  root +
-  '/node_modules/.pnpm/@cssxio+babel-plugin@0.4.5_@babel+core@7.29.7/node_modules/@cssxio/babel-plugin/dist/index.js';
-const compilerPath = root + '/node_modules/.pnpm/@cssxio+compiler@0.6.0/node_modules/@cssxio/compiler/dist/index.js';
+// Always probe the workspace builds. Resolving a published pnpm-store copy can
+// silently exercise an older compiler and report false unsupported utilities.
+const pluginPath = root + '/packages/babel-plugin/dist/index.js';
+const compilerPath = root + '/packages/compiler/dist/index.js';
 
 const plugin = await import(pluginPath).then((m) => m.default ?? m);
-const compiler = await import(compilerPathapsed);
+const compiler = await import(compilerPath);
 const { compileCssxStylesheet: compile } = compiler;
 
 const code = readFileSync(join(root, 'packages/docs/src/pages/index.astro'), 'utf8');
@@ -54,7 +54,6 @@ try {
   process.exit(0);
 }
 
-const mk = Object.keys(meta.candidates);
 const stylesheet = await compile(
   [
     {
@@ -77,5 +76,7 @@ const i = css.indexOf('data-theme=dark');
 console.log('===== RESULT =====');
 console.log('selector-emitted:', i >= 0);
 console.log('media-emitted:', css.includes('prefers-color-scheme'));
-if (i >= 0) console.log('sample:', JSON.stringify(css.slice(i - 14, i + 42)));
+if (i >= 0) {
+  console.log('sample:', JSON.stringify(css.slice(i - 14, i + 42)));
+}
 console.log('css-bytes:', css.length);

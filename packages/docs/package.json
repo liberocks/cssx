@@ -9,13 +9,13 @@
     "dev": "astro dev"
   },
   "dependencies": {
-    "@cssxio/cssx": "^0.5.0",
+    "@cssxio/cssx": "workspace:*",
     "@fontsource-variable/geist": "^5.3.0",
     "@iconify-json/tabler": "^1.2.38",
     "astro": "^6.0.0"
   },
   "devDependencies": {
-    "@cssxio/unplugin": "^0.5.1",
+    "@cssxio/unplugin": "workspace:*",
     "astro": "^6.3.1",
     "vite": "^7.3.6",
     "wrangler": "^4.0.0"
