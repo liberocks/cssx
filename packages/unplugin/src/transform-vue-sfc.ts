@@ -1,10 +1,10 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
-import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
+import type { ClassNameAllocator } from '@cssxio/compiler';
 import { parse as parseVueSfc } from '@vue/compiler-sfc';
 
+import { mergeTransformResults } from './merge-transform-results';
 import type { CssxPluginOptions } from './options';
 import { remapVueBlockOrigins } from './remap-vue-block-origins';
-import type { CssxCandidateOrigin } from './stylesheet';
 import type { TransformResult } from './transform-cssx-module';
 import { transformVueTemplateSx } from './transform-vue-template-sx';
 
@@ -45,11 +45,7 @@ export async function transformVueSfcModule(
 
   const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator();
   const replacements: Array<{ readonly start: number; readonly end: number; readonly code: string }> = [];
-  const candidates: Record<string, string> = {};
-  const composites: Record<string, readonly string[]> = {};
-  const rules: CssxRule[] = [];
-  const atomicClasses = new Set<string>();
-  const origins: Record<string, CssxCandidateOrigin> = {};
+  const results: TransformResult[] = [];
 
   for (const block of [parsed.descriptor.script, parsed.descriptor.scriptSetup]) {
     if (!block?.content.includes(options.importSource ?? '@cssxio/cssx')) {
@@ -61,13 +57,10 @@ export async function transformVueSfcModule(
       classNameAllocator,
     }))!;
     replacements.push({ start: block.loc.start.offset, end: block.loc.end.offset, code: transformed.code });
-    Object.assign(candidates, transformed.candidates);
-    Object.assign(composites, transformed.composites);
-    Object.assign(origins, remapVueBlockOrigins(code, block.loc.start.offset, transformed.origins));
-    rules.push(...transformed.rules);
-    for (const className of transformed.atomicClasses) {
-      atomicClasses.add(className);
-    }
+    results.push({
+      ...transformed,
+      origins: remapVueBlockOrigins(code, block.loc.start.offset, transformed.origins),
+    });
   }
 
   const template = parsed.descriptor.template;
@@ -81,13 +74,10 @@ export async function transformVueSfcModule(
     );
     if (transformed) {
       replacements.push({ start: template.loc.start.offset, end: template.loc.end.offset, code: transformed.code });
-      Object.assign(candidates, transformed.candidates);
-      Object.assign(composites, transformed.composites);
-      Object.assign(origins, remapVueBlockOrigins(code, template.loc.start.offset, transformed.origins));
-      rules.push(...transformed.rules);
-      for (const className of transformed.atomicClasses) {
-        atomicClasses.add(className);
-      }
+      results.push({
+        ...transformed,
+        origins: remapVueBlockOrigins(code, template.loc.start.offset, transformed.origins),
+      });
     }
   }
 
@@ -98,13 +88,5 @@ export async function transformVueSfcModule(
   for (const replacement of replacements.sort((left, right) => right.start - left.start)) {
     transformedCode = `${transformedCode.slice(0, replacement.start)}${replacement.code}${transformedCode.slice(replacement.end)}`;
   }
-  return {
-    code: transformedCode,
-    rules,
-    candidates,
-    composites,
-    atomicClasses: [...atomicClasses],
-    origins,
-    cssOnlySignature: transformedCode,
-  };
+  return mergeTransformResults(transformedCode, results);
 }

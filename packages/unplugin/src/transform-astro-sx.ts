@@ -1,7 +1,8 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
-import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
+import type { ClassNameAllocator } from '@cssxio/compiler';
 
 import { findSxCalls } from './find-sx-calls';
+import { mergeTransformResults } from './merge-transform-results';
 import type { CssxPluginOptions } from './options';
 import type { TransformResult } from './transform-cssx-module';
 import { transformedExpression } from './transformed-expression';
@@ -42,9 +43,7 @@ export async function transformAstroSxModule(
 
   const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator();
   const importSource = options.importSource ?? '@cssxio/cssx';
-  const candidates: Record<string, string> = {};
-  const composites: Record<string, readonly string[]> = {};
-  const rules: CssxRule[] = [];
+  const results: TransformResult[] = [];
   let transformedCode = code;
 
   for (const call of [...calls].reverse()) {
@@ -55,18 +54,8 @@ export async function transformAstroSxModule(
     )) as TransformResult;
     const expression = transformedExpression(transformed.code);
     transformedCode = `${transformedCode.slice(0, call.start)}${expression}${transformedCode.slice(call.end)}`;
-    Object.assign(candidates, transformed.candidates);
-    Object.assign(composites, transformed.composites);
-    rules.push(...transformed.rules);
+    results.push({ ...transformed, atomicClasses: [], origins: {} });
   }
 
-  return {
-    code: transformedCode,
-    rules,
-    candidates,
-    composites,
-    atomicClasses: [],
-    origins: {},
-    cssOnlySignature: transformedCode,
-  };
+  return mergeTransformResults(transformedCode, results);
 }

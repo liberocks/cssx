@@ -1,10 +1,10 @@
-import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
+import type { ClassNameAllocator } from '@cssxio/compiler';
 
 import { findSxCalls } from './find-sx-calls';
+import { mergeTransformResults } from './merge-transform-results';
 import type { CssxPluginOptions } from './options';
 import { quoteVueTemplateExpression } from './quote-vue-template-expression';
 import { remapVueTemplateOrigins } from './remap-vue-template-origins';
-import type { CssxCandidateOrigin } from './stylesheet';
 import { templateAttributeQuote } from './template-attribute-quote';
 import type { TransformResult } from './transform-cssx-module';
 import { transformedExpression } from './transformed-expression';
@@ -32,11 +32,7 @@ export async function transformVueTemplateSx(
     return null;
   }
   const importSource = options.importSource ?? '@cssxio/cssx';
-  const candidates: Record<string, string> = {};
-  const composites: Record<string, readonly string[]> = {};
-  const rules: CssxRule[] = [];
-  const atomicClasses = new Set<string>();
-  const origins: Record<string, CssxCandidateOrigin> = {};
+  const results: TransformResult[] = [];
   let transformedCode = code;
 
   for (const call of [...calls].reverse()) {
@@ -51,24 +47,10 @@ export async function transformVueTemplateSx(
       templateAttributeQuote(code, call.start),
     );
     transformedCode = `${transformedCode.slice(0, call.start)}${expression}${transformedCode.slice(call.end)}`;
-    Object.assign(candidates, transformed.candidates);
-    Object.assign(composites, transformed.composites);
-    Object.assign(
-      origins,
-      remapVueTemplateOrigins(code, call.start, wrapperSource, wrapperPrefix.length, transformed.origins),
-    );
-    rules.push(...transformed.rules);
-    for (const className of transformed.atomicClasses) {
-      atomicClasses.add(className);
-    }
+    results.push({
+      ...transformed,
+      origins: remapVueTemplateOrigins(code, call.start, wrapperSource, wrapperPrefix.length, transformed.origins),
+    });
   }
-  return {
-    code: transformedCode,
-    rules,
-    candidates,
-    composites,
-    atomicClasses: [...atomicClasses],
-    origins,
-    cssOnlySignature: transformedCode,
-  };
+  return mergeTransformResults(transformedCode, results);
 }
