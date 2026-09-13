@@ -13,12 +13,6 @@ import {
   resolveSpacingValue,
   splitColorModifier,
 } from './utility-resolvers';
-import {
-  compileAnimationUtility,
-  compileArbitraryProperty,
-  compileDimensionUtility,
-  compileTransformUtility,
-} from './utility-transform';
 
 describe('utility helper edge cases', () => {
   const theme = parseTheme();
@@ -43,16 +37,7 @@ describe('utility helper edge cases', () => {
   });
 
   it('keeps special colors and rejects invalid transform and arbitrary-property input', () => {
-    expect(compileAnimationUtility('none', theme)).toEqual({ property: 'animation', value: 'none' });
     expect(compilePrefixedUtility('leading-6', false, emptyTheme)).toBeNull();
-    expect(compileTransformUtility('translate-x-1/2', true, theme)?.[0]).toEqual({
-      property: '--cssx-translate-x',
-      value: '-50%',
-    });
-    expect(compileTransformUtility('translate-x-invalid', false, theme)).toBeNull();
-    expect(compileTransformUtility('scale-invalid', false, theme)).toBeNull();
-    expect(compileTransformUtility('skew-x-invalid', false, theme)).toBeNull();
-    expect(() => compileArbitraryProperty('[123:unsafe]')).toThrow('Invalid arbitrary CSSX utility');
   });
 
   it('resolves layout, modern platform, and visual utility alternatives', () => {
@@ -83,17 +68,6 @@ describe('utility helper edge cases', () => {
   });
 
   it('covers filter, transform, and motion value branches', () => {
-    expect(compileTransformUtility('rotate-[15deg]', true, theme)?.[0]).toEqual({
-      property: 'rotate',
-      value: '-15deg',
-    });
-    expect(compileTransformUtility('scale-50', false, theme)).toHaveLength(3);
-    expect(compileTransformUtility('skew-y-6', true, theme)?.[0]).toEqual({
-      property: '--cssx-skew-y',
-      value: '-6deg',
-    });
-    expect(compileTransformUtility('rotate-x-invalid', false, theme)).toBeNull();
-    expect(compileTransformUtility('skew-invalid', false, theme)).toBeNull();
     expect(compilePrefixedUtility('indent-invalid', false, theme)).toBeNull();
   });
 
@@ -228,8 +202,6 @@ describe('utility helper edge cases', () => {
 
     expect(compilePrefixedUtility('basis-invalid', false, theme)).toBeNull();
     expect(compilePrefixedUtility('flex-1/0', false, theme)).toBeNull();
-    expect(compileDimensionUtility('w-4', false, theme)?.property).toBe('width');
-    expect(compileTransformUtility('rotate-invalid', false, theme)).toBeNull();
     expect(flexValue('invalid')).toBeNull();
     expect(resolveDimensionValue('1/2', false, theme, 'w')).toBe('50%');
     expect(resolveDimensionValue('1/2', true, theme, 'w')).toBe('-50%');

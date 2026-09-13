@@ -1,7 +1,9 @@
+import { compileAnimationUtility } from './compile-animation-utility';
 import { compileBackdropFilterUtility } from './compile-backdrop-filter-utility';
 import { compileBackgroundUtility } from './compile-background-utility';
 import { compileBorderWidthUtility } from './compile-border-width-utility';
 import { compileColorUtility } from './compile-color-utility';
+import { compileDimensionUtility } from './compile-dimension-utility';
 import { compileFilterUtility } from './compile-filter-utility';
 import { compileGradientUtility } from './compile-gradient-utility';
 import { compileMaskUtility } from './compile-mask-utility';
@@ -12,10 +14,10 @@ import { compileRingUtility } from './compile-ring-utility';
 import { compileShadowUtility } from './compile-shadow-utility';
 import { compileSpacingUtility } from './compile-spacing-utility';
 import { compileTextDecorationUtility } from './compile-text-decoration-utility';
+import { compileTransformUtility } from './compile-transform-utility';
 import { isMotionUtilityCandidate } from './is-motion-utility-candidate';
 import type { CssxTheme } from './theme';
 import { flexValue, resolveArbitraryCssValue, resolveDimensionValue, resolveSpacingValue } from './utility-resolvers';
-import { compileAnimationUtility, compileDimensionUtility, compileTransformUtility } from './utility-transform';
 import type { UtilityDeclaration } from './utility-types';
 import { leadingValue, trackingValue } from './utility-values';
 
