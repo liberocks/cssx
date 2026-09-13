@@ -1,3 +1,4 @@
+import { BACKGROUND_UTILITY_DECLARATIONS } from './background-utility-declarations';
 import { resolveArbitraryCssValue } from './utility-resolvers';
 import type { UtilityDeclaration } from './utility-types';
 import { cloneDeclarations } from './utility-values';
@@ -9,42 +10,7 @@ import { cloneDeclarations } from './utility-values';
  * @returns Background declarations, or null when unsupported.
  */
 export function compileBackgroundUtility(utility: string): UtilityDeclaration | UtilityDeclaration[] | null {
-  const exact: Readonly<Record<string, UtilityDeclaration | UtilityDeclaration[]>> = {
-    'bg-none': { property: 'background-image', value: 'none' },
-    'bg-auto': { property: 'background-size', value: 'auto' },
-    'bg-cover': { property: 'background-size', value: 'cover' },
-    'bg-contain': { property: 'background-size', value: 'contain' },
-    'bg-top-left': { property: 'background-position', value: 'top left' },
-    'bg-top': { property: 'background-position', value: 'top' },
-    'bg-top-right': { property: 'background-position', value: 'top right' },
-    'bg-left': { property: 'background-position', value: 'left' },
-    'bg-center': { property: 'background-position', value: 'center' },
-    'bg-right': { property: 'background-position', value: 'right' },
-    'bg-bottom-left': { property: 'background-position', value: 'bottom left' },
-    'bg-bottom': { property: 'background-position', value: 'bottom' },
-    'bg-bottom-right': { property: 'background-position', value: 'bottom right' },
-    'bg-repeat': { property: 'background-repeat', value: 'repeat' },
-    'bg-no-repeat': { property: 'background-repeat', value: 'no-repeat' },
-    'bg-repeat-x': { property: 'background-repeat', value: 'repeat-x' },
-    'bg-repeat-y': { property: 'background-repeat', value: 'repeat-y' },
-    'bg-repeat-round': { property: 'background-repeat', value: 'round' },
-    'bg-repeat-space': { property: 'background-repeat', value: 'space' },
-    'bg-fixed': { property: 'background-attachment', value: 'fixed' },
-    'bg-local': { property: 'background-attachment', value: 'local' },
-    'bg-scroll': { property: 'background-attachment', value: 'scroll' },
-    'bg-clip-border': { property: 'background-clip', value: 'border-box' },
-    'bg-clip-padding': { property: 'background-clip', value: 'padding-box' },
-    'bg-clip-content': { property: 'background-clip', value: 'content-box' },
-    'bg-clip-text': [
-      { property: '-webkit-background-clip', value: 'text', semanticGroup: 'background-clip' },
-      { property: 'background-clip', value: 'text', semanticGroup: 'background-clip' },
-      { property: 'color', value: 'transparent', semanticGroup: 'background-clip' },
-    ],
-    'bg-origin-border': { property: 'background-origin', value: 'border-box' },
-    'bg-origin-padding': { property: 'background-origin', value: 'padding-box' },
-    'bg-origin-content': { property: 'background-origin', value: 'content-box' },
-  };
-  const direct = exact[utility];
+  const direct = BACKGROUND_UTILITY_DECLARATIONS[utility];
   if (direct) {
     if (Array.isArray(direct)) {
       return cloneDeclarations(direct);
