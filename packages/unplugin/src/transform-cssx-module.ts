@@ -1,15 +1,12 @@
-import { transformAsync } from '@babel/core';
-import cssxBabelPlugin from '@cssxio/babel-plugin';
-import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
+import type { transformAsync } from '@babel/core';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 
-import { compiledCssRule } from './compiled-css-rule';
-import { assertPluginOptions, loadTheme, type CssxPluginOptions } from './options';
+import { assertPluginOptions, type CssxPluginOptions } from './options';
 import type { IncomingSourceMap } from './source-map-from-context';
 import type { CssxCandidateOrigin } from './stylesheet';
 import { transformAstroSxModule } from './transform-astro-sx';
+import { transformBabelCssxModule } from './transform-babel-cssx-module';
 import { transformVueSfcModule } from './transform-vue-sfc';
-import { wrapCssLayer } from './wrap-css-layer';
 
 /** The result of transforming one source module. */
 export interface TransformResult {
@@ -80,69 +77,5 @@ export async function transformCssxModule(
   if (sourceId.endsWith('.vue')) {
     return transformVueSfcModule(code, id, options, transformCssxModule);
   }
-  const theme = await loadTheme(options);
-  const transformed = (await transformAsync(code, {
-    babelrc: false,
-    configFile: false,
-    filename: sourceId,
-    parserOpts: { plugins: ['jsx', 'typescript'] },
-    plugins: [
-      [
-        cssxBabelPlugin,
-        {
-          importSource,
-          classNameAllocator: options.classNameAllocator,
-          theme,
-          reusabilityBudget: options.reusabilityBudget,
-          stableClassNames: options.stableClassNames,
-          stableClassNameFileName: options.stableClassNameFileName,
-          darkMode: options.darkMode,
-        },
-      ],
-    ],
-    sourceMaps: true,
-    ...(inputSourceMap ? { inputSourceMap } : {}),
-  }))!;
-  const metadata = transformed.metadata as unknown as {
-    readonly cssx: CssxMetadata;
-  };
-  const { candidates, origins, composites, atomicClasses, cssOnlySignature } = metadata.cssx;
-  const candidateNames = Object.keys(candidates);
-  const utilityCss =
-    candidateNames.length === 0
-      ? ''
-      : (
-          await compileUtilities(
-            candidateNames,
-            (candidate) => candidates[candidate]!,
-            theme,
-            createSelectorAliases(composites),
-            new Set(atomicClasses),
-            { darkMode: options.darkMode },
-          )
-        ).css;
-  return {
-    code: transformed.code!,
-    rules: utilityCss ? [compiledCssRule(wrapCssLayer(utilityCss, options.layer))] : [],
-    candidates,
-    composites,
-    atomicClasses,
-    origins,
-    cssOnlySignature,
-    map: transformed.map!,
-  };
-}
-
-/** CSSX metadata written by the Babel transform. */
-interface CssxMetadata {
-  /** Maps utility strings to generated class names. */
-  readonly candidates: Readonly<Record<string, string>>;
-  /** Maps utility strings to their locations in the source module. */
-  readonly origins: Readonly<Record<string, CssxCandidateOrigin>>;
-  /** Maps composite classes to their winning atomic classes. */
-  readonly composites: Readonly<Record<string, readonly string[]>>;
-  /** Atomic classes required by compiled styles that survive to runtime. */
-  readonly atomicClasses: readonly string[];
-  /** Source with CSSX utility literals removed. */
-  readonly cssOnlySignature: string;
+  return transformBabelCssxModule(code, sourceId, options, inputSourceMap);
 }
