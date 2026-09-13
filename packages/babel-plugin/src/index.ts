@@ -18,8 +18,6 @@ import { cssOnlySignature } from './css-only-signature';
 import { stableCompositeName } from './stable-composite-name';
 import { styleMapExpression } from './style-map-expression';
 import { withStableCompositeNames } from './with-stable-composite-names';
-import { isGeneratedClassNames } from './is-generated-class-names';
-import { readStaticSxSource } from './read-static-sx-source';
 import { packedRecordKey } from './packed-record-key';
 import { markEmittedClassNames } from './mark-emitted-class-names';
 import { markStyleClass } from './mark-style-class';
@@ -28,8 +26,7 @@ import { markFallbackClasses } from './mark-fallback-classes';
 import { markAllFallbackClasses } from './mark-all-fallback-classes';
 import { resolveStyleArgument } from './resolve-style-argument';
 import { readStyleMap } from './read-style-map';
-import { compileSxString } from './compile-sx-string';
-import { transformSxArgument } from './transform-sx-argument';
+import { transformSxCall } from './transform-sx-call';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -293,28 +290,7 @@ export default function cssxBabelPlugin(
       fileName,
       state,
     };
-    const staticSource = readStaticSxSource(path.node.arguments, types);
-    if (staticSource !== null) {
-      if (isGeneratedClassNames(staticSource)) {
-        return;
-      }
-      path.replaceWith(types.stringLiteral(compileSxString(staticSource, context, path.node.loc?.start)));
-      return;
-    }
-    const transformed = path.node.arguments.map((argument) =>
-      transformSxArgument(
-        argument as import('@babel/types').Expression | import('@babel/types').SpreadElement,
-        types,
-        context,
-      ),
-    );
-    if (transformed.some((argument) => argument === undefined)) {
-      return;
-    }
-    const expressions = transformed.filter(
-      (argument): argument is import('@babel/types').Expression => argument !== undefined,
-    );
-    path.node.arguments = expressions;
+    transformSxCall(path, types, context);
   }
 
   /**
