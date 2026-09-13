@@ -1,4 +1,4 @@
-import { MAX_NESTING_DEPTH } from './candidate-limits';
+import { scanTopLevelSeparators } from './scan-top-level-separators';
 
 /**
  * Splits a candidate at separators outside brackets, parentheses, and strings.
@@ -8,73 +8,22 @@ import { MAX_NESTING_DEPTH } from './candidate-limits';
  * @returns Non-empty source parts.
  */
 export function splitTopLevel(source: string, separator: string): string[] {
+  const scan = scanTopLevelSeparators(source, { kind: 'character', value: separator });
+  if (!scan.valid) {
+    throw new Error(`Invalid utility "${source}".`);
+  }
   const parts: string[] = [];
-  let token = '';
-  let bracketDepth = 0;
-  let parenthesisDepth = 0;
-  let quote = '';
-  let escaped = false;
-
-  for (const character of source) {
-    if (escaped) {
-      token += character;
-      escaped = false;
-      continue;
-    }
-    if (character === '\\') {
-      token += character;
-      escaped = true;
-      continue;
-    }
-    if (quote) {
-      token += character;
-      if (character === quote) {
-        quote = '';
-      }
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
-      token += character;
-      continue;
-    }
-    if (character === '[') {
-      bracketDepth++;
-    }
-    if (character === ']') {
-      bracketDepth--;
-    }
-    if (character === '(') {
-      parenthesisDepth++;
-    }
-    if (character === ')') {
-      parenthesisDepth--;
-    }
-    if (
-      bracketDepth < 0 ||
-      parenthesisDepth < 0 ||
-      bracketDepth > MAX_NESTING_DEPTH ||
-      parenthesisDepth > MAX_NESTING_DEPTH
-    ) {
+  let tokenStart = 0;
+  for (const delimiter of scan.separators) {
+    if (delimiter.index === tokenStart) {
       throw new Error(`Invalid utility "${source}".`);
     }
-    if (character === separator && bracketDepth === 0 && parenthesisDepth === 0) {
-      if (!token) {
-        throw new Error(`Invalid utility "${source}".`);
-      }
-      parts.push(token);
-      token = '';
-      continue;
-    }
-    token += character;
+    parts.push(source.slice(tokenStart, delimiter.index));
+    tokenStart = delimiter.index + delimiter.length;
   }
-
-  if (escaped || quote || bracketDepth !== 0 || parenthesisDepth !== 0) {
+  if (tokenStart === source.length) {
     throw new Error(`Invalid utility "${source}".`);
   }
-  if (!token) {
-    throw new Error(`Invalid utility "${source}".`);
-  }
-  parts.push(token);
+  parts.push(source.slice(tokenStart));
   return parts;
 }
