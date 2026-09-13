@@ -1,13 +1,12 @@
 import type { NodePath, PluginObj, PluginPass } from '@babel/core';
 import type * as babelTypes from '@babel/types';
-import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
+import { composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
 import type { CompiledStyle } from '@cssxio/compiler';
 
 import { assertModuleScope } from './assert-module-scope';
 import { assertNoComputedCssxApiCall } from './assert-no-computed-cssx-api-call';
 import { compactLiveStyleRecords } from './compact-live-style-records';
 import { cssOnlySignature } from './css-only-signature';
-import { diagnosticError } from './diagnostic-error';
 import { finalizeFoldedProps } from './finalize-folded-props';
 import type { FoldedPropsCall } from './finalize-folded-props';
 import { isCreateCall } from './is-create-call';
@@ -17,14 +16,11 @@ import { markEmittedClassNames } from './mark-emitted-class-names';
 import { markReferencedStyleCandidates } from './mark-referenced-style-candidates';
 import { materializeLiveStyleMaps } from './materialize-live-style-maps';
 import type { CssxPluginOptions, FileState } from './plugin-types';
-import { readStyleMap } from './read-style-map';
 import { removeDeadStyleMaps } from './remove-dead-style-maps';
 import { resolveStyleArgument } from './resolve-style-argument';
 import { stableCompositeName } from './stable-composite-name';
-import { recordCandidateOrigin } from './state-helpers';
-import { styleMapExpression } from './style-map-expression';
+import { transformCreateCall } from './transform-create-call';
 import { transformSxCall } from './transform-sx-call';
-import { withStableCompositeNames } from './with-stable-composite-names';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -118,7 +114,7 @@ export default function cssxBabelPlugin(
         assertNoComputedCssxApiCall(path, t, importSource);
         if (isCreateCall(path, t, importSource)) {
           assertModuleScope(path);
-          transformCreate(path, t);
+          transformCreateCall({ path, types: t, state, options, fileName });
           return;
         }
         if (isPropsCall(path, t, importSource)) {
@@ -130,60 +126,6 @@ export default function cssxBabelPlugin(
       },
     },
   };
-
-  /**
-   * Compiles a module-scope create call and records its styles for later props folding.
-   *
-   * @param path Create call to replace.
-   * @param types Babel node helpers.
-   * @returns Nothing. The call is replaced with compiled style data.
-   */
-  function transformCreate(path: NodePath<import('@babel/types').CallExpression>, types: typeof t): void {
-    if (path.node.arguments.length !== 1 || !types.isObjectExpression(path.node.arguments[0])) {
-      throw diagnosticError(path, 'cssx.create() expects one object literal argument.');
-    }
-    const input = readStyleMap(
-      path.get('arguments.0') as NodePath<import('@babel/types').ObjectExpression>,
-      types,
-      state,
-    );
-    let result;
-    try {
-      result = compileStyleRecords(input, {
-        theme: options.theme,
-        classNameAllocator: state.classNameAllocator,
-        reusabilityBudget: options.reusabilityBudget,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to compile CSSX styles.';
-      throw diagnosticError(path, message);
-    }
-    const parent = path.parentPath;
-    if (options.stableClassNames) {
-      const anchor =
-        parent.isVariableDeclarator() && types.isIdentifier(parent.node.id)
-          ? `map:${parent.node.id.name}`
-          : `create:${path.node.loc!.start.line}:${path.node.loc!.start.column}`;
-      result = withStableCompositeNames(result, fileName, anchor);
-    }
-    for (const [candidate, className] of Object.entries(result.classes)) {
-      state.classes.set(candidate, className);
-      recordCandidateOrigin(state, candidate, path.node.loc?.start);
-    }
-    for (const [className, atomicClasses] of Object.entries(result.composites)) {
-      state.composites.set(className, atomicClasses);
-    }
-
-    if (parent.isVariableDeclarator() && types.isIdentifier(parent.node.id)) {
-      const styleName = parent.node.id.name;
-      state.styles.set(styleName, result.styles);
-      state.styleCandidates.set(styleName, result.candidates);
-      state.styleClasses.set(styleName, result.classNames);
-      path.replaceWith(types.objectExpression([]));
-      return;
-    }
-    path.replaceWith(styleMapExpression(result.styles, types));
-  }
 
   /**
    * Folds a props call when every argument is a known static compiled style form.
