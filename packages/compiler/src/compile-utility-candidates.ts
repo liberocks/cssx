@@ -1,26 +1,11 @@
-import type { VariantOptions } from './apply-variants';
-import { compileCandidate } from './compile-candidate';
-import { readGeneratedClassNames } from './read-generated-class-names';
-import { resolveUtilityRecipe } from './resolve-utility-recipe';
-import type { CssxTheme } from './theme';
+import { compileUtilityCandidate } from './compile-utility-candidate';
+import type { CompileUtilityCandidateOptions } from './compile-utility-candidate';
 import type { CompiledUtility } from './utility-recipe-types';
 
 /** Inputs required to compile a deduplicated list of utility candidates. */
-export interface CompileUtilityCandidatesOptions {
-  /** Candidate utilities to compile. */
+export interface CompileUtilityCandidatesOptions extends Omit<CompileUtilityCandidateOptions, 'candidate'> {
+  /** Utility candidates to compile. */
   readonly candidates: readonly string[];
-  /** Allocates the class name used when a candidate is compiled. */
-  readonly className: (candidate: string) => string;
-  /** Resolved theme used by utility recipes and variants. */
-  readonly theme: CssxTheme;
-  /** Composite selectors associated with generated classes. */
-  readonly selectorAliases: Readonly<Record<string, readonly string[]>>;
-  /** Classes included in output, or undefined when all are included. */
-  readonly includedClasses: ReadonlySet<string> | undefined;
-  /** Options used while rendering candidate variants. */
-  readonly variantOptions: VariantOptions;
-  /** Whether allocated class names should be emitted as source selectors. */
-  readonly escapeSourceSelectors: boolean;
 }
 
 /** Per-candidate results consumed by the stylesheet assembly phase. */
@@ -42,50 +27,20 @@ export interface CompiledUtilityCandidates {
  * @returns Generated class names, compiled rules, and shared CSS resources.
  */
 export function compileUtilityCandidates(options: CompileUtilityCandidatesOptions): CompiledUtilityCandidates {
-  const { candidates, className, theme, selectorAliases, includedClasses, variantOptions, escapeSourceSelectors } =
-    options;
+  const { candidates, ...candidateOptions } = options;
   const classes: Record<string, string> = Object.create(null) as Record<string, string>;
   const compiled: CompiledUtility[] = [];
   const requiredKeyframes = new Set<string>();
   const requiredProperties = new Set<string>();
 
   for (const candidate of [...new Set(candidates)]) {
-    const resolvedRecipe = resolveUtilityRecipe(candidate, theme);
-    const { recipe } = resolvedRecipe;
-    if (recipe.atoms.length === 0) {
-      classes[candidate] = '';
-      continue;
-    }
-    const generatedClasses = escapeSourceSelectors
-      ? [className(candidate)]
-      : readGeneratedClassNames(candidate, className(candidate));
-    classes[candidate] = generatedClasses.join(' ');
-    const liveClasses = includedClasses
-      ? generatedClasses.filter(
-          (generatedClass) => includedClasses.has(generatedClass) || (selectorAliases[generatedClass]?.length ?? 0) > 0,
-        )
-      : generatedClasses;
-    if (liveClasses.length === 0) {
-      continue;
-    }
-    compiled.push(
-      ...compileCandidate({
-        candidateSource: candidate,
-        classNames: generatedClasses,
-        theme,
-        atoms: recipe.atoms,
-        candidate: resolvedRecipe.parsedCandidate,
-        semanticGroup: resolvedRecipe.semantics.group,
-        fallbackCss: recipe.fallbackCss,
-        selectorAliases,
-        includedClasses,
-        variantOptions,
-      }),
-    );
-    for (const keyframe of recipe.resources.keyframes) {
+    const result = compileUtilityCandidate({ ...candidateOptions, candidate });
+    classes[candidate] = result.className;
+    compiled.push(...result.compiled);
+    for (const keyframe of result.requiredKeyframes) {
       requiredKeyframes.add(keyframe);
     }
-    for (const property of recipe.resources.properties) {
+    for (const property of result.requiredProperties) {
       requiredProperties.add(property);
     }
   }
