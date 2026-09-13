@@ -14,7 +14,6 @@ import {
 } from './ast-helpers';
 import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
 import type { CompiledStyle } from '@cssxio/compiler';
-import { atomicClassesForStyle } from './atomic-classes-for-style';
 import { cssOnlySignature } from './css-only-signature';
 import { stableCompositeName } from './stable-composite-name';
 import { styleMapExpression } from './style-map-expression';
@@ -29,6 +28,7 @@ import { markFallbackClasses } from './mark-fallback-classes';
 import { markAllFallbackClasses } from './mark-all-fallback-classes';
 import { resolveStyleArgument } from './resolve-style-argument';
 import { readStyleMap } from './read-style-map';
+import { compileSxString } from './compile-sx-string';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -290,7 +290,21 @@ export default function cssxBabelPlugin(
       if (isGeneratedClassNames(staticSource)) {
         return;
       }
-      path.replaceWith(types.stringLiteral(compileSxString(staticSource, path.node.loc?.start)));
+      path.replaceWith(
+        types.stringLiteral(
+          compileSxString(
+            staticSource,
+            {
+              theme: options.theme,
+              reusabilityBudget: options.reusabilityBudget,
+              stableClassNames: options.stableClassNames,
+              fileName,
+              state,
+            },
+            path.node.loc?.start,
+          ),
+        ),
+      );
       return;
     }
     const transformed = path.node.arguments.map((argument) =>
@@ -327,7 +341,19 @@ export default function cssxBabelPlugin(
       if (isGeneratedClassNames(node.value)) {
         return node;
       }
-      return types.stringLiteral(compileSxString(node.value, node.loc?.start));
+      return types.stringLiteral(
+        compileSxString(
+          node.value,
+          {
+            theme: options.theme,
+            reusabilityBudget: options.reusabilityBudget,
+            stableClassNames: options.stableClassNames,
+            fileName,
+            state,
+          },
+          node.loc?.start,
+        ),
+      );
     }
     if (types.isNullLiteral(node) || types.isBooleanLiteral(node, { value: false })) {
       return types.stringLiteral('');
@@ -352,51 +378,6 @@ export default function cssxBabelPlugin(
       return consequent && alternate ? types.conditionalExpression(node.test, consequent, alternate) : undefined;
     }
     return node;
-  }
-
-  /**
-   * Compiles one static sx utility string and records all of its candidates as reachable.
-   *
-   * @param source Static utility string to compile.
-   * @param location Start location of the source string.
-   * @param location.line One-based source line.
-   * @param location.column Zero-based source column.
-   * @returns The compiled class names separated by spaces.
-   */
-  function compileSxString(source: string, location?: { readonly line: number; readonly column: number }): string {
-    if (!source.trim()) {
-      return '';
-    }
-    let result;
-    try {
-      result = compileStyleRecords(
-        { inline: source },
-        {
-          theme: options.theme,
-          classNameAllocator: state.classNameAllocator,
-          reusabilityBudget: options.reusabilityBudget,
-        },
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to compile CSSX sx() utilities.';
-      throw new Error(message);
-    }
-    const className = options.stableClassNames
-      ? stableCompositeName(fileName, location, 'sx')
-      : result.classNames.inline!;
-    for (const [candidate, candidateClassName] of Object.entries(result.classes)) {
-      state.classes.set(candidate, candidateClassName);
-      state.liveCandidates.add(candidate);
-      recordCandidateOrigin(state, candidate, location);
-    }
-    for (const [compositeClassName, atomicClasses] of Object.entries(result.composites)) {
-      state.composites.set(compositeClassName, atomicClasses);
-    }
-    if (options.stableClassNames) {
-      state.composites.set(className, atomicClassesForStyle(result.styles.inline!));
-    }
-    markEmittedClassNames(className, state);
-    return className!;
   }
 
   /**
