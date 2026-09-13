@@ -5,7 +5,7 @@ import { skipThemeWhitespaceAndComments } from './skip-theme-whitespace-and-comm
 import { readThemeBalancedBlock } from './read-theme-balanced-block';
 import { rewriteThemeReferences } from './rewrite-theme-references';
 import { themeTokenName } from './theme-token-name';
-import { collectThemeTokenReferences } from './collect-theme-token-references';
+import { referencedThemeTokens } from './referenced-theme-tokens';
 
 /** Maximum accepted CSS source length for a theme. */
 const MAX_THEME_LENGTH = 131_072;
@@ -211,25 +211,6 @@ export function serializeThemeTokens(theme: CssxTheme, css: string): string {
 export function serializeThemeKeyframe(theme: CssxTheme, name: string): string | undefined {
   const keyframe = theme.keyframes[name];
   return keyframe === undefined ? undefined : rewriteThemeReferences(theme, keyframe);
-}
-
-/**
- * Collects theme tokens referenced by CSS and all tokens they depend on.
- *
- * @param theme Active resolved theme.
- * @param css Utility CSS to inspect.
- * @returns Referenced token names.
- */
-function referencedThemeTokens(theme: CssxTheme, css: string): string[] {
-  const prefix = theme.prefix ? `--${theme.prefix}-` : '--';
-  const names = new Set<string>();
-  const expression = new RegExp(`var\\((${prefix.replace('-', '\\-')}[a-z0-9_-]+)`, 'gi');
-  for (const match of css.matchAll(expression)) {
-    const variable = match[1]!;
-    const name = theme.prefix ? `--${variable.slice(prefix.length)}` : variable;
-    collectThemeTokenReferences(theme, name, names);
-  }
-  return [...names];
 }
 
 /**
