@@ -25,6 +25,10 @@ import { isGeneratedClassNames } from './is-generated-class-names';
 import { readStaticSxSource } from './read-static-sx-source';
 import { packedRecordKey } from './packed-record-key';
 import { markEmittedClassNames } from './mark-emitted-class-names';
+import { markStyleClass } from './mark-style-class';
+import { markAllStyleClasses } from './mark-all-style-classes';
+import { markFallbackClasses } from './mark-fallback-classes';
+import { markAllFallbackClasses } from './mark-all-fallback-classes';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -406,19 +410,19 @@ export default function cssxBabelPlugin(
         const parent = reference.parentPath;
         if (!parent?.isMemberExpression() || parent.node.object !== reference.node) {
           markAllCandidates(state, candidatesByKey);
-          markAllStyleClasses(styleName);
-          markAllFallbackClasses(styleName);
+          markAllStyleClasses(state, styleName);
+          markAllFallbackClasses(state, styleName);
           continue;
         }
         const key = memberPropertyName(parent.node, t);
         if (key === null) {
           markAllCandidates(state, candidatesByKey);
-          markAllStyleClasses(styleName);
-          markAllFallbackClasses(styleName);
+          markAllStyleClasses(state, styleName);
+          markAllFallbackClasses(state, styleName);
         } else {
           markStyleKeyCandidates(state, candidatesByKey, key);
-          markStyleClass(styleName, key);
-          markFallbackClasses(styleName, key);
+          markStyleClass(state, styleName, key);
+          markFallbackClasses(state, styleName, key);
         }
       }
     }
@@ -570,36 +574,5 @@ export default function cssxBabelPlugin(
       markStyleKeyCandidates(state, candidates, node.property.name);
     }
     return style ? [style] : undefined;
-  }
-
-  /** Marks one composite class from a local style map as reachable. */
-  function markStyleClass(styleName: string, key: string): void {
-    const className = state.styleClasses.get(styleName)?.[key];
-    if (className) {
-      markEmittedClassNames(className, state);
-    }
-  }
-
-  /** Marks every composite class from a local style map as reachable. */
-  function markAllStyleClasses(styleName: string): void {
-    for (const className of Object.values(state.styleClasses.get(styleName)!)) {
-      markEmittedClassNames(className, state);
-    }
-  }
-
-  /** Marks atomic fallback classes for one compiled style that survives at runtime. */
-  function markFallbackClasses(styleName: string, key: string): void {
-    for (const record of state.styles.get(styleName)?.[key]?._ ?? []) {
-      if (record[0]) {
-        state.liveFallbackClasses.add(record[0]);
-      }
-    }
-  }
-
-  /** Marks atomic fallback classes for every surviving style in one map. */
-  function markAllFallbackClasses(styleName: string): void {
-    for (const key of Object.keys(state.styles.get(styleName)!)) {
-      markFallbackClasses(styleName, key);
-    }
   }
 }
