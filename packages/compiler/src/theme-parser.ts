@@ -8,7 +8,7 @@ import { themeTokenName } from './theme-token-name';
 import { referencedThemeTokens } from './referenced-theme-tokens';
 import { resolveThemeTokenValue } from './resolve-theme-token-value';
 import { parseThemeDeclarations } from './parse-theme-declarations';
-import { validateKeyframeBody } from './validate-keyframe-body';
+import { extractThemeKeyframes } from './extract-theme-keyframes';
 
 /** Maximum accepted CSS source length for a theme. */
 const MAX_THEME_LENGTH = 131_072;
@@ -70,49 +70,11 @@ export function parseTheme(source = ''): CssxTheme {
       throw new Error('Expected "{" after @theme.');
     }
     const block = readThemeBalancedBlock(source, index);
-    const declarations = extractKeyframes(block.content, keyframes);
+    const declarations = extractThemeKeyframes(block.content, keyframes);
     parseThemeDeclarations(declarations, tokens);
     index = block.end;
   }
   return Object.freeze({ tokens: Object.freeze(tokens), keyframes: Object.freeze(keyframes), mode, prefix });
-}
-
-/**
- * Removes keyframe rules from a theme block and stores their validated CSS.
- *
- * @param block Theme block content.
- * @param keyframes Mutable keyframe store to update.
- * @returns Remaining declaration source.
- */
-function extractKeyframes(block: string, keyframes: Record<string, string>): string {
-  let declarations = '';
-  let index = 0;
-  while (index < block.length) {
-    if (block.startsWith('@keyframes', index)) {
-      index += '@keyframes'.length;
-      index = skipThemeWhitespaceAndComments(block, index);
-      const nameStart = index;
-      while (/[a-z0-9_-]/i.test(block[index]!)) {
-        index++;
-      }
-      const name = block.slice(nameStart, index);
-      if (!/^[a-z_][a-z0-9_-]*$/i.test(name)) {
-        throw new Error('Invalid CSSX @keyframes name.');
-      }
-      index = skipThemeWhitespaceAndComments(block, index);
-      if (block[index] !== '{') {
-        throw new Error(`Expected "{" after @keyframes ${name}.`);
-      }
-      const frameBlock = readThemeBalancedBlock(block, index);
-      validateKeyframeBody(frameBlock.content, name);
-      keyframes[name] = `@keyframes ${name}{${frameBlock.content}}`;
-      index = frameBlock.end;
-      continue;
-    }
-    declarations += block[index]!;
-    index++;
-  }
-  return declarations;
 }
 
 /**
