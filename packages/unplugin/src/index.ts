@@ -1,10 +1,14 @@
-import { createClassNameAllocator, type ClassNameAllocator, type CssxRule } from '@cssxio/compiler';
+import { createClassNameAllocator } from '@cssxio/compiler';
 import { createUnplugin } from 'unplugin';
 import type { UnpluginFactory } from 'unplugin';
 import { Buffer } from 'node:buffer';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { basename, dirname, relative, resolve, sep } from 'node:path';
 import { configureCompilationAsset, storeCompilationData, type NativeCompiler } from './native';
+import { nativeBuildRoot } from './native-build-root';
+import { nativeBuildState } from './native-build-state';
+import { dataFromMetadata } from './data-from-metadata';
+import { RULES_METADATA_KEY, type ModuleCssxData } from './module-cssx-data';
 import { scanProjectCssxSourceModules } from './project-scan';
 import {
   assertPluginOptions,
@@ -29,55 +33,8 @@ export {
 export type { CssxPluginOptions } from './options';
 export { transformCssxModule, type IncomingSourceMap, type TransformResult } from './transform';
 
-/** Metadata key used to retain transformed CSSX data until assets are emitted. */
-const RULES_METADATA_KEY = '@cssxio/unplugin/rules';
 /** Matches JavaScript, TypeScript, Astro, and Vue module IDs, with an optional query. */
 const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro|vue)(?:\?.*)?$/;
-
-/** CSSX data collected for one transformed module. */
-interface ModuleCssxData extends CssxSourceModule {
-  /** Compiled CSS rules from the source module. */
-  readonly rules: readonly CssxRule[];
-  /** Signature used to distinguish declaration-only development changes. */
-  readonly cssOnlySignature: string;
-}
-
-/** CSSX state shared by native compiler instances in one project build. */
-interface NativeBuildState {
-  /** Serial allocator shared so server and client transforms cannot collide. */
-  readonly classNameAllocator: ClassNameAllocator;
-  /** Module records merged into the public client stylesheet. */
-  readonly transformedDataById: Map<string, ModuleCssxData>;
-}
-
-/** Native state indexed by project root and equivalent plugin options. */
-const nativeBuildStates = new Map<string, NativeBuildState>();
-
-/** Creates a stable key for native compiler state shared by equivalent plugin instances. */
-function nativeBuildStateKey(root: string, options: CssxPluginOptions): string {
-  return `${root}\u0000${JSON.stringify(options)}`;
-}
-
-/** Gets the native state shared by sibling compiler instances in one project build. */
-function nativeBuildState(root: string, options: CssxPluginOptions): NativeBuildState {
-  const key = nativeBuildStateKey(root, options);
-  let state = nativeBuildStates.get(key);
-  if (!state) {
-    state = { classNameAllocator: createClassNameAllocator(), transformedDataById: new Map() };
-    nativeBuildStates.set(key, state);
-  }
-  return state;
-}
-
-/** Resolves the project root attached to a native loader transform context. */
-function nativeBuildRoot(context: { getNativeBuildContext?: (() => unknown) | undefined }): string | undefined {
-  const native = context.getNativeBuildContext?.() as
-    | { readonly framework: 'webpack' | 'rspack'; readonly loaderContext?: { readonly rootContext?: string } }
-    | undefined;
-  return native && (native.framework === 'webpack' || native.framework === 'rspack')
-    ? (native.loaderContext?.rootContext ?? process.cwd())
-    : undefined;
-}
 
 /** Rollup-compatible context used to read metadata and emit final assets. */
 interface RollupLikeContext {
@@ -206,42 +163,6 @@ function invalidateViteRunner(
       environment.runner?.evaluatedModules?.invalidateModule(evaluated);
     }
   }
-}
-
-/**
- * Reads CSSX module data from build metadata.
- *
- * @param metadata Build metadata to inspect.
- * @returns Valid module data or an empty data record.
- */
-function dataFromMetadata(metadata: unknown): ModuleCssxData {
-  if (!metadata || typeof metadata !== 'object') {
-    return { id: '', rules: [], candidates: {}, composites: {}, origins: {}, cssOnlySignature: '' };
-  }
-  return dataFromValue((metadata as Record<string, unknown>)[RULES_METADATA_KEY]);
-}
-
-/**
- * Validates a value read from build metadata as CSSX module data.
- *
- * @param value Metadata value to validate.
- * @returns Valid module data or an empty data record.
- */
-function dataFromValue(value: unknown): ModuleCssxData {
-  if (!value || typeof value !== 'object') {
-    return { id: '', rules: [], candidates: {}, composites: {}, origins: {}, cssOnlySignature: '' };
-  }
-  const { id, rules, candidates, composites, atomicClasses, origins, cssOnlySignature } =
-    value as Partial<ModuleCssxData>;
-  return {
-    id: typeof id === 'string' ? id : '',
-    rules: Array.isArray(rules) ? rules : [],
-    candidates: candidates && typeof candidates === 'object' ? candidates : {},
-    composites: composites && typeof composites === 'object' ? composites : {},
-    ...(Array.isArray(atomicClasses) ? { atomicClasses } : {}),
-    origins: origins && typeof origins === 'object' ? origins : {},
-    cssOnlySignature: typeof cssOnlySignature === 'string' ? cssOnlySignature : '',
-  };
 }
 
 /**
