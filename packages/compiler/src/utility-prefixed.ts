@@ -10,6 +10,10 @@ import { compileMaskUtility } from './compile-mask-utility';
 import { compileModernUtility } from './compile-modern-utility';
 import { compileMotionUtility } from './compile-motion-utility';
 import { compileNumericUtility } from './compile-numeric-utility';
+import { compilePrefixedFlexUtility } from './compile-prefixed-flex-utility';
+import { compilePrefixedGridUtility } from './compile-prefixed-grid-utility';
+import { compilePrefixedLayoutUtility } from './compile-prefixed-layout-utility';
+import { compilePrefixedTypographyUtility } from './compile-prefixed-typography-utility';
 import { compileRingUtility } from './compile-ring-utility';
 import { compileShadowUtility } from './compile-shadow-utility';
 import { compileSpacingUtility } from './compile-spacing-utility';
@@ -17,9 +21,8 @@ import { compileTextDecorationUtility } from './compile-text-decoration-utility'
 import { compileTransformUtility } from './compile-transform-utility';
 import { isMotionUtilityCandidate } from './is-motion-utility-candidate';
 import type { CssxTheme } from './theme';
-import { flexValue, resolveArbitraryCssValue, resolveDimensionValue, resolveSpacingValue } from './utility-resolvers';
+import { resolveSpacingValue } from './utility-resolvers';
 import type { UtilityDeclaration } from './utility-types';
-import { leadingValue, trackingValue } from './utility-values';
 
 /**
  * Routes supported prefixed utilities to their specialized compiler.
@@ -117,149 +120,21 @@ export function compilePrefixedUtility(
     return dimension;
   }
 
-  const columns = /^columns-(auto|\d+|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
-  if (columns) {
-    const value = columns[1]!;
-    return {
-      property: 'columns',
-      value: value.startsWith('[') || value.startsWith('(') ? resolveArbitraryCssValue(value) : value,
-    };
+  const layout = compilePrefixedLayoutUtility(utility);
+  if (layout) {
+    return layout;
   }
-  if (utility === 'content-none') {
-    return { property: 'content', value: 'none' };
-  }
-  const content = /^content-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
-  if (content) {
-    return { property: 'content', value: resolveArbitraryCssValue(content[1]!) };
-  }
-  const breakUtility =
-    /^(?:break-(before|after)-(auto|avoid|all|avoid-page|page|left|right|column)|break-(inside)-(auto|avoid|avoid-page|avoid-column))$/.exec(
-      utility,
-    );
-  if (breakUtility) {
-    const family = breakUtility[1] ?? breakUtility[3]!;
-    const value = breakUtility[2] ?? breakUtility[4]!;
-    return { property: `break-${family}`, value };
-  }
-  const object = /^object-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
-  if (object) {
-    return { property: 'object-position', value: resolveArbitraryCssValue(object[1]!) };
-  }
-  const tabSize = /^tab-(\d+|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
-  if (tabSize) {
-    const value = tabSize[1]!;
-    return {
-      property: 'tab-size',
-      value: value.startsWith('[') || value.startsWith('(') ? resolveArbitraryCssValue(value) : value,
-    };
-  }
-  const listImage = /^list-image-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
-  if (listImage) {
-    return { property: 'list-style-image', value: resolveArbitraryCssValue(listImage[1]!) };
-  }
-  const clamp = /^line-clamp-(none|\d+)$/.exec(utility);
-  if (clamp) {
-    return clamp[1] === 'none'
-      ? [
-          { property: 'overflow', value: 'visible', semanticGroup: 'line-clamp' },
-          { property: 'display', value: 'block', semanticGroup: 'line-clamp' },
-          { property: '-webkit-box-orient', value: 'horizontal', semanticGroup: 'line-clamp' },
-          { property: '-webkit-line-clamp', value: 'unset', semanticGroup: 'line-clamp' },
-        ]
-      : [
-          { property: 'overflow', value: 'hidden', semanticGroup: 'line-clamp' },
-          { property: 'display', value: '-webkit-box', semanticGroup: 'line-clamp' },
-          { property: '-webkit-box-orient', value: 'vertical', semanticGroup: 'line-clamp' },
-          { property: '-webkit-line-clamp', value: clamp[1]!, semanticGroup: 'line-clamp' },
-        ];
-  }
-
-  const grid = /^grid-cols-(\d+|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
+  const grid = compilePrefixedGridUtility(utility, negative);
   if (grid) {
-    const value = grid[1]!;
-    return {
-      property: 'grid-template-columns',
-      value: /^\d+$/.test(value) ? `repeat(${value}, minmax(0, 1fr))` : resolveArbitraryCssValue(value),
-    };
+    return grid;
   }
-  if (utility === 'grid-cols-subgrid') {
-    return { property: 'grid-template-columns', value: 'subgrid' };
-  }
-  const gridRows = /^grid-rows-(\d+|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
-  if (gridRows) {
-    const value = gridRows[1]!;
-    return {
-      property: 'grid-template-rows',
-      value: /^\d+$/.test(value) ? `repeat(${value}, minmax(0, 1fr))` : resolveArbitraryCssValue(value),
-    };
-  }
-  if (utility === 'grid-rows-subgrid') {
-    return { property: 'grid-template-rows', value: 'subgrid' };
-  }
-  const span = /^(col|row)-span-(\d+|full)$/.exec(utility);
-  if (span) {
-    return {
-      property: span[1] === 'col' ? 'grid-column' : 'grid-row',
-      value: span[2] === 'full' ? '1 / -1' : `span ${span[2]} / span ${span[2]}`,
-    };
-  }
-  const gridLine = /^(col|row)-(start|end)-(\d+|auto)$/.exec(utility);
-  if (gridLine) {
-    return {
-      property: `grid-${gridLine[1] === 'col' ? 'column' : 'row'}-${gridLine[2]}`,
-      value: gridLine[3]!,
-    };
-  }
-  const order = /^order-(first|last|none|\d+)$/.exec(utility);
-  if (order) {
-    const values: Readonly<Record<string, string>> = { first: '-9999', last: '9999', none: '0' };
-    const value = values[order[1]!] ?? order[1]!;
-    return {
-      property: 'order',
-      value: negative && value !== '0' ? (value.startsWith('-') ? value.slice(1) : `-${value}`) : value,
-    };
-  }
-  const basis = /^basis-(.+)$/.exec(utility);
-  if (basis) {
-    const value = resolveDimensionValue(basis[1]!, negative, theme, 'basis');
-    return value ? { property: 'flex-basis', value } : null;
-  }
-  const flex = /^flex-(\d+(?:\/\d+)?|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
+  const flex = compilePrefixedFlexUtility(utility, negative, theme);
   if (flex) {
-    const raw = flex[1]!;
-    const value = raw.startsWith('[') || raw.startsWith('(') ? resolveArbitraryCssValue(raw) : flexValue(raw);
-    return value ? { property: 'flex', value } : null;
+    return flex;
   }
-  const opacity = /^opacity-(\d{1,3})$/.exec(utility);
-  if (opacity) {
-    return { property: 'opacity', value: String(Number(opacity[1]) / 100) };
-  }
-  const zIndex = /^z-(\d+|auto)$/.exec(utility);
-  if (zIndex) {
-    return { property: 'z-index', value: zIndex[1]! };
-  }
-  const leading = /^leading-(none|tight|snug|normal|relaxed|loose|\d+(?:\.\d+)?|\[[^\]]+\])$/.exec(utility);
-  if (leading) {
-    const value = leading[1]!;
-    const resolved = /^\d/.test(value) ? resolveSpacingValue(value, false, theme) : leadingValue(value);
-    return resolved ? { property: 'line-height', value: resolved } : null;
-  }
-  const indent = /^indent-(.+)$/.exec(utility);
-  if (indent) {
-    const value = resolveSpacingValue(indent[1]!, negative, theme);
-    return value ? { property: 'text-indent', value } : null;
-  }
-  const font = /^font-(\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
-  if (font) {
-    return { property: 'font-family', value: resolveArbitraryCssValue(font[1]!) };
-  }
-  const tracking = /^tracking-(tighter|tight|normal|wide|wider|widest|\[[^\]]+\]|\(--[a-z0-9_-]+\))$/i.exec(utility);
-  if (tracking) {
-    const value = tracking[1]!;
-    return {
-      property: 'letter-spacing',
-      value: value.startsWith('[') || value.startsWith('(') ? resolveArbitraryCssValue(value) : trackingValue(value),
-    };
+  const typography = compilePrefixedTypographyUtility(utility, negative, theme);
+  if (typography) {
+    return typography;
   }
   const animation = /^animate-(.+)$/.exec(utility);
   if (animation) {
