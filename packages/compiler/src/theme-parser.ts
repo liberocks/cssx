@@ -2,6 +2,7 @@ import { DEFAULT_KEYFRAMES, DEFAULT_THEME } from './theme-defaults';
 import type { CssxTheme, ThemeOutputMode } from './theme-types';
 import { readThemeModifier } from './read-theme-modifier';
 import { skipThemeWhitespaceAndComments } from './skip-theme-whitespace-and-comments';
+import { readThemeBalancedBlock } from './read-theme-balanced-block';
 import { themeTokenName } from './theme-token-name';
 
 /** Maximum accepted CSS source length for a theme. */
@@ -63,7 +64,7 @@ export function parseTheme(source = ''): CssxTheme {
     if (source[index] !== '{') {
       throw new Error('Expected "{" after @theme.');
     }
-    const block = readBalancedBlock(source, index);
+    const block = readThemeBalancedBlock(source, index);
     const declarations = extractKeyframes(block.content, keyframes);
     parseThemeDeclarations(declarations, tokens);
     index = block.end;
@@ -97,7 +98,7 @@ function extractKeyframes(block: string, keyframes: Record<string, string>): str
       if (block[index] !== '{') {
         throw new Error(`Expected "{" after @keyframes ${name}.`);
       }
-      const frameBlock = readBalancedBlock(block, index);
+      const frameBlock = readThemeBalancedBlock(block, index);
       validateKeyframeBody(frameBlock.content, name);
       keyframes[name] = `@keyframes ${name}{${frameBlock.content}}`;
       index = frameBlock.end;
@@ -134,7 +135,7 @@ function validateKeyframeBody(body: string, name: string): void {
     if (body[index] !== '{') {
       throw new Error(`Unterminated CSSX @keyframes ${name}.`);
     }
-    const declarationBlock = readBalancedBlock(body, index);
+    const declarationBlock = readThemeBalancedBlock(body, index);
     for (const declaration of splitDeclarations(declarationBlock.content)) {
       const separator = declaration.indexOf(':');
       const property = declaration.slice(0, separator).trim();
@@ -373,48 +374,4 @@ function splitDeclarations(block: string): readonly string[] {
     declarations.push(token.trim());
   }
   return declarations;
-}
-
-/**
- * Reads one brace-delimited block while honoring quoted strings and escapes.
- *
- * @param source Source containing the opening brace.
- * @param start Position of the opening brace.
- * @returns Block content and the first position after its closing brace.
- */
-function readBalancedBlock(source: string, start: number): { readonly content: string; readonly end: number } {
-  let depth = 0;
-  let quote = '';
-  let escaped = false;
-  for (let index = start; index < source.length; index++) {
-    const character = source[index]!;
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (character === '\\') {
-      escaped = true;
-      continue;
-    }
-    if (quote) {
-      if (character === quote) {
-        quote = '';
-      }
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
-      continue;
-    }
-    if (character === '{') {
-      depth++;
-    }
-    if (character === '}') {
-      depth--;
-    }
-    if (depth === 0) {
-      return { content: source.slice(start + 1, index), end: index + 1 };
-    }
-  }
-  throw new Error('Unterminated CSSX @theme block.');
 }
