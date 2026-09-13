@@ -5,6 +5,7 @@ import { skipThemeWhitespaceAndComments } from './skip-theme-whitespace-and-comm
 import { readThemeBalancedBlock } from './read-theme-balanced-block';
 import { rewriteThemeReferences } from './rewrite-theme-references';
 import { themeTokenName } from './theme-token-name';
+import { collectThemeTokenReferences } from './collect-theme-token-references';
 
 /** Maximum accepted CSS source length for a theme. */
 const MAX_THEME_LENGTH = 131_072;
@@ -229,24 +230,6 @@ function referencedThemeTokens(theme: CssxTheme, css: string): string[] {
     collectThemeTokenReferences(theme, name, names);
   }
   return [...names];
-}
-
-/**
- * Adds one live token and its variable dependencies to a set.
- *
- * @param theme Active resolved theme.
- * @param name Token name to visit.
- * @param names Set of already collected names.
- * @returns Nothing.
- */
-function collectThemeTokenReferences(theme: CssxTheme, name: string, names: Set<string>): void {
-  if (names.has(name) || theme.tokens[name] === undefined || theme.tokens[name] === 'initial') {
-    return;
-  }
-  names.add(name);
-  for (const match of theme.tokens[name]!.matchAll(/var\((--[a-z0-9_-]+)/gi)) {
-    collectThemeTokenReferences(theme, match[1]!, names);
-  }
 }
 
 /**
