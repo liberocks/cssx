@@ -1,5 +1,6 @@
 import { DEFAULT_KEYFRAMES, DEFAULT_THEME } from './theme-defaults';
 import type { CssxTheme, ThemeOutputMode } from './theme-types';
+import { readThemeModifier } from './read-theme-modifier';
 
 /** Maximum accepted CSS source length for a theme. */
 const MAX_THEME_LENGTH = 131_072;
@@ -66,29 +67,6 @@ export function parseTheme(source = ''): CssxTheme {
     index = block.end;
   }
   return Object.freeze({ tokens: Object.freeze(tokens), keyframes: Object.freeze(keyframes), mode, prefix });
-}
-
-/**
- * Reads the optional output mode or variable prefix after `@theme`.
- *
- * @param source Complete theme source.
- * @param start Position immediately after `@theme` and whitespace.
- * @returns Parsed modifier and its end position, or null when absent.
- */
-function readThemeModifier(
-  source: string,
-  start: number,
-): { readonly mode: ThemeOutputMode; readonly prefix: string; readonly end: number } | null {
-  const mode = /^(default|inline|reference|static)\b/.exec(source.slice(start));
-  if (mode) {
-    const value = mode[1] === 'reference' || mode[1] === 'static' ? mode[1] : 'inline';
-    return { mode: value, prefix: '', end: start + mode[0].length };
-  }
-  const prefix = /^prefix\(([a-z_][a-z0-9_-]*)\)/i.exec(source.slice(start));
-  if (prefix) {
-    return { mode: 'reference', prefix: prefix[1]!, end: start + prefix[0].length };
-  }
-  return null;
 }
 
 /**
