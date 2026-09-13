@@ -1,36 +1,112 @@
 ---
 import { sx } from '@cssxio/cssx';
+
+import Icon from './Icon.astro';
+
+interface Props {
+  class?: string;
+}
+
 ---
 
-<button
-  class={sx(
-    'inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm border border-solid border-slate-200 bg-transparent px-3 text-sm font-medium leading-none text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:outline-slate-50',
-  )}
-  type="button"
-  data-theme-toggle
-  aria-label="Toggle color theme"
->
-  <span data-theme-label></span>
-</button>
+<div class="theme-toggle" class={Astro.props.class}>
+  <button data-theme-toggle type="button" aria-label="Switch color theme between light, dark, and system" class={sx('pt-1.2')}>
+    <span data-theme-label class="theme-toggle-sun">
+      <Icon name="sun" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
+    </span>
+    <span data-theme-label class="theme-toggle-moon">
+      <Icon name="moon" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
+    </span>
+    <span data-theme-label class="theme-toggle-system">
+      <Icon name="device-desktop" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
+    </span>
+  </button>
+</div>
+
+<style>
+  .theme-toggle-sun,
+  .theme-toggle-system {
+    display: none;
+  }
+  .theme-toggle-moon {
+    display: block;
+  }
+  :where([data-theme-mode='light']) .theme-toggle-sun,
+  :where([data-theme-mode='light'] *) .theme-toggle-sun {
+    display: block;
+  }
+  :where([data-theme-mode='light']) .theme-toggle-moon,
+  :where([data-theme-mode='light'] *) .theme-toggle-moon,
+  :where([data-theme-mode='light']) .theme-toggle-system,
+  :where([data-theme-mode='light'] *) .theme-toggle-system {
+    display: none;
+  }
+  :where([data-theme-mode='system']) .theme-toggle-system,
+  :where([data-theme-mode='system'] *) .theme-toggle-system {
+    display: block;
+  }
+  :where([data-theme-mode='system']) .theme-toggle-sun,
+  :where([data-theme-mode='system'] *) .theme-toggle-sun,
+  :where([data-theme-mode='system']) .theme-toggle-moon,
+  :where([data-theme-mode='system'] *) .theme-toggle-moon {
+    display: none;
+  }
+  .theme-toggle-caption {
+    display: none;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+  }
+  @media (min-width: 640px) {
+    .theme-toggle-caption {
+      display: inline;
+    }
+  }
+</style>
 
 <script>
   const buttons = document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]');
+  const modes = ['light', 'dark', 'system'] as const;
+  type ThemeMode = (typeof modes)[number];
+  const prefersDark = matchMedia('(prefers-color-scheme: dark)');
+
+  function currentMode(): ThemeMode {
+    const value = document.documentElement.dataset.themeMode as ThemeMode | undefined;
+    return value && modes.includes(value) ? value : 'dark';
+  }
+
+  function applyMode(mode: ThemeMode) {
+    const isDark = mode === 'dark' || (mode === 'system' && prefersDark.matches);
+    document.documentElement.dataset.themeMode = mode;
+    document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+  }
 
   function updateLabels() {
-    const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'Light' : 'Dark';
+    const mode = currentMode();
+    const isDark = document.documentElement.dataset.theme === 'dark';
     for (const button of buttons) {
-      button.setAttribute('aria-pressed', String(nextTheme === 'Light'));
-      button.querySelector('[data-theme-label]')!.textContent = nextTheme;
+      button.setAttribute('aria-pressed', String(isDark));
+      const caption = button.querySelector('[data-theme-label="caption"]');
+      if (caption) caption.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
     }
   }
 
+  applyMode(currentMode());
   updateLabels();
+
+  prefersDark.addEventListener('change', () => {
+    if (currentMode() === 'system') {
+      applyMode('system');
+      updateLabels();
+    }
+  });
+
   for (const button of buttons) {
     button.addEventListener('click', () => {
-      const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-      document.documentElement.dataset.theme = theme;
-      document.documentElement.style.colorScheme = theme;
-      localStorage.setItem('cssx-theme', theme);
+      const mode = modes[(modes.indexOf(currentMode()) + 1) % modes.length];
+      applyMode(mode);
+      localStorage.setItem('cssx-theme', mode);
       updateLabels();
     });
   }

@@ -1,5 +1,5 @@
-import tseslint from 'typescript-eslint';
 import jsdoc from 'eslint-plugin-jsdoc';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
@@ -24,38 +24,24 @@ export default tseslint.config(
   },
   {
     files: ['packages/**/*.ts', 'vitest.config.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
-    },
-  },
-  {
-    files: ['packages/compiler/src/**/*.ts', 'packages/babel-plugin/src/**/*.ts', 'packages/unplugin/src/**/*.ts'],
-    plugins: { jsdoc },
-    rules: {
-      'jsdoc/check-alignment': 'error',
-      'jsdoc/check-param-names': 'error',
-      'jsdoc/check-tag-names': 'error',
-      'jsdoc/no-types': 'error',
-      'jsdoc/require-hyphen-before-param-description': ['error', 'never'],
-      'jsdoc/require-jsdoc': [
+      '@typescript-eslint/consistent-type-imports': [
         'error',
-        {
-          contexts: [
-            'FunctionDeclaration',
-            'Program > VariableDeclaration',
-            'TSInterfaceDeclaration',
-            'TSTypeAliasDeclaration',
-            'TSInterfaceDeclaration > TSPropertySignature',
-            'TSInterfaceDeclaration > TSMethodSignature',
-          ],
-        },
+        { prefer: 'type-imports', fixStyle: 'separate-type-imports', disallowTypeAnnotations: false },
       ],
-      'jsdoc/require-param-description': 'error',
-      'jsdoc/require-returns-description': 'error',
+      '@typescript-eslint/consistent-type-exports': ['error', { fixMixedExportsWithInlineTypeSpecifier: false }],
     },
   },
   {
-    files: ['packages/cssx/src/index.ts'],
+    files: ['packages/{babel-plugin,compiler,cssx,html,unplugin}/src/**/*.ts'],
+    ignores: ['packages/**/src/**/*.test.ts', 'packages/**/src/**/*-test-helpers.ts'],
     plugins: { jsdoc },
     rules: {
       'jsdoc/check-alignment': 'error',

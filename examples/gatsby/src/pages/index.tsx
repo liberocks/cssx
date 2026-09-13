@@ -1,6 +1,6 @@
-import * as React from 'react';
 import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
+import * as React from 'react';
 
 import '../index.css';
 

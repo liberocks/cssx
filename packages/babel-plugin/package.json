@@ -27,9 +27,9 @@
     "@babel/core": "^7.28.0"
   },
   "dependencies": {
-    "@cssxio/compiler": "^0.6.0"
+    "@cssxio/compiler": "workspace:^"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --external @babel/core --clean"
+    "build": "tsup src/index.ts --format esm,cjs --dts --external @babel/core --minify --clean"
   }
 }

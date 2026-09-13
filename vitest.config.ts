@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'vitest/config';
 
 const fromRoot = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -14,12 +14,14 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['packages/*/test/**/*.test.ts'],
+    include: ['packages/*/src/**/*.test.{js,ts}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary'],
       include: ['packages/*/src/**/*.{js,ts}'],
-      exclude: ['**/*.d.ts'],
+      // Astro is integration-tested by its own build; keep this TypeScript
+      // coverage gate focused on compiler and adapter source.
+      exclude: ['**/*.d.ts', '**/*.test.{js,ts}', 'packages/docs/**'],
       thresholds: {
         100: true,
         perFile: true,

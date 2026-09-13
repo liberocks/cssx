@@ -1,11 +1,15 @@
-import { Buffer } from 'node:buffer';
-import { mkdir, readFile, realpath, unlink, writeFile } from 'node:fs/promises';
-import { basename, dirname, resolve } from 'node:path';
-import type { Loader, Plugin } from 'esbuild';
 import { createClassNameAllocator } from '@cssxio/compiler';
-import { compileCssxStylesheet, transformCssxModule } from './index';
+import type { Plugin } from 'esbuild';
+import { Buffer } from 'node:buffer';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { basename, dirname, resolve } from 'node:path';
+
+import { canonicalPath } from './canonical-path';
+import { compileEsbuildStylesheet } from './compile-esbuild-stylesheet';
+import { transformCssxModule } from './index';
 import type { CssxPluginOptions } from './index';
-import { loadTheme, resolveCssFileName, resolveEsbuildAssetPath } from './options';
+import { loaderFor } from './loader-for';
+import { resolveCssFileName, resolveEsbuildAssetPath } from './options';
 import type { CssxSourceModule } from './stylesheet';
 
 /** Matches JavaScript and TypeScript source files handled by esbuild. */
@@ -63,7 +67,7 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
             dataById.delete(id);
           }
         }
-        const compiled = await compileCss([...dataById], options);
+        const compiled = await compileEsbuildStylesheet([...dataById], options);
         const assetPath = resolveEsbuildAssetPath(
           workingDirectory,
           build.initialOptions,
@@ -106,46 +110,4 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
       });
     },
   };
-}
-
-/**
- * Compiles candidate data collected by esbuild into a stylesheet.
- *
- * @param modules Candidate data indexed by canonical source path.
- * @param options Adapter options that provide the theme and CSS layer.
- * @returns A promise for the generated stylesheet and optional source map.
- */
-async function compileCss(
-  modules: readonly (readonly [string, CssxSourceModule])[],
-  options: CssxPluginOptions,
-): ReturnType<typeof compileCssxStylesheet> {
-  const theme = await loadTheme(options);
-  return compileCssxStylesheet(
-    modules.map(([, data]) => data),
-    theme,
-    options.layer,
-    options.sourceMap ?? true,
-    options.darkMode,
-    options.preflight,
-  );
-}
-
-/**
- * Selects the esbuild loader for a source file.
- *
- * @param id Source file path.
- * @returns The esbuild JavaScript or TypeScript loader.
- */
-function loaderFor(id: string): Loader {
-  return /\.tsx?$/.test(id) ? 'ts' : 'js';
-}
-
-/**
- * Resolves a source path through symlinks when the file exists.
- *
- * @param path Source file path to canonicalize.
- * @returns The real path, or an absolute path when the file no longer exists.
- */
-async function canonicalPath(path: string): Promise<string> {
-  return realpath(path).catch(() => resolve(path));
 }

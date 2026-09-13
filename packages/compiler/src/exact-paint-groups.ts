@@ -1,0 +1,30 @@
+import type { GroupDefinition } from './semantics-exact-groups';
+
+/** Exact border, outline, shadow, and filter semantic groups. */
+export const EXACT_PAINT_GROUPS: Readonly<Record<string, GroupDefinition>> = {
+  border: { group: 'border-width' },
+  'border-none': { group: 'border-style' },
+  'border-hidden': { group: 'border-style' },
+  'border-dotted': { group: 'border-style' },
+  'border-dashed': { group: 'border-style' },
+  'border-solid': { group: 'border-style' },
+  'border-double': { group: 'border-style' },
+  'divide-x': { group: 'divide-x' },
+  'divide-y': { group: 'divide-y' },
+  outline: { group: 'outline-width' },
+  'outline-none': { group: 'outline-style' },
+  'outline-hidden': { group: 'outline-hidden' },
+  'outline-solid': { group: 'outline-style' },
+  'outline-dashed': { group: 'outline-style' },
+  'outline-dotted': { group: 'outline-style' },
+  'outline-double': { group: 'outline-style' },
+  rounded: { group: 'border-radius' },
+  shadow: { group: 'box-shadow' },
+  blur: { group: 'blur' },
+  grayscale: { group: 'grayscale' },
+  invert: { group: 'invert' },
+  sepia: { group: 'sepia' },
+  'drop-shadow': { group: 'drop-shadow' },
+  'fill-none': { group: 'fill' },
+  'stroke-none': { group: 'stroke' },
+};

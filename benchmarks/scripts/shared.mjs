@@ -1,5 +1,5 @@
-import { gzipSync } from 'node:zlib';
 import { build } from 'esbuild';
+import { gzipSync } from 'node:zlib';
 
 /** Number of measured runs after one warm-up run. */
 export const ITERATIONS = 15;

@@ -1,10 +1,11 @@
-import { compile as compileTailwind } from 'tailwindcss';
-import './assert-compiler-build.mjs';
-import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname } from 'node:path';
-import { bundleCss, bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
+import { compile as compileTailwind } from 'tailwindcss';
+
+import './assert-compiler-build.mjs';
 import { validateCss } from './cssx.mjs';
+import { bundleCss, bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
 import { createWorkload, readVariantArgument } from './workload.mjs';
 
 const require = createRequire(import.meta.url);

@@ -1,10 +1,10 @@
-import { defineConfig } from 'astro/config';
 import cssx from '@cssxio/unplugin/vite';
+import { defineConfig } from 'astro/config';
 
 const theme = `
 @theme reference {
   --color-brand: #3245ff;
-  --font-display: ui-rounded, "Avenir Next", "Segoe UI", sans-serif;
+  --font-display: ui-rounded, sans-serif;
 }
 `;
 

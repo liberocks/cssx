@@ -11,3 +11,4 @@ examples/next/next-env.d.ts
 examples/next/tsconfig.json
 tests/test-results/
 tests/playwright-report/
+experiments/

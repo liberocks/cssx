@@ -13,20 +13,20 @@ describe('documentation catalog', () => {
 
   it('uses direct sx calls for the home and documentation pages', async () => {
     const [home, docs] = await Promise.all([
-      readFile(fromDocs('../src/pages/index.astro'), 'utf8'),
-      readFile(fromDocs('../src/pages/docs/index.astro'), 'utf8'),
+      readFile(fromDocs('../src/screens/index.astro'), 'utf8'),
+      readFile(fromDocs('../src/screens/docs/index.astro'), 'utf8'),
     ]);
 
     expect(home).toContain("import { sx } from '@cssxio/cssx';");
     expect(docs).toContain("import { sx } from '@cssxio/cssx';");
-    expect(docs).toContain('dark:text-slate-50');
-    expect(docs).toContain('xs:py-12');
+    expect(docs).toContain('text-3xl');
+    expect(home).toContain('dark:text-gray-50');
   });
 
-  it('keeps the header and desktop sidebar sticky in the docs layout', async () => {
-    const layout = await readFile(fromDocs('../src/layouts/DocsLayout.astro'), 'utf8');
+  it('links the CSSX stylesheet from the shared layout', async () => {
+    const layout = await readFile(fromDocs('../src/layouts/BaseLayout.astro'), 'utf8');
 
-    expect(layout).toContain('sticky top-0 z-10');
-    expect(layout).toContain('md:sticky md:top-16');
+    expect(layout).toContain("import { sx } from '@cssxio/cssx';");
+    expect(layout).toContain('href="/assets/cssx.css"');
   });
 });

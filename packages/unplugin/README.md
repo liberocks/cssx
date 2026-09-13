@@ -3,11 +3,11 @@
 CSSX has build tool adapters at these entrypoints:
 
 ```ts
-import cssxVite from '@cssxio/unplugin/vite';
-import cssxRollup from '@cssxio/unplugin/rollup';
-import cssxWebpack from '@cssxio/unplugin/webpack';
-import cssxRspack from '@cssxio/unplugin/rspack';
 import cssxEsbuild from '@cssxio/unplugin/esbuild';
+import cssxRollup from '@cssxio/unplugin/rollup';
+import cssxRspack from '@cssxio/unplugin/rspack';
+import cssxVite from '@cssxio/unplugin/vite';
+import cssxWebpack from '@cssxio/unplugin/webpack';
 ```
 
 Add the selected adapter to your build tool `plugins` setting:
@@ -15,31 +15,49 @@ Add the selected adapter to your build tool `plugins` setting:
 ```ts
 // vite.config.ts
 import cssx from '@cssxio/unplugin/vite';
+
 export default { plugins: [cssx()] };
+```
+
+### Vue 3 with Vite
+
+Place CSSX before Vue in the Vite plugin list. CSSX transforms `create` and
+`sx` calls in `<script>`, `<script setup>`, and `:class="sx(...)"` template
+bindings. Static plain `class="..."` attributes are intentionally left alone.
+
+```ts
+import cssx from '@cssxio/unplugin/vite';
+import vue from '@vitejs/plugin-vue';
+import { defineConfig } from 'vite';
+
+export default defineConfig({ plugins: [cssx(), vue()] });
 ```
 
 ```js
 // rollup.config.js
 import cssx from '@cssxio/unplugin/rollup';
+
 export default { plugins: [cssx({ cssFileName: 'assets/cssx.css' })] };
 ```
 
 ```js
 // webpack.config.js
 import cssx from '@cssxio/unplugin/webpack';
+
 export default { plugins: [cssx()] };
 ```
 
 ```js
 // rspack.config.js
 import cssx from '@cssxio/unplugin/rspack';
+
 export default { plugins: [cssx()] };
 ```
 
 ```js
 // build.mjs
-import { build } from 'esbuild';
 import cssx from '@cssxio/unplugin/esbuild';
+import { build } from 'esbuild';
 
 await build({ entryPoints: ['src/main.ts'], bundle: true, plugins: [cssx()] });
 ```

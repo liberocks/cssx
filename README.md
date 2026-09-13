@@ -821,7 +821,7 @@ raw class strings or be modeled as explicit static style choices.
 
 - `pnpm test:unit` runs the unit tests.
 - `pnpm test:coverage` runs the tests with coverage checks.
-- `pnpm generate:tailwind-corpus` regenerates the complete Tailwind 4 compatibility manifest from an ignored Tailwind 4.x `experiments/tailwindcss` clone.
+- `pnpm generate:tailwind-corpus` verifies the pinned Tailwind 4.3.3 checkout at `experiments/tailwindcss`, then regenerates the immutable candidate list, default theme tokens, and checked-in semantic fallback data. Tailwind is a development-only conformance oracle and is never a CSSX production dependency.
 - `pnpm test:package-contract` builds packages and checks their public files, dependencies, file sizes, and import time.
 - `pnpm lint` checks source files and tests with ESLint.
 - `pnpm typecheck` checks workspace types.
@@ -866,11 +866,15 @@ its ID and PEM private key as the `RELEASE_APP_ID` and
 `RELEASE_APP_PRIVATE_KEY` Actions secrets. The workflow uses its short-lived
 installation token only for release branches, PRs, tags, and releases.
 
-The Tailwind corpus test exercises every finite candidate in the checked-out
-Tailwind 4.x upstream IntelliSense snapshot. The checked-in manifest records
-supported candidates and explicit rejections, so compatibility changes cannot
-be silent. CSSX-only utility families are covered by the compiler
-conformance and capability tests. Statement, branch, function, and line coverage
-thresholds remain 100%; production code is not excluded to meet them.
+CSSX conforms to every built-in static candidate in the pinned Tailwind 4.3.3
+IntelliSense snapshot, including candidates whose correct default-theme result
+is no CSS. It also supports CSSX `@theme` customization and safe arbitrary
+utility/property/selector syntax. Tailwind plugins, legacy JavaScript config
+compatibility, and Tailwind `@utility`/`@variant` extension directives remain
+outside this compatibility contract. The corpus test exercises the full
+immutable snapshot so compatibility regressions cannot be silent. CSSX-only
+utility families are covered by compiler conformance and capability tests.
+Statement, branch, function, and line coverage thresholds remain 100%;
+production code is not excluded to meet them.
 
 Historical compatibility references are documented in [`packages/compiler/THIRD_PARTY_NOTICES.md`](packages/compiler/THIRD_PARTY_NOTICES.md).

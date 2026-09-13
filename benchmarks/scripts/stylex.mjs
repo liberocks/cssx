@@ -1,9 +1,10 @@
 import { transformSync } from '@babel/core';
 import stylexPlugin from '@stylexjs/babel-plugin';
+
 import './assert-compiler-build.mjs';
+import { validateCss } from './cssx.mjs';
 import { bundleCss, bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
 import { createWorkload, readVariantArgument } from './workload.mjs';
-import { validateCss } from './cssx.mjs';
 
 /** Transforms canonical source and processes final CSS with the StyleX production API. */
 export async function runStylexBenchmark(variant = 'large') {

@@ -1,7 +1,8 @@
 import { compileUtilities } from '@cssxio/compiler';
+
 import './assert-compiler-build.mjs';
-import { isDirectExecution, measure, printResults } from './shared.mjs';
 import { validateCss } from './cssx.mjs';
+import { isDirectExecution, measure, printResults } from './shared.mjs';
 import { createWorkload, readVariantArgument } from './workload.mjs';
 
 /** Compiles pre-extracted utility candidates to final CSS without style-map composition. */

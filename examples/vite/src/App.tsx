@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
+import { useState } from 'react';
 
 import reactLogo from './assets/react.svg';
 

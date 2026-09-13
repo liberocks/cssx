@@ -1,0 +1,117 @@
+---
+import { sx } from '@cssxio/cssx';
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
+import LanguageToggle from '../components/LanguageToggle.astro';
+import { defaultLocale, locales, renderRich } from '../localization/index.ts';
+import type { Locale } from '../localization/index.ts';
+
+const logos = [
+  { src: '/images/logos/react.svg', name: 'React' },
+  { src: '/images/logos/expo.svg', name: 'Expo' },
+  { src: '/images/logos/svelte.svg', name: 'Svelte' },
+  { src: '/images/logos/solid.svg', name: 'Solid' },
+  { src: '/images/logos/astro.svg', name: 'Astro' },
+  { src: '/images/logos/gatsby.svg', name: 'Gatsby' },
+  { src: '/images/logos/electron.svg', name: 'Electron' },
+  { src: '/images/logos/html.svg', name: 'HTML' },
+  { src: '/images/logos/nextjs.svg', name: 'Next.js' },
+  { src: '/images/logos/remix.svg', name: 'Remix' },
+  { src: '/images/logos/vite.svg', name: 'Vite' },
+  { src: '/images/logos/vue.svg', name: 'Vue' },
+];
+
+interface Props {
+  lang: Locale;
+}
+
+const { lang } = Astro.props;
+const t = locales[lang];
+const docsPath = lang === defaultLocale ? '/docs' : `/${lang}/docs`;
+---
+
+<BaseLayout title="cssx" lang={lang}>
+  <div class={sx('max-w-full mx-auto md:max-w-xl min-h-screen flex flex-col justify-center p-4')}>
+    <div class={sx('flex flex-col gap-10')}>
+      <div>
+        <img src="/images/logo.png" alt="Logo" class={sx('w-auto h-8 opacity-80 dark:invert')} />
+      </div>
+
+      <h1 class={sx('text-2xl text-gray-900 dark:text-gray-50')} set:html={renderRich(t.index.title)} />
+
+      <p class={sx('text-lg font-light text-gray-600 dark:text-gray-300')} set:html={renderRich(t.index.description)} />
+
+      <p class={sx('text-xs -mt-5 tracking-wider text-gray-400')} set:html={renderRich(t.index.footnote)} />
+
+      <div>
+        <a
+          class={sx(
+            'bg-black dark:bg-white dark:text-black text-white text-base font-light px-6 py-2.5',
+            'rounded-full tracking-wide hover:bg-black/50 dark:hover:bg-white/50',
+            'flex w-full items-center justify-center md:inline-flex md:w-auto',
+          )}
+          href={docsPath}
+          set:html={renderRich(t.index.readDocumentation)}
+        />
+      </div>
+
+      <div class={sx('flex flex-col gap-5')}>
+        <div class={sx('flex items-center')}>
+          <div class={sx('grow mt-0.5 border-t border-solid border-gray-300 dark:border-gray-700')}></div>
+          <p
+            class={sx('font-light text-sm text-gray-600 dark:text-gray-300 text-center whitespace-nowrap px-4')}
+            set:html={renderRich(t.index.worksWith)}
+          />
+          <div class={sx('grow mt-0.5 border-t border-solid border-gray-300 dark:border-gray-700')}></div>
+        </div>
+        <div
+          class:list={[
+            'group',
+            sx(
+              'relative flex overflow-hidden mask-[linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]',
+            ),
+          ]}
+        >
+          <div
+            class={sx(
+              'flex w-[max-content] shrink-0 animate-marquee [@media (hover: hover)]:group-hover:animation-paused grayscale dark:invert',
+            )}
+          >
+            {
+              [0, 1].map((half) => (
+                <div class={sx('flex shrink-0 gap-10 pr-10')} aria-hidden={half === 1}>
+                  {logos.map((logo) => (
+                    <img src={logo.src} alt={logo.name} class={sx('h-10 w-auto')} />
+                  ))}
+                </div>
+              ))
+            }
+          </div>
+        </div>
+        <div class={sx('mt-2 border-t border-solid border-gray-300 dark:border-gray-700 w-full')}></div>
+      </div>
+
+      <div class={sx('flex flex-row-reverse justify-between items-center gap-4')}>
+        <div class={sx('flex justify-start items-center gap-2')}>
+          <LanguageToggle />
+          <ThemeToggle />
+        </div>
+
+        <div class={sx('flex justify-start items-center gap-3')}>
+          <a href="https://github.com/liberocks/cssx"
+            ><Icon name="brand-github" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
+          >
+          <a href="https://www.npmjs.com/package/@cssxio/cssx"
+            ><Icon name="brand-npm" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
+          >
+          <a href="https://x.com/liberocks"
+            ><Icon name="brand-x" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a
+          >
+          <a href="#"><Icon name="brand-vscode" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} /></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

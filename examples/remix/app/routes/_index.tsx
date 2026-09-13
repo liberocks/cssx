@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import type { MetaFunction } from '@remix-run/node';
 import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
+import type { MetaFunction } from '@remix-run/node';
+import { useState } from 'react';
 
 export const meta: MetaFunction = () => [{ title: 'Remix + CSSX' }];
 

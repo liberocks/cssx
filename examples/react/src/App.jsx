@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
+import { useState } from 'react';
 
 const styles = cssx.create({
   page: 'flex min-h-[100vh] items-center justify-center bg-slate-950 p-8 font-[var(--font-display)]',

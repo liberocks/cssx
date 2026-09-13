@@ -18,6 +18,7 @@ benchmarks/*/dist/
 benchmarks/*/src/corpus.tsx
 coverage/
 tests/.tmp/
+design/
 .opencode/
 TODO.md
 .impeccable.md

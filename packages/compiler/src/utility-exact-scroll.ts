@@ -1,0 +1,31 @@
+import type { UtilityDeclaration } from './utility-types';
+
+/** Fixed scrolling, scrollbar, table-layout, and scroll-snap declarations. */
+export const EXACT_SCROLL_DECLARATIONS: Readonly<Record<string, readonly UtilityDeclaration[]>> = {
+  'scroll-auto': [{ property: 'scroll-behavior', value: 'auto' }],
+  'scroll-smooth': [{ property: 'scroll-behavior', value: 'smooth' }],
+  'scrollbar-auto': [{ property: 'scrollbar-width', value: 'auto' }],
+  'scrollbar-thin': [{ property: 'scrollbar-width', value: 'thin' }],
+  'scrollbar-none': [{ property: 'scrollbar-width', value: 'none' }],
+  'scrollbar-gutter-auto': [{ property: 'scrollbar-gutter', value: 'auto' }],
+  'scrollbar-gutter-stable': [{ property: 'scrollbar-gutter', value: 'stable' }],
+  'scrollbar-gutter-both': [{ property: 'scrollbar-gutter', value: 'stable both-edges' }],
+  'border-collapse': [{ property: 'border-collapse', value: 'collapse' }],
+  'border-separate': [{ property: 'border-collapse', value: 'separate' }],
+  'table-auto': [{ property: 'table-layout', value: 'auto' }],
+  'table-fixed': [{ property: 'table-layout', value: 'fixed' }],
+  'caption-top': [{ property: 'caption-side', value: 'top' }],
+  'caption-bottom': [{ property: 'caption-side', value: 'bottom' }],
+  'snap-none': [{ property: 'scroll-snap-type', value: 'none' }],
+  'snap-x': [{ property: 'scroll-snap-type', value: 'x var(--cssx-scroll-snap-strictness, proximity)' }],
+  'snap-y': [{ property: 'scroll-snap-type', value: 'y var(--cssx-scroll-snap-strictness, proximity)' }],
+  'snap-both': [{ property: 'scroll-snap-type', value: 'both var(--cssx-scroll-snap-strictness, proximity)' }],
+  'snap-mandatory': [{ property: '--cssx-scroll-snap-strictness', value: 'mandatory' }],
+  'snap-proximity': [{ property: '--cssx-scroll-snap-strictness', value: 'proximity' }],
+  'snap-normal': [{ property: 'scroll-snap-stop', value: 'normal' }],
+  'snap-always': [{ property: 'scroll-snap-stop', value: 'always' }],
+  'snap-start': [{ property: 'scroll-snap-align', value: 'start' }],
+  'snap-end': [{ property: 'scroll-snap-align', value: 'end' }],
+  'snap-center': [{ property: 'scroll-snap-align', value: 'center' }],
+  'snap-align-none': [{ property: 'scroll-snap-align', value: 'none' }],
+};

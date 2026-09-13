@@ -1,6 +1,6 @@
+import cssx from '@cssxio/unplugin/vite';
 import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
-import cssx from '@cssxio/unplugin/vite';
 
 const theme = `
 @theme reference {

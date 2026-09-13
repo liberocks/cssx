@@ -18,6 +18,7 @@ pnpm dev
 | `react-native` | Native Babel transform                      | React Native style objects |
 | `remix`        | Vite                                        | `/cssx.css`                |
 | `solid`        | Vite                                        | `/cssx.css`                |
+| `vue`          | Vite + Vue SFC                              | `/cssx.css`                |
 | `vite`         | Vite                                        | `/cssx.css`                |
 
 The Gatsby, Create React App, and Next.js examples use webpack integration and

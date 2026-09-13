@@ -112,6 +112,15 @@ const second = compileStyleRecords({ card: 'bg-white' }, { classNameAllocator })
 
 `theme` is CSSX `@theme` input added to the default theme. CSSX validates it, resolves token references while building, and rejects invalid declarations, unsafe values, missing tokens, and circular references. Custom color and breakpoint tokens can define utility values without adding global CSS.
 
+## Tailwind 4.3.3 conformance
+
+The compiler includes checked-in semantics for every static candidate in the
+pinned Tailwind CSS 4.3.3 IntelliSense snapshot. Tailwind is used only to
+regenerate that reviewed data during development; it is not a runtime, build,
+or published dependency. CSSX also accepts its `@theme` tokens and safe
+arbitrary property/value/selector forms. Tailwind plugins, legacy JavaScript
+configuration, and Tailwind `@utility` or `@variant` extensions are excluded.
+
 ## Motion compilation
 
 CSSX emits motion as native CSS declarations and at-rules. Transition and
