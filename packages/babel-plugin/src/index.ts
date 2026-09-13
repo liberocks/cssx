@@ -23,6 +23,8 @@ import { styleMapExpression } from './style-map-expression';
 import { withStableCompositeNames } from './with-stable-composite-names';
 import { isGeneratedClassNames } from './is-generated-class-names';
 import { readStaticSxSource } from './read-static-sx-source';
+import { packedRecordKey } from './packed-record-key';
+import { markEmittedClassNames } from './mark-emitted-class-names';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -228,7 +230,7 @@ export default function cssxBabelPlugin(
     if (composition) {
       state.composites.set(className, composition.atomicClasses);
     }
-    markEmittedClassNames(className);
+    markEmittedClassNames(className, state);
     foldedProps.push({ path, className });
   }
 
@@ -385,7 +387,7 @@ export default function cssxBabelPlugin(
     if (options.stableClassNames) {
       state.composites.set(className, atomicClassesForStyle(result.styles.inline!));
     }
-    markEmittedClassNames(className);
+    markEmittedClassNames(className, state);
     return className!;
   }
 
@@ -454,7 +456,7 @@ export default function cssxBabelPlugin(
         const recordValues = records.value as import('@babel/types').ArrayExpression;
         for (let index = 0; index < recordValues.elements.length; index++) {
           const record = recordValues.elements[index] as import('@babel/types').ArrayExpression;
-          const key = packedRecordKey(record);
+          const key = packedRecordKey(record, t);
           const entry = entries.get(key) ?? { record, uses: 0 };
           entry.uses++;
           entries.set(key, entry);
@@ -475,7 +477,7 @@ export default function cssxBabelPlugin(
         continue;
       }
       for (const { records, index, record } of recordArrays) {
-        const identifier = interned.get(packedRecordKey(record));
+        const identifier = interned.get(packedRecordKey(record, t));
         if (!identifier) {
           continue;
         }
@@ -485,15 +487,6 @@ export default function cssxBabelPlugin(
       const statement = declaration.parentPath?.isExportNamedDeclaration() ? declaration.parentPath : declaration;
       statement.insertBefore(t.variableDeclaration('const', declarations));
     }
-  }
-
-  /** Returns a stable key for the compact runtime tuple representation. */
-  function packedRecordKey(record: import('@babel/types').ArrayExpression): string {
-    return JSON.stringify(
-      record.elements.map((value) =>
-        t.isNullLiteral(value) ? null : (value as import('@babel/types').StringLiteral).value,
-      ),
-    );
   }
 
   /**
@@ -583,25 +576,14 @@ export default function cssxBabelPlugin(
   function markStyleClass(styleName: string, key: string): void {
     const className = state.styleClasses.get(styleName)?.[key];
     if (className) {
-      markEmittedClassNames(className);
+      markEmittedClassNames(className, state);
     }
   }
 
   /** Marks every composite class from a local style map as reachable. */
   function markAllStyleClasses(styleName: string): void {
     for (const className of Object.values(state.styleClasses.get(styleName)!)) {
-      markEmittedClassNames(className);
-    }
-  }
-
-  /** Retains every alias or direct atom written into a generated class string. */
-  function markEmittedClassNames(classNames: string): void {
-    for (const className of classNames.split(/\s+/).filter(Boolean)) {
-      if (state.composites.has(className)) {
-        state.liveComposites.add(className);
-      } else {
-        state.liveFallbackClasses.add(className);
-      }
+      markEmittedClassNames(className, state);
     }
   }
 
