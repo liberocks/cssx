@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 
 import { factorReusableGroups } from './factor-reusable-groups';
-import { reusableGroup } from './reusable-groups';
+import { reusableGroup } from './reusable-group';
 
 it('factors one parent bundle with two complementary low-value groups', () => {
   const parent = reusableGroup(['a', 'b'], [0, 1, 2, 3]);

@@ -2,7 +2,7 @@ import { compareReusableGroups } from './compare-reusable-groups';
 import { complementIndexes } from './complement-indexes';
 import { indexesAreSubset } from './indexes-are-subset';
 import type { ReusableGroup } from './reusability';
-import { reusableGroup } from './reusable-groups';
+import { reusableGroup } from './reusable-group';
 import { usageKey } from './usage-key';
 
 /**

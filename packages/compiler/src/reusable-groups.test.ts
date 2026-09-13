@@ -1,15 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { reusableGroup, reusableGroups } from './reusable-groups';
-
-it('creates derived statistics for one exact usage group', () => {
-  const group = reusableGroup(['a', 'b', 'c'], [0, 1, 2]);
-
-  expect(group.atomicClasses).toEqual(['a', 'b', 'c']);
-  expect(group.compositionIndexes).toEqual([0, 1, 2]);
-  expect(group.coverage).toBe(9);
-  expect(group.score).toBe(3);
-});
+import { reusableGroups } from './reusable-groups';
 
 it('returns an empty list for an empty input', () => {
   expect(reusableGroups([])).toEqual([]);
