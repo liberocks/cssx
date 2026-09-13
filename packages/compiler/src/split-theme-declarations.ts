@@ -1,3 +1,5 @@
+import { consumeEscapedOrQuotedCharacter } from './consume-escaped-or-quoted-character';
+
 /**
  * Splits declarations without treating semicolons in strings or functions as separators.
  *
@@ -11,26 +13,11 @@ export function splitThemeDeclarations(block: string): readonly string[] {
   let escaped = false;
   let parenthesisDepth = 0;
   for (const character of block) {
-    if (escaped) {
+    const protectedCharacter = consumeEscapedOrQuotedCharacter(character, quote, escaped);
+    if (protectedCharacter.protected) {
       token += character;
-      escaped = false;
-      continue;
-    }
-    if (character === '\\') {
-      token += character;
-      escaped = true;
-      continue;
-    }
-    if (quote) {
-      token += character;
-      if (character === quote) {
-        quote = '';
-      }
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
-      token += character;
+      quote = protectedCharacter.quote;
+      escaped = protectedCharacter.escaped;
       continue;
     }
     if (character === '(') {
