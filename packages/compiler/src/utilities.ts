@@ -3,6 +3,7 @@ import type { ParsedCandidate } from './candidate';
 import { escapeCssIdentifier } from './escape-css-identifier';
 import { utilityFallback } from './fallback';
 import { propertyRegistration } from './property-registration';
+import { requiredPropertyNames } from './required-property-names';
 import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
@@ -621,15 +622,4 @@ function resolveAnimationThemeReferences(value: string, theme: CssxTheme): strin
     const tokenName = prefix && emittedName.startsWith(prefix) ? `--${emittedName.slice(prefix.length)}` : emittedName;
     return resolveThemeValue(theme, tokenName) ?? reference;
   });
-}
-
-/**
- * Finds custom properties that need CSS property registration.
- *
- * @param utility Utility name without variants or modifiers.
- * @returns Required property names.
- */
-function requiredPropertyNames(utility: string): readonly string[] {
-  const part = /^scrollbar-(thumb|track)-/.exec(utility)?.[1];
-  return part ? [`--cssx-scrollbar-${part}`] : [];
 }
