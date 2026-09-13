@@ -4,9 +4,8 @@ import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 
 /**
- * Compiles Tailwind-compatible font-size utilities from the active `--text-*`
- * theme namespace. A paired `--text-<name>--line-height` token is emitted
- * whenever present, matching Tailwind's default text scale behavior.
+ * Compiles font-size utilities from the active `--text-*` theme namespace.
+ * A paired `--text-<name>--line-height` token is emitted whenever present.
  *
  * @param utility Utility name without variants.
  * @param theme Active resolved theme.

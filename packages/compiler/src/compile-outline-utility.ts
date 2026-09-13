@@ -44,7 +44,7 @@ export function compileOutlineUtility(
   const offset = /^outline-offset-(.+)$/.exec(utility);
   if (offset) {
     const raw = offset[1]!;
-    // Tailwind's numbered outline offsets are literal pixels, not spacing units.
+    // Numbered outline offsets are literal pixels, not spacing units.
     const value = raw === '1' ? '1px' : resolveBorderWidthValue(raw);
     if (!value) {
       return null;

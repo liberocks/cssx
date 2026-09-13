@@ -118,7 +118,7 @@ export function storeCompilationData(
  * @param metadataKey Key used to read transformed module data.
  * @param transformedDataById Transformed source data retained outside native loader metadata.
  * @param darkMode Controls how the `dark` variant is activated.
- * @param preflight Whether to add the Tailwind-compatible browser baseline before utility rules.
+ * @param preflight Whether to add the browser baseline before utility rules.
  * @returns Nothing after registering the compilation asset handler.
  */
 export function configureCompilationAsset(

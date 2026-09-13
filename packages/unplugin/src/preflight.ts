@@ -1,8 +1,8 @@
 /**
- * Tailwind-compatible browser baseline emitted before generated utilities.
+ * Browser baseline emitted before generated utilities.
  *
- * This is the CSSX default so Tailwind utility migrations retain their global
- * sizing, typography inheritance, link, and form-control behavior. Set the
+ * This is the CSSX default for consistent global sizing, typography inheritance,
+ * link, and form-control behavior. Set the
  * adapter's `preflight` option to `false` only when an application deliberately
  * owns a different global baseline.
  */
