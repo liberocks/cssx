@@ -2,6 +2,7 @@ import { candidateScope, parseCandidate } from './candidate';
 import type { ParsedCandidate } from './candidate';
 import { escapeCssIdentifier } from './escape-css-identifier';
 import { utilityFallback } from './fallback';
+import { propertyRegistration } from './property-registration';
 import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
@@ -631,14 +632,4 @@ function resolveAnimationThemeReferences(value: string, theme: CssxTheme): strin
 function requiredPropertyNames(utility: string): readonly string[] {
   const part = /^scrollbar-(thumb|track)-/.exec(utility)?.[1];
   return part ? [`--cssx-scrollbar-${part}`] : [];
-}
-
-/**
- * Creates the registration rule for a generated color custom property.
- *
- * @param name Custom-property name.
- * @returns CSS property registration rule.
- */
-function propertyRegistration(name: string): string {
-  return `@property ${name}{syntax:"<color>";inherits:true;initial-value:#0000;}`;
 }
