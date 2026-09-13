@@ -1,4 +1,3 @@
-import { parseCandidate } from './candidate';
 import type { ParsedCandidate } from './candidate';
 import { classSelectors } from './class-selectors';
 import { cssOrder } from './css-order';
@@ -6,7 +5,7 @@ import { propertyRegistration } from './property-registration';
 import { readGeneratedClassNames } from './read-generated-class-names';
 import { replaceFallbackSelector } from './replace-fallback-selector';
 import { resolveParsedUtilityRecipe } from './resolve-parsed-utility-recipe';
-import { classifyParsedCandidate } from './semantics';
+import { resolveUtilityRecipe } from './resolve-utility-recipe';
 import { parseTheme, serializeThemeKeyframe, serializeThemeTokens } from './theme';
 import type { CssxTheme } from './theme';
 import { applyVariants } from './utility-variants';
@@ -31,7 +30,10 @@ export type {
   UtilityWriteSet,
   ResolvedUtilityRecipe,
 };
-export { resolveParsedUtilityRecipe };
+export {
+  resolveParsedUtilityRecipe,
+  resolveUtilityRecipe,
+};
 export type { UtilityDeclaration };
 
 /**
@@ -54,16 +56,6 @@ export function getUtilityAtoms(candidateSource: string, theme: CssxTheme): read
  */
 export function describeUtilityRecipe(candidateSource: string, theme: CssxTheme): UtilityRecipe {
   return resolveUtilityRecipe(candidateSource, theme).recipe;
-}
-
-/** Resolves a utility once for both recipe construction and CSS serialization. */
-export function resolveUtilityRecipe(candidateSource: string, theme: CssxTheme): ResolvedUtilityRecipe {
-  const candidate = parseCandidate(candidateSource);
-  const semantics = classifyParsedCandidate(candidate);
-  if (!semantics) {
-    throw new Error(`CSSX cannot compile utility "${candidateSource}".`);
-  }
-  return resolveParsedUtilityRecipe(candidateSource, candidate, semantics, theme);
 }
 
 /**
