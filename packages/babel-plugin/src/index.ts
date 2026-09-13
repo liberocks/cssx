@@ -2,22 +2,15 @@ import type { PluginObj, PluginPass } from '@babel/core';
 import type * as babelTypes from '@babel/types';
 import { createClassNameAllocator } from '@cssxio/compiler';
 
-import { assertModuleScope } from './assert-module-scope';
-import { assertNoComputedCssxApiCall } from './assert-no-computed-cssx-api-call';
 import { compactLiveStyleRecords } from './compact-live-style-records';
 import { cssOnlySignature } from './css-only-signature';
 import { finalizeFoldedProps } from './finalize-folded-props';
 import type { FoldedPropsCall } from './finalize-folded-props';
-import { isCreateCall } from './is-create-call';
-import { isPropsCall } from './is-props-call';
-import { isSxCall } from './is-sx-call';
 import { markReferencedStyleCandidates } from './mark-referenced-style-candidates';
 import { materializeLiveStyleMaps } from './materialize-live-style-maps';
 import type { CssxPluginOptions, FileState } from './plugin-types';
 import { removeDeadStyleMaps } from './remove-dead-style-maps';
-import { transformCreateCall } from './transform-create-call';
-import { transformStaticProps } from './transform-static-props';
-import { transformSxCall } from './transform-sx-call';
+import { transformCssxCall } from './transform-cssx-call';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -108,25 +101,7 @@ export default function cssxBabelPlugin(
         },
       },
       CallExpression(path) {
-        assertNoComputedCssxApiCall(path, t, importSource);
-        if (isCreateCall(path, t, importSource)) {
-          assertModuleScope(path);
-          transformCreateCall({ path, types: t, state, options, fileName });
-          return;
-        }
-        if (isPropsCall(path, t, importSource)) {
-          transformStaticProps({ path, types: t, state, options, fileName, foldedProps });
-        }
-        if (isSxCall(path, t, importSource)) {
-          const context = {
-            theme: options.theme,
-            reusabilityBudget: options.reusabilityBudget,
-            stableClassNames: options.stableClassNames,
-            fileName,
-            state,
-          };
-          transformSxCall(path, t, context);
-        }
+        transformCssxCall({ path, types: t, importSource, state, options, fileName, foldedProps });
       },
     },
   };
