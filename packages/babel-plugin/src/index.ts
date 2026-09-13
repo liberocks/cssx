@@ -15,7 +15,12 @@ import {
   readStaticString,
 } from './ast-helpers';
 import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
-import type { CompiledStyle, CompiledStyleRecordMap } from '@cssxio/compiler';
+import type { CompiledStyle } from '@cssxio/compiler';
+import { atomicClassesForStyle } from './atomic-classes-for-style';
+import { cssOnlySignature } from './css-only-signature';
+import { stableCompositeName } from './stable-composite-name';
+import { styleMapExpression } from './style-map-expression';
+import { withStableCompositeNames } from './with-stable-composite-names';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -650,62 +655,4 @@ export default function cssxBabelPlugin(
     }
     return values.filter(Boolean).join(' ');
   }
-}
-
-/** Converts a compiled style map into the corresponding runtime object expression. */
-function styleMapExpression(
-  styles: Readonly<Record<string, CompiledStyle>>,
-  types: typeof babelTypes,
-): import('@babel/types').ObjectExpression {
-  return types.valueToNode(styles) as import('@babel/types').ObjectExpression;
-}
-
-/** Replaces content-addressed composites with source-addressed development names. */
-function withStableCompositeNames(
-  result: CompiledStyleRecordMap,
-  fileName: string,
-  anchor: string,
-): CompiledStyleRecordMap {
-  const styles: Record<string, CompiledStyle> = Object.create(null) as Record<string, CompiledStyle>;
-  const classNames: Record<string, string> = Object.create(null) as Record<string, string>;
-  const composites: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
-  for (const [name, style] of Object.entries(result.styles)) {
-    const className = stableCompositeName(fileName, undefined, `${anchor}:style:${name}`);
-    styles[name] = { ...style, c: className };
-    classNames[name] = className;
-    composites[className] = atomicClassesForStyle(style);
-  }
-  return { ...result, styles, classNames, composites };
-}
-
-/** Extracts every winning atom from one compiled style for an alias selector. */
-function atomicClassesForStyle(style: CompiledStyle): readonly string[] {
-  return [...new Set(style._.map((record) => record[0]).filter((className): className is string => !!className))];
-}
-
-/** Creates a deterministic CSS-safe class name from a source anchor. */
-function stableCompositeName(
-  fileName: string,
-  location: { readonly line: number; readonly column: number } | undefined,
-  kind: string,
-): string {
-  const anchor = `${fileName}\u0000${location?.line ?? 0}\u0000${location?.column ?? 0}\u0000${kind}`;
-  let hash = 0xcbf29ce484222325n;
-  for (let index = 0; index < anchor.length; index++) {
-    hash ^= BigInt(anchor.charCodeAt(index));
-    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
-  }
-  return `d${hash.toString(36)}`;
-}
-
-/** Masks CSSX utility literals so an adapter can identify CSS-only source edits. */
-function cssOnlySignature(source: string, ranges: readonly { readonly start: number; readonly end: number }[]): string {
-  const chunks: string[] = [];
-  let position = 0;
-  for (const { start, end } of [...ranges].sort((left, right) => left.start - right.start)) {
-    chunks.push(source.slice(position, start));
-    position = end;
-  }
-  chunks.push(source.slice(position));
-  return chunks.join('');
 }
