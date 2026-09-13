@@ -25,7 +25,7 @@ import { resolveSpacingValue } from './utility-resolvers';
 import type { UtilityDeclaration } from './utility-types';
 
 /**
- * Routes supported prefixed utilities to their specialized compiler.
+ * Routes supported prefix-based utilities to their specialized compiler.
  *
  * The route order is intentional: families with overlapping prefixes run before
  * generic forms so a utility has one unambiguous declaration recipe.

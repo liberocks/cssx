@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { compilePrefixedUtility } from './compile-prefixed-utility';
 import { parseTheme } from './theme';
-import { compilePrefixedUtility } from './utility-prefixed';
 
 describe('compilePrefixedUtility', () => {
   const theme = parseTheme();
