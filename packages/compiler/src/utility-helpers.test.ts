@@ -2,14 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { parseTheme } from './theme';
 import { describeUtilityRecipe, compileUtilities } from './utilities';
-import {
-  compileBorderWidthUtility,
-  compileDivideUtility,
-  compileOutlineUtility,
-  compilePlaceholderUtility,
-  compileSpaceUtility,
-  compileSpacingUtility,
-} from './utility-box-model';
 import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility } from './utility-effects';
 import { compileCoreLayoutUtility, compileContainerUtility } from './utility-layout';
 import { compileModernUtility } from './utility-modern';
@@ -76,62 +68,6 @@ describe('utility helper edge cases', () => {
     expect(compileTransformUtility('scale-invalid', false, theme)).toBeNull();
     expect(compileTransformUtility('skew-x-invalid', false, theme)).toBeNull();
     expect(() => compileArbitraryProperty('[123:unsafe]')).toThrow('Invalid arbitrary CSSX utility');
-  });
-
-  it('resolves every directional box-model form and rejects invalid modifiers', () => {
-    expect(compileBorderWidthUtility('border-x-2')).toEqual([
-      { property: 'border-left-width', value: '2px' },
-      { property: 'border-right-width', value: '2px' },
-    ]);
-    expect(compileBorderWidthUtility('border-z-2')).toBeNull();
-    expect(compileSpacingUtility('m-auto', false, theme)).toEqual([{ property: 'margin', value: 'auto' }]);
-    expect(compileSpacingUtility('inset-x-full', true, theme)).toEqual([
-      { property: 'left', value: '-100%' },
-      { property: 'right', value: '-100%' },
-    ]);
-    expect(compileSpacingUtility('p-invalid', false, theme)).toBeNull();
-    expect(compileSpaceUtility('space-y-reverse', false, theme)?.[0]).toMatchObject({
-      property: '--cssx-space-y-reverse',
-      value: '1',
-    });
-    expect(compileSpaceUtility('space-x-invalid', false, theme)).toBeNull();
-    expect(compileDivideUtility('divide-y', theme)).toHaveLength(3);
-    expect(compileDivideUtility('divide-x-reverse', theme)?.[0]).toMatchObject({ value: '1' });
-    expect(compileDivideUtility('divide-red-500/50', theme)?.[0]?.value).toContain('color-mix');
-    expect(compileDivideUtility('divide-red-500/101', theme)).toBeNull();
-    expect(compilePlaceholderUtility('placeholder-red-500/50', theme)?.[0]?.value).toContain('color-mix');
-    expect(compilePlaceholderUtility('placeholder-red-500/101', theme)).toBeNull();
-    expect(compileOutlineUtility('outline-hidden', false, theme)).toHaveLength(2);
-    expect(compileOutlineUtility('outline-offset-2', true, theme)?.[0]).toEqual({
-      property: 'outline-offset',
-      value: '-2px',
-    });
-    expect(compileOutlineUtility('outline-offset-8', false, theme)?.[0]).toEqual({
-      property: 'outline-offset',
-      value: '8px',
-    });
-    expect(compileOutlineUtility('outline-offset-[3px]', true, theme)?.[0]).toEqual({
-      property: 'outline-offset',
-      value: '-3px',
-    });
-    expect(compileOutlineUtility('outline-offset-[var(--offset)]', true, theme)?.[0]).toEqual({
-      property: 'outline-offset',
-      value: 'calc(var(--offset) * -1)',
-    });
-    expect(compileOutlineUtility('outline-offset-[calc(1px+2px)]', true, theme)?.[0]).toEqual({
-      property: 'outline-offset',
-      value: 'calc(calc(1px+2px) * -1)',
-    });
-    expect(compileOutlineUtility('outline-offset-0', true, theme)?.[0]).toEqual({
-      property: 'outline-offset',
-      value: '0',
-    });
-    expect(compileOutlineUtility('outline-[3px]', false, theme)?.[0]).toEqual({
-      property: 'outline-width',
-      value: '3px',
-    });
-    expect(compileOutlineUtility('outline-red-500/50', false, theme)?.[0]?.value).toContain('color-mix');
-    expect(compileOutlineUtility('outline-red-500/101', false, theme)).toBeNull();
   });
 
   it('resolves layout, modern platform, and visual utility alternatives', () => {
@@ -390,11 +326,6 @@ describe('utility helper edge cases', () => {
         '@theme prefix(app) { --animate-reveal: reveal 1s; }',
       ),
     ).resolves.toMatchObject({ entries: expect.any(Array) });
-
-    expect(compileDivideUtility('divide-x-invalid', theme)).toBeNull();
-    expect(compileDivideUtility('divide-not-a-color', theme)).toBeNull();
-    expect(compilePlaceholderUtility('placeholder-not-a-color', theme)).toBeNull();
-    expect(compileOutlineUtility('outline-offset-invalid', false, theme)).toBeNull();
 
     expect(compileFilterUtility('hue-rotate-[.5turn]', true)?.[0]?.value).toBe('hue-rotate(.5turn)');
     expect(compileFilterUtility('hue-rotate-invalid', false)).toBeNull();

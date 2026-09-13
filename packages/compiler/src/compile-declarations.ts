@@ -1,10 +1,8 @@
+import { compileDivideUtility } from './compile-divide-utility';
+import { compileOutlineUtility } from './compile-outline-utility';
+import { compilePlaceholderUtility } from './compile-placeholder-utility';
+import { compileSpaceUtility } from './compile-space-utility';
 import type { CssxTheme } from './theme';
-import {
-  compileDivideUtility,
-  compileOutlineUtility,
-  compilePlaceholderUtility,
-  compileSpaceUtility,
-} from './utility-box-model';
 import { EXACT_DECLARATIONS } from './utility-exact-declarations';
 import { compileContainerUtility, compileCoreLayoutUtility } from './utility-layout';
 import { compilePrefixedUtility } from './utility-prefixed';

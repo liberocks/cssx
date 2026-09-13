@@ -1,5 +1,6 @@
+import { compileBorderWidthUtility } from './compile-border-width-utility';
+import { compileSpacingUtility } from './compile-spacing-utility';
 import type { CssxTheme } from './theme';
-import { compileBorderWidthUtility, compileSpacingUtility } from './utility-box-model';
 import {
   compileBackdropFilterUtility,
   compileFilterUtility,
