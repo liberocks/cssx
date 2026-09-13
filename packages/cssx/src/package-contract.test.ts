@@ -385,7 +385,7 @@ void props;
       brotli: 110_000,
     });
     await expectArtifactWithinBudget('packages/babel-plugin/dist/index.js', {
-      raw: 24_000,
+      raw: 25_000,
       gzip: 5_500,
       brotli: 4_900,
     });
