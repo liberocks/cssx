@@ -2,7 +2,7 @@ import type { NodePath, PluginObj, PluginPass } from '@babel/core';
 import * as babelTypes from '@babel/types';
 import type { CallExpression } from '@babel/types';
 import type { CssxPluginOptions, FileState } from './plugin-types';
-import { markAllCandidates, markStyleKeyCandidates, recordCandidateOrigin } from './state-helpers';
+import { recordCandidateOrigin } from './state-helpers';
 import {
   assertModuleScope,
   assertNoComputedCssxApiCall,
@@ -10,7 +10,6 @@ import {
   isCreateCall,
   isSxCall,
   isPropsCall,
-  memberPropertyName,
 } from './ast-helpers';
 import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
 import type { CompiledStyle } from '@cssxio/compiler';
@@ -20,13 +19,10 @@ import { styleMapExpression } from './style-map-expression';
 import { withStableCompositeNames } from './with-stable-composite-names';
 import { packedRecordKey } from './packed-record-key';
 import { markEmittedClassNames } from './mark-emitted-class-names';
-import { markStyleClass } from './mark-style-class';
-import { markAllStyleClasses } from './mark-all-style-classes';
-import { markFallbackClasses } from './mark-fallback-classes';
-import { markAllFallbackClasses } from './mark-all-fallback-classes';
 import { resolveStyleArgument } from './resolve-style-argument';
 import { readStyleMap } from './read-style-map';
 import { transformSxCall } from './transform-sx-call';
+import { markReferencedStyleCandidates } from './mark-referenced-style-candidates';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -82,7 +78,7 @@ export default function cssxBabelPlugin(
         exit(path, babelState) {
           finalizeFoldedProps(path, t);
           path.scope.crawl();
-          markReferencedStyleCandidates(path);
+          markReferencedStyleCandidates(path, t, state);
           materializeLiveStyleMaps(path, t);
           removeDeadStyleMaps(path);
           compactLiveStyleRecords(path);
@@ -291,39 +287,6 @@ export default function cssxBabelPlugin(
       state,
     };
     transformSxCall(path, types, context);
-  }
-
-  /**
-   * Marks candidates used by references to styles produced by create calls.
-   *
-   * Static member access keeps one key. Dynamic access and non-member use keep every key.
-   *
-   * @param program Program whose bindings are inspected.
-   * @returns Nothing.
-   */
-  function markReferencedStyleCandidates(program: NodePath<import('@babel/types').Program>): void {
-    for (const [styleName, candidatesByKey] of state.styleCandidates) {
-      const binding = program.scope.getBinding(styleName);
-      for (const reference of binding!.referencePaths) {
-        const parent = reference.parentPath;
-        if (!parent?.isMemberExpression() || parent.node.object !== reference.node) {
-          markAllCandidates(state, candidatesByKey);
-          markAllStyleClasses(state, styleName);
-          markAllFallbackClasses(state, styleName);
-          continue;
-        }
-        const key = memberPropertyName(parent.node, t);
-        if (key === null) {
-          markAllCandidates(state, candidatesByKey);
-          markAllStyleClasses(state, styleName);
-          markAllFallbackClasses(state, styleName);
-        } else {
-          markStyleKeyCandidates(state, candidatesByKey, key);
-          markStyleClass(state, styleName, key);
-          markFallbackClasses(state, styleName, key);
-        }
-      }
-    }
   }
 
   /** Removes generated style maps once every reference was statically folded. */
