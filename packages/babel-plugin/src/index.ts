@@ -1,6 +1,6 @@
 import type { NodePath, PluginObj, PluginPass } from '@babel/core';
 import * as babelTypes from '@babel/types';
-import type { CallExpression, ObjectExpression } from '@babel/types';
+import type { CallExpression } from '@babel/types';
 import type { CssxPluginOptions, FileState } from './plugin-types';
 import { markAllCandidates, markStyleKeyCandidates, recordCandidateOrigin } from './state-helpers';
 import {
@@ -11,8 +11,6 @@ import {
   isSxCall,
   isPropsCall,
   memberPropertyName,
-  objectPropertyName,
-  readStaticString,
 } from './ast-helpers';
 import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
 import type { CompiledStyle } from '@cssxio/compiler';
@@ -30,6 +28,7 @@ import { markAllStyleClasses } from './mark-all-style-classes';
 import { markFallbackClasses } from './mark-fallback-classes';
 import { markAllFallbackClasses } from './mark-all-fallback-classes';
 import { resolveStyleArgument } from './resolve-style-argument';
+import { readStyleMap } from './read-style-map';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -147,7 +146,11 @@ export default function cssxBabelPlugin(
     if (path.node.arguments.length !== 1 || !types.isObjectExpression(path.node.arguments[0])) {
       throw diagnosticError(path, 'cssx.create() expects one object literal argument.');
     }
-    const input = readStyleMap(path.get('arguments.0') as NodePath<ObjectExpression>, types);
+    const input = readStyleMap(
+      path.get('arguments.0') as NodePath<import('@babel/types').ObjectExpression>,
+      types,
+      state,
+    );
     let result;
     try {
       result = compileStyleRecords(input, {
@@ -492,33 +495,5 @@ export default function cssxBabelPlugin(
       const statement = declaration.parentPath?.isExportNamedDeclaration() ? declaration.parentPath : declaration;
       statement.insertBefore(t.variableDeclaration('const', declarations));
     }
-  }
-
-  /**
-   * Reads the static utility map accepted by a create call.
-   *
-   * It accepts plain non-computed properties with static string values. Unsupported properties cause
-   * a source diagnostic.
-   *
-   * @param path Object argument from a create call.
-   * @param types Babel node helpers.
-   * @returns The style names and their static utility strings.
-   */
-  function readStyleMap(path: NodePath<ObjectExpression>, types: typeof t): Record<string, string> {
-    const result: Record<string, string> = Object.create(null) as Record<string, string>;
-    for (const property of path.get('properties')) {
-      if (!property.isObjectProperty() || property.node.computed) {
-        throw diagnosticError(property, 'cssx.create() only supports plain object properties.');
-      }
-      const key = objectPropertyName(property.node, types);
-      const value = property.get('value');
-      const utilityString = readStaticString(value);
-      if (!key || utilityString === null) {
-        throw diagnosticError(property, 'Each cssx.create() value must be a static utility string.');
-      }
-      state.cssRanges.push({ start: value.node.start!, end: value.node.end! });
-      result[key] = utilityString;
-    }
-    return result;
   }
 }
