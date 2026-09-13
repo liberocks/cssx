@@ -6,9 +6,10 @@ import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 import { parseTheme } from './theme';
 import { themeNamespace } from './theme-namespace';
 import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
-import { hashClassNameIdentity } from './hash-class-name-identity';
 import { normalizeClassNameOptions } from './normalize-class-name-options';
 import type { NormalizedClassNameOptions } from './normalize-class-name-options';
+import { randomClassFragment } from './random-class-fragment';
+import { serialClassFragment } from './serial-class-fragment';
 
 /** Compiler identity included in generated class-name hashes. */
 const COMPILER_ABI = 'cssx-utility-compiler-v2';
@@ -711,47 +712,6 @@ class GeneratedClassNameAllocator implements ClassNameAllocator {
       this.allocated.add(className);
     }
   }
-}
-
-/** Case-sensitive digits used for compact serial class names. */
-const SERIAL_CLASS_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-/**
- * Encodes a non-negative counter value in the serial class-name alphabet.
- *
- * @param value Counter value to encode.
- * @returns A base-62 serial fragment, where `10` follows uppercase `Z`.
- */
-function serialClassFragment(value: number): string {
-  let remaining = value;
-  let fragment = '';
-  const base = SERIAL_CLASS_ALPHABET.length;
-  do {
-    fragment = `${SERIAL_CLASS_ALPHABET[remaining % base]!}${fragment}`;
-    remaining = Math.floor(remaining / base);
-  } while (remaining > 0);
-  return fragment;
-}
-
-/**
- * Creates a stable base-36 hash fragment, expanding deterministically when needed.
- *
- * @param identity Full declaration or composition identity.
- * @param length Requested fixed fragment length, when configured.
- * @param attempt Collision-resolution attempt.
- * @returns A stable hash fragment.
- */
-function randomClassFragment(identity: string, length: number | undefined, attempt: number): string {
-  if (length === undefined) {
-    return attempt === 0
-      ? hashClassNameIdentity(identity)
-      : `${hashClassNameIdentity(identity)}-${hashClassNameIdentity(`${identity}\u0000${attempt}`)}`;
-  }
-  let fragment = '';
-  for (let part = 0; fragment.length < length; part++) {
-    fragment += hashClassNameIdentity(`${identity}\u0000${attempt}\u0000${part}`).padStart(13, '0');
-  }
-  return fragment.slice(0, length);
 }
 
 /**
