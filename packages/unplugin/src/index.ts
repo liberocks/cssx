@@ -23,6 +23,7 @@ import {
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from './stylesheet';
 import { sourceMapFromContext, transformCssxModule } from './transform';
 import { sendViteStyles } from './vite-dev';
+import { invalidateViteRunner, type ViteHotUpdateModule } from './invalidate-vite-runner';
 
 export {
   compileCssxStylesheet,
@@ -115,55 +116,6 @@ interface ViteServerLike {
       }[];
     }): void;
   };
-}
-
-/** The Vite module details needed to suppress an SSR-only page reload. */
-interface ViteHotUpdateModule {
-  readonly id?: string;
-  readonly url?: string;
-}
-
-/** Vite environment services used to refresh transformed SSR CSSX modules. */
-interface ViteHotUpdatePluginContext {
-  readonly environment?: {
-    readonly name?: string;
-    readonly moduleGraph?: {
-      invalidateModule(
-        module: ViteHotUpdateModule,
-        invalidatedModules?: Set<ViteHotUpdateModule>,
-        timestamp?: number,
-        isHmr?: boolean,
-      ): void;
-    };
-    readonly runner?: {
-      readonly evaluatedModules?: {
-        getModuleById(id: string): unknown;
-        invalidateModule(module: unknown): void;
-      };
-    };
-    transformRequest(url: string): Promise<unknown>;
-  };
-}
-
-/** Invalidates evaluated SSR modules after eager style metadata regeneration. */
-function invalidateViteRunner(
-  environment: NonNullable<ViteHotUpdatePluginContext['environment']>,
-  modules: readonly ViteHotUpdateModule[],
-  timestamp: number,
-): void {
-  const invalidated = new Set<ViteHotUpdateModule>();
-  for (const module of modules) {
-    environment.moduleGraph?.invalidateModule(module, invalidated, timestamp, true);
-  }
-  for (const module of invalidated) {
-    if (!module.id) {
-      continue;
-    }
-    const evaluated = environment.runner?.evaluatedModules?.getModuleById(module.id);
-    if (evaluated) {
-      environment.runner?.evaluatedModules?.invalidateModule(evaluated);
-    }
-  }
 }
 
 /**
