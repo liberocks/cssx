@@ -2,6 +2,7 @@ export { candidateScope } from './candidate-scope';
 export { splitCandidateList } from './split-candidate-list';
 import { splitTopLevel } from './split-top-level';
 import { containsUnsafeTopLevelSyntax } from './contains-unsafe-top-level-syntax';
+import { containsUnsafeArbitrarySyntax } from './contains-unsafe-arbitrary-syntax';
 
 /** Parsed parts of one supported static utility candidate. */
 export interface ParsedCandidate {
@@ -117,39 +118,4 @@ function normalizeVariants(variants: readonly string[], raw: string): readonly s
     const rightOrder = VARIANT_ORDER.get(right) ?? 100;
     return leftOrder - rightOrder || left.localeCompare(right);
   });
-}
-
-/**
- * Detects delimiters that are forbidden anywhere in a value-only arbitrary input.
- *
- * @param value Arbitrary candidate part to inspect.
- * @returns Whether the part contains unsafe arbitrary syntax.
- */
-function containsUnsafeArbitrarySyntax(value: string): boolean {
-  let quote = '';
-  let escaped = false;
-  for (const character of value) {
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (character === '\\') {
-      escaped = true;
-      continue;
-    }
-    if (quote) {
-      if (character === quote) {
-        quote = '';
-      }
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
-      continue;
-    }
-    if (character === ';' || character === '{' || character === '}') {
-      return true;
-    }
-  }
-  return false;
 }
