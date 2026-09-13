@@ -1,6 +1,7 @@
 import { DEFAULT_KEYFRAMES, DEFAULT_THEME } from './theme-defaults';
 import type { CssxTheme, ThemeOutputMode } from './theme-types';
 import { readThemeModifier } from './read-theme-modifier';
+import { skipThemeWhitespaceAndComments } from './skip-theme-whitespace-and-comments';
 import { themeTokenName } from './theme-token-name';
 
 /** Maximum accepted CSS source length for a theme. */
@@ -39,7 +40,7 @@ export function parseTheme(source = ''): CssxTheme {
 
   let index = 0;
   while (index < source.length) {
-    index = skipWhitespaceAndComments(source, index);
+    index = skipThemeWhitespaceAndComments(source, index);
     if (index >= source.length) {
       break;
     }
@@ -47,7 +48,7 @@ export function parseTheme(source = ''): CssxTheme {
       throw new Error('CSSX theme input only accepts @theme blocks.');
     }
     index += '@theme'.length;
-    index = skipWhitespaceAndComments(source, index);
+    index = skipThemeWhitespaceAndComments(source, index);
     const modifier = readThemeModifier(source, index);
     if (modifier) {
       const output = `${modifier.mode}:${modifier.prefix}`;
@@ -57,7 +58,7 @@ export function parseTheme(source = ''): CssxTheme {
       configuredOutput = output;
       mode = modifier.mode;
       prefix = modifier.prefix;
-      index = skipWhitespaceAndComments(source, modifier.end);
+      index = skipThemeWhitespaceAndComments(source, modifier.end);
     }
     if (source[index] !== '{') {
       throw new Error('Expected "{" after @theme.');
@@ -83,7 +84,7 @@ function extractKeyframes(block: string, keyframes: Record<string, string>): str
   while (index < block.length) {
     if (block.startsWith('@keyframes', index)) {
       index += '@keyframes'.length;
-      index = skipWhitespaceAndComments(block, index);
+      index = skipThemeWhitespaceAndComments(block, index);
       const nameStart = index;
       while (/[a-z0-9_-]/i.test(block[index]!)) {
         index++;
@@ -92,7 +93,7 @@ function extractKeyframes(block: string, keyframes: Record<string, string>): str
       if (!/^[a-z_][a-z0-9_-]*$/i.test(name)) {
         throw new Error('Invalid CSSX @keyframes name.');
       }
-      index = skipWhitespaceAndComments(block, index);
+      index = skipThemeWhitespaceAndComments(block, index);
       if (block[index] !== '{') {
         throw new Error(`Expected "{" after @keyframes ${name}.`);
       }
@@ -118,7 +119,7 @@ function extractKeyframes(block: string, keyframes: Record<string, string>): str
 function validateKeyframeBody(body: string, name: string): void {
   let index = 0;
   while (index < body.length) {
-    index = skipWhitespaceAndComments(body, index);
+    index = skipThemeWhitespaceAndComments(body, index);
     if (index >= body.length) {
       return;
     }
@@ -372,33 +373,6 @@ function splitDeclarations(block: string): readonly string[] {
     declarations.push(token.trim());
   }
   return declarations;
-}
-
-/**
- * Advances over CSS whitespace and complete comments.
- *
- * @param source Source to scan.
- * @param start Start position.
- * @returns First non-whitespace, non-comment position.
- */
-function skipWhitespaceAndComments(source: string, start: number): number {
-  let index = start;
-  while (index < source.length) {
-    if (/\s/.test(source[index]!)) {
-      index++;
-      continue;
-    }
-    if (source.startsWith('/*', index)) {
-      const end = source.indexOf('*/', index + 2);
-      if (end === -1) {
-        throw new Error('Unterminated CSSX theme comment.');
-      }
-      index = end + 2;
-      continue;
-    }
-    break;
-  }
-  return index;
 }
 
 /**
