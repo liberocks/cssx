@@ -9,6 +9,7 @@ export { isLengthArbitraryValue } from './is-length-arbitrary-value';
 export { resolveColorValue } from './resolve-color-value';
 export { resolveOpacityModifier } from './resolve-opacity-modifier';
 export { resolveSpacingValue } from './resolve-spacing-value';
+export { splitColorModifier } from './split-color-modifier';
 /**
  * Resolves named, fractional, viewport, and spacing dimension values.
  *
@@ -65,54 +66,4 @@ export function resolveDimensionValue(
     return `${negative ? '-' : ''}${(numerator / denominator) * 100}%`;
   }
   return resolveSpacingValue(raw, negative, theme);
-}
-
-/**
- * Splits a color value from a top-level opacity modifier.
- *
- * @param value Color utility value.
- * @returns Color value and optional opacity text.
- */
-export function splitColorModifier(value: string): { readonly value: string; readonly opacity?: string } {
-  let bracketDepth = 0;
-  let parenthesisDepth = 0;
-  let quote = '';
-  let escaped = false;
-  for (let index = 0; index < value.length; index++) {
-    const character = value[index]!;
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (character === '\\') {
-      escaped = true;
-      continue;
-    }
-    if (quote) {
-      if (character === quote) {
-        quote = '';
-      }
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
-      continue;
-    }
-    if (character === '[') {
-      bracketDepth++;
-    }
-    if (character === ']') {
-      bracketDepth--;
-    }
-    if (character === '(') {
-      parenthesisDepth++;
-    }
-    if (character === ')') {
-      parenthesisDepth--;
-    }
-    if (character === '/' && bracketDepth === 0 && parenthesisDepth === 0) {
-      return { value: value.slice(0, index), opacity: value.slice(index + 1) };
-    }
-  }
-  return { value };
 }
