@@ -29,6 +29,7 @@ import { markAllFallbackClasses } from './mark-all-fallback-classes';
 import { resolveStyleArgument } from './resolve-style-argument';
 import { readStyleMap } from './read-style-map';
 import { compileSxString } from './compile-sx-string';
+import { transformSxArgument } from './transform-sx-argument';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -285,30 +286,27 @@ export default function cssxBabelPlugin(
    * @returns Nothing. Unsupported nested input leaves the whole call unchanged.
    */
   function transformSx(path: NodePath<import('@babel/types').CallExpression>, types: typeof t): void {
+    const context = {
+      theme: options.theme,
+      reusabilityBudget: options.reusabilityBudget,
+      stableClassNames: options.stableClassNames,
+      fileName,
+      state,
+    };
     const staticSource = readStaticSxSource(path.node.arguments, types);
     if (staticSource !== null) {
       if (isGeneratedClassNames(staticSource)) {
         return;
       }
-      path.replaceWith(
-        types.stringLiteral(
-          compileSxString(
-            staticSource,
-            {
-              theme: options.theme,
-              reusabilityBudget: options.reusabilityBudget,
-              stableClassNames: options.stableClassNames,
-              fileName,
-              state,
-            },
-            path.node.loc?.start,
-          ),
-        ),
-      );
+      path.replaceWith(types.stringLiteral(compileSxString(staticSource, context, path.node.loc?.start)));
       return;
     }
     const transformed = path.node.arguments.map((argument) =>
-      transformSxArgument(argument as import('@babel/types').Expression | import('@babel/types').SpreadElement, types),
+      transformSxArgument(
+        argument as import('@babel/types').Expression | import('@babel/types').SpreadElement,
+        types,
+        context,
+      ),
     );
     if (transformed.some((argument) => argument === undefined)) {
       return;
@@ -317,67 +315,6 @@ export default function cssxBabelPlugin(
       (argument): argument is import('@babel/types').Expression => argument !== undefined,
     );
     path.node.arguments = expressions;
-  }
-
-  /**
-   * Transforms one sx argument when all of its nested static forms are supported.
-   *
-   * It accepts strings, false, null, arrays without spreads, logical-and expressions, and conditionals.
-   * Other expressions are kept unchanged. Spreads, JSX namespace names, placeholders, and unsupported
-   * nested forms return undefined as a sentinel that stops folding the enclosing sx call.
-   *
-   * @param node Sx argument or nested array element to transform.
-   * @param types Babel node helpers.
-   * @returns A transformed expression, or undefined when this input prevents static transformation.
-   */
-  function transformSxArgument(
-    node: import('@babel/types').Expression | import('@babel/types').SpreadElement,
-    types: typeof t,
-  ): import('@babel/types').Expression | undefined {
-    if (types.isSpreadElement(node)) {
-      return undefined;
-    }
-    if (types.isStringLiteral(node)) {
-      if (isGeneratedClassNames(node.value)) {
-        return node;
-      }
-      return types.stringLiteral(
-        compileSxString(
-          node.value,
-          {
-            theme: options.theme,
-            reusabilityBudget: options.reusabilityBudget,
-            stableClassNames: options.stableClassNames,
-            fileName,
-            state,
-          },
-          node.loc?.start,
-        ),
-      );
-    }
-    if (types.isNullLiteral(node) || types.isBooleanLiteral(node, { value: false })) {
-      return types.stringLiteral('');
-    }
-    if (types.isArrayExpression(node)) {
-      const elements = node.elements.map((element) =>
-        element && !types.isSpreadElement(element) ? transformSxArgument(element, types) : undefined,
-      );
-      if (elements.some((element) => element === undefined)) {
-        return undefined;
-      }
-      const values = elements.filter((element): element is import('@babel/types').Expression => element !== undefined);
-      return types.arrayExpression(values);
-    }
-    if (types.isLogicalExpression(node, { operator: '&&' })) {
-      const right = transformSxArgument(node.right, types);
-      return right ? types.logicalExpression('&&', node.left, right) : undefined;
-    }
-    if (types.isConditionalExpression(node)) {
-      const consequent = transformSxArgument(node.consequent, types);
-      const alternate = transformSxArgument(node.alternate, types);
-      return consequent && alternate ? types.conditionalExpression(node.test, consequent, alternate) : undefined;
-    }
-    return node;
   }
 
   /**
