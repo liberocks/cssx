@@ -4,6 +4,7 @@ import { classifyCandidate, classifyParsedCandidate } from './semantics';
 import { serializeThemeSignature } from './serialize-theme-signature';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 import { parseTheme } from './theme';
+import { themeNamespace } from './theme-namespace';
 import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
 import { hashClassNameIdentity } from './hash-class-name-identity';
 
@@ -929,20 +930,4 @@ function compositeIdentity(atomicClasses: readonly string[]): string {
 /** Adds the compiler namespace to a composite identity before it receives a name. */
 function compositeNameIdentity(identity: string): string {
   return `${COMPILER_ABI}\u0000composite\u0000${identity}`;
-}
-
-/**
- * Creates a compact theme namespace without paying BigInt costs in the hot
- * static-style compilation path. Two independent 32-bit hash lanes preserve
- * practical separation between theme identities used by generated names.
- */
-function themeNamespace(value: string): string {
-  let first = 0x811c9dc5;
-  let second = 0x9e3779b9;
-  for (let index = 0; index < value.length; index++) {
-    const code = value.charCodeAt(index);
-    first = Math.imul(first ^ code, 0x01000193);
-    second = Math.imul(second ^ code, 0x85ebca6b);
-  }
-  return `${(first >>> 0).toString(36)}-${(second >>> 0).toString(36)}`;
 }
