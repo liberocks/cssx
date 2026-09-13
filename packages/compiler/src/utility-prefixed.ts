@@ -1,6 +1,7 @@
 import { compileBorderWidthUtility } from './compile-border-width-utility';
 import { compileColorUtility } from './compile-color-utility';
 import { compileGradientUtility } from './compile-gradient-utility';
+import { compileModernUtility } from './compile-modern-utility';
 import { compileSpacingUtility } from './compile-spacing-utility';
 import { compileTextDecorationUtility } from './compile-text-decoration-utility';
 import type { CssxTheme } from './theme';
@@ -10,7 +11,6 @@ import {
   compileRingUtility,
   compileShadowUtility,
 } from './utility-effects';
-import { compileModernUtility } from './utility-modern';
 import { compileMotionUtility, isMotionUtilityCandidate } from './utility-motion';
 import { flexValue, resolveArbitraryCssValue, resolveDimensionValue, resolveSpacingValue } from './utility-resolvers';
 import { compileAnimationUtility, compileDimensionUtility, compileTransformUtility } from './utility-transform';

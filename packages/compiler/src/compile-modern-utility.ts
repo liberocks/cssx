@@ -1,6 +1,7 @@
-import { resolveThemeToken } from './theme';
+import { resolveIntrinsicSize } from './resolve-intrinsic-size';
+import { resolveNumericSvgValue } from './resolve-numeric-svg-value';
 import type { CssxTheme } from './theme';
-import { resolveArbitraryCssValue, resolveSpacingValue } from './utility-resolvers';
+import { resolveArbitraryCssValue } from './utility-resolvers';
 import type { UtilityDeclaration } from './utility-types';
 
 /** Fixed modern utility declarations keyed by complete utility name. */
@@ -100,53 +101,4 @@ export function compileModernUtility(utility: string, theme: CssxTheme): Utility
     return value ? { property, value } : null;
   }
   return null;
-}
-
-/**
- * Resolves an intrinsic-size utility value.
- *
- * @param raw Utility value.
- * @param property CSS property used to derive the theme token.
- * @param theme Active resolved theme.
- * @returns CSS size, or null when unknown.
- */
-function resolveIntrinsicSize(raw: string, property: string, theme: CssxTheme): string | null {
-  if (raw === 'none') {
-    return 'none';
-  }
-  if (/^\d+(?:\.\d+)?$/.test(raw)) {
-    return resolveSpacingValue(raw, false, theme);
-  }
-  return resolveNamedValue(raw, `--${property}-${raw}`, theme);
-}
-
-/**
- * Resolves a numeric or arbitrary SVG value.
- *
- * @param raw Utility value.
- * @returns CSS value, or null when unsupported.
- */
-function resolveNumericSvgValue(raw: string): string | null {
-  if (/^\d+(?:\.\d+)?$/.test(raw)) {
-    return raw;
-  }
-  if (raw.startsWith('[') || raw.startsWith('(')) {
-    return resolveArbitraryCssValue(raw);
-  }
-  return null;
-}
-
-/**
- * Resolves arbitrary syntax first, then a named theme token.
- *
- * @param raw Utility value.
- * @param token Theme token name.
- * @param theme Active resolved theme.
- * @returns CSS value, or null when unknown.
- */
-function resolveNamedValue(raw: string, token: string, theme: CssxTheme): string | null {
-  if ((raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('(') && raw.endsWith(')'))) {
-    return resolveArbitraryCssValue(raw);
-  }
-  return resolveThemeToken(theme, token) ?? null;
 }

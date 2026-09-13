@@ -4,7 +4,6 @@ import { parseTheme } from './theme';
 import { describeUtilityRecipe, compileUtilities } from './utilities';
 import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility } from './utility-effects';
 import { compileCoreLayoutUtility, compileContainerUtility } from './utility-layout';
-import { compileModernUtility } from './utility-modern';
 import { compileMotionUtility, isMotionUtilityCandidate } from './utility-motion';
 import { compilePrefixedUtility } from './utility-prefixed';
 import {
@@ -84,23 +83,6 @@ describe('utility helper edge cases', () => {
     expect(compileCoreLayoutUtility('scroll-px-invalid', false, theme)).toBeNull();
     expect(compileCoreLayoutUtility('scrollbar-thumb-red-500/50', false, theme)).toHaveLength(2);
     expect(compileCoreLayoutUtility('scrollbar-track-red-500/101', false, theme)).toBeNull();
-    expect(compileModernUtility('contain-[layout_paint]', theme)).toEqual({
-      property: 'contain',
-      value: 'layout paint',
-    });
-    expect(compileModernUtility('contain-intrinsic-size-none', theme)).toEqual({
-      property: 'contain-intrinsic-size',
-      value: 'none',
-    });
-    expect(compileModernUtility('contain-intrinsic-inline-size-2', theme)).toEqual({
-      property: 'contain-intrinsic-inline-size',
-      value: 'calc(0.25rem * 2)',
-    });
-    expect(compileModernUtility('stroke-dasharray-[4_8]', theme)).toEqual({
-      property: 'stroke-dasharray',
-      value: '4 8',
-    });
-    expect(compileModernUtility('stroke-dasharray-invalid', theme)).toBeNull();
     expect(compileBackgroundUtility('bg-clip-text')).toHaveLength(3);
     expect(compileBackgroundUtility('bg-position-[25%_75%]')).toEqual({
       property: 'background-position',
@@ -316,18 +298,6 @@ describe('utility helper edge cases', () => {
     expect(compileCoreLayoutUtility('end-invalid', false, theme)).toBeNull();
     expect(compileCoreLayoutUtility('stroke-3', false, theme)).toEqual({ property: 'stroke-width', value: '3' });
     expect(compileCoreLayoutUtility('scrollbar-thumb-invalid', false, theme)).toBeNull();
-
-    expect(
-      compileModernUtility('contain-intrinsic-size-custom', {
-        ...emptyTheme,
-        tokens: { '--contain-intrinsic-size-custom': '24px' },
-      }),
-    ).toEqual({
-      property: 'contain-intrinsic-size',
-      value: '24px',
-    });
-    expect(compileModernUtility('contain-intrinsic-size-(--custom)', emptyTheme)?.value).toBe('var(--custom)');
-    expect(compileModernUtility('contain-intrinsic-size-unknown', emptyTheme)).toBeNull();
 
     for (const utility of [
       'delay-stagger',
