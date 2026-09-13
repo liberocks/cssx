@@ -4,6 +4,7 @@ export { isLengthCssValue } from './is-length-css-value';
 export { resolveArbitraryCssValue } from './resolve-arbitrary-css-value';
 export { resolveBorderWidthValue } from './resolve-border-width-value';
 export { flexValue } from './flex-value';
+export { isLengthArbitraryValue } from './is-length-arbitrary-value';
 export { resolveColorValue } from './resolve-color-value';
 export { resolveOpacityModifier } from './resolve-opacity-modifier';
 export { resolveSpacingValue } from './resolve-spacing-value';
@@ -113,20 +114,6 @@ export function splitColorModifier(value: string): { readonly value: string; rea
     }
   }
   return { value };
-}
-
-/**
- * Checks whether arbitrary text is a supported length expression.
- *
- * @param value Arbitrary value without brackets.
- * @returns Whether the value is a length.
- */
-export function isLengthArbitraryValue(value: string): boolean {
-  const normalized = value.replace(/^(?:length|size):/, '');
-  return (
-    /^-?(?:\d+(?:\.\d+)?)(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|%|cm|mm|in|pt|pc)$/i.test(normalized) ||
-    normalized.startsWith('calc(')
-  );
 }
 
 /**
