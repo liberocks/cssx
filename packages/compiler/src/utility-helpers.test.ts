@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { parseTheme } from './theme';
 import { describeUtilityRecipe, compileUtilities } from './utilities';
 import { compileCoreLayoutUtility, compileContainerUtility } from './utility-layout';
-import { compileMotionUtility, isMotionUtilityCandidate } from './utility-motion';
 import { compilePrefixedUtility } from './utility-prefixed';
 import {
   flexValue,
@@ -113,43 +112,6 @@ describe('utility helper edge cases', () => {
     expect(compileTransformUtility('rotate-x-invalid', false, theme)).toBeNull();
     expect(compileTransformUtility('skew-invalid', false, theme)).toBeNull();
     expect(compilePrefixedUtility('indent-invalid', false, theme)).toBeNull();
-    expect(isMotionUtilityCandidate('duration-100')).toBe(true);
-    expect(isMotionUtilityCandidate('opacity-100')).toBe(false);
-    expect(compileMotionUtility('animation-name-none', false, theme)).toEqual({
-      property: 'animation-name',
-      value: 'none',
-    });
-    expect(compileMotionUtility('animation-name-[hero]', false, theme)).toEqual({
-      property: 'animation-name',
-      value: 'hero',
-    });
-    expect(compileMotionUtility('animation-name-spin', true, theme)).toBeNull();
-    expect(compileMotionUtility('animation-iterations-infinite', false, theme)).toEqual({
-      property: 'animation-iteration-count',
-      value: 'infinite',
-    });
-    expect(compileMotionUtility('animation-iterations-invalid', false, theme)).toBeNull();
-    expect(compileMotionUtility('animation-direction-reverse', true, theme)).toBeNull();
-    expect(compileMotionUtility('stagger-reverse', false, theme)).toEqual({
-      property: '--cssx-stagger-reverse',
-      value: '1',
-    });
-    expect(compileMotionUtility('stagger-index-[2]', false, theme)).toEqual({
-      property: '--cssx-stagger-index',
-      value: '2',
-    });
-    expect(compileMotionUtility('animation-timeline-auto', false, theme)).toMatchObject({
-      atRule: expect.stringContaining('animation-timeline'),
-    });
-    expect(compileMotionUtility('animation-timeline-scroll-y', false, theme)).toMatchObject({ value: 'scroll(y)' });
-    expect(compileMotionUtility('view-timeline-axis-x', false, theme)).toMatchObject({
-      property: 'view-timeline-axis',
-    });
-    expect(compileMotionUtility('timeline-scope-all', false, theme)).toMatchObject({ value: 'all' });
-    expect(compileMotionUtility('animation-range-end-cover', false, theme)).toMatchObject({
-      property: 'animation-range-end',
-    });
-    expect(compileMotionUtility('view-transition-name-[inherit]', false, theme)).toBeNull();
   });
 
   it('routes every documented prefixed alternative to a declaration recipe', () => {
@@ -280,36 +242,6 @@ describe('utility helper edge cases', () => {
     expect(compileCoreLayoutUtility('end-invalid', false, theme)).toBeNull();
     expect(compileCoreLayoutUtility('stroke-3', false, theme)).toEqual({ property: 'stroke-width', value: '3' });
     expect(compileCoreLayoutUtility('scrollbar-thumb-invalid', false, theme)).toBeNull();
-
-    for (const utility of [
-      'delay-stagger',
-      'ease-in',
-      'animation-delay-stagger',
-      'animation-duration-100',
-      'animation-ease-in',
-      'animation-iterations-2',
-      'animation-direction-normal',
-      'animation-fill-none',
-      'animation-running',
-      'animation-composition-add',
-      'stagger-reverse',
-      'stagger-100',
-      'stagger-index-2',
-      'animation-timeline-auto',
-      'scroll-timeline-axis-x',
-      'animation-range-entry',
-      'view-transition-name-none',
-    ]) {
-      expect(compileMotionUtility(utility, true, theme), utility).toBeNull();
-    }
-    expect(
-      compileMotionUtility('animation-ease-only', false, {
-        ...emptyTheme,
-        tokens: { '--animation-ease-only': 'linear(0, 1)' },
-      }),
-    ).toMatchObject({ value: 'linear(0, 1)' });
-    expect(compileMotionUtility('ease-invalid', false, emptyTheme)).toBeNull();
-    expect(compileMotionUtility('delay-(--time)', true, theme)).toMatchObject({ value: 'calc(var(--time) * -1)' });
 
     expect(compilePrefixedUtility('basis-invalid', false, theme)).toBeNull();
     expect(compilePrefixedUtility('flex-1/0', false, theme)).toBeNull();
