@@ -30,6 +30,6 @@
     "@cssxio/compiler": "workspace:^"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --external @babel/core --clean"
+    "build": "tsup src/index.ts --format esm,cjs --dts --external @babel/core --minify --clean"
   }
 }
