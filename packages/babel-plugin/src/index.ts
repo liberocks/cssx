@@ -23,6 +23,8 @@ import { resolveStyleArgument } from './resolve-style-argument';
 import { readStyleMap } from './read-style-map';
 import { transformSxCall } from './transform-sx-call';
 import { markReferencedStyleCandidates } from './mark-referenced-style-candidates';
+import { materializeLiveStyleMaps } from './materialize-live-style-maps';
+import { removeDeadStyleMaps } from './remove-dead-style-maps';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -79,8 +81,8 @@ export default function cssxBabelPlugin(
           finalizeFoldedProps(path, t);
           path.scope.crawl();
           markReferencedStyleCandidates(path, t, state);
-          materializeLiveStyleMaps(path, t);
-          removeDeadStyleMaps(path);
+          materializeLiveStyleMaps(path, t, state);
+          removeDeadStyleMaps(path, state);
           compactLiveStyleRecords(path);
           for (const statement of path.get('body')) {
             if (!statement.isImportDeclaration() || statement.node.source.value !== importSource) {
@@ -183,17 +185,6 @@ export default function cssxBabelPlugin(
     path.replaceWith(styleMapExpression(result.styles, types));
   }
 
-  /** Materializes only style maps that could not be completely folded away. */
-  function materializeLiveStyleMaps(program: NodePath<import('@babel/types').Program>, types: typeof t): void {
-    for (const [styleName, styles] of state.styles) {
-      const binding = program.scope.getBinding(styleName);
-      if (!binding?.path.isVariableDeclarator() || binding.referencePaths.length === 0) {
-        continue;
-      }
-      binding.path.node.init = styleMapExpression(styles, types);
-    }
-  }
-
   /**
    * Folds a props call when every argument is a known static compiled style form.
    *
@@ -287,16 +278,6 @@ export default function cssxBabelPlugin(
       state,
     };
     transformSxCall(path, types, context);
-  }
-
-  /** Removes generated style maps once every reference was statically folded. */
-  function removeDeadStyleMaps(program: NodePath<import('@babel/types').Program>): void {
-    for (const styleName of state.styles.keys()) {
-      const binding = program.scope.getBinding(styleName);
-      if (binding && binding.referencePaths.length === 0 && binding.path.isVariableDeclarator()) {
-        binding.path.remove();
-      }
-    }
   }
 
   /** Interns repeated conflict tuples when a style map must remain available at runtime. */
