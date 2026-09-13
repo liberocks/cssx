@@ -1,17 +1,16 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
 import { Buffer } from 'node:buffer';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import { basename, dirname, relative, resolve, sep } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { createUnplugin } from 'unplugin';
 import type { UnpluginFactory } from 'unplugin';
 
 import { createGenerateBundleHandler } from './create-generate-bundle-handler';
+import { createTransformHandler } from './create-transform-handler';
 import { invalidateViteRunner, type ViteHotUpdateModule } from './invalidate-vite-runner';
 import { RULES_METADATA_KEY, type ModuleCssxData } from './module-cssx-data';
-import { configureCompilationAsset, storeCompilationData, type NativeCompiler } from './native';
-import { nativeBuildRoot } from './native-build-root';
+import { configureCompilationAsset, type NativeCompiler } from './native';
 import { nativeBuildState } from './native-build-state';
-import { nativeStylesheetHmr } from './native-stylesheet-hmr';
 import {
   assertPluginOptions,
   loadTheme,
@@ -23,7 +22,6 @@ import {
 } from './options';
 import { scanProjectCssxSourceModules } from './project-scan';
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from './stylesheet';
-import { sourceMapFromContext, transformCssxModule } from './transform';
 import { sendViteStyles } from './vite-dev';
 
 export {
@@ -132,57 +130,20 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
     enforce: 'pre',
     transform: {
       filter: { id: SCRIPT_ID },
-      async handler(code, id) {
-        if (options.themeFile) {
-          this.addWatchFile?.(resolve(process.cwd(), options.themeFile));
-        }
-        const root = nativeBuildRoot(this);
-        const sharedNativeState = root ? nativeBuildState(root, options) : undefined;
-        const transformed = await transformCssxModule(
-          code,
-          id,
-          {
-            ...options,
-            classNameAllocator: sharedNativeState?.classNameAllocator ?? classNameAllocator,
-            ...(options.stableClassNames
-              ? { stableClassNameFileName: relative(root ?? process.cwd(), moduleId(id)).replaceAll(sep, '/') }
-              : {}),
-          },
-          sourceMapFromContext(this, id),
-        );
-        const data = {
-          id: moduleId(id),
-          rules: transformed?.rules ?? [],
-          candidates: transformed?.candidates ?? {},
-          composites: transformed?.composites ?? {},
-          atomicClasses: transformed?.atomicClasses ?? [],
-          origins: transformed?.origins ?? {},
-          cssOnlySignature: transformed?.cssOnlySignature ?? '',
-        };
-        storeCompilationData(this, data, RULES_METADATA_KEY);
-        const normalizedId = moduleId(id);
-        // Astro transforms component scripts as query modules after the template.
-        // They have no `sx()` calls and must not erase the template's collected CSS.
-        if (transformed || normalizedId === id) {
-          rollupDataById.set(normalizedId, data);
-          esbuildDataById.set(resolve(esbuildWorkingDirectory, normalizedId), data);
-          sharedNativeState?.transformedDataById.set(normalizedId, data);
-        }
-
-        if (meta.framework === 'vite' && viteServer) {
-          sendViteStyles(viteServer, viteCssPath('/', cssFileName));
-        }
-
-        const transformedCode = transformed?.code ?? code;
-        return {
-          code:
-            (meta.framework === 'webpack' || meta.framework === 'rspack') && transformed
-              ? `${transformedCode}\n${nativeStylesheetHmr(cssFileName)}`
-              : transformedCode,
-          meta: { [RULES_METADATA_KEY]: data },
-          ...(transformed?.map ? { map: transformed.map } : {}),
-        };
-      },
+      handler: createTransformHandler({
+        framework: meta.framework,
+        options,
+        classNameAllocator,
+        rollupDataById,
+        esbuildDataById,
+        cssFileName,
+        getEsbuildWorkingDirectory: () => esbuildWorkingDirectory,
+        notifyViteStyles: (path) => {
+          if (viteServer) {
+            sendViteStyles(viteServer, path);
+          }
+        },
+      }),
     },
     watchChange(id, change) {
       if (change.event === 'delete') {
