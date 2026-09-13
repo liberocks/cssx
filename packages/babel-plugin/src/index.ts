@@ -21,6 +21,8 @@ import { cssOnlySignature } from './css-only-signature';
 import { stableCompositeName } from './stable-composite-name';
 import { styleMapExpression } from './style-map-expression';
 import { withStableCompositeNames } from './with-stable-composite-names';
+import { isGeneratedClassNames } from './is-generated-class-names';
+import { readStaticSxSource } from './read-static-sx-source';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -387,11 +389,6 @@ export default function cssxBabelPlugin(
     return className!;
   }
 
-  /** Recognizes the default serial class names written by an earlier CSSX transform. */
-  function isGeneratedClassNames(value: string): boolean {
-    return /^s[0-9A-Za-z]+x(?:\s+s[0-9A-Za-z]+x)*$/.test(value);
-  }
-
   /**
    * Marks candidates used by references to styles produced by create calls.
    *
@@ -622,37 +619,5 @@ export default function cssxBabelPlugin(
     for (const key of Object.keys(state.styles.get(styleName)!)) {
       markFallbackClasses(styleName, key);
     }
-  }
-
-  /** Reads a fully static sx input as one utility source. */
-  function readStaticSxSource(
-    nodes: readonly (
-      | import('@babel/types').Expression
-      | import('@babel/types').JSXNamespacedName
-      | import('@babel/types').SpreadElement
-      | import('@babel/types').ArgumentPlaceholder
-    )[],
-    types: typeof t,
-  ): string | null {
-    const values: string[] = [];
-    for (const node of nodes) {
-      if (types.isStringLiteral(node)) {
-        values.push(node.value);
-      } else if (types.isNullLiteral(node) || types.isBooleanLiteral(node, { value: false })) {
-        continue;
-      } else if (types.isArrayExpression(node) && node.elements.every((element) => element !== null)) {
-        const nested = readStaticSxSource(
-          node.elements.filter((element): element is Exclude<typeof element, null> => element !== null),
-          types,
-        );
-        if (nested === null) {
-          return null;
-        }
-        values.push(nested);
-      } else {
-        return null;
-      }
-    }
-    return values.filter(Boolean).join(' ');
   }
 }
