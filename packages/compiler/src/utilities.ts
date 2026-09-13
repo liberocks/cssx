@@ -4,6 +4,7 @@ import { escapeCssIdentifier } from './escape-css-identifier';
 import { utilityFallback } from './fallback';
 import { propertyRegistration } from './property-registration';
 import { readGeneratedClassNames } from './read-generated-class-names';
+import { replaceFallbackSelector } from './replace-fallback-selector';
 import { requiredPropertyNames } from './required-property-names';
 import { resolveAnimationThemeReferences } from './resolve-animation-theme-references';
 import { classifyParsedCandidate } from './semantics';
@@ -394,11 +395,6 @@ function compileCandidate(
       };
     })
     .filter((entry): entry is CompiledUtility => entry !== null);
-}
-
-/** Rebinds one oracle CSS rule from its source utility selector to a CSSX selector. */
-function replaceFallbackSelector(css: string, candidate: string, selector: string): string {
-  return css.split(`.${escapeCssIdentifier(candidate)}`).join(selector);
 }
 
 /** Returns the required atomic selector and stable composite aliases. */
