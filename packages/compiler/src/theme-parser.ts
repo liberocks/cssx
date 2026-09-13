@@ -3,6 +3,7 @@ import type { CssxTheme, ThemeOutputMode } from './theme-types';
 import { readThemeModifier } from './read-theme-modifier';
 import { skipThemeWhitespaceAndComments } from './skip-theme-whitespace-and-comments';
 import { readThemeBalancedBlock } from './read-theme-balanced-block';
+import { rewriteThemeReferences } from './rewrite-theme-references';
 import { themeTokenName } from './theme-token-name';
 
 /** Maximum accepted CSS source length for a theme. */
@@ -246,17 +247,6 @@ function collectThemeTokenReferences(theme: CssxTheme, name: string, names: Set<
   for (const match of theme.tokens[name]!.matchAll(/var\((--[a-z0-9_-]+)/gi)) {
     collectThemeTokenReferences(theme, match[1]!, names);
   }
-}
-
-/**
- * Rewrites token references to use the configured output prefix.
- *
- * @param theme Active resolved theme.
- * @param value Raw token value.
- * @returns Value with rewritten variable references.
- */
-function rewriteThemeReferences(theme: CssxTheme, value: string): string {
-  return value.replace(/var\((--[a-z0-9_-]+)/gi, (_match, name: string) => `var(${themeTokenName(theme, name)}`);
 }
 
 /**
