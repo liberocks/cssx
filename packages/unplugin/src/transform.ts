@@ -4,16 +4,14 @@ import { compileUtilities, createClassNameAllocator, createSelectorAliases } fro
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 import { parse as parseVueSfc } from '@vue/compiler-sfc';
 import { assertPluginOptions, loadTheme, type CssxPluginOptions } from './options';
-import { quoteVueTemplateExpression } from './quote-vue-template-expression';
 import type { IncomingSourceMap } from './source-map-from-context';
 import type { CssxCandidateOrigin } from './stylesheet';
-import { templateAttributeQuote } from './template-attribute-quote';
 import { compiledCssRule } from './compiled-css-rule';
 import { wrapCssLayer } from './wrap-css-layer';
 import { remapVueBlockOrigins } from './remap-vue-block-origins';
-import { remapVueTemplateOrigins } from './remap-vue-template-origins';
 import { findSxCalls } from './find-sx-calls';
 import { transformedExpression } from './transformed-expression';
+import { transformVueTemplateSx } from './transform-vue-template-sx';
 
 export { sourceMapFromContext } from './source-map-from-context';
 export type { IncomingSourceMap } from './source-map-from-context';
@@ -191,7 +189,13 @@ async function transformVueSfcModule(
 
   const template = parsed.descriptor.template;
   if (template?.content.includes('sx')) {
-    const transformed = await transformVueTemplateSx(template.content, sourceId, options, classNameAllocator);
+    const transformed = await transformVueTemplateSx(
+      template.content,
+      sourceId,
+      options,
+      classNameAllocator,
+      transformCssxModule,
+    );
     if (transformed) {
       replacements.push({ start: template.loc.start.offset, end: template.loc.end.offset, code: transformed.code });
       Object.assign(candidates, transformed.candidates);
@@ -210,63 +214,6 @@ async function transformVueSfcModule(
   let transformedCode = code;
   for (const replacement of replacements.sort((left, right) => right.start - left.start)) {
     transformedCode = `${transformedCode.slice(0, replacement.start)}${replacement.code}${transformedCode.slice(replacement.end)}`;
-  }
-  return {
-    code: transformedCode,
-    rules,
-    candidates,
-    composites,
-    atomicClasses: [...atomicClasses],
-    origins,
-    cssOnlySignature: transformedCode,
-  };
-}
-
-/** Transforms static CSSX `sx()` calls embedded in a Vue template. */
-async function transformVueTemplateSx(
-  code: string,
-  sourceId: string,
-  options: CssxPluginOptions & {
-    readonly classNameAllocator?: ClassNameAllocator;
-    readonly stableClassNames?: boolean;
-    readonly stableClassNameFileName?: string;
-  },
-  classNameAllocator: ClassNameAllocator,
-): Promise<TransformResult | null> {
-  const calls = findSxCalls(code);
-  if (calls.length === 0) {
-    return null;
-  }
-  const importSource = options.importSource ?? '@cssxio/cssx';
-  const candidates: Record<string, string> = {};
-  const composites: Record<string, readonly string[]> = {};
-  const rules: CssxRule[] = [];
-  const atomicClasses = new Set<string>();
-  const origins: Record<string, CssxCandidateOrigin> = {};
-  let transformedCode = code;
-
-  for (const call of [...calls].reverse()) {
-    const wrapperPrefix = `import { sx } from ${JSON.stringify(importSource)};\nconst style = `;
-    const wrapperSource = `${wrapperPrefix}${call.code};`;
-    const transformed = (await transformCssxModule(wrapperSource, `${sourceId}.cssx-vue-template.ts`, {
-      ...options,
-      classNameAllocator,
-    })) as TransformResult;
-    const expression = quoteVueTemplateExpression(
-      transformedExpression(transformed.code),
-      templateAttributeQuote(code, call.start),
-    );
-    transformedCode = `${transformedCode.slice(0, call.start)}${expression}${transformedCode.slice(call.end)}`;
-    Object.assign(candidates, transformed.candidates);
-    Object.assign(composites, transformed.composites);
-    Object.assign(
-      origins,
-      remapVueTemplateOrigins(code, call.start, wrapperSource, wrapperPrefix.length, transformed.origins),
-    );
-    rules.push(...transformed.rules);
-    for (const className of transformed.atomicClasses) {
-      atomicClasses.add(className);
-    }
   }
   return {
     code: transformedCode,
