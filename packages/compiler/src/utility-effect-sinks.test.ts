@@ -1,6 +1,11 @@
 import { expect, it } from 'vitest';
 
-import { CSSX_BACKDROP_FILTER_SINK, CSSX_FILTER_SINK, CSSX_SHADOW_SINK } from './utility-effect-sinks';
+import {
+  CSSX_BACKDROP_FILTER_SINK,
+  CSSX_FILTER_SINK,
+  CSSX_NUMERIC_SINK,
+  CSSX_SHADOW_SINK,
+} from './utility-effect-sinks';
 
 it('combines shadow and ring channels in cascade order', () => {
   expect(CSSX_SHADOW_SINK).toBe(
@@ -21,5 +26,20 @@ it('includes every backdrop filter channel in its shared sink', () => {
     ['blur', 'brightness', 'contrast', 'grayscale', 'hue-rotate', 'invert', 'opacity', 'saturate', 'sepia'].map(
       (channel) => `var(--cssx-backdrop-${channel},)`,
     ),
+  );
+});
+
+it('includes each independent numeric font-variant channel in its sink', () => {
+  expect(CSSX_NUMERIC_SINK.split(' ')).toEqual(
+    [
+      'ordinal',
+      'slashed-zero',
+      'lining-nums',
+      'oldstyle-nums',
+      'proportional-nums',
+      'tabular-nums',
+      'diagonal-fractions',
+      'stacked-fractions',
+    ].map((channel) => `var(--cssx-numeric-${channel},)`),
   );
 });

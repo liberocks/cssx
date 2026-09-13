@@ -9,3 +9,7 @@ export const CSSX_FILTER_SINK =
 /** Shared backdrop-filter value that combines all backdrop filter channels. */
 export const CSSX_BACKDROP_FILTER_SINK =
   'var(--cssx-backdrop-blur,) var(--cssx-backdrop-brightness,) var(--cssx-backdrop-contrast,) var(--cssx-backdrop-grayscale,) var(--cssx-backdrop-hue-rotate,) var(--cssx-backdrop-invert,) var(--cssx-backdrop-opacity,) var(--cssx-backdrop-saturate,) var(--cssx-backdrop-sepia,)';
+
+/** Shared font-variant value that combines independent numeric channels. */
+export const CSSX_NUMERIC_SINK =
+  'var(--cssx-numeric-ordinal,) var(--cssx-numeric-slashed-zero,) var(--cssx-numeric-lining-nums,) var(--cssx-numeric-oldstyle-nums,) var(--cssx-numeric-proportional-nums,) var(--cssx-numeric-tabular-nums,) var(--cssx-numeric-diagonal-fractions,) var(--cssx-numeric-stacked-fractions,)';

@@ -1,3 +1,4 @@
+import { DIMENSION_PROPERTY_BY_PREFIX } from './dimension-property-by-prefix';
 import type { CssxTheme } from './theme';
 import { resolveDimensionValue } from './utility-resolvers';
 import type { UtilityDeclaration } from './utility-types';
@@ -26,20 +27,6 @@ export function compileDimensionUtility(
   if (!value) {
     return null;
   }
-  const properties: Readonly<Record<string, string>> = {
-    w: 'width',
-    h: 'height',
-    'min-w': 'min-width',
-    'max-w': 'max-width',
-    'min-h': 'min-height',
-    'max-h': 'max-height',
-    inline: 'inline-size',
-    'min-inline': 'min-inline-size',
-    'max-inline': 'max-inline-size',
-    block: 'block-size',
-    'min-block': 'min-block-size',
-    'max-block': 'max-block-size',
-  };
-  const property = properties[prefix];
+  const property = DIMENSION_PROPERTY_BY_PREFIX[prefix];
   return { property: property!, value };
 }
