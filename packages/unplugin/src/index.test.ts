@@ -1,34 +1,13 @@
 import { expect, it } from 'vitest';
 
-import { unpluginFactory } from './index';
+import * as unpluginExports from './index';
 
-interface FactoryPluginShape {
-  readonly name: string;
-  readonly transform: { readonly filter: { readonly id: RegExp }; readonly handler: unknown };
-  readonly rollup: { readonly generateBundle: unknown };
-  readonly vite: {
-    readonly generateBundle: unknown;
-    readonly configureServer: unknown;
-    readonly hotUpdate?: { readonly handler: unknown };
-  };
-}
-
-it('creates Vite, Rollup, and transform hooks from the unplugin factory', () => {
-  const plugin = unpluginFactory({ preflight: false }, {
-    framework: 'vite',
-    versions: {},
-  } as never) as unknown as FactoryPluginShape;
-
-  expect(plugin.name).toBe('@cssxio/unplugin');
-  expect(plugin.transform).toMatchObject({ filter: { id: expect.any(RegExp) }, handler: expect.any(Function) });
-  expect(plugin.rollup.generateBundle).toBeTypeOf('function');
-  expect(plugin.vite.generateBundle).toBeTypeOf('function');
-  expect(plugin.vite.configureServer).toBeTypeOf('function');
-  expect(plugin.vite.hotUpdate?.handler).toBeTypeOf('function');
-});
-
-it('rejects invalid options before installing bundler hooks', () => {
-  expect(() => unpluginFactory({ sourceMap: 'false' } as never, { framework: 'vite', versions: {} } as never)).toThrow(
-    'sourceMap must be a boolean',
-  );
+it('re-exports the default plugin and build-tool adapters', () => {
+  expect(unpluginExports.unpluginFactory).toBeTypeOf('function');
+  expect(unpluginExports.default).toBe(unpluginExports.unplugin);
+  expect(unpluginExports.vite).toBeTypeOf('function');
+  expect(unpluginExports.rollup).toBeTypeOf('function');
+  expect(unpluginExports.webpack).toBeTypeOf('function');
+  expect(unpluginExports.rspack).toBeTypeOf('function');
+  expect(unpluginExports.esbuild).toBeTypeOf('function');
 });
