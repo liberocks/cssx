@@ -9,7 +9,7 @@ import { compositeIdentity } from './composite-identity';
 import { compositeNameIdentity } from './composite-name-identity';
 import { mergeCompiledStyles } from './merge-compiled-styles';
 import { packedAtomicClasses } from './packed-atomic-classes';
-import { classifyCandidate, classifyParsedCandidate } from './semantics';
+import { classifyParsedCandidate } from './semantics';
 import { serializeThemeSignature } from './serialize-theme-signature';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 import { parseTheme } from './theme';

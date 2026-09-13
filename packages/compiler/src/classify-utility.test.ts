@@ -6,7 +6,7 @@ it('returns the conflict record for a supported static utility', () => {
   expect(classifyUtility('p-4')).toEqual({
     scope: '',
     group: 'p',
-    conflicts: ['p', 'px', 'py', 'pt', 'pr', 'pb', 'pl'],
+    conflicts: ['p', 'px', 'py', 'pt', 'pr', 'pb', 'pl', 'ps', 'pe'],
   });
 });
 
