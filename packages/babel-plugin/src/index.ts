@@ -1,7 +1,6 @@
-import type { NodePath, PluginObj, PluginPass } from '@babel/core';
+import type { PluginObj, PluginPass } from '@babel/core';
 import type * as babelTypes from '@babel/types';
-import { composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
-import type { CompiledStyle } from '@cssxio/compiler';
+import { createClassNameAllocator } from '@cssxio/compiler';
 
 import { assertModuleScope } from './assert-module-scope';
 import { assertNoComputedCssxApiCall } from './assert-no-computed-cssx-api-call';
@@ -12,14 +11,12 @@ import type { FoldedPropsCall } from './finalize-folded-props';
 import { isCreateCall } from './is-create-call';
 import { isPropsCall } from './is-props-call';
 import { isSxCall } from './is-sx-call';
-import { markEmittedClassNames } from './mark-emitted-class-names';
 import { markReferencedStyleCandidates } from './mark-referenced-style-candidates';
 import { materializeLiveStyleMaps } from './materialize-live-style-maps';
 import type { CssxPluginOptions, FileState } from './plugin-types';
 import { removeDeadStyleMaps } from './remove-dead-style-maps';
-import { resolveStyleArgument } from './resolve-style-argument';
-import { stableCompositeName } from './stable-composite-name';
 import { transformCreateCall } from './transform-create-call';
+import { transformStaticProps } from './transform-static-props';
 import { transformSxCall } from './transform-sx-call';
 
 /** Default module specifier used when the plugin options do not override it. */
@@ -118,72 +115,19 @@ export default function cssxBabelPlugin(
           return;
         }
         if (isPropsCall(path, t, importSource)) {
-          transformStaticProps(path, t);
+          transformStaticProps({ path, types: t, state, options, fileName, foldedProps });
         }
         if (isSxCall(path, t, importSource)) {
-          transformSx(path, t);
+          const context = {
+            theme: options.theme,
+            reusabilityBudget: options.reusabilityBudget,
+            stableClassNames: options.stableClassNames,
+            fileName,
+            state,
+          };
+          transformSxCall(path, t, context);
         }
       },
     },
   };
-
-  /**
-   * Folds a props call when every argument is a known static compiled style form.
-   *
-   * @param path Props call to consider.
-   * @param types Babel node helpers.
-   * @returns Nothing. Unsupported arguments leave the original runtime call unchanged.
-   */
-  function transformStaticProps(path: NodePath<import('@babel/types').CallExpression>, types: typeof t): void {
-    const styles: CompiledStyle[] = [];
-    for (const argument of path.node.arguments) {
-      if (types.isSpreadElement(argument)) {
-        return;
-      }
-      const resolved = resolveStyleArgument(argument, types, state);
-      if (resolved === undefined) {
-        return;
-      }
-      if (resolved) {
-        styles.push(...resolved);
-      }
-    }
-    const singleStyle = styles.length === 1 ? styles[0] : undefined;
-    const composition = singleStyle ? undefined : composeCompiledStyles(styles, state.classNameAllocator);
-    const className = singleStyle
-      ? singleStyle.c
-      : options.stableClassNames
-        ? stableCompositeName(
-            fileName,
-            undefined,
-            `props:${styles
-              .map((style) => style.c)
-              .sort()
-              .join('\u0000')}`,
-          )
-        : composition!.className;
-    if (composition) {
-      state.composites.set(className, composition.atomicClasses);
-    }
-    markEmittedClassNames(className, state);
-    foldedProps.push({ path, className });
-  }
-
-  /**
-   * Compiles static strings inside an sx call and preserves unsupported arguments.
-   *
-   * @param path Sx call to transform.
-   * @param types Babel node helpers.
-   * @returns Nothing. Unsupported nested input leaves the whole call unchanged.
-   */
-  function transformSx(path: NodePath<import('@babel/types').CallExpression>, types: typeof t): void {
-    const context = {
-      theme: options.theme,
-      reusabilityBudget: options.reusabilityBudget,
-      stableClassNames: options.stableClassNames,
-      fileName,
-      state,
-    };
-    transformSxCall(path, types, context);
-  }
 }
