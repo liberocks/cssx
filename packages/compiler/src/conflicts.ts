@@ -1,4 +1,7 @@
 import { atomSymbolsForAllocator } from './atom-symbols-for-allocator';
+import { COMPILER_ABI } from './compiler-abi';
+import { compositeIdentity } from './composite-identity';
+import { compositeNameIdentity } from './composite-name-identity';
 import { parseCandidate, splitCandidateList } from './candidate';
 import { mergeCompiledStyles } from './merge-compiled-styles';
 import { normalizeClassNameOptions } from './normalize-class-name-options';
@@ -13,8 +16,6 @@ import { parseTheme } from './theme';
 import { themeNamespace } from './theme-namespace';
 import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
 
-/** Compiler identity included in generated class-name hashes. */
-const COMPILER_ABI = 'cssx-utility-compiler-v2';
 /** Maximum number of named styles allowed in one source map. */
 const MAX_STYLE_MAP_ENTRIES = 10_000;
 /** Maximum number of utility candidates allowed across one compilation. */
@@ -811,14 +812,4 @@ function composePackedUtilities(
       : '',
     atomicClasses,
   };
-}
-
-/** Creates the stable identity of a composite class from its atomic classes. */
-function compositeIdentity(atomicClasses: readonly string[]): string {
-  return [...new Set(atomicClasses)].sort().join('\u0000');
-}
-
-/** Adds the compiler namespace to a composite identity before it receives a name. */
-function compositeNameIdentity(identity: string): string {
-  return `${COMPILER_ABI}\u0000composite\u0000${identity}`;
 }
