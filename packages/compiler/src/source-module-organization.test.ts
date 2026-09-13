@@ -78,6 +78,14 @@ describe('compiler source module organization', () => {
     expect(modulesWithMultipleFunctions).toEqual([]);
   });
 
+  it('colocates a test file with every module-level function', () => {
+    const functionModulesWithoutTests = implementationModules.filter((filePath) => {
+      return readModuleFunctions(filePath).length > 0 && !existsTestFor(filePath);
+    });
+
+    expect(functionModulesWithoutTests).toEqual([]);
+  });
+
   it('colocates a test file with each module that exports runtime code or data', () => {
     const runtimeModulesWithoutTests = implementationModules.filter((filePath) => {
       return hasExportedRuntimeDeclaration(filePath) && !existsTestFor(filePath);
