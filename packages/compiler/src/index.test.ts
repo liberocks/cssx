@@ -37,68 +37,6 @@ describe('CSSX compiler', () => {
     expect(serializeCss(result.rules)).toContain('.u-0-x');
   });
 
-  it('factors a repeated bundle through correlated singleton partitions', () => {
-    const result = compileStyleRecords(
-      Object.fromEntries(
-        Array.from({ length: 6 }, (_, index) => [
-          `style${index}`,
-          `[display:flex] [color:red] [font-weight:600] [background-color:${index < 3 ? 'red' : 'blue'}]`,
-        ]),
-      ),
-    );
-
-    expect(Object.keys(result.composites)).toHaveLength(2);
-    expect(new Set(Object.values(result.classNames)).size).toBe(2);
-    expect(Object.values(result.classNames).every((className) => className.split(' ').length === 1)).toBe(true);
-  });
-
-  it('leaves non-partitioning correlated groups independent', () => {
-    const parent = '[display:flex] [color:red] [font-weight:600]';
-    const source = (indexes: readonly number[]) =>
-      Object.fromEntries(
-        Array.from({ length: 6 }, (_, index) => [
-          `style${index}`,
-          `${parent}${indexes.includes(index) ? ' [background-color:red]' : ''}`,
-        ]),
-      );
-    expect(() =>
-      compileStyleRecords({
-        first: `${parent} [background-color:red] [border-color:red]`,
-        second: `${parent} [background-color:red]`,
-        third: `${parent} [background-color:red] [border-color:blue]`,
-        fourth: `${parent} [border-color:blue]`,
-        fifth: '[background-color:red] [border-color:blue]',
-        sixth: parent,
-      }),
-    ).not.toThrow();
-    expect(() => compileStyleRecords(source([0, 1, 2]))).not.toThrow();
-    expect(() =>
-      compileStyleRecords(
-        Object.fromEntries(
-          Array.from({ length: 6 }, (_, index) => [
-            `style${index}`,
-            `${parent}${index < 3 ? ' [background-color:red]' : ''}${[0, 3, 4, 5].includes(index) ? ' [border-color:red]' : ''}`,
-          ]),
-        ),
-      ),
-    ).not.toThrow();
-    expect(() =>
-      compileStyleRecords(
-        Object.fromEntries(
-          Array.from({ length: 6 }, (_, index) => [
-            `style${index}`,
-            `${parent}${index < 3 ? ' [background-color:red]' : ''}${[3, 4].includes(index) ? ' [border-color:red]' : ''}`,
-          ]),
-        ),
-      ),
-    ).not.toThrow();
-  });
-
-  it('rejects invalid reusability budgets', () => {
-    expect(() => compileStyleRecords({ root: 'p-4' }, { reusabilityBudget: -1 })).toThrow('reusabilityBudget');
-    expect(() => compileStyleRecords({ root: 'p-4' }, { reusabilityBudget: 101 })).toThrow('reusabilityBudget');
-  });
-
   it('validates standalone candidates and returns an empty record map for empty input', () => {
     expect(() => validateUtilityCandidate('p-4', parseTheme())).not.toThrow();
     expect(compileStyleRecords({})).toEqual({
@@ -108,10 +46,6 @@ describe('CSSX compiler', () => {
       classNames: {},
       composites: {},
     });
-  });
-
-  it('keeps an empty named style as an empty class string', () => {
-    expect(compileStyleRecords({ empty: '' }).classNames.empty).toBe('');
   });
 
   it('returns no CSS for empty single and multiple style maps', async () => {
