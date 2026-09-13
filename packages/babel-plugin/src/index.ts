@@ -1,6 +1,5 @@
 import type { NodePath, PluginObj, PluginPass } from '@babel/core';
 import type * as babelTypes from '@babel/types';
-import type { CallExpression } from '@babel/types';
 import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
 import type { CompiledStyle } from '@cssxio/compiler';
 
@@ -9,6 +8,8 @@ import { assertNoComputedCssxApiCall } from './assert-no-computed-cssx-api-call'
 import { compactLiveStyleRecords } from './compact-live-style-records';
 import { cssOnlySignature } from './css-only-signature';
 import { diagnosticError } from './diagnostic-error';
+import { finalizeFoldedProps } from './finalize-folded-props';
+import type { FoldedPropsCall } from './finalize-folded-props';
 import { isCreateCall } from './is-create-call';
 import { isPropsCall } from './is-props-call';
 import { isSxCall } from './is-sx-call';
@@ -53,7 +54,7 @@ export default function cssxBabelPlugin(
   const importSource = options.importSource ?? DEFAULT_IMPORT_SOURCE;
   let state: FileState;
   let fileName = '';
-  let foldedProps: Array<{ readonly path: NodePath<CallExpression>; readonly className: string }> = [];
+  let foldedProps: FoldedPropsCall[] = [];
 
   return {
     name: '@cssxio/babel-plugin',
@@ -77,7 +78,7 @@ export default function cssxBabelPlugin(
           foldedProps = [];
         },
         exit(path, babelState) {
-          finalizeFoldedProps(path, t);
+          finalizeFoldedProps(path, t, foldedProps);
           path.scope.crawl();
           markReferencedStyleCandidates(path, t, state);
           materializeLiveStyleMaps(path, t, state);
@@ -224,41 +225,6 @@ export default function cssxBabelPlugin(
     }
     markEmittedClassNames(className, state);
     foldedProps.push({ path, className });
-  }
-
-  /** Emits compact static props after all folded calls in the module are known. */
-  function finalizeFoldedProps(program: NodePath<import('@babel/types').Program>, types: typeof t): void {
-    if (foldedProps.length === 0) {
-      return;
-    }
-    const declarations: import('@babel/types').VariableDeclarator[] = [];
-    const useHelper = foldedProps.length >= 4;
-    const helper = useHelper ? program.scope.generateUidIdentifier('cssxProps') : undefined;
-    if (helper) {
-      declarations.push(
-        types.variableDeclarator(
-          helper,
-          types.arrowFunctionExpression(
-            [types.identifier('className')],
-            types.objectExpression([
-              types.objectProperty(types.identifier('className'), types.identifier('className')),
-            ]),
-          ),
-        ),
-      );
-    }
-    if (declarations.length > 0) {
-      program.unshiftContainer('body', types.variableDeclaration('const', declarations));
-    }
-    for (const { path, className } of foldedProps) {
-      path.replaceWith(
-        helper
-          ? types.callExpression(helper, [types.stringLiteral(className)])
-          : types.objectExpression([
-              types.objectProperty(types.identifier('className'), types.stringLiteral(className)),
-            ]),
-      );
-    }
   }
 
   /**
