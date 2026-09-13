@@ -1,4 +1,4 @@
-import { CSSX_SHADOW_SINK } from './utility-effect-sinks';
+import { createShadowDeclarations } from './create-shadow-declarations';
 import { resolveArbitraryCssValue } from './utility-resolvers';
 import type { UtilityDeclaration } from './utility-types';
 
@@ -13,8 +13,5 @@ export function compileShadowUtility(utility: string): UtilityDeclaration[] | nu
   if (!match) {
     return null;
   }
-  return [
-    { property: '--cssx-shadow', value: resolveArbitraryCssValue(match[1]!), semanticGroup: 'shadow' },
-    { property: 'box-shadow', value: CSSX_SHADOW_SINK, semanticGroup: 'shadow' },
-  ];
+  return [...createShadowDeclarations(resolveArbitraryCssValue(match[1]!))];
 }
