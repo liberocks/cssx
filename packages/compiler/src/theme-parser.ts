@@ -7,6 +7,7 @@ import { rewriteThemeReferences } from './rewrite-theme-references';
 import { themeTokenName } from './theme-token-name';
 import { referencedThemeTokens } from './referenced-theme-tokens';
 import { splitThemeDeclarations } from './split-theme-declarations';
+import { resolveThemeTokenValue } from './resolve-theme-token-value';
 
 /** Maximum accepted CSS source length for a theme. */
 const MAX_THEME_LENGTH = 131_072;
@@ -178,7 +179,7 @@ export function resolveThemeValue(theme: CssxTheme, name: string): string | unde
   if (value === undefined || value === 'initial') {
     return undefined;
   }
-  return resolveTokenValue(theme.tokens, value, new Set([name]));
+  return resolveThemeTokenValue(theme.tokens, value, new Set([name]));
 }
 
 /**
@@ -246,25 +247,4 @@ function parseThemeDeclarations(block: string, tokens: Record<string, string>): 
     }
     tokens[name] = value;
   }
-}
-
-/**
- * Recursively inlines token references while detecting missing and circular values.
- *
- * @param tokens Available theme tokens.
- * @param value Token value to resolve.
- * @param seen Tokens already visited on this resolution path.
- * @returns Fully resolved token value.
- */
-function resolveTokenValue(tokens: Readonly<Record<string, string>>, value: string, seen: ReadonlySet<string>): string {
-  return value.replace(/var\((--[a-z0-9-]+)\)/gi, (_match, reference: string) => {
-    if (seen.has(reference)) {
-      throw new Error(`Circular CSSX theme reference involving ${reference}.`);
-    }
-    const referenced = tokens[reference];
-    if (referenced === undefined || referenced === 'initial') {
-      throw new Error(`Unknown CSSX theme token ${reference}.`);
-    }
-    return resolveTokenValue(tokens, referenced, new Set([...seen, reference]));
-  });
 }
