@@ -1,6 +1,8 @@
 import type { ParsedCandidate } from './candidate';
 import { classSelectors } from './class-selectors';
 import { cssOrder } from './css-order';
+import { describeUtilityRecipe } from './describe-utility-recipe';
+import { getUtilityAtoms } from './get-utility-atoms';
 import { propertyRegistration } from './property-registration';
 import { readGeneratedClassNames } from './read-generated-class-names';
 import { replaceFallbackSelector } from './replace-fallback-selector';
@@ -31,32 +33,12 @@ export type {
   ResolvedUtilityRecipe,
 };
 export {
+  getUtilityAtoms,
+  describeUtilityRecipe,
   resolveParsedUtilityRecipe,
   resolveUtilityRecipe,
 };
 export type { UtilityDeclaration };
-
-/**
- * Gets the CSS declaration groups for one utility.
- *
- * @param candidateSource A static utility string.
- * @param theme The active CSSX theme.
- * @returns CSS declaration groups that can be merged separately.
- */
-export function getUtilityAtoms(candidateSource: string, theme: CssxTheme): readonly (readonly UtilityDeclaration[])[] {
-  return describeUtilityRecipe(candidateSource, theme).atoms;
-}
-
-/**
- * Describes the CSS created for one utility.
- *
- * @param candidateSource A static utility string.
- * @param theme The active CSSX theme.
- * @returns Its CSS declaration groups, resources, and style groups.
- */
-export function describeUtilityRecipe(candidateSource: string, theme: CssxTheme): UtilityRecipe {
-  return resolveUtilityRecipe(candidateSource, theme).recipe;
-}
 
 /**
  * Compiles static utility strings to CSS.
