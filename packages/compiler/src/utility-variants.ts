@@ -167,12 +167,22 @@ export function applyVariants(
   return css;
 }
 
-/** Treats unescaped underscores as spaces in arbitrary selector variants. */
+/**
+ * Treats unescaped underscores as spaces in arbitrary selector variants.
+ *
+ * @param value Arbitrary selector variant value.
+ * @returns Selector text with underscores normalized.
+ */
 function normalizeArbitrarySelector(value: string): string {
   return value.replace(/\\_/g, '\u0000').replaceAll('_', ' ').replaceAll('\u0000', '_');
 }
 
-/** Resolves a View Transition pseudo-element variant to its selector suffix. */
+/**
+ * Resolves a View Transition pseudo-element variant to its selector suffix.
+ *
+ * @param variant View Transition variant name.
+ * @returns Selector suffix for the pseudo-element, or null when unsupported.
+ */
 function resolveViewTransitionVariant(variant: string): string | null {
   const match = /^vt-(group|image-pair|old|new)-\[([^\]]+)\]$/i.exec(variant);
   const target = match?.[2] ?? '';
@@ -186,7 +196,11 @@ function resolveViewTransitionVariant(variant: string): string | null {
   return `::view-transition-${match[1]}(${target})`;
 }
 
-/** Rejects combinations whose selector categories cannot compose predictably. */
+/**
+ * Rejects combinations whose selector categories cannot compose predictably.
+ *
+ * @param variants Variant names to validate.
+ */
 function validateVariantCombination(variants: readonly string[]): void {
   const viewTransitionVariants = variants.filter((variant) => resolveViewTransitionVariant(variant));
   if (viewTransitionVariants.length === 0) {

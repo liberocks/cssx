@@ -7,6 +7,10 @@ import type { UtilityDeclaration } from './utility-types';
  * Compiles Tailwind-compatible font-size utilities from the active `--text-*`
  * theme namespace. A paired `--text-<name>--line-height` token is emitted
  * whenever present, matching Tailwind's default text scale behavior.
+ *
+ * @param utility Utility name without variants.
+ * @param theme Active resolved theme.
+ * @returns Font-size declarations, or null when unsupported.
  */
 export function compileFontSizeUtility(utility: string, theme: CssxTheme): UtilityDeclaration[] | null {
   const match = /^text-([^/\[\]()]+)(?:\/(.+))?$/.exec(utility);

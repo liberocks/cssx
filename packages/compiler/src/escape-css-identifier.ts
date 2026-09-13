@@ -1,4 +1,9 @@
-/** Escapes a class name for use as one CSS identifier. */
+/**
+ * Escapes a class name for use as one CSS identifier.
+ *
+ * @param value Class name text to escape.
+ * @returns CSS identifier that represents the input without ambiguity.
+ */
 export function escapeCssIdentifier(value: string): string {
   let output = '';
   for (let index = 0; index < value.length; index++) {

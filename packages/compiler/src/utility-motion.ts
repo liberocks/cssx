@@ -40,12 +40,24 @@ const MOTION_PREFIXES = [
   'view-transition-',
 ] as const;
 
-/** Checks whether a candidate must not fall through to legacy utility resolvers. */
+/**
+ * Checks whether a candidate must not fall through to legacy utility resolvers.
+ *
+ * @param utility Candidate without variants.
+ * @returns True when the candidate uses a motion prefix.
+ */
 export function isMotionUtilityCandidate(utility: string): boolean {
   return MOTION_PREFIXES.some((prefix) => utility.startsWith(prefix));
 }
 
-/** Compiles transition, animation, timeline, stagger, and View Transition utilities. */
+/**
+ * Compiles transition, animation, timeline, stagger, and View Transition utilities.
+ *
+ * @param utility Utility name without variants.
+ * @param negative True when the utility is negated.
+ * @param theme Active resolved theme.
+ * @returns Motion declarations, or null when unsupported.
+ */
 export function compileMotionUtility(
   utility: string,
   negative: boolean,
@@ -173,7 +185,12 @@ export function compileMotionUtility(
   return viewTransition && !negative ? viewTransition : null;
 }
 
-/** Creates a transition recipe with CSSX's standard timing defaults. */
+/**
+ * Creates a transition recipe with CSSX's standard timing defaults.
+ *
+ * @param properties Transition property list.
+ * @returns Transition declarations.
+ */
 function transitionDeclarations(properties: string): UtilityDeclaration[] {
   return [
     { property: 'transition-property', value: properties },
@@ -182,7 +199,14 @@ function transitionDeclarations(properties: string): UtilityDeclaration[] {
   ];
 }
 
-/** Resolves a numeric, arbitrary, variable, or theme-backed time value. */
+/**
+ * Resolves a numeric, arbitrary, variable, or theme-backed time value.
+ *
+ * @param raw Time segment from the utility name.
+ * @param tokenPrefix Theme namespace for named time tokens.
+ * @param theme Active resolved theme.
+ * @returns Resolved CSS time, or null when unsupported.
+ */
 function resolveTime(raw: string, tokenPrefix: string, theme: CssxTheme): string | null {
   if (/^\d+(?:\.\d+)?$/.test(raw)) {
     return `${raw}ms`;
@@ -191,7 +215,14 @@ function resolveTime(raw: string, tokenPrefix: string, theme: CssxTheme): string
   return arbitrary ?? resolveThemeToken(theme, `${tokenPrefix}${raw}`) ?? null;
 }
 
-/** Resolves a built-in, arbitrary, or theme-backed easing value. */
+/**
+ * Resolves a built-in, arbitrary, or theme-backed easing value.
+ *
+ * @param raw Easing segment from the utility name.
+ * @param theme Active resolved theme.
+ * @param animation Resolves animation-specific easing tokens when true.
+ * @returns Resolved easing, or null when unsupported.
+ */
 function resolveEasing(raw: string, theme: CssxTheme, animation = false): string | null {
   const arbitrary = arbitraryValue(raw);
   return (
@@ -203,24 +234,43 @@ function resolveEasing(raw: string, theme: CssxTheme, animation = false): string
   );
 }
 
-/** Resolves bracketed and custom-property shorthand values. */
+/**
+ * Resolves bracketed and custom-property shorthand values.
+ *
+ * @param raw Arbitrary value segment from the utility name.
+ * @returns Resolved value, or null when unsupported.
+ */
 function arbitraryValue(raw: string): string | null {
   return (raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('(') && raw.endsWith(')'))
     ? resolveArbitraryCssValue(raw)
     : null;
 }
 
-/** Negates a resolved CSS value without assuming it is a numeric literal. */
+/**
+ * Negates a resolved CSS value without assuming it is a numeric literal.
+ *
+ * @param value CSS value to negate.
+ * @returns Negated CSS value.
+ */
 function negateCssValue(value: string): string {
   return /^\d/.test(value) ? `-${value}` : `calc(${value} * -1)`;
 }
 
-/** Returns the runtime-free formula shared by transition and animation stagger delays. */
+/**
+ * Returns the runtime-free formula shared by transition and animation stagger delays.
+ *
+ * @returns The stagger delay formula.
+ */
 function staggerDelay(): string {
   return 'calc((var(--cssx-stagger-index, 0) * (1 - var(--cssx-stagger-reverse, 0)) + (var(--cssx-stagger-count, 1) - 1 - var(--cssx-stagger-index, 0)) * var(--cssx-stagger-reverse, 0)) * var(--cssx-stagger, 0ms))';
 }
 
-/** Compiles animation timeline consumer utilities. */
+/**
+ * Compiles animation timeline consumer utilities.
+ *
+ * @param utility Utility name without variants.
+ * @returns Timeline declaration, or null when unsupported.
+ */
 function compileAnimationTimeline(utility: string): UtilityDeclaration | null {
   const fixed: Readonly<Record<string, string>> = {
     'animation-timeline-auto': 'auto',
@@ -247,7 +297,12 @@ function compileAnimationTimeline(utility: string): UtilityDeclaration | null {
   return named ? { property: 'animation-timeline', value: named[1]!, atRule: TIMELINE_SUPPORT } : null;
 }
 
-/** Compiles named timeline producer and scope utilities. */
+/**
+ * Compiles named timeline producer and scope utilities.
+ *
+ * @param utility Utility name without variants.
+ * @returns Timeline declaration, or null when unsupported.
+ */
 function compileTimelineProducer(utility: string): UtilityDeclaration | null {
   const name = /^(scroll|view)-timeline-name-\[(--[a-z_][a-z0-9_-]*)\]$/i.exec(utility);
   if (name) {
@@ -280,7 +335,12 @@ function compileTimelineProducer(utility: string): UtilityDeclaration | null {
   return scope ? { property: 'timeline-scope', value: scope[1]!, atRule: TIMELINE_SCOPE_SUPPORT } : null;
 }
 
-/** Compiles animation attachment range utilities. */
+/**
+ * Compiles animation attachment range utilities.
+ *
+ * @param utility Utility name without variants.
+ * @returns Range declaration, or null when unsupported.
+ */
 function compileAnimationRange(utility: string): UtilityDeclaration | null {
   const match = /^animation-range(?:-(start|end))?-(.+)$/.exec(utility);
   if (!match) {
@@ -292,7 +352,12 @@ function compileAnimationRange(utility: string): UtilityDeclaration | null {
   return value ? { property, value, atRule: RANGE_SUPPORT } : null;
 }
 
-/** Compiles validated View Transition name and class utilities. */
+/**
+ * Compiles validated View Transition name and class utilities.
+ *
+ * @param utility Utility name without variants.
+ * @returns View Transition declaration, or null when unsupported.
+ */
 function compileViewTransitionUtility(utility: string): UtilityDeclaration | null {
   if (utility === 'view-transition-name-none') {
     return { property: 'view-transition-name', value: 'none', atRule: VIEW_TRANSITION_NAME_SUPPORT };
@@ -321,7 +386,13 @@ function compileViewTransitionUtility(utility: string): UtilityDeclaration | nul
   return null;
 }
 
-/** Checks a CSS-wide-keyword-safe custom identifier. */
+/**
+ * Checks a CSS-wide-keyword-safe custom identifier.
+ *
+ * @param value Identifier text to check.
+ * @param reserved Extra identifiers treated as reserved.
+ * @returns True when the value is a usable custom identifier.
+ */
 function isCustomIdentifier(value: string, reserved: readonly string[]): boolean {
   return (
     /^[a-z_][a-z0-9_-]*$/i.test(value) &&

@@ -6,7 +6,18 @@ import { parseTheme, serializeThemeKeyframe, serializeThemeTokens } from './them
 import type { CompiledUtility, UtilityCompilation } from './utility-recipe-types';
 import type { VariantOptions } from './utility-variants';
 
-/** Compiles utility candidates with either generated or source class selectors. */
+/**
+ * Compiles utility candidates with either generated or source class selectors.
+ *
+ * @param candidates Utility candidates to compile.
+ * @param className Creates class names for utility candidates.
+ * @param themeCss Optional serialized theme CSS.
+ * @param selectorAliases Composite classes that need separate selectors.
+ * @param includedClasses Classes kept in the output, or undefined for all.
+ * @param variantOptions Options that affect variant rendering.
+ * @param escapeSourceSelectors Escapes source class selectors when true.
+ * @returns The compiled CSS, class names, CSS entries, and keyframes.
+ */
 export async function compileUtilityList(
   candidates: readonly string[],
   className: (candidate: string) => string,

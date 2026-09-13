@@ -15,6 +15,12 @@ import type { VariantOptions } from './utility-variants';
  * @param classNames Generated classes assigned to the candidate.
  * @param theme Active resolved theme.
  * @param atoms Declaration atoms to render.
+ * @param candidate Parsed utility candidate.
+ * @param semanticGroup Semantic group written by the candidate.
+ * @param fallbackCss Pinned fallback CSS, when one applies.
+ * @param selectorAliases Composite classes that need separate selectors.
+ * @param includedClasses Classes kept in the output, or undefined for all.
+ * @param variantOptions Options that affect variant rendering.
  * @returns Ordered CSS entries for the candidate.
  */
 export function compileCandidate(

@@ -11,7 +11,12 @@ export interface UtilityFallback {
   readonly group: string;
 }
 
-/** Looks up the immutable pinned fallback for one complete candidate. */
+/**
+ * Looks up the immutable pinned fallback for one complete candidate.
+ *
+ * @param candidate Complete utility candidate without variants.
+ * @returns The pinned fallback, or undefined when none is pinned.
+ */
 export function utilityFallback(candidate: string): UtilityFallback | undefined {
   return UTILITY_FALLBACKS[candidate];
 }

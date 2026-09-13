@@ -10,7 +10,15 @@ import type { ResolvedUtilityRecipe } from './utility-recipe-types';
 import type { UtilityDeclaration } from './utility-types';
 import { atomizeDeclarations } from './utility-values';
 
-/** Builds a utility recipe from parsing and classification data already available to the caller. */
+/**
+ * Builds a utility recipe from parsing and classification data already available to the caller.
+ *
+ * @param candidateSource Source utility candidate.
+ * @param candidate Parsed utility candidate.
+ * @param semantics Classification semantics for the candidate.
+ * @param theme Active resolved theme.
+ * @returns Recipe that serializes the candidate's CSS.
+ */
 export function resolveParsedUtilityRecipe(
   candidateSource: string,
   candidate: ParsedCandidate,

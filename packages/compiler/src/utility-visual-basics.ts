@@ -115,6 +115,7 @@ export function compileBackgroundUtility(utility: string): UtilityDeclaration | 
  * Compiles fixed and arbitrary mask utilities.
  *
  * @param utility Utility name without variants.
+ * @param theme Active resolved theme.
  * @returns Mask declaration, or null when unsupported.
  */
 export function compileMaskUtility(
@@ -192,7 +193,13 @@ export function compileMaskUtility(
   return null;
 }
 
-/** Resolves Tailwind mask-stop positions from spacing and percentage forms. */
+/**
+ * Resolves Tailwind mask-stop positions from spacing and percentage forms.
+ *
+ * @param raw Position segment from the utility name.
+ * @param theme Active resolved theme.
+ * @returns Resolved mask position, or null when unsupported.
+ */
 function resolveMaskPosition(raw: string, theme: CssxTheme): string | null {
   if (/^\d+(?:\.\d+)?%$/.test(raw)) {
     return raw;
@@ -207,7 +214,13 @@ function resolveMaskPosition(raw: string, theme: CssxTheme): string | null {
   return resolveSpacingValue(raw, false, theme);
 }
 
-/** Resolves Tailwind mask-stop colors including slash-opacity modifiers. */
+/**
+ * Resolves Tailwind mask-stop colors including slash-opacity modifiers.
+ *
+ * @param raw Color segment from the utility name.
+ * @param theme Active resolved theme.
+ * @returns Resolved mask color, or null when unsupported.
+ */
 function resolveMaskColor(raw: string, theme: CssxTheme): string | null {
   const modifier = splitColorModifier(raw);
   const color = resolveColorValue(modifier.value, theme);
@@ -221,7 +234,13 @@ function resolveMaskColor(raw: string, theme: CssxTheme): string | null {
   return opacity === null ? null : `color-mix(in srgb, ${color} ${opacity}%, transparent)`;
 }
 
-/** Builds a self-contained mask-gradient channel and image sink. */
+/**
+ * Builds a self-contained mask-gradient channel and image sink.
+ *
+ * @param family Mask family name.
+ * @param semanticGroup Semantic group written by the utility.
+ * @returns Mask channel and image declarations.
+ */
 function maskGradientSink(family: string, semanticGroup: string): UtilityDeclaration[] {
   const direction: Readonly<Record<string, string>> = {
     t: 'to top',

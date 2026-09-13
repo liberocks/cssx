@@ -61,6 +61,7 @@ const CASCADE_GROUP_ORDER: Readonly<Record<string, number>> = {
  *
  * @param candidate Parsed utility candidate.
  * @param group Semantic group written by the candidate.
+ * @param declarations Declarations whose atom positions are ordered.
  * @returns Stable CSS ordering key.
  */
 export function cssOrder(
