@@ -46,6 +46,25 @@ function readModuleFunctions(filePath: string): string[] {
   });
 }
 
+/** Detects exported runtime declarations, including data-only modules. */
+function hasExportedRuntimeDeclaration(filePath: string): boolean {
+  const source = ts.createSourceFile(filePath, readFileSync(filePath, 'utf8'), ts.ScriptTarget.Latest, true);
+
+  return source.statements.some((statement) => {
+    const isExported =
+      ts.canHaveModifiers(statement) &&
+      (ts.getModifiers(statement)?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false);
+
+    return (
+      isExported &&
+      (ts.isFunctionDeclaration(statement) ||
+        ts.isClassDeclaration(statement) ||
+        ts.isEnumDeclaration(statement) ||
+        ts.isVariableStatement(statement))
+    );
+  });
+}
+
 describe('compiler source module organization', () => {
   const implementationModules = listTypeScriptFiles(sourceDirectory).filter(isImplementationModule);
 
@@ -59,12 +78,12 @@ describe('compiler source module organization', () => {
     expect(modulesWithMultipleFunctions).toEqual([]);
   });
 
-  it('colocates a test file with every module-level function', () => {
-    const functionModulesWithoutTests = implementationModules.filter((filePath) => {
-      return readModuleFunctions(filePath).length > 0 && !filePath.endsWith('.test.ts') && !existsTestFor(filePath);
+  it('colocates a test file with each module that exports runtime code or data', () => {
+    const runtimeModulesWithoutTests = implementationModules.filter((filePath) => {
+      return hasExportedRuntimeDeclaration(filePath) && !existsTestFor(filePath);
     });
 
-    expect(functionModulesWithoutTests).toEqual([]);
+    expect(runtimeModulesWithoutTests).toEqual([]);
   });
 });
 
