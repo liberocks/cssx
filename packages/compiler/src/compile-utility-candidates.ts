@@ -69,18 +69,18 @@ export function compileUtilityCandidates(options: CompileUtilityCandidatesOption
       continue;
     }
     compiled.push(
-      ...compileCandidate(
-        candidate,
-        generatedClasses,
+      ...compileCandidate({
+        candidateSource: candidate,
+        classNames: generatedClasses,
         theme,
-        recipe.atoms,
-        resolvedRecipe.parsedCandidate,
-        resolvedRecipe.semantics.group,
-        recipe.fallbackCss,
+        atoms: recipe.atoms,
+        candidate: resolvedRecipe.parsedCandidate,
+        semanticGroup: resolvedRecipe.semantics.group,
+        fallbackCss: recipe.fallbackCss,
         selectorAliases,
         includedClasses,
         variantOptions,
-      ),
+      }),
     );
     for (const keyframe of recipe.resources.keyframes) {
       requiredKeyframes.add(keyframe);
