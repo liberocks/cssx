@@ -10,6 +10,8 @@ import type { CssxCandidateOrigin } from './stylesheet';
 import { templateAttributeQuote } from './template-attribute-quote';
 import { compiledCssRule } from './compiled-css-rule';
 import { wrapCssLayer } from './wrap-css-layer';
+import { remapVueBlockOrigins } from './remap-vue-block-origins';
+import { remapVueTemplateOrigins } from './remap-vue-template-origins';
 
 export { sourceMapFromContext } from './source-map-from-context';
 export type { IncomingSourceMap } from './source-map-from-context';
@@ -273,53 +275,6 @@ async function transformVueTemplateSx(
     origins,
     cssOnlySignature: transformedCode,
   };
-}
-
-/** Remaps child-module candidate origins to the enclosing Vue SFC source. */
-function remapVueBlockOrigins(
-  source: string,
-  blockOffset: number,
-  childOrigins: Readonly<Record<string, CssxCandidateOrigin>>,
-): Record<string, CssxCandidateOrigin> {
-  const origins: Record<string, CssxCandidateOrigin> = {};
-  const childSource = source.slice(blockOffset);
-  for (const [candidate, origin] of Object.entries(childOrigins)) {
-    origins[candidate] = sourceOriginAtOffset(source, blockOffset + sourceOffsetAtOrigin(childSource, origin));
-  }
-  return origins;
-}
-
-/** Remaps wrapper-module origins to their static `sx()` call in a Vue template. */
-function remapVueTemplateOrigins(
-  source: string,
-  callOffset: number,
-  wrapperSource: string,
-  wrapperPrefixLength: number,
-  childOrigins: Readonly<Record<string, CssxCandidateOrigin>>,
-): Record<string, CssxCandidateOrigin> {
-  const origins: Record<string, CssxCandidateOrigin> = {};
-  for (const [candidate, origin] of Object.entries(childOrigins)) {
-    const wrapperOffset = sourceOffsetAtOrigin(wrapperSource, origin);
-    origins[candidate] = sourceOriginAtOffset(source, callOffset + Math.max(0, wrapperOffset - wrapperPrefixLength));
-  }
-  return origins;
-}
-
-/** Returns a zero-based source offset for a zero-based line and column pair. */
-function sourceOffsetAtOrigin(source: string, origin: CssxCandidateOrigin): number {
-  const linePrefixLength = source
-    .split('\n')
-    .slice(0, origin.line)
-    .reduce((offset, line) => offset + line.length + 1, 0);
-  return Math.min(source.length, linePrefixLength + origin.column);
-}
-
-/** Returns a zero-based line and column pair for a source offset. */
-function sourceOriginAtOffset(source: string, offset: number): CssxCandidateOrigin {
-  const boundedOffset = Math.min(source.length, offset);
-  const line = source.slice(0, boundedOffset).split('\n').length - 1;
-  const lineStart = source.lastIndexOf('\n', boundedOffset - 1) + 1;
-  return { line, column: boundedOffset - lineStart };
 }
 
 /**
