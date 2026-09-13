@@ -6,6 +6,7 @@ import type { NormalizedClassNameOptions } from './normalize-class-name-options'
 import { randomClassFragment } from './random-class-fragment';
 import { classifyCandidate, classifyParsedCandidate } from './semantics';
 import { serialClassFragment } from './serial-class-fragment';
+import { packedAtomicClasses } from './packed-atomic-classes';
 import { serializeThemeSignature } from './serialize-theme-signature';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 import { parseTheme } from './theme';
@@ -810,27 +811,6 @@ function composePackedUtilities(
       : '',
     atomicClasses,
   };
-}
-
-/** Extracts the atomic classes that survive a runtime composition. */
-function packedAtomicClasses(records: readonly CompiledUtility[]): readonly string[] {
-  const blockedByScope = new Map<string, Set<string>>();
-  const atomicClasses: string[] = [];
-  for (let index = records.length - 1; index >= 0; index--) {
-    const record = records[index]!;
-    const blocked = blockedByScope.get(record[1]) ?? new Set<string>();
-    blockedByScope.set(record[1], blocked);
-    if (record[0] !== null && blocked.has(record[2])) {
-      continue;
-    }
-    for (let conflictIndex = 2; conflictIndex < record.length; conflictIndex++) {
-      blocked.add(record[conflictIndex]!);
-    }
-    if (record[0]) {
-      atomicClasses.push(record[0]);
-    }
-  }
-  return atomicClasses.reverse();
 }
 
 /** Creates the stable identity of a composite class from its atomic classes. */
