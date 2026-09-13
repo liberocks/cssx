@@ -1,30 +1,11 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
-import { readFile, readdir } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { relative, sep } from 'node:path';
 
+import { findProjectSourceFiles } from './find-project-source-files';
 import type { CssxPluginOptions } from './options';
 import type { CssxSourceModule } from './stylesheet';
 import { transformCssxModule } from './transform';
-
-/** Extensions CSSX can transform as source modules. */
-const SOURCE_EXTENSIONS = new Set([
-  '.js',
-  '.jsx',
-  '.ts',
-  '.tsx',
-  '.cjs',
-  '.cjsx',
-  '.cts',
-  '.ctsx',
-  '.mjs',
-  '.mjsx',
-  '.mts',
-  '.mtsx',
-  '.astro',
-]);
-
-/** Generated and dependency directories excluded from project scanning. */
-const IGNORED_DIRECTORIES = new Set(['.git', '.next', '.turbo', 'node_modules']);
 
 /**
  * Collects CSSX source metadata directly from a project tree.
@@ -41,7 +22,7 @@ export async function scanProjectCssxSourceModules(
   root: string,
   options: CssxPluginOptions,
 ): Promise<readonly CssxSourceModule[]> {
-  const files = await sourceFiles(root);
+  const files = await findProjectSourceFiles(root);
   const allocator = createClassNameAllocator(options.className);
   const modules: CssxSourceModule[] = [];
   for (const fileName of files) {
@@ -64,26 +45,4 @@ export async function scanProjectCssxSourceModules(
     });
   }
   return modules;
-}
-
-/** Finds JavaScript-family source files while excluding generated and dependency trees. */
-async function sourceFiles(root: string): Promise<readonly string[]> {
-  const files: string[] = [];
-  const directories = [root];
-  while (directories.length > 0) {
-    const directory = directories.pop()!;
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const fileName = join(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (!IGNORED_DIRECTORIES.has(entry.name)) {
-          directories.push(fileName);
-        }
-        continue;
-      }
-      if (entry.isFile() && SOURCE_EXTENSIONS.has(fileName.slice(fileName.lastIndexOf('.')))) {
-        files.push(fileName);
-      }
-    }
-  }
-  return files.sort();
 }
