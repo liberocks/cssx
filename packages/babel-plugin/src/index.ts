@@ -4,16 +4,14 @@ import type { CallExpression } from '@babel/types';
 import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
 import type { CompiledStyle } from '@cssxio/compiler';
 
-import {
-  assertModuleScope,
-  assertNoComputedCssxApiCall,
-  diagnosticError,
-  isCreateCall,
-  isSxCall,
-  isPropsCall,
-} from './ast-helpers';
+import { assertModuleScope } from './assert-module-scope';
+import { assertNoComputedCssxApiCall } from './assert-no-computed-cssx-api-call';
 import { compactLiveStyleRecords } from './compact-live-style-records';
 import { cssOnlySignature } from './css-only-signature';
+import { diagnosticError } from './diagnostic-error';
+import { isCreateCall } from './is-create-call';
+import { isPropsCall } from './is-props-call';
+import { isSxCall } from './is-sx-call';
 import { markEmittedClassNames } from './mark-emitted-class-names';
 import { markReferencedStyleCandidates } from './mark-referenced-style-candidates';
 import { materializeLiveStyleMaps } from './materialize-live-style-maps';

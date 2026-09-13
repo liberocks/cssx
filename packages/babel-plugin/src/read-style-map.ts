@@ -2,8 +2,10 @@ import type { NodePath } from '@babel/core';
 import type * as babelTypes from '@babel/types';
 import type { ObjectExpression } from '@babel/types';
 
-import { diagnosticError, objectPropertyName, readStaticString } from './ast-helpers';
+import { diagnosticError } from './diagnostic-error';
+import { objectPropertyName } from './object-property-name';
 import type { FileState } from './plugin-types';
+import { readStaticString } from './read-static-string';
 
 /**
  * Reads the static utility map accepted by a `create()` call.
