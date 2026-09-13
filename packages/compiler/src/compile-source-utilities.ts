@@ -1,6 +1,6 @@
+import type { VariantOptions } from './apply-variants';
 import { compileUtilityList } from './compile-utility-list';
 import type { UtilityCompilation } from './utility-recipe-types';
-import type { VariantOptions } from './utility-variants';
 
 /**
  * Compiles utilities using their original source class names as selectors.

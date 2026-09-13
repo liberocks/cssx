@@ -32,4 +32,4 @@ export type {
   UtilityWriteSet,
 } from './utilities';
 export type { UtilityConflictRecord } from './utility-conflict-record';
-export type { DarkMode } from './utility-variants';
+export type { DarkMode } from './apply-variants';

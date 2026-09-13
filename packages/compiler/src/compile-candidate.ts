@@ -1,3 +1,5 @@
+import { applyVariants } from './apply-variants';
+import type { VariantOptions } from './apply-variants';
 import type { ParsedCandidate } from './candidate';
 import { classSelectors } from './class-selectors';
 import { cssOrder } from './css-order';
@@ -5,8 +7,6 @@ import { replaceFallbackSelector } from './replace-fallback-selector';
 import type { CssxTheme } from './theme';
 import type { CompiledUtility } from './utility-recipe-types';
 import type { UtilityDeclaration } from './utility-types';
-import { applyVariants } from './utility-variants';
-import type { VariantOptions } from './utility-variants';
 
 /**
  * Compiles one candidate into one rule or atomized rules for supplied classes.

@@ -1,6 +1,17 @@
+import { groupStateVariantName } from './group-state-variant-name';
+import { isGroupStateVariant } from './is-group-state-variant';
+import { isPeerStateVariant } from './is-peer-state-variant';
+import { isStateVariant } from './is-state-variant';
+import { normalizeArbitraryAtRule } from './normalize-arbitrary-at-rule';
+import { normalizeArbitrarySelector } from './normalize-arbitrary-selector';
+import { peerStateVariantName } from './peer-state-variant-name';
+import { PSEUDO_CLASS_VARIANTS, PSEUDO_ELEMENT_VARIANTS } from './pseudo-variant-selectors';
+import { resolveViewTransitionVariant } from './resolve-view-transition-variant';
 import { replaceNestingSelectors } from './selector';
+import { stateVariantName } from './state-variant-name';
 import { resolveThemeValue, type CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
+import { validateVariantCombination } from './validate-variant-combination';
 
 /** Controls how the `dark` variant is activated. */
 export type DarkMode = 'media' | 'selector' | 'class';
@@ -18,7 +29,9 @@ export interface VariantOptions {
  * @param declarations Declarations to render.
  * @param variants Ordered variants to apply.
  * @param theme Active resolved theme for breakpoints.
+ * @param options Controls variant rendering options.
  * @returns Complete CSS rule with selector and at-rule wrappers.
+ * @throws When a variant is unsupported or cannot safely compose.
  */
 export function applyVariants(
   selectors: string | readonly string[],
@@ -165,201 +178,4 @@ export function applyVariants(
     css = `${atRules[index]}{${css}}`;
   }
   return css;
-}
-
-/**
- * Treats unescaped underscores as spaces in arbitrary selector variants.
- *
- * @param value Arbitrary selector variant value.
- * @returns Selector text with underscores normalized.
- */
-function normalizeArbitrarySelector(value: string): string {
-  return value.replace(/\\_/g, '\u0000').replaceAll('_', ' ').replaceAll('\u0000', '_');
-}
-
-/**
- * Resolves a View Transition pseudo-element variant to its selector suffix.
- *
- * @param variant View Transition variant name.
- * @returns Selector suffix for the pseudo-element, or null when unsupported.
- */
-function resolveViewTransitionVariant(variant: string): string | null {
-  const match = /^vt-(group|image-pair|old|new)-\[([^\]]+)\]$/i.exec(variant);
-  const target = match?.[2] ?? '';
-  const validTarget =
-    target === '*' ||
-    /^\.[a-z_][a-z0-9_-]*$/i.test(target) ||
-    (/^[a-z_][a-z0-9_-]*$/i.test(target) && !/^(?:inherit|initial|none|revert|revert-layer|unset)$/i.test(target));
-  if (!match || !validTarget) {
-    return null;
-  }
-  return `::view-transition-${match[1]}(${target})`;
-}
-
-/**
- * Rejects combinations whose selector categories cannot compose predictably.
- *
- * @param variants Variant names to validate.
- */
-function validateVariantCombination(variants: readonly string[]): void {
-  const viewTransitionVariants = variants.filter((variant) => resolveViewTransitionVariant(variant));
-  if (viewTransitionVariants.length === 0) {
-    return;
-  }
-  const incompatible = variants.find(
-    (variant) =>
-      !viewTransitionVariants.includes(variant) &&
-      (variant === '*' ||
-        variant === '**' ||
-        PSEUDO_ELEMENT_VARIANTS[variant] !== undefined ||
-        variant.startsWith('group-') ||
-        variant.startsWith('peer-') ||
-        variant.startsWith('has-') ||
-        variant.startsWith('in-') ||
-        (variant.startsWith('[') && !variant.startsWith('[@supports') && !variant.startsWith('[@media'))),
-  );
-  if (viewTransitionVariants.length > 1 || incompatible) {
-    throw new Error('CSSX View Transition variants cannot compose with relationship or pseudo-element variants.');
-  }
-}
-
-/** Supported pseudo-class variants and their selector fragments. */
-const PSEUDO_CLASS_VARIANTS: Readonly<Record<string, string>> = {
-  hover: 'hover',
-  focus: 'focus',
-  'focus-visible': 'focus-visible',
-  'focus-within': 'focus-within',
-  active: 'active',
-  disabled: 'disabled',
-  visited: 'visited',
-  checked: 'checked',
-  indeterminate: 'indeterminate',
-  default: 'default',
-  valid: 'valid',
-  invalid: 'invalid',
-  'in-range': 'in-range',
-  'out-of-range': 'out-of-range',
-  'placeholder-shown': 'placeholder-shown',
-  autofill: 'autofill',
-  'read-only': 'read-only',
-  required: 'required',
-  optional: 'optional',
-  open: 'open',
-  target: 'target',
-  empty: 'empty',
-  enabled: 'enabled',
-  first: 'first-child',
-  last: 'last-child',
-  only: 'only-child',
-  odd: 'nth-child(odd)',
-  even: 'nth-child(even)',
-  'first-of-type': 'first-of-type',
-  'last-of-type': 'last-of-type',
-  'only-of-type': 'only-of-type',
-};
-
-/** Supported pseudo-element variants and their selector fragments. */
-const PSEUDO_ELEMENT_VARIANTS: Readonly<Record<string, string>> = {
-  before: 'before',
-  after: 'after',
-  selection: 'selection',
-  marker: 'marker',
-  file: 'file-selector-button',
-  'first-letter': 'first-letter',
-  'first-line': 'first-line',
-  placeholder: 'placeholder',
-};
-
-/**
- * Checks whether a name is a supported pseudo-class state.
- *
- * @param value Variant name.
- * @returns Whether the name is a supported state.
- */
-function isStateVariant(value: string): boolean {
-  return PSEUDO_CLASS_VARIANTS[value] !== undefined;
-}
-
-/**
- * Checks whether a name is a supported group state variant.
- *
- * @param value Variant name.
- * @returns Whether the name is a group state variant.
- */
-function isGroupStateVariant(value: string): boolean {
-  return value.startsWith('group-') && isStateVariant(value.slice('group-'.length));
-}
-
-/**
- * Checks whether a name is a supported peer state variant.
- *
- * @param value Variant name.
- * @returns Whether the name is a peer state variant.
- */
-function isPeerStateVariant(value: string): boolean {
-  return value.startsWith('peer-') && isStateVariant(value.slice('peer-'.length));
-}
-
-/**
- * Reads a custom state variant name.
- *
- * @param value Variant name.
- * @returns Custom state name, or null when the prefix does not match.
- */
-function stateVariantName(value: string): string | null {
-  return customStateName(value, 'state-');
-}
-
-/**
- * Reads a custom group state variant name.
- *
- * @param value Variant name.
- * @returns Custom state name, or null when the prefix does not match.
- */
-function groupStateVariantName(value: string): string | null {
-  return customStateName(value, 'group-state-');
-}
-
-/**
- * Reads a custom peer state variant name.
- *
- * @param value Variant name.
- * @returns Custom state name, or null when the prefix does not match.
- */
-function peerStateVariantName(value: string): string | null {
-  return customStateName(value, 'peer-state-');
-}
-
-/**
- * Validates and extracts a bracketed custom state name.
- *
- * @param value Variant name.
- * @param prefix Required variant prefix.
- * @returns Custom state name, or null when the prefix does not match.
- */
-function customStateName(value: string, prefix: string): string | null {
-  if (!value.startsWith(`${prefix}[`) || !value.endsWith(']')) {
-    return null;
-  }
-  const name = value.slice(prefix.length + 1, -1);
-  if (!/^[a-z_][a-z0-9_-]*$/i.test(name) || /^(?:inherit|initial|revert|revert-layer|unset)$/i.test(name)) {
-    throw new Error(`Invalid CSSX custom state variant "${value}".`);
-  }
-  return name;
-}
-
-/**
- * Validates and normalizes a supported arbitrary media or supports rule.
- *
- * @param value Arbitrary at-rule text without brackets.
- * @returns Normalized at-rule.
- */
-function normalizeArbitraryAtRule(value: string): string {
-  const match = /^@(supports|media)\s*(.*)$/.exec(value);
-  const kind = match?.[1];
-  const condition = match?.[2]?.trim();
-  if (!kind || !condition) {
-    throw new Error(`Invalid CSSX arbitrary at-rule variant "[${value}]".`);
-  }
-  return `@${kind} ${condition}`;
 }

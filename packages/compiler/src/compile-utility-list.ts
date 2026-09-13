@@ -1,10 +1,10 @@
+import type { VariantOptions } from './apply-variants';
 import { compileCandidate } from './compile-candidate';
 import { propertyRegistration } from './property-registration';
 import { readGeneratedClassNames } from './read-generated-class-names';
 import { resolveUtilityRecipe } from './resolve-utility-recipe';
 import { parseTheme, serializeThemeKeyframe, serializeThemeTokens } from './theme';
 import type { CompiledUtility, UtilityCompilation } from './utility-recipe-types';
-import type { VariantOptions } from './utility-variants';
 
 /**
  * Compiles utility candidates with either generated or source class selectors.
