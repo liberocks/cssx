@@ -49,12 +49,12 @@ describe('Tailwind 4 IntelliSense snapshot corpus', () => {
     const compiled = await compileUtilities(['align-baseline', 'inset-shadow-sm', 'border/50'], () => 'x');
 
     expect(compiled.css).toContain('.x{vertical-align: baseline;}');
-    expect(compiled.css).toContain('.x{--tw-inset-shadow:');
+    expect(compiled.css).toContain('.x{--cx-inset-shadow:');
     expect(compiled.classes['border/50']).toBe('');
     expect(compileStyleRecords({ noop: 'border/50' }).classNames.noop).toBe('');
   });
 
-  it('emits the pinned Tailwind semantics for every corpus candidate', async () => {
+  it('emits the pinned utility semantics for every corpus candidate', async () => {
     const fallbackCandidates = manifest.candidates.filter(
       (candidate) => resolveUtilityRecipe(candidate, parseTheme('')).recipe.fallbackCss !== undefined,
     );
