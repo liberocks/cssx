@@ -1,5 +1,5 @@
 import type { ParsedCandidate } from './candidate-types';
-import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
+import { cssOrderPhase } from './css-order-phase';
 import type { UtilityDeclaration } from './utility-types';
 
 /**
@@ -76,29 +76,6 @@ export function cssOrder(
     })
     .join(':');
   const groupOrder = String(CASCADE_GROUP_ORDER[group] ?? 900).padStart(3, '0');
-  let isController = false;
-  let isShorthand = false;
-  let isEnhancement = false;
-  for (const { property } of declarations) {
-    isController ||= declarations.length > 1 && property === 'transition-property';
-    isShorthand ||= SHORTHAND_WRITE_SETS[property] !== undefined;
-    isEnhancement ||=
-      property === 'animation-timeline' ||
-      property.startsWith('animation-range') ||
-      property.startsWith('scroll-timeline') ||
-      property.startsWith('view-timeline') ||
-      property === 'timeline-scope';
-  }
-  const isStartingStyle = candidate.variants.includes('starting');
-  const isViewTransition = candidate.variants.some((variant) => variant.startsWith('vt-'));
-  const phase = isViewTransition
-    ? 500
-    : isStartingStyle
-      ? 400
-      : isEnhancement
-        ? 300
-        : isShorthand || isController
-          ? 100
-          : 200;
+  const phase = cssOrderPhase(candidate, declarations);
   return `${String(phase).padStart(3, '0')}\u0000${variantOrder}\u0000${groupOrder}\u0000${group}`;
 }
