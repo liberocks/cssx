@@ -1,5 +1,5 @@
 import type { NodePath } from '@babel/core';
-import * as babelTypes from '@babel/types';
+import type * as babelTypes from '@babel/types';
 import type { ObjectExpression } from '@babel/types';
 
 import { diagnosticError, objectPropertyName, readStaticString } from './ast-helpers';

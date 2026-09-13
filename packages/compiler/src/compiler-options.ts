@@ -1,6 +1,6 @@
-import { ClassNameOptions, ClassNameAllocator } from './class-name';
-import { ReusabilityBudget } from './reusability';
-import { DarkMode } from './utility-variants';
+import type { ClassNameOptions, ClassNameAllocator } from './class-name';
+import type { ReusabilityBudget } from './reusability';
+import type { DarkMode } from './utility-variants';
 
 /** Options for compiling style maps. */
 export interface CompilerOptions {

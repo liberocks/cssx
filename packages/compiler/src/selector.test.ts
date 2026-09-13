@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { replaceNestingSelectors } from '../src/selector';
+import { replaceNestingSelectors } from './selector';
 
 describe('selector AST rewriting', () => {
   it('replaces nesting nodes while preserving quoted, attribute, escaped, and comment ampersands', () => {

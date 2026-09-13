@@ -1,4 +1,4 @@
-import { CssxRule } from './cssx-rule';
+import type { CssxRule } from './cssx-rule';
 
 /**
  * Joins unique CSS rules in a stable order.

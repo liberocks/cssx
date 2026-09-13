@@ -41,9 +41,19 @@ it('falls back to a high weight for unknown groups', () => {
 
 it('raises shorthand and multi-property transition controllers to the first phase', () => {
   expect(order([], 'p', [{ property: 'font', value: '1rem' }])).toContain('100\u0000');
-  expect(order([], 'p', [{ property: 'transition-property', value: 'all' }, { property: 'color', value: 'red' }])).toContain('100\u0000');
+  expect(
+    order([], 'p', [
+      { property: 'transition-property', value: 'all' },
+      { property: 'color', value: 'red' },
+    ]),
+  ).toContain('100\u0000');
   expect(order([], 'p', [{ property: 'transition-property', value: 'all' }])).toContain('100\u0000');
-  expect(order([], 'p', [{ property: 'color', value: 'red' }, { property: 'opacity', value: '1' }])).toContain('200\u0000');
+  expect(
+    order([], 'p', [
+      { property: 'color', value: 'red' },
+      { property: 'opacity', value: '1' },
+    ]),
+  ).toContain('200\u0000');
 });
 
 it('raises progressive-enhancement timelines above shorthands', () => {

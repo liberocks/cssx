@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { candidateScope, parseCandidate, splitCandidateList } from '../src/candidate';
-import { classifyCandidate } from '../src/semantics';
+import { candidateScope, parseCandidate, splitCandidateList } from './candidate';
+import { classifyCandidate } from './semantics';
 
 describe('CSSX candidate parsing', () => {
   it('keeps arbitrary values intact while splitting a static utility list', () => {

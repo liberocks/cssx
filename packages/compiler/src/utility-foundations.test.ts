@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { compileSourceUtilities, compileUtilities } from '../src/index';
-import { parseTheme } from '../src/theme';
-import { applyVariants } from '../src/utility-variants';
+import { compileSourceUtilities } from './compile-source-utilities';
+import { compileUtilities } from './compile-utilities';
+import { parseTheme } from './theme';
+import { applyVariants } from './utility-variants';
 
 describe('CSSX utility compiler', () => {
   it('compiles source utility names into escaped CSS selectors', async () => {

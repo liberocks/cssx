@@ -1,5 +1,5 @@
-import { CompiledStyle } from './compiled-style';
-import { CssxRule } from './cssx-rule';
+import type { CompiledStyle } from './compiled-style';
+import type { CssxRule } from './cssx-rule';
 
 /** The output from one compiled style map. */
 export interface CompileResult {

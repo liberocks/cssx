@@ -1,18 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  compileStyleMap,
-  compileStyleMaps,
-  compileStyleRecords,
-  compileUtilities,
-  composeCompiledStyles,
-  createClassNameAllocator,
-  describeUtilityRecipe,
-  mergeCompiledStyles,
-  serializeCss,
-} from '../src/index';
-import { parseTheme } from '../src/theme';
-import { validateUtilityCandidate } from '../src/utilities';
+import { createClassNameAllocator } from './class-name-allocator';
+import { compileStyleMap, compileStyleMaps } from './compile-style-map';
+import { compileStyleRecords } from './compile-style-records';
+import { composeCompiledStyles } from './compose-compiled-styles';
+import { mergeCompiledStyles } from './merge-compiled-styles';
+import { serializeCss } from './serialize-css';
+import { parseTheme } from './theme';
+import { compileUtilities, describeUtilityRecipe, validateUtilityCandidate } from './utilities';
 
 describe('CSSX compiler', () => {
   it('emits one composite class for a complete static style', async () => {

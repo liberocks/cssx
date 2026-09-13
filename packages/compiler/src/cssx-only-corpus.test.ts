@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { compileStyleRecords } from '../src/index';
+import { compileStyleRecords } from './compile-style-records';
 
 const CSSX_ONLY_CANDIDATES = [
   'transition-transform-opacity',
@@ -32,7 +32,7 @@ const CSSX_ONLY_CANDIDATES = [
 ] as const;
 
 const tailwind = JSON.parse(
-  readFileSync(fileURLToPath(new URL('./fixtures/tailwind-4.json', import.meta.url)), 'utf8'),
+  readFileSync(fileURLToPath(new URL('./fixtures/corpus.json', import.meta.url)), 'utf8'),
 ) as { readonly candidates: readonly string[] };
 
 describe('CSSX-only complete utility-family corpus', () => {

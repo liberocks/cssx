@@ -1,4 +1,5 @@
-import { describeUtilityRecipe, parseTheme } from '@cssxio/compiler';
+import type { parseTheme } from '@cssxio/compiler';
+import { describeUtilityRecipe } from '@cssxio/compiler';
 
 import { appendDeclaration } from './append-declaration';
 import type { NativePlatform, NativeStyle, NativeStyleValue } from './native-types';

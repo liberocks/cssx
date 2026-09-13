@@ -1,8 +1,9 @@
 import { atomSemantics } from './atom-semantics';
 import { parseCandidate } from './parse-candidate';
 import { classifyParsedCandidate } from './semantics';
-import { parseTheme } from './theme-parser';
-import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
+import type { parseTheme } from './theme-parser';
+import type { getUtilityAtoms } from './utilities';
+import { resolveParsedUtilityRecipe } from './utilities';
 import type { UtilityConflictRecord } from './utility-conflict-record';
 
 /** Reusable candidate data shared by naming and static conflict-record generation. */

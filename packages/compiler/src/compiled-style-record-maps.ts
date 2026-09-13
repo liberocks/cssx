@@ -2,13 +2,13 @@ import { splitCandidateList } from './candidate';
 import { MAX_STYLE_MAP_ENTRIES, MAX_CANDIDATE_COUNT } from './candidate-limits';
 import { createClassNameAllocator } from './class-name-allocator';
 import { compileCandidates } from './compile-candidates';
-import { CompiledStyle } from './compiled-style';
-import { CompiledUtility } from './compiled-utility';
+import type { CompiledStyle } from './compiled-style';
+import type { CompiledUtility } from './compiled-utility';
 import { compositeIdentity } from './composite-identity';
 import { createAtomIdentities } from './create-atom-identities';
 import { packedAtomicClasses } from './packed-atomic-classes';
 import { planReusability } from './plan-reusability';
-import { StyleCompilerOptions } from './style-compiler';
+import type { StyleCompilerOptions } from './style-compiler';
 import { parseTheme } from './theme';
 
 /** A compiled style map and its generated class names. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { UtilityDeclaration } from '../src/utility-types';
+import type { UtilityDeclaration } from './utility-types';
 import {
   atomizeDeclarations,
   cloneDeclarations,
@@ -9,7 +9,7 @@ import {
   resolveAngleValue,
   resolveScaleValue,
   trackingValue,
-} from '../src/utility-values';
+} from './utility-values';
 
 describe('utility value helpers', () => {
   it('clones declarations and preserves atomic semantic groups', () => {

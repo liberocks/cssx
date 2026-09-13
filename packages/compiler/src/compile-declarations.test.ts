@@ -22,19 +22,25 @@ it('compiles arbitrary properties', () => {
 
 it('routes spacing, divide, placeholder, outline, and container families', () => {
   expect(compileDeclarations('p-2', false, theme)).toEqual([{ property: 'padding', value: 'calc(0.25rem * 2)' }]);
-  expect(compileDeclarations('divide-x-2', false, theme)).toContainEqual(expect.objectContaining({
-    property: 'border-left-width',
-    selectorSuffix: ' > :not(:last-child)',
-  }));
-  expect(compileDeclarations('placeholder-red-500', false, theme)).toContainEqual(expect.objectContaining({
-    property: 'color',
-    selectorSuffix: '::placeholder',
-  }));
+  expect(compileDeclarations('divide-x-2', false, theme)).toContainEqual(
+    expect.objectContaining({
+      property: 'border-left-width',
+      selectorSuffix: ' > :not(:last-child)',
+    }),
+  );
+  expect(compileDeclarations('placeholder-red-500', false, theme)).toContainEqual(
+    expect.objectContaining({
+      property: 'color',
+      selectorSuffix: '::placeholder',
+    }),
+  );
   expect(compileDeclarations('outline-2', false, theme)).toEqual([{ property: 'outline-width', value: '2px' }]);
-  expect(compileDeclarations('container', false, theme)).toContainEqual(expect.objectContaining({
-    property: 'width',
-    value: '100%',
-  }));
+  expect(compileDeclarations('container', false, theme)).toContainEqual(
+    expect.objectContaining({
+      property: 'width',
+      value: '100%',
+    }),
+  );
 });
 
 it('normalizes single and array layout declarations', () => {

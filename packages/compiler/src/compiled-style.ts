@@ -1,4 +1,4 @@
-import { CompiledUtility } from './compiled-utility';
+import type { CompiledUtility } from './compiled-utility';
 
 /** A compiled style that contains utility records. */
 export interface CompiledStyle {

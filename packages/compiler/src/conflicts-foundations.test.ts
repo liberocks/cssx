@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  classifyUtility,
-  compileStyleRecords,
-  composeCompiledStyles,
-  createClassNameAllocator,
-  mergeCompiledStyles,
-} from '../src/index';
+import { createClassNameAllocator } from './class-name-allocator';
+import { classifyUtility } from './classify-utility';
+import { compileStyleRecords } from './compile-style-records';
+import { composeCompiledStyles } from './compose-compiled-styles';
+import { mergeCompiledStyles } from './merge-compiled-styles';
 
 describe('CSSX semantic conflict classifier', () => {
   it('preserves directional shorthand conflicts and canonical scopes', () => {

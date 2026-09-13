@@ -1,5 +1,5 @@
-import { CompiledStyleRecordMap } from './compiled-style-record-maps';
-import { CssxRule } from './cssx-rule';
+import type { CompiledStyleRecordMap } from './compiled-style-record-maps';
+import type { CssxRule } from './cssx-rule';
 
 /** The output from several compiled style maps. */
 export interface CompileMapsResult {

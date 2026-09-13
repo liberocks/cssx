@@ -2,7 +2,6 @@ import { expect, it } from 'vitest';
 
 import { requiredAnimationKeyframes } from './required-animation-keyframes';
 import type { CssxTheme } from './theme';
-import type { UtilityDeclaration } from './utility-types';
 
 const theme: CssxTheme = {
   tokens: { '--animate-pulse': 'pulse 2s ease' },

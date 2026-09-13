@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { compileStyleRecords, mergeCompiledStyles } from '../src/index';
+import { compileStyleRecords } from './compile-style-records';
+import { mergeCompiledStyles } from './merge-compiled-styles';
 
 describe('CSSX semantic conflict classifier', () => {
   it('composes regular shadows, ring widths, ring colors, and offsets independently', () => {

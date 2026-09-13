@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import type { CompiledUtility } from './conflicts';
+import type { CompiledUtility } from './compiled-utility';
 import { reducePackedUtilities } from './reduce-packed-utilities';
 
 it('keeps winning records in source order and isolates conflict scopes', () => {

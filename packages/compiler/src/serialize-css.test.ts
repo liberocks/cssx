@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import type { CssxRule } from './cssx-rule';
 import { serializeCss } from './serialize-css';
 
-const rules = ([css]: readonly (readonly string[])[]): readonly CssxRule[] =>
+const rules = ([css = []]: readonly (readonly string[])[]): readonly CssxRule[] =>
   css.map((value, index) => ({ className: `c${index}`, css: value }));
 
 it('deduplicates and sorts unique rule CSS', () => {

@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 
 import { createClassNameAllocator } from './class-name-allocator';
+import type { CompiledStyle } from './compiled-style';
 import { composeCompiledStyles } from './compose-compiled-styles';
-import type { CompiledStyle } from './conflicts';
 
 it('returns an empty composition for styles without utility records', () => {
   expect(composeCompiledStyles([])).toEqual({ className: '', atomicClasses: [] });

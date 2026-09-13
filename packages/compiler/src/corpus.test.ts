@@ -2,12 +2,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { parseCandidate } from '../src/candidate';
-import { compileSourceUtilities, compileStyleRecords, compileUtilities } from '../src/index';
-import { classifyParsedCandidate } from '../src/semantics';
-import { parseTheme } from '../src/theme';
-import { resolveUtilityRecipe } from '../src/utilities';
+import { parseCandidate } from './candidate';
+import { compileStyleRecords } from './compile-style-records';
 import { UTILITY_FALLBACKS } from './fallback.generated';
+import { classifyParsedCandidate } from './semantics';
+import { parseTheme } from './theme';
+import { compileSourceUtilities, compileUtilities, resolveUtilityRecipe } from './utilities';
 
 interface TailwindManifest {
   readonly source: {
@@ -22,7 +22,7 @@ interface TailwindManifest {
 }
 
 const manifest = JSON.parse(
-  readFileSync(fileURLToPath(new URL('./fixtures/tailwind-4.json', import.meta.url)), 'utf8'),
+  readFileSync(fileURLToPath(new URL('./fixtures/corpus.json', import.meta.url)), 'utf8'),
 ) as TailwindManifest;
 
 describe('Tailwind 4 IntelliSense snapshot corpus', () => {

@@ -9,9 +9,6 @@ import type { UtilityDeclaration } from './utility-types';
  * @param theme The active CSSX theme.
  * @returns CSS declaration groups that can be merged separately.
  */
-export function getUtilityAtoms(
-  candidateSource: string,
-  theme: CssxTheme,
-): readonly (readonly UtilityDeclaration[])[] {
+export function getUtilityAtoms(candidateSource: string, theme: CssxTheme): readonly (readonly UtilityDeclaration[])[] {
   return describeUtilityRecipe(candidateSource, theme).atoms;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseTheme } from '../src/theme';
-import { describeUtilityRecipe, compileUtilities } from '../src/utilities';
+import { parseTheme } from './theme';
+import { describeUtilityRecipe, compileUtilities } from './utilities';
 import {
   compileBorderWidthUtility,
   compileDivideUtility,
@@ -9,18 +9,18 @@ import {
   compilePlaceholderUtility,
   compileSpaceUtility,
   compileSpacingUtility,
-} from '../src/utility-box-model';
-import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility } from '../src/utility-effects';
-import { compileCoreLayoutUtility, compileContainerUtility } from '../src/utility-layout';
-import { compileModernUtility } from '../src/utility-modern';
-import { compileMotionUtility, isMotionUtilityCandidate } from '../src/utility-motion';
+} from './utility-box-model';
+import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility } from './utility-effects';
+import { compileCoreLayoutUtility, compileContainerUtility } from './utility-layout';
+import { compileModernUtility } from './utility-modern';
+import { compileMotionUtility, isMotionUtilityCandidate } from './utility-motion';
 import {
   compileColorUtility,
   compileGradientUtility,
   compileTextDecorationUtility,
   resolveUtilityColor,
-} from '../src/utility-paint';
-import { compilePrefixedUtility } from '../src/utility-prefixed';
+} from './utility-paint';
+import { compilePrefixedUtility } from './utility-prefixed';
 import {
   flexValue,
   isLengthCssValue,
@@ -29,14 +29,14 @@ import {
   resolveOpacityModifier,
   resolveSpacingValue,
   splitColorModifier,
-} from '../src/utility-resolvers';
+} from './utility-resolvers';
 import {
   compileAnimationUtility,
   compileArbitraryProperty,
   compileDimensionUtility,
   compileTransformUtility,
-} from '../src/utility-transform';
-import { compileBackgroundUtility, compileMaskUtility, compileNumericUtility } from '../src/utility-visual-basics';
+} from './utility-transform';
+import { compileBackgroundUtility, compileMaskUtility, compileNumericUtility } from './utility-visual-basics';
 
 describe('utility helper edge cases', () => {
   const theme = parseTheme();

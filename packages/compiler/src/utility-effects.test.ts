@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { compileUtilities } from '../src/index';
+import { compileUtilities } from './compile-utilities';
 
 describe('CSSX utility compiler', () => {
   it('compiles arbitrary and custom-property shadows through the shared shadow sink', async () => {

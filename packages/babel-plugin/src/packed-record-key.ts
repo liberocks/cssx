@@ -1,4 +1,4 @@
-import * as babelTypes from '@babel/types';
+import type * as babelTypes from '@babel/types';
 
 /**
  * Serializes a compiled utility tuple for record interning.

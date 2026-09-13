@@ -9,7 +9,15 @@ it('rejects more than 50,000 candidates', async () => {
 });
 
 it('skips data-backed utilities without CSS and records an empty class', async () => {
-  const result = await compileUtilityList(['border/50', 'p-1'], (candidate) => `x${candidate}`, '', {}, undefined, {}, false);
+  const result = await compileUtilityList(
+    ['border/50', 'p-1'],
+    (candidate) => `x${candidate}`,
+    '',
+    {},
+    undefined,
+    {},
+    false,
+  );
   expect(result.classes['border/50']).toBe('');
   expect(result.entries).toHaveLength(1);
 });
@@ -29,7 +37,15 @@ it('splits generated class strings into per-atom classes', async () => {
 });
 
 it('skips candidates whose generated classes are not included', async () => {
-  const result = await compileUtilityList(['p-1', 'hidden'], (candidate) => `g${candidate}`, '', {}, new Set(['gp-1']), {}, false);
+  const result = await compileUtilityList(
+    ['p-1', 'hidden'],
+    (candidate) => `g${candidate}`,
+    '',
+    {},
+    new Set(['gp-1']),
+    {},
+    false,
+  );
   expect(result.classes['hidden']).toBe('ghidden');
   expect(result.css).toContain('.gp-1{padding:calc(0.25rem * 1);}');
   expect(result.css).not.toContain('display: none');

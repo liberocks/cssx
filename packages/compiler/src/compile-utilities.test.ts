@@ -13,13 +13,21 @@ it('compiles candidates into classes, entries, and CSS', async () => {
 });
 
 it('honors composite alias and included-class filters through the list compiler', async () => {
-  const result = await compileUtilities(['p-1', 'hidden'], (candidate) => `c${candidate}`, '', { 'cp-1': ['alias'] }, new Set(['alias']));
+  const result = await compileUtilities(
+    ['p-1', 'hidden'],
+    (candidate) => `c${candidate}`,
+    '',
+    { 'cp-1': ['alias'] },
+    new Set(['alias']),
+  );
   expect(result.css).toContain('.alias{padding:calc(0.25rem * 1);}');
   expect(result.css).not.toContain('display: none');
 });
 
 it('rejects unsupported utilities', async () => {
-  await expect(compileUtilities(['not-understood'], (candidate) => candidate)).rejects.toThrow('cannot compile utility');
+  await expect(compileUtilities(['not-understood'], (candidate) => candidate)).rejects.toThrow(
+    'cannot compile utility',
+  );
 });
 
 it('compiles source utilities using the utility strings as selectors', async () => {

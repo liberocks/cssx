@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { compileStyleRecords, compileUtilities } from '../src/index';
+import { compileStyleRecords } from './compile-style-records';
+import { compileUtilities } from './compile-utilities';
 
 const className = (candidate: string) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`;
 

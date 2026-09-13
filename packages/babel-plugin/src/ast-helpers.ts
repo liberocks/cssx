@@ -1,5 +1,5 @@
 import type { NodePath } from '@babel/core';
-import * as babelTypes from '@babel/types';
+import type * as babelTypes from '@babel/types';
 
 /**
  * Reads a member property written with supported static syntax.

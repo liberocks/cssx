@@ -1,8 +1,8 @@
-import { CompileMapsResult } from './compile-maps-result';
-import { CompileResult } from './compile-result';
+import type { CompileMapsResult } from './compile-maps-result';
+import type { CompileResult } from './compile-result';
 import { compileStyleRecords } from './compile-style-records';
 import { compileStyleRecordMaps } from './compiled-style-record-maps';
-import { CompilerOptions } from './compiler-options';
+import type { CompilerOptions } from './compiler-options';
 import { createSelectorAliases } from './create-selector-aliases';
 import { cssId } from './css-id';
 import { compileUtilities } from './utilities';

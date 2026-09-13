@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseTheme, resolveThemeToken, serializeThemeKeyframe, serializeThemeTokens } from '../src/theme';
+import { parseTheme, resolveThemeToken, serializeThemeKeyframe, serializeThemeTokens } from './theme';
 
 describe('CSSX theme parsing', () => {
   it('merges restricted @theme declarations over the CSSX default tokens', () => {

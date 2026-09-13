@@ -1,4 +1,4 @@
-import * as babelTypes from '@babel/types';
+import type * as babelTypes from '@babel/types';
 import type { CompiledStyle } from '@cssxio/compiler';
 
 import { markStyleKeyCandidates } from './mark-style-key-candidates';

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import type { CompiledStyle } from './conflicts';
+import type { CompiledStyle } from './compiled-style';
 import { mergeCompiledStyles } from './merge-compiled-styles';
 
 it('returns surviving classes from compiled styles in source order', () => {

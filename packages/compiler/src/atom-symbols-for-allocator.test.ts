@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 
 import { atomSymbolsForAllocator } from './atom-symbols-for-allocator';
-import type { ClassNameAllocator } from './conflicts';
+import type { ClassNameAllocator } from './class-name';
 
 const allocator = (): ClassNameAllocator => ({
   allocate: () => new Map(),

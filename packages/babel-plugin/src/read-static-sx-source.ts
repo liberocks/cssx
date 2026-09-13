@@ -1,4 +1,4 @@
-import * as babelTypes from '@babel/types';
+import type * as babelTypes from '@babel/types';
 
 /** Babel expression node forms accepted by the static `sx()` reader. */
 type StaticSxNode =
