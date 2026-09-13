@@ -2,17 +2,16 @@ import { createClassNameAllocator } from '@cssxio/compiler';
 import { createUnplugin } from 'unplugin';
 import type { UnpluginFactory } from 'unplugin';
 
+import { configureNativeCompiler } from './configure-native-compiler';
 import { configureViteDevelopmentServer } from './configure-vite-development-server';
 import type { ViteServerLike } from './configure-vite-development-server';
 import { createGenerateBundleHandler } from './create-generate-bundle-handler';
 import { createTransformHandler } from './create-transform-handler';
 import { createUniversalEsbuildHooks } from './create-universal-esbuild-hooks';
 import { createViteHotUpdateHandler } from './create-vite-hot-update-handler';
-import { RULES_METADATA_KEY, type ModuleCssxData } from './module-cssx-data';
-import { configureCompilationAsset, type NativeCompiler } from './native';
-import { nativeBuildState } from './native-build-state';
+import type { ModuleCssxData } from './module-cssx-data';
+import type { NativeCompiler } from './native';
 import { assertPluginOptions, loadTheme, moduleId, type CssxPluginOptions } from './options';
-import { scanProjectCssxSourceModules } from './project-scan';
 import { sendViteStyles } from './vite-dev';
 
 export {
@@ -117,38 +116,26 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
     ...(meta.framework === 'webpack'
       ? {
           webpack(compiler) {
-            const sharedNativeState = nativeBuildState(compiler.context, options);
-            configureCompilationAsset(
-              compiler as unknown as NativeCompiler,
+            configureNativeCompiler({
+              compiler: compiler as unknown as NativeCompiler,
+              options,
               cssFileName,
-              getTheme,
-              options.layer,
               sourceMap,
-              RULES_METADATA_KEY,
-              sharedNativeState.transformedDataById,
-              options.darkMode,
-              options.preflight,
-              options.stableClassNames ? () => scanProjectCssxSourceModules(compiler.context, options) : undefined,
-            );
+              getTheme,
+            });
           },
         }
       : {}),
     ...(meta.framework === 'rspack'
       ? {
           rspack(compiler) {
-            const sharedNativeState = nativeBuildState(compiler.context, options);
-            configureCompilationAsset(
-              compiler as unknown as NativeCompiler,
+            configureNativeCompiler({
+              compiler: compiler as unknown as NativeCompiler,
+              options,
               cssFileName,
-              getTheme,
-              options.layer,
               sourceMap,
-              RULES_METADATA_KEY,
-              sharedNativeState.transformedDataById,
-              options.darkMode,
-              options.preflight,
-              options.stableClassNames ? () => scanProjectCssxSourceModules(compiler.context, options) : undefined,
-            );
+              getTheme,
+            });
           },
         }
       : {}),
