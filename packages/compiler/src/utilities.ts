@@ -2,19 +2,13 @@ import { parseCandidate } from './candidate';
 import type { ParsedCandidate } from './candidate';
 import { classSelectors } from './class-selectors';
 import { cssOrder } from './css-order';
-import { compileDeclarations } from './compile-declarations';
-import { utilityFallback } from './fallback';
-import { fallbackRecipe } from './fallback-recipe';
 import { propertyRegistration } from './property-registration';
 import { readGeneratedClassNames } from './read-generated-class-names';
 import { replaceFallbackSelector } from './replace-fallback-selector';
-import { requiredAnimationKeyframes } from './required-animation-keyframes';
-import { requiredPropertyNames } from './required-property-names';
+import { resolveParsedUtilityRecipe } from './resolve-parsed-utility-recipe';
 import { classifyParsedCandidate } from './semantics';
-import type { UtilitySemantics } from './semantics';
 import { parseTheme, serializeThemeKeyframe, serializeThemeTokens } from './theme';
 import type { CssxTheme } from './theme';
-import { atomizeDeclarations } from './utility-values';
 import { applyVariants } from './utility-variants';
 import type { VariantOptions } from './utility-variants';
 
@@ -37,6 +31,7 @@ export type {
   UtilityWriteSet,
   ResolvedUtilityRecipe,
 };
+export { resolveParsedUtilityRecipe };
 export type { UtilityDeclaration };
 
 /**
@@ -69,45 +64,6 @@ export function resolveUtilityRecipe(candidateSource: string, theme: CssxTheme):
     throw new Error(`CSSX cannot compile utility "${candidateSource}".`);
   }
   return resolveParsedUtilityRecipe(candidateSource, candidate, semantics, theme);
-}
-
-/** Builds a utility recipe from parsing and classification data already available to the caller. */
-export function resolveParsedUtilityRecipe(
-  candidateSource: string,
-  candidate: ParsedCandidate,
-  semantics: UtilitySemantics,
-  theme: CssxTheme,
-): ResolvedUtilityRecipe {
-  const fallback = utilityFallback(candidateSource);
-  let declarations: UtilityDeclaration[];
-  try {
-    declarations = compileDeclarations(candidate.utility, candidate.negative, theme);
-  } catch (error) {
-    if (!fallback) {
-      throw error;
-    }
-    return fallbackRecipe(candidateSource, candidate, fallback.group, fallback.css);
-  }
-  const keyframes = requiredAnimationKeyframes(declarations, theme);
-  if (candidate.important) {
-    for (const declaration of declarations) {
-      declaration.value = `${declaration.value} !important`;
-    }
-  }
-  const atoms = atomizeDeclarations(declarations);
-  return {
-    recipe: {
-      candidate: candidateSource,
-      atoms,
-      resources: { keyframes, properties: requiredPropertyNames(candidate.utility) },
-      writes: atoms.map((atom) => {
-        const group = atom[0]?.semanticGroup ?? semantics.group;
-        return { group, conflicts: atom[0]?.semanticConflicts ?? [group] };
-      }),
-    },
-    parsedCandidate: candidate,
-    semantics,
-  };
 }
 
 /**
