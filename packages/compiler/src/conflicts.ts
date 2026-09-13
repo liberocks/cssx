@@ -5,6 +5,7 @@ import { serializeThemeSignature } from './serialize-theme-signature';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 import { parseTheme } from './theme';
 import { themeNamespace } from './theme-namespace';
+import { atomSymbolsForAllocator } from './atom-symbols-for-allocator';
 import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
 import { normalizeClassNameOptions } from './normalize-class-name-options';
 import type { NormalizedClassNameOptions } from './normalize-class-name-options';
@@ -614,7 +615,7 @@ function createAtomIdentities(
    */
   const themeIdentity = themeNamespace(serializeThemeSignature(theme));
   const symbols: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
-  const symbolsByIdentity = atomSymbolsFor(allocator);
+  const symbolsByIdentity = atomSymbolsForAllocator(allocator);
   const allocationIdentities = new Map<string, string>();
   for (const candidate of [...new Set(candidates)].sort()) {
     const compiledCandidate = compiledCandidates.get(candidate)!;
@@ -639,21 +640,6 @@ function createAtomIdentities(
     });
   }
   return { symbols, allocationIdentities };
-}
-
-/** Keeps symbolic composition atoms stable across compiler calls sharing an allocator. */
-const atomSymbolsByAllocator = new WeakMap<object, Map<string, string>>();
-
-/** Returns the collision-free symbolic atom namespace associated with one allocator. */
-function atomSymbolsFor(allocator: ClassNameAllocator): Map<string, string> {
-  const key = allocator as object;
-  const existing = atomSymbolsByAllocator.get(key);
-  if (existing) {
-    return existing;
-  }
-  const symbols = new Map<string, string>();
-  atomSymbolsByAllocator.set(key, symbols);
-  return symbols;
 }
 
 /**
