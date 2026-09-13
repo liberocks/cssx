@@ -7,7 +7,7 @@ import type { UnpluginFactory } from 'unplugin';
 
 import { createGenerateBundleHandler } from './create-generate-bundle-handler';
 import { createTransformHandler } from './create-transform-handler';
-import { invalidateViteRunner, type ViteHotUpdateModule } from './invalidate-vite-runner';
+import { createViteHotUpdateHandler } from './create-vite-hot-update-handler';
 import { RULES_METADATA_KEY, type ModuleCssxData } from './module-cssx-data';
 import { configureCompilationAsset, type NativeCompiler } from './native';
 import { nativeBuildState } from './native-build-state';
@@ -196,41 +196,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
       },
       hotUpdate: {
         order: 'pre',
-        async handler(this: any, context: any): Promise<any> {
-          const environment = this.environment;
-          if (!environment || environment.name === 'client') {
-            return;
-          }
-          const handled = (context.modules as ViteHotUpdateModule[]).filter((module) => {
-            const data = rollupDataById.get(moduleId(module.id ?? ''));
-            return Boolean(data && data.cssOnlySignature && data.atomicClasses?.length === 0);
-          });
-          if (handled.length === 0) {
-            return;
-          }
-
-          const previous = new Map(
-            handled.map((module: ViteHotUpdateModule) => [
-              module,
-              rollupDataById.get(moduleId(module.id!))!.cssOnlySignature,
-            ]),
-          );
-          for (const module of handled) {
-            if (module.url) {
-              await environment.transformRequest(module.url);
-            }
-          }
-          const cssOnly = handled.every((module: ViteHotUpdateModule) => {
-            const data = rollupDataById.get(moduleId(module.id!));
-            return Boolean(data && data.atomicClasses!.length === 0 && data.cssOnlySignature === previous.get(module));
-          });
-          if (!cssOnly) {
-            return;
-          }
-
-          invalidateViteRunner(environment, handled, context.timestamp);
-          return (context.modules as ViteHotUpdateModule[]).filter((module) => !handled.includes(module));
-        },
+        handler: createViteHotUpdateHandler(rollupDataById),
       },
     },
     ...(meta.framework === 'webpack'
