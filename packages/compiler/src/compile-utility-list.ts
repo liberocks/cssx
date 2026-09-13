@@ -1,10 +1,8 @@
 import type { VariantOptions } from './apply-variants';
-import { compileCandidate } from './compile-candidate';
+import { compileUtilityCandidates } from './compile-utility-candidates';
 import { propertyRegistration } from './property-registration';
-import { readGeneratedClassNames } from './read-generated-class-names';
-import { resolveUtilityRecipe } from './resolve-utility-recipe';
 import { parseTheme, serializeThemeKeyframe, serializeThemeTokens } from './theme';
-import type { CompiledUtility, UtilityCompilation } from './utility-recipe-types';
+import type { UtilityCompilation } from './utility-recipe-types';
 
 /**
  * Compiles utility candidates with either generated or source class selectors.
@@ -31,51 +29,15 @@ export async function compileUtilityList(
     throw new Error('CSSX supports at most 50,000 utility candidates per compilation.');
   }
   const theme = parseTheme(themeCss);
-  const classes: Record<string, string> = Object.create(null) as Record<string, string>;
-  const compiled: CompiledUtility[] = [];
-  const requiredKeyframes = new Set<string>();
-  const requiredProperties = new Set<string>();
-
-  for (const candidate of [...new Set(candidates)]) {
-    const resolvedRecipe = resolveUtilityRecipe(candidate, theme);
-    const { recipe } = resolvedRecipe;
-    if (recipe.atoms.length === 0) {
-      classes[candidate] = '';
-      continue;
-    }
-    const generatedClasses = escapeSourceSelectors
-      ? [className(candidate)]
-      : readGeneratedClassNames(candidate, className(candidate));
-    classes[candidate] = generatedClasses.join(' ');
-    const liveClasses = includedClasses
-      ? generatedClasses.filter(
-          (generatedClass) => includedClasses.has(generatedClass) || (selectorAliases[generatedClass]?.length ?? 0) > 0,
-        )
-      : generatedClasses;
-    if (liveClasses.length === 0) {
-      continue;
-    }
-    compiled.push(
-      ...compileCandidate(
-        candidate,
-        generatedClasses,
-        theme,
-        recipe.atoms,
-        resolvedRecipe.parsedCandidate,
-        resolvedRecipe.semantics.group,
-        recipe.fallbackCss,
-        selectorAliases,
-        includedClasses,
-        variantOptions,
-      ),
-    );
-    for (const keyframe of recipe.resources.keyframes) {
-      requiredKeyframes.add(keyframe);
-    }
-    for (const property of recipe.resources.properties) {
-      requiredProperties.add(property);
-    }
-  }
+  const { classes, compiled, requiredKeyframes, requiredProperties } = compileUtilityCandidates({
+    candidates,
+    className,
+    theme,
+    selectorAliases,
+    includedClasses,
+    variantOptions,
+    escapeSourceSelectors,
+  });
 
   compiled.sort((left, right) => {
     if (left.order !== right.order) {
