@@ -12,6 +12,7 @@ import { parseTheme, serializeThemeKeyframe, serializeThemeTokens } from './them
 import type { CssxTheme } from './theme';
 import { applyVariants } from './utility-variants';
 import type { VariantOptions } from './utility-variants';
+import { validateUtilityCandidate } from './validate-utility-candidate';
 
 import type {
   CompiledUtility,
@@ -37,6 +38,7 @@ export {
   describeUtilityRecipe,
   resolveParsedUtilityRecipe,
   resolveUtilityRecipe,
+  validateUtilityCandidate,
 };
 export type { UtilityDeclaration };
 
@@ -158,17 +160,6 @@ async function compileUtilityList(
     entries: uniqueCompiled.map(({ candidate, css }) => ({ candidate, css })),
     css: `${prefixCss}${utilityCss}`,
   };
-}
-
-/**
- * Checks that a utility has CSS for the active theme.
- *
- * @param candidate A static utility string.
- * @param theme The active CSSX theme.
- * @returns Nothing.
- */
-export function validateUtilityCandidate(candidate: string, theme: CssxTheme): void {
-  getUtilityAtoms(candidate, theme);
 }
 
 /**
