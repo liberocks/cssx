@@ -4,9 +4,9 @@ import { collectStyleMapCandidates } from './collect-style-map-candidates';
 import { compileCandidates } from './compile-candidates';
 import type { CompiledStyle } from './compiled-style';
 import { createAtomIdentities } from './create-atom-identities';
-import { createCompiledStyleRecordMap } from './create-compiled-style-record-map';
 import { createStyleMapCompositionRecords } from './create-style-map-composition-records';
 import { planReusability } from './plan-reusability';
+import { projectStyleRecordMaps } from './project-style-record-maps';
 import type { StyleCompilerOptions } from './style-compiler';
 import { parseTheme } from './theme';
 
@@ -57,11 +57,6 @@ export function compileStyleRecordMaps(
     compiledCandidates,
     atomIdentities.symbols,
   );
-  const styleMaps: Record<string, CompiledStyleRecordMap> = Object.create(null) as Record<
-    string,
-    CompiledStyleRecordMap
-  >;
-  const composites: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
   const plannedCompositions = planReusability(
     Object.values(compositionRecords.compositionAtomsByMap).flatMap((atomsByStyle) => Object.values(atomsByStyle)),
     options.reusabilityBudget,
@@ -73,20 +68,14 @@ export function compileStyleRecordMaps(
     allocator,
   );
 
-  for (const [mapName, candidates] of Object.entries(candidatesByMap)) {
-    const projection = createCompiledStyleRecordMap({
-      candidates,
-      classes,
-      recordsByStyle: compositionRecords.recordsByMap[mapName]!,
-      compositionAtomsByStyle: compositionRecords.compositionAtomsByMap[mapName]!,
-      allocatedAtomClasses,
-      plannedCompositions,
-    });
-    styleMaps[mapName] = projection.styleMap;
-    for (const [className, atomicClasses] of Object.entries(projection.composites)) {
-      composites[className] = atomicClasses;
-    }
-  }
+  const projection = projectStyleRecordMaps({
+    candidatesByMap,
+    classes,
+    recordsByMap: compositionRecords.recordsByMap,
+    compositionAtomsByMap: compositionRecords.compositionAtomsByMap,
+    allocatedAtomClasses,
+    plannedCompositions,
+  });
 
-  return { styleMaps, classes, composites };
+  return { ...projection, classes };
 }
