@@ -8,5 +8,7 @@
  * build`.
  */
 declare namespace JSX {
+  // Astro supplies the members; this declaration makes the namespace visible to editors.
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface IntrinsicElements extends astroHTML.JSX.IntrinsicElements {}
 }

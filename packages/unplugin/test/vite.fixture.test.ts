@@ -9,6 +9,51 @@ import cssxVite from '../src/vite';
 
 const require = createRequire(import.meta.url);
 
+/** Reads a CSSX virtual Vite asset without opening a network socket. */
+async function readViteAsset(server: { readonly middlewares: unknown }, url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const headers = new Map<string, string>();
+    const middlewares = server.middlewares as (
+      request: { url: string; headers: Record<string, string>; method: string },
+      response: {
+        statusCode: number;
+        setHeader(name: string, value: string): void;
+        getHeader(name: string): string | undefined;
+        hasHeader(name: string): boolean;
+        removeHeader(name: string): void;
+        writeHead(status: number): void;
+        end(body?: string): void;
+      },
+      next: (error?: unknown) => void,
+    ) => void;
+    middlewares(
+      { url, headers: {}, method: 'GET' },
+      {
+        statusCode: 200,
+        setHeader(name, value) {
+          headers.set(name.toLowerCase(), value);
+        },
+        getHeader(name) {
+          return headers.get(name.toLowerCase());
+        },
+        hasHeader(name) {
+          return headers.has(name.toLowerCase());
+        },
+        removeHeader(name) {
+          headers.delete(name.toLowerCase());
+        },
+        writeHead(status) {
+          this.statusCode = status;
+        },
+        end(body = '') {
+          resolve(body);
+        },
+      },
+      (error) => reject(error ?? new Error(`No Vite middleware served ${url}.`)),
+    );
+  });
+}
+
 describe('CSSX Vite fixture', () => {
   it('extracts CSSX calls from Vue SFC script setup and template bindings', async () => {
     const root = await mkdtemp(join(tmpdir(), 'cssx-vite-vue-'));
@@ -38,7 +83,7 @@ const active = true;
         root,
         logLevel: 'silent',
         plugins: [cssxVite({ cssFileName: 'assets/cssx.css', sourceMap: false }), vue()],
-        resolve: { alias: { vue: require.resolve('vue') } },
+        resolve: { alias: { vue: require.resolve('vue'), '@cssxio/cssx': require.resolve('@cssxio/cssx') } },
         build: { emptyOutDir: true, outDir: 'dist' },
       });
 
@@ -88,7 +133,6 @@ const active = true;
       root,
       logLevel: 'silent',
       plugins: [cssxVite({ theme: '@theme reference { --color-brand: #123456; }' })],
-      server: { port: 0 },
     });
     try {
       await mkdir(join(root, 'src'));
@@ -96,18 +140,12 @@ const active = true;
         join(root, 'src/main.ts'),
         "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'p-5 bg-brand' });",
       );
-      await server.listen();
       const initial = await server.environments.client.transformRequest('/src/main.ts');
-      const origin = server.resolvedUrls?.local[0];
-      if (!origin) {
-        throw new Error('Vite did not provide a local development URL.');
-      }
-      const response = await fetch(`${origin}cssx.css`);
-      const css = await response.text();
+      const css = await readViteAsset(server, '/cssx.css');
 
       expect(css).toContain('padding:calc(var(--spacing) * 5)');
       expect(css).toContain('background-color:var(--color-brand)');
-      const map = (await fetch(`${origin}cssx.css.map`).then((result) => result.json())) as { sources: string[] };
+      const map = JSON.parse(await readViteAsset(server, '/cssx.css.map')) as { sources: string[] };
       expect(map.sources.some((source) => source.endsWith('/src/main.ts') || source === 'src/main.ts')).toBe(true);
 
       await writeFile(
@@ -122,8 +160,8 @@ const active = true;
       server.environments.client.moduleGraph.onFileChange(active.file);
       const transformed = await server.environments.client.transformRequest('/src/main.ts');
       expect(transformed?.code).not.toBe(initial?.code);
-      const updated = await fetch(`${origin}cssx.css`);
-      expect(await updated.text()).toContain('background-color:var(--color-red-500)');
+      const updated = await readViteAsset(server, '/cssx.css');
+      expect(updated).toContain('background-color:var(--color-red-500)');
 
       await writeFile(
         join(root, 'src/main.ts'),
@@ -140,14 +178,14 @@ const active = true;
       server.watcher.emit('change', active.file);
       server.environments.client.moduleGraph.onFileChange(active.file);
       await server.environments.client.transformRequest('/src/main.ts');
-      const recovered = await fetch(`${origin}cssx.css`);
-      expect(await recovered.text()).toContain('color:var(--color-white)');
+      const recovered = await readViteAsset(server, '/cssx.css');
+      expect(recovered).toContain('color:var(--color-white)');
 
       await rm(join(root, 'src/main.ts'));
       server.watcher.emit('unlink', active.file);
       server.environments.client.moduleGraph.onFileDelete(active.file);
-      const deleted = await fetch(`${origin}cssx.css`);
-      expect(await deleted.text()).toContain('box-sizing:border-box');
+      const deleted = await readViteAsset(server, '/cssx.css');
+      expect(deleted).toContain('box-sizing:border-box');
     } finally {
       await server.close();
       await rm(root, { recursive: true, force: true });

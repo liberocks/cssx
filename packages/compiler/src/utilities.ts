@@ -119,22 +119,10 @@ export interface ResolvedUtilityRecipe {
 export function resolveUtilityRecipe(candidateSource: string, theme: CssxTheme): ResolvedUtilityRecipe {
   const candidate = parseCandidate(candidateSource);
   const semantics = classifyParsedCandidate(candidate);
-  if (semantics) {
-    try {
-      return resolveParsedUtilityRecipe(candidateSource, candidate, semantics, theme);
-    } catch (error) {
-      const fallback = tailwindFallback(candidateSource);
-      if (!fallback) {
-        throw error;
-      }
-      return fallbackRecipe(candidateSource, candidate, fallback.group, fallback.css);
-    }
-  }
-  const fallback = tailwindFallback(candidateSource);
-  if (!fallback) {
+  if (!semantics) {
     throw new Error(`CSSX cannot compile utility "${candidateSource}".`);
   }
-  return fallbackRecipe(candidateSource, candidate, fallback.group, fallback.css);
+  return resolveParsedUtilityRecipe(candidateSource, candidate, semantics, theme);
 }
 
 /** Builds a utility recipe from parsing and classification data already available to the caller. */
@@ -145,9 +133,6 @@ export function resolveParsedUtilityRecipe(
   theme: CssxTheme,
 ): ResolvedUtilityRecipe {
   const fallback = tailwindFallback(candidateSource);
-  if (fallback && !classifyParsedCandidate(candidate)) {
-    return fallbackRecipe(candidateSource, candidate, fallback.group, fallback.css);
-  }
   let declarations: UtilityDeclaration[];
   try {
     declarations = compileDeclarations(candidate.utility, candidate.negative, theme);
@@ -200,7 +185,7 @@ function fallbackRecipe(
       atoms,
       resources: { keyframes: [], properties: [] },
       writes: atoms.map(() => ({ group, conflicts: [group] })),
-      fallbackCss: css,
+      ...(css ? { fallbackCss: css } : {}),
     },
     parsedCandidate: candidate,
     semantics,
@@ -381,16 +366,14 @@ function compileCandidate(
     if (classNames.length !== 1) {
       throw new Error(`CSSX expected one generated class for fallback utility "${candidateSource}".`);
     }
-    return fallbackCss
-      ? [
-          {
-            candidate: candidateSource,
-            className: classNames[0]!,
-            css: replaceFallbackSelector(fallbackCss, candidateSource, classNames[0]!),
-            order: cssOrder(candidate, semanticGroup, atoms.flat()),
-          },
-        ]
-      : [];
+    return [
+      {
+        candidate: candidateSource,
+        className: classNames[0]!,
+        css: replaceFallbackSelector(fallbackCss, candidateSource, classNames[0]!),
+        order: cssOrder(candidate, semanticGroup, atoms.flat()),
+      },
+    ];
   }
   if (classNames.length === 1) {
     const declarations = atoms.length === 1 ? atoms[0]! : atoms.flat();

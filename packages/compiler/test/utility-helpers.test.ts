@@ -184,8 +184,8 @@ describe('utility helper edge cases', () => {
       property: 'background-size',
       value: 'auto 100%',
     });
-    expect(compileMaskUtility('mask-position-[center]')).toEqual({ property: 'mask-position', value: 'center' });
-    expect(compileMaskUtility('mask-[url("/mask.svg")]')).toEqual({
+    expect(compileMaskUtility('mask-position-[center]', theme)).toEqual({ property: 'mask-position', value: 'center' });
+    expect(compileMaskUtility('mask-[url("/mask.svg")]', theme)).toEqual({
       property: 'mask-image',
       value: 'url("/mask.svg")',
     });
@@ -194,6 +194,7 @@ describe('utility helper edge cases', () => {
   });
 
   it('covers paint, filter, transform, and motion value branches', () => {
+    expect(compileGradientUtility('bg-conic-[30deg]', false, theme)?.[0]?.value).toContain('from 30deg');
     expect(compileGradientUtility('bg-linear-45', true, theme)?.[0]?.value).toContain('-45deg');
     expect(compileGradientUtility('from-50%', false, theme)?.[0]).toEqual({
       property: '--cssx-gradient-from-position',
@@ -234,6 +235,9 @@ describe('utility helper edge cases', () => {
       property: '--cssx-skew-y',
       value: '-6deg',
     });
+    expect(compileTransformUtility('rotate-x-invalid', false, theme)).toBeNull();
+    expect(compileTransformUtility('skew-invalid', false, theme)).toBeNull();
+    expect(compilePrefixedUtility('indent-invalid', false, theme)).toBeNull();
     expect(isMotionUtilityCandidate('duration-100')).toBe(true);
     expect(isMotionUtilityCandidate('opacity-100')).toBe(false);
     expect(compileMotionUtility('animation-name-none', false, theme)).toEqual({

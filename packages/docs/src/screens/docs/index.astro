@@ -1,11 +1,11 @@
 ---
 import { sx } from '@cssxio/cssx';
 
-import BaseLayout from '../layouts/BaseLayout.astro';
-import ThemeToggle from '../components/ThemeToggle.astro';
-import LanguageToggle from '../components/LanguageToggle.astro';
-import { defaultLocale, locales, plainText, renderRich } from '../localization/index.ts';
-import type { Locale } from '../localization/index.ts';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ThemeToggle from '../../components/ThemeToggle.astro';
+import LanguageToggle from '../../components/LanguageToggle.astro';
+import { defaultLocale, locales, plainText, renderRich } from '../../localization/index.ts';
+import type { Locale } from '../../localization/index.ts';
 
 interface Props {
   lang: Locale;

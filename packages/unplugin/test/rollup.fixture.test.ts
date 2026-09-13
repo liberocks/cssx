@@ -119,7 +119,12 @@ describe('CSSX Rollup fixture', () => {
         entry,
         "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'p-4' });",
       );
-      watcher = watch({ input: entry, output: { dir: output, format: 'es' }, plugins: [cssxRollup()] });
+      watcher = watch({
+        input: entry,
+        output: { dir: output, format: 'es' },
+        plugins: [cssxRollup()],
+        watch: { chokidar: { usePolling: true, interval: 10 } },
+      });
       await waitForWatchEnd(watcher);
       expect(await readFile(join(output, 'cssx.css'), 'utf8')).toContain('padding:calc(0.25rem * 4)');
 

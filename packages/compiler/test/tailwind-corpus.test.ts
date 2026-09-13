@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { compileStyleRecords, compileUtilities } from '../src/index';
+import { compileSourceUtilities, compileStyleRecords, compileUtilities } from '../src/index';
+import { parseTheme } from '../src/theme';
+import { classifyParsedCandidate } from '../src/semantics';
+import { parseCandidate } from '../src/candidate';
+import { resolveUtilityRecipe } from '../src/utilities';
+import { TAILWIND_4_FALLBACKS } from '../src/tailwind-fallback.generated';
 
 interface TailwindManifest {
   readonly source: {
@@ -47,5 +52,35 @@ describe('Tailwind 4 IntelliSense snapshot corpus', () => {
     expect(compiled.css).toContain('.x{--tw-inset-shadow:');
     expect(compiled.classes['border/50']).toBe('');
     expect(compileStyleRecords({ noop: 'border/50' }).classNames.noop).toBe('');
+  });
+
+  it('emits the pinned Tailwind semantics for every corpus candidate', async () => {
+    const fallbackCandidates = manifest.candidates.filter(
+      (candidate) => resolveUtilityRecipe(candidate, parseTheme('')).recipe.fallbackCss !== undefined,
+    );
+    const compiled = await compileSourceUtilities(fallbackCandidates);
+    const emitted = new Map(compiled.entries.map((entry) => [entry.candidate, entry.css]));
+
+    for (const candidate of fallbackCandidates) {
+      expect(emitted.get(candidate) ?? '', candidate).toBe(TAILWIND_4_FALLBACKS[candidate]!.css);
+    }
+  }, 60_000);
+
+  it('covers recipe recovery and rejects invalid candidates without an oracle entry', async () => {
+    const theme = parseTheme('');
+    const recoverable = manifest.candidates.find((candidate) => {
+      const parsed = parseCandidate(candidate);
+      return (
+        classifyParsedCandidate(parsed) !== null &&
+        resolveUtilityRecipe(candidate, theme).recipe.fallbackCss !== undefined
+      );
+    });
+
+    expect(recoverable).toBeDefined();
+    expect(() => resolveUtilityRecipe('not-a-tailwind-utility', theme)).toThrow('cannot compile utility');
+    expect(() => resolveUtilityRecipe('p-not-a-spacing-token', theme)).toThrow('cannot compile utility');
+    await expect(compileUtilities(['align-baseline'], () => 'one two')).rejects.toThrow(
+      'expected one generated class for fallback utility',
+    );
   });
 });

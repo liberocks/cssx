@@ -16,7 +16,7 @@ test.describe('Next App Router CSSX stylesheet', () => {
     const css = await response.text();
     const classNames = [...html.matchAll(/\bclass="([^"]+)"/g)]
       .flatMap((match) => match[1]?.split(/\s+/) ?? [])
-      .filter((className) => /^s[0-9A-Za-z]+x$/.test(className));
+      .filter((className) => /^(?:s[0-9A-Za-z]+x|d[0-9a-z]+)$/.test(className));
 
     expect(classNames.length).toBeGreaterThan(0);
     expect(classNames.every((className) => css.includes(`.${className}`))).toBe(true);

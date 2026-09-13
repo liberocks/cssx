@@ -33,7 +33,7 @@ const CSSX_ONLY_CANDIDATES = [
 
 const tailwind = JSON.parse(
   readFileSync(fileURLToPath(new URL('./fixtures/tailwind-4.json', import.meta.url)), 'utf8'),
-) as { readonly supported: readonly string[]; readonly unsupported: readonly string[] };
+) as { readonly candidates: readonly string[] };
 
 describe('CSSX-only complete utility-family corpus', () => {
   it('stays distinct from the Tailwind corpus and compiles every family', () => {

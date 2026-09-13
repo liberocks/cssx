@@ -14,12 +14,12 @@ describe('documentation catalog', () => {
   it('uses direct sx calls for the home and documentation pages', async () => {
     const [home, docs] = await Promise.all([
       readFile(fromDocs('../src/screens/index.astro'), 'utf8'),
-      readFile(fromDocs('../src/screens/docs.astro'), 'utf8'),
+      readFile(fromDocs('../src/screens/docs/index.astro'), 'utf8'),
     ]);
 
     expect(home).toContain("import { sx } from '@cssxio/cssx';");
     expect(docs).toContain("import { sx } from '@cssxio/cssx';");
-    expect(docs).toContain('text-2xl');
+    expect(docs).toContain('text-3xl');
     expect(home).toContain('dark:text-gray-50');
   });
 

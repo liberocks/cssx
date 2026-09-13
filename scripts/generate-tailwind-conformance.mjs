@@ -69,6 +69,7 @@ await writeFile(
 );
 console.log(`Wrote ${path.relative(root, fixturePath)} (${candidates.length} candidates).`);
 
+/** Loads the verified development-only Tailwind compiler used as the oracle. */
 async function loadPinnedCompiler() {
   const pnpmRoot = path.join(root, 'node_modules', '.pnpm');
   const entries = await readdir(pnpmRoot);
@@ -89,6 +90,7 @@ async function loadPinnedCompiler() {
   });
 }
 
+/** Extracts Tailwind `@theme` declarations into CSSX's checked-in token map. */
 function parseTheme(sourceCss) {
   return Object.fromEntries(
     [...sourceCss.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/gi)].map(([, name, value]) => [
@@ -98,6 +100,7 @@ function parseTheme(sourceCss) {
   );
 }
 
+/** Isolates the rule emitted for one exact snapshot candidate. */
 function extractCandidateCss(sourceCss, candidate) {
   const selector = `.${escapeCssIdentifier(candidate)}`;
   const index = findExactSelector(sourceCss, selector);
@@ -124,6 +127,7 @@ function findExactSelector(source, selector) {
   return -1;
 }
 
+/** Finds the closing brace paired with an opening CSS rule brace. */
 function matchingBrace(source, open) {
   let depth = 0;
   for (let index = open; index < source.length; index++) {
@@ -133,6 +137,7 @@ function matchingBrace(source, open) {
   throw new Error('Unbalanced Tailwind CSS output.');
 }
 
+/** Splits a selector list without splitting commas nested in brackets or functions. */
 function splitSelectors(value) {
   const selectors = [];
   let current = '';
@@ -149,11 +154,13 @@ function splitSelectors(value) {
   return selectors;
 }
 
+/** Produces a conservative merge group from the first declaration in an oracle rule. */
 function declarationGroup(value) {
   const property = /(?:^|[;{])\s*(--[a-z0-9-]+|[a-z-]+)\s*:/i.exec(value)?.[1];
   return property ? `tailwind-${property}` : 'tailwind-utility';
 }
 
+/** Escapes a utility string for exact matching in Tailwind's generated CSS. */
 function escapeCssIdentifier(value) {
   let output = '';
   for (let index = 0; index < value.length; index++) {

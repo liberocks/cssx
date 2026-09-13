@@ -9,7 +9,7 @@ const theme = `
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   webpack(config) {
-    config.plugins.push(cssx({ cssFileName: 'static/cssx.css', theme }));
+    config.plugins.push(cssx({ cssFileName: 'static/cssx.css', theme, stableClassNames: true }));
     return config;
   },
 };

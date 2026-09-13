@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { serializeCss } from '@cssxio/compiler';
 import { compileCssxStylesheet, transformCssxModule } from '../src/index';
-import { sourceMapFromContext } from '../src/transform';
+import { quoteVueTemplateExpression, readSingleQuotedJavaScriptString, sourceMapFromContext } from '../src/transform';
 import { decodeFirstMapping, pluginFor, source, transformRequired } from './transform-helpers';
 
 describe('CSSX unplugin transform', () => {
+  it('decodes single-quoted Vue expressions with escaped quotes and control characters', () => {
+    expect(readSingleQuotedJavaScriptString("'it\\'s\\nready'")).toBe("it's\nready");
+    expect(readSingleQuotedJavaScriptString("'a\\qb'")).toBe('a\\qb');
+  });
+
+  it('requotes double-quoted JavaScript strings for Vue attributes', () => {
+    expect(quoteVueTemplateExpression('sx("it\'s")', '"')).toBe("sx('it\\'s')");
+    expect(quoteVueTemplateExpression("sx('p-4')", '"')).toBe("sx('p-4')");
+  });
+
   it('returns transformed code and standalone CSS metadata', async () => {
     const result = await transformCssxModule(source, '/project/styles.ts');
 
@@ -189,6 +199,34 @@ describe('CSSX unplugin transform', () => {
     expect(css).toContain('line-height:2.25rem');
     expect(css).toContain('font-weight:600');
     expect(css).toContain('color:oklch(62.27% 0.214 259.815)');
+  });
+
+  it('handles Vue SFC parser errors, script variants, empty templates, and quoted expressions', async () => {
+    await expect(
+      transformCssxModule(
+        `<script setup>import { sx } from '@cssxio/cssx';</script><template><main>`,
+        '/project/Broken.vue',
+      ),
+    ).rejects.toThrow('Element is missing end tag');
+
+    const emptyTemplate = `<template><main data-sx="@cssxio/cssx">sx</main></template>`;
+    await expect(transformCssxModule(emptyTemplate, '/project/Empty.vue')).resolves.toBeNull();
+
+    const noTemplateSx = await transformRequired(
+      `<script lang="js">import { sx } from '@cssxio/cssx'; export const style = sx('p-4');</script><template><main /></template>`,
+      '/project/Script.vue',
+    );
+    expect(noTemplateSx.code).toContain('<script lang="js">');
+
+    const quoted = await transformRequired(
+      `<script>export const unused = true;</script><script setup lang="tsx">\nimport * as cssx from '@cssxio/cssx';\nimport { sx } from '@cssxio/cssx';\nconst styles = cssx.create({ root: 'p-4' });\nexport const root = cssx.props(styles.root);\n</script><template><main :class='sx("p-4")' /><span>{{ sx(label === 'it\\'s\\n' && 'text-lg') }}</span></template>`,
+      '/project/Quoted.vue',
+      { reusabilityBudget: 100 },
+    );
+    expect(quoted.code).toContain('<script setup lang="tsx">');
+    expect(quoted.code).toContain('sx(');
+    expect(quoted.atomicClasses.length).toBeGreaterThan(0);
+    expect(serializeCss(quoted.rules)).toContain('font-size:1.125rem');
   });
 
   it('skips Astro templates without sx calls and handles escaped strings in dynamic expressions', async () => {

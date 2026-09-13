@@ -165,8 +165,7 @@ async function transformVueSfcModule(
   const sourceId = id.split('?', 1).join('');
   const parsed = parseVueSfc(code, { filename: sourceId });
   if (parsed.errors.length > 0) {
-    const error = parsed.errors[0];
-    throw new Error(typeof error === 'string' ? error : (error?.message ?? 'Unable to parse Vue SFC.'));
+    throw new Error(parsed.errors[0]!.message);
   }
 
   const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator();
@@ -181,13 +180,10 @@ async function transformVueSfcModule(
       continue;
     }
     const extension = block.lang === 'js' || block.lang === 'jsx' || block.lang === 'tsx' ? block.lang : 'ts';
-    const transformed = await transformCssxModule(block.content, `${sourceId}.cssx-vue-script.${extension}`, {
+    const transformed = (await transformCssxModule(block.content, `${sourceId}.cssx-vue-script.${extension}`, {
       ...options,
       classNameAllocator,
-    });
-    if (!transformed) {
-      continue;
-    }
+    }))!;
     replacements.push({ start: block.loc.start.offset, end: block.loc.end.offset, code: transformed.code });
     Object.assign(candidates, transformed.candidates);
     Object.assign(composites, transformed.composites);
@@ -293,7 +289,7 @@ function templateAttributeQuote(source: string, expressionStart: number): '"' | 
 }
 
 /** Requotes generated JavaScript strings so transformed code remains valid inside a Vue attribute. */
-function quoteVueTemplateExpression(expression: string, attributeQuote: '"' | "'" | undefined): string {
+export function quoteVueTemplateExpression(expression: string, attributeQuote: '"' | "'" | undefined): string {
   if (!attributeQuote) {
     return expression;
   }
@@ -305,7 +301,7 @@ function quoteVueTemplateExpression(expression: string, attributeQuote: '"' | "'
 }
 
 /** Decodes the limited single-quoted string syntax emitted by Babel. */
-function readSingleQuotedJavaScriptString(literal: string): string {
+export function readSingleQuotedJavaScriptString(literal: string): string {
   return literal.slice(1, -1).replace(/\\(['"\\bnfrtv])/g, (_match, escaped: string) => {
     const escapes: Readonly<Record<string, string>> = { b: '\b', n: '\n', f: '\f', r: '\r', t: '\t', v: '\v' };
     return escapes[escaped] ?? escaped;
