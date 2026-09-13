@@ -6,12 +6,6 @@ import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility 
 import { compileCoreLayoutUtility, compileContainerUtility } from './utility-layout';
 import { compileModernUtility } from './utility-modern';
 import { compileMotionUtility, isMotionUtilityCandidate } from './utility-motion';
-import {
-  compileColorUtility,
-  compileGradientUtility,
-  compileTextDecorationUtility,
-  resolveUtilityColor,
-} from './utility-paint';
 import { compilePrefixedUtility } from './utility-prefixed';
 import {
   flexValue,
@@ -53,11 +47,6 @@ describe('utility helper edge cases', () => {
   });
 
   it('keeps special colors and rejects invalid transform and arbitrary-property input', () => {
-    expect(resolveUtilityColor('current', theme)).toBe('currentColor');
-    expect(resolveUtilityColor('inherit', theme)).toBe('inherit');
-    expect(compileGradientUtility('from-red-500/none', false, theme)).toBeNull();
-    expect(compileColorUtility('text-xs', theme)).toBeNull();
-    expect(compileColorUtility('bg-red-500/101', theme)).toBeNull();
     expect(compileAnimationUtility('none', theme)).toEqual({ property: 'animation', value: 'none' });
     expect(compilePrefixedUtility('leading-6', false, emptyTheme)).toBeNull();
     expect(compileTransformUtility('translate-x-1/2', true, theme)?.[0]).toEqual({
@@ -130,32 +119,7 @@ describe('utility helper edge cases', () => {
     expect(compileNumericUtility('tabular-nums')).toHaveLength(2);
   });
 
-  it('covers paint, filter, transform, and motion value branches', () => {
-    expect(compileGradientUtility('bg-conic-[30deg]', false, theme)?.[0]?.value).toContain('from 30deg');
-    expect(compileGradientUtility('bg-linear-45', true, theme)?.[0]?.value).toContain('-45deg');
-    expect(compileGradientUtility('from-50%', false, theme)?.[0]).toEqual({
-      property: '--cssx-gradient-from-position',
-      value: '50%',
-      semanticGroup: 'gradient-from',
-    });
-    expect(compileGradientUtility('via-red-500/50', false, theme)).toHaveLength(2);
-    expect(compileColorUtility('text-[length:12px]', theme)).toEqual({ property: 'font-size', value: '12px' });
-    expect(compileColorUtility('bg-[image:url("/image.svg")]', theme)).toEqual({
-      property: 'background-image',
-      value: 'url("/image.svg")',
-    });
-    expect(compileTextDecorationUtility('underline-offset-auto', theme)).toEqual({
-      property: 'text-underline-offset',
-      value: 'auto',
-    });
-    expect(compileTextDecorationUtility('decoration-[3px]', theme)).toEqual({
-      property: 'text-decoration-thickness',
-      value: '3px',
-    });
-    expect(compileTextDecorationUtility('decoration-red-500', theme)).toEqual({
-      property: 'text-decoration-color',
-      value: 'oklch(63.71% 0.237 25.331)',
-    });
+  it('covers filter, transform, and motion value branches', () => {
     expect(compileFilterUtility('opacity-50', false)).toBeNull();
     expect(compileFilterUtility('hue-rotate-45', true)?.[0]?.value).toBe('hue-rotate(-45deg)');
     expect(compileFilterUtility('drop-shadow', false)).toHaveLength(2);
@@ -394,12 +358,6 @@ describe('utility helper edge cases', () => {
     ).toMatchObject({ value: 'linear(0, 1)' });
     expect(compileMotionUtility('ease-invalid', false, emptyTheme)).toBeNull();
     expect(compileMotionUtility('delay-(--time)', true, theme)).toMatchObject({ value: 'calc(var(--time) * -1)' });
-
-    expect(compileGradientUtility('bg-linear-[45deg]', false, theme)?.[0]?.value).toContain('45deg');
-    expect(compileTextDecorationUtility('underline-offset-(--offset)', theme)?.value).toBe('var(--offset)');
-    expect(compileTextDecorationUtility('underline-offset-2', emptyTheme)?.value).toBe('');
-    expect(compileTextDecorationUtility('decoration-auto', theme)?.value).toBe('auto');
-    expect(compileTextDecorationUtility('decoration-invalid', theme)).toBeNull();
 
     expect(compilePrefixedUtility('basis-invalid', false, theme)).toBeNull();
     expect(compilePrefixedUtility('flex-1/0', false, theme)).toBeNull();

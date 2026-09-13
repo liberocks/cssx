@@ -1,5 +1,5 @@
+import { resolveUtilityColor } from './resolve-utility-color';
 import type { CssxTheme } from './theme';
-import { resolveUtilityColor } from './utility-paint';
 import {
   resolveArbitraryCssValue,
   resolveBorderWidthValue,
