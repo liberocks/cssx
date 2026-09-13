@@ -16,13 +16,13 @@
     "generate:tailwind-corpus": "pnpm --filter @cssxio/compiler build && node scripts/generate-tailwind-conformance.mjs",
     "lint": "eslint . --max-warnings 0",
     "test": "pnpm test:unit && pnpm test:package-contract",
-    "test:unit": "vitest run --exclude packages/cssx/test/package-contract.test.ts",
-    "test:package-contract": "pnpm build && vitest run packages/cssx/test/package-contract.test.ts",
+    "test:unit": "vitest run --exclude packages/cssx/src/package-contract.test.ts",
+    "test:package-contract": "pnpm build && vitest run packages/cssx/src/package-contract.test.ts",
     "test:visual": "pnpm --dir tests test",
     "test:visual:update": "pnpm --dir tests test:update",
     "test:release": "pnpm format:check && pnpm lint && pnpm test:coverage && pnpm test:package-contract && pnpm typecheck",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --exclude packages/cssx/test/package-contract.test.ts",
+    "test:coverage": "vitest run --coverage --exclude packages/cssx/src/package-contract.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

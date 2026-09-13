@@ -29,33 +29,8 @@ export default tseslint.config(
     },
   },
   {
-    files: ['packages/compiler/src/**/*.ts', 'packages/babel-plugin/src/**/*.ts', 'packages/unplugin/src/**/*.ts'],
-    plugins: { jsdoc },
-    rules: {
-      'jsdoc/check-alignment': 'error',
-      'jsdoc/check-param-names': 'error',
-      'jsdoc/check-tag-names': 'error',
-      'jsdoc/no-types': 'error',
-      'jsdoc/require-hyphen-before-param-description': ['error', 'never'],
-      'jsdoc/require-jsdoc': [
-        'error',
-        {
-          contexts: [
-            'FunctionDeclaration',
-            'Program > VariableDeclaration',
-            'TSInterfaceDeclaration',
-            'TSTypeAliasDeclaration',
-            'TSInterfaceDeclaration > TSPropertySignature',
-            'TSInterfaceDeclaration > TSMethodSignature',
-          ],
-        },
-      ],
-      'jsdoc/require-param-description': 'error',
-      'jsdoc/require-returns-description': 'error',
-    },
-  },
-  {
-    files: ['packages/cssx/src/index.ts'],
+    files: ['packages/{babel-plugin,compiler,cssx,html,unplugin}/src/**/*.ts'],
+    ignores: ['packages/**/src/**/*.test.ts', 'packages/**/src/**/*-test-helpers.ts'],
     plugins: { jsdoc },
     rules: {
       'jsdoc/check-alignment': 'error',

@@ -1,48 +1,12 @@
 import { resolveThemeToken } from './theme';
 import type { CssxTheme } from './theme';
+import { resolveSpacingValue } from './resolve-spacing-value';
+export { isLengthCssValue } from './is-length-css-value';
+export { resolveArbitraryCssValue } from './resolve-arbitrary-css-value';
+export { resolveBorderWidthValue } from './resolve-border-width-value';
+export { flexValue } from './flex-value';
+export { resolveSpacingValue } from './resolve-spacing-value';
 
-/**
- * Decodes bracketed or variable shorthand utility values.
- *
- * @param value Raw arbitrary utility value.
- * @returns CSS value with escaped underscores preserved.
- */
-export function resolveArbitraryCssValue(value: string): string {
-  if (value.startsWith('(') && value.endsWith(')')) {
-    return `var(${value.slice(1, -1)})`;
-  }
-  const raw = value.slice(1, -1);
-  return raw.replaceAll('\\_', '\u0000').replaceAll('_', ' ').replaceAll('\u0000', '_');
-}
-
-/**
- * Checks whether arbitrary CSS text unambiguously represents a length.
- *
- * @param value Arbitrary value without brackets.
- * @returns Whether the value is safe to compile as a length.
- */
-export function isLengthCssValue(value: string): boolean {
-  const hasLengthHint = /^(?:length|size):/.test(value);
-  const normalized = value.replace(/^(?:length|size):/, '');
-  return (
-    normalized === '0' ||
-    /^-?(?:\d+(?:\.\d+)?)(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|%|cm|mm|in|pt|pc)$/i.test(normalized) ||
-    /^(?:calc|min|max|clamp)\(/.test(normalized) ||
-    (hasLengthHint && normalized.startsWith('var('))
-  );
-}
-/**
- * Resolves a supported border-width value.
- *
- * @param raw Utility value.
- * @returns CSS width, or null when unsupported.
- */
-export function resolveBorderWidthValue(raw: string): string | null {
-  if (raw.startsWith('[') && raw.endsWith(']')) {
-    return raw.slice(1, -1);
-  }
-  return /^(0|2|4|8)$/.test(raw) ? `${raw}px`.replace('0px', '0') : null;
-}
 /**
  * Resolves a spacing value against the active spacing token.
  *
@@ -51,45 +15,6 @@ export function resolveBorderWidthValue(raw: string): string | null {
  * @param theme Active resolved theme.
  * @returns CSS spacing value, or null when unsupported.
  */
-export function resolveSpacingValue(raw: string, negative: boolean, theme: CssxTheme): string | null {
-  const sign = negative ? '-' : '';
-  if (raw === 'px') {
-    return `${sign}1px`;
-  }
-  if (raw === 'full') {
-    return `${sign}100%`;
-  }
-  if (raw.startsWith('[') && raw.endsWith(']')) {
-    return `${sign}${raw.slice(1, -1)}`;
-  }
-  if (!/^\d+(?:\.\d+)?$/.test(raw)) {
-    return null;
-  }
-  const spacing = resolveThemeToken(theme, '--spacing');
-  if (!spacing) {
-    return null;
-  }
-  return negative ? `calc(${spacing} * -${raw})` : `calc(${spacing} * ${raw})`;
-}
-
-/**
- * Resolves an integer or fraction to a flex value.
- *
- * @param raw Utility value.
- * @returns CSS flex value, or null when unsupported.
- */
-export function flexValue(raw: string): string | null {
-  const fraction = /^(\d+)\/(\d+)$/.exec(raw);
-  if (!fraction) {
-    return /^\d+$/.test(raw) ? raw : null;
-  }
-  const denominator = Number(fraction[2]);
-  if (denominator === 0) {
-    return null;
-  }
-  return `calc(${fraction[1]} / ${fraction[2]} * 100%)`;
-}
-
 /**
  * Resolves named, fractional, viewport, and spacing dimension values.
  *

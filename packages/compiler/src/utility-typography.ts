@@ -1,7 +1,7 @@
 import { resolveThemeToken } from './theme';
 import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
-import { resolveArbitraryCssValue, resolveSpacingValue } from './utility-resolvers';
+import { resolveLineHeight } from './resolve-line-height';
 
 /**
  * Compiles Tailwind-compatible font-size utilities from the active `--text-*`
@@ -34,15 +34,4 @@ export function compileFontSizeUtility(utility: string, theme: CssxTheme): Utili
     declarations.push({ property: 'font-weight', value: fontWeight });
   }
   return declarations;
-}
-
-/** Resolves the optional line-height modifier on a text-size utility. */
-function resolveLineHeight(value: string, theme: CssxTheme): string | null | undefined {
-  if (value.startsWith('[') || value.startsWith('(')) {
-    return resolveArbitraryCssValue(value);
-  }
-  if (/^\d+(?:\.\d+)?$/.test(value)) {
-    return resolveSpacingValue(value, false, theme);
-  }
-  return resolveThemeToken(theme, `--leading-${value}`);
 }

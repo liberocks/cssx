@@ -14,14 +14,14 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['packages/*/test/**/*.test.ts'],
+    include: ['packages/*/src/**/*.test.{js,ts}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary'],
       include: ['packages/*/src/**/*.{js,ts}'],
       // Astro is integration-tested by its own build; keep this TypeScript
       // coverage gate focused on compiler and adapter source.
-      exclude: ['**/*.d.ts', 'packages/docs/**'],
+      exclude: ['**/*.d.ts', '**/*.test.{js,ts}', '**/*-test-helpers.{js,ts}', 'packages/docs/**'],
       thresholds: {
         100: true,
         perFile: true,

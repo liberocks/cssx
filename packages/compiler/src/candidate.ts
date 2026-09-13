@@ -1,3 +1,6 @@
+import { isWhitespaceCode } from './is-whitespace-code';
+export { candidateScope } from './candidate-scope';
+
 /** Parsed parts of one supported static utility candidate. */
 export interface ParsedCandidate {
   /** Original unmodified candidate string. */
@@ -128,17 +131,6 @@ export function splitCandidateList(source: string): readonly string[] {
   return candidates;
 }
 
-/** Checks JavaScript whitespace without creating a regular-expression match per character. */
-function isWhitespaceCode(code: number): boolean {
-  return WHITESPACE_CODES.has(code);
-}
-
-/** ECMAScript whitespace code points accepted between static utilities. */
-const WHITESPACE_CODES = new Set<number>([
-  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x20, 0xa0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007,
-  0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff,
-]);
-
 /**
  * Parses supported static candidate syntax and rejects CSS injection delimiters.
  *
@@ -182,17 +174,6 @@ export function parseCandidate(raw: string): ParsedCandidate {
 
   const variants = normalizeVariants(parts, raw);
   return { raw, variants, utility, important, negative };
-}
-
-/**
- * Gets the merge scope shared by candidates with the same variants and importance.
- *
- * @param candidate Parsed candidate.
- * @returns Stable scope key for semantic conflict handling.
- */
-export function candidateScope(candidate: ParsedCandidate): string {
-  const scope = candidate.variants.join(':');
-  return candidate.important ? (scope ? `${scope}!` : '!') : scope;
 }
 
 /**

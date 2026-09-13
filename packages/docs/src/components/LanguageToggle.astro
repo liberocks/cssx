@@ -15,7 +15,7 @@ interface Props {
   aria-label="Switch language"
   data-locales={localeCodes.join(',')}
   data-default={defaultLocale}
-  class={Astro.props.class}  
+  class={Astro.props.class}
 >
   <Icon name="language" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} />
 </button>
@@ -37,8 +37,12 @@ interface Props {
       const rest = firstSegment && prefixed.has(firstSegment) ? pathname.slice(firstSegment.length + 1) || '/' : pathname;
       const prefix = next === defaultLocaleCode ? '' : `/${next}`;
       const target = rest === '/' ? prefix || '/' : `${prefix}${rest}`;
-      if (target !== pathname) {
-        window.location.assign(target);
+      const destination = new URL(target, window.location.origin);
+      const isSafeDestination =
+        destination.origin === window.location.origin &&
+        (destination.protocol === 'http:' || destination.protocol === 'https:');
+      if (isSafeDestination && destination.pathname !== pathname) {
+        window.location.assign(`${destination.pathname}${destination.search}${destination.hash}`);
       }
     });
   }
