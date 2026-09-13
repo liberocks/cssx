@@ -2,6 +2,7 @@ import { candidateScope, parseCandidate } from './candidate';
 import type { ParsedCandidate } from './candidate';
 import { classSelectors } from './class-selectors';
 import { cssOrder } from './css-order';
+import { compileDeclarations } from './compile-declarations';
 import { utilityFallback } from './fallback';
 import { fallbackRecipe } from './fallback-recipe';
 import { propertyRegistration } from './property-registration';
@@ -14,19 +15,7 @@ import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
 import { parseTheme, resolveThemeValue, serializeThemeKeyframe, serializeThemeTokens } from './theme';
 import type { CssxTheme } from './theme';
-import {
-  compileDivideUtility,
-  compileOutlineUtility,
-  compilePlaceholderUtility,
-  compileSpaceUtility,
-} from './utility-box-model';
-import { EXACT_DECLARATIONS } from './utility-exact-declarations';
-import { compileContainerUtility, compileCoreLayoutUtility } from './utility-layout';
-import { compilePrefixedUtility } from './utility-prefixed';
-import { compileArbitraryProperty } from './utility-transform';
-import type { UtilityDeclaration } from './utility-types';
-import { compileFontSizeUtility } from './utility-typography';
-import { atomizeDeclarations, cloneDeclarations } from './utility-values';
+import { atomizeDeclarations } from './utility-values';
 import { applyVariants } from './utility-variants';
 import type { VariantOptions } from './utility-variants';
 
@@ -369,56 +358,4 @@ function compileCandidate(
       };
     })
     .filter((entry): entry is CompiledUtility => entry !== null);
-}
-
-/**
- * Resolves one utility name through exact declarations and compiler families.
- *
- * @param utility Utility name without variants or modifiers.
- * @param negative Whether the candidate uses negative value syntax.
- * @param theme Active resolved theme.
- * @returns Mutable declarations for the utility.
- */
-function compileDeclarations(utility: string, negative: boolean, theme: CssxTheme): UtilityDeclaration[] {
-  const fontSize = compileFontSizeUtility(utility, theme);
-  if (fontSize) {
-    return fontSize;
-  }
-  const exact = EXACT_DECLARATIONS[utility];
-  if (exact) {
-    return cloneDeclarations(exact);
-  }
-  if (utility.startsWith('[') && utility.endsWith(']')) {
-    return [compileArbitraryProperty(utility)];
-  }
-
-  const space = compileSpaceUtility(utility, negative, theme);
-  if (space) {
-    return space;
-  }
-  const divide = compileDivideUtility(utility, theme);
-  if (divide) {
-    return divide;
-  }
-  const placeholder = compilePlaceholderUtility(utility, theme);
-  if (placeholder) {
-    return placeholder;
-  }
-  const outline = compileOutlineUtility(utility, negative, theme);
-  if (outline) {
-    return outline;
-  }
-  const container = compileContainerUtility(utility, theme);
-  if (container) {
-    return container;
-  }
-  const layout = compileCoreLayoutUtility(utility, negative, theme);
-  if (layout) {
-    return Array.isArray(layout) ? layout : [layout];
-  }
-  const declaration = compilePrefixedUtility(utility, negative, theme);
-  if (!declaration) {
-    throw new Error(`CSSX cannot compile utility "${negative ? '-' : ''}${utility}".`);
-  }
-  return Array.isArray(declaration) ? declaration : [declaration];
 }
