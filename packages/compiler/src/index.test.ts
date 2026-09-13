@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { createClassNameAllocator } from './class-name-allocator';
-import { compileStyleMap, compileStyleMaps } from './compile-style-map';
+import { compileStyleMap } from './compile-style-map';
+import { compileStyleMaps } from './compile-style-maps';
 import { compileStyleRecords } from './compile-style-records';
 import { composeCompiledStyles } from './compose-compiled-styles';
 import { mergeCompiledStyles } from './merge-compiled-styles';
