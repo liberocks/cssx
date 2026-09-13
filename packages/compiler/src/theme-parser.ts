@@ -6,6 +6,7 @@ import { readThemeBalancedBlock } from './read-theme-balanced-block';
 import { rewriteThemeReferences } from './rewrite-theme-references';
 import { themeTokenName } from './theme-token-name';
 import { referencedThemeTokens } from './referenced-theme-tokens';
+import { splitThemeDeclarations } from './split-theme-declarations';
 
 /** Maximum accepted CSS source length for a theme. */
 const MAX_THEME_LENGTH = 131_072;
@@ -138,7 +139,7 @@ function validateKeyframeBody(body: string, name: string): void {
       throw new Error(`Unterminated CSSX @keyframes ${name}.`);
     }
     const declarationBlock = readThemeBalancedBlock(body, index);
-    for (const declaration of splitDeclarations(declarationBlock.content)) {
+    for (const declaration of splitThemeDeclarations(declarationBlock.content)) {
       const separator = declaration.indexOf(':');
       const property = declaration.slice(0, separator).trim();
       const value = declaration.slice(separator + 1).trim();
@@ -221,7 +222,7 @@ export function serializeThemeKeyframe(theme: CssxTheme, name: string): string |
  * @returns Nothing.
  */
 function parseThemeDeclarations(block: string, tokens: Record<string, string>): void {
-  for (const declaration of splitDeclarations(block)) {
+  for (const declaration of splitThemeDeclarations(block)) {
     const separator = declaration.indexOf(':');
     if (separator === -1) {
       throw new Error(`Invalid CSSX @theme declaration "${declaration}".`);
@@ -266,66 +267,4 @@ function resolveTokenValue(tokens: Readonly<Record<string, string>>, value: stri
     }
     return resolveTokenValue(tokens, referenced, new Set([...seen, reference]));
   });
-}
-
-/**
- * Splits declarations without treating semicolons in strings or functions as separators.
- *
- * @param block Declaration source to scan.
- * @returns Trimmed non-empty declarations.
- */
-function splitDeclarations(block: string): readonly string[] {
-  const declarations: string[] = [];
-  let token = '';
-  let quote = '';
-  let escaped = false;
-  let parenthesisDepth = 0;
-  for (const character of block) {
-    if (escaped) {
-      token += character;
-      escaped = false;
-      continue;
-    }
-    if (character === '\\') {
-      token += character;
-      escaped = true;
-      continue;
-    }
-    if (quote) {
-      token += character;
-      if (character === quote) {
-        quote = '';
-      }
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
-      token += character;
-      continue;
-    }
-    if (character === '(') {
-      parenthesisDepth++;
-    }
-    if (character === ')') {
-      parenthesisDepth--;
-    }
-    if (parenthesisDepth < 0) {
-      throw new Error('Invalid CSSX @theme declaration.');
-    }
-    if (character === ';' && parenthesisDepth === 0) {
-      if (token.trim()) {
-        declarations.push(token.trim());
-      }
-      token = '';
-      continue;
-    }
-    token += character;
-  }
-  if (quote || escaped || parenthesisDepth !== 0) {
-    throw new Error('Invalid CSSX @theme declaration.');
-  }
-  if (token.trim()) {
-    declarations.push(token.trim());
-  }
-  return declarations;
 }
