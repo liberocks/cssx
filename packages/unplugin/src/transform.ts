@@ -1,14 +1,13 @@
 import { transformAsync } from '@babel/core';
 import cssxBabelPlugin from '@cssxio/babel-plugin';
-import { compileUtilities, createClassNameAllocator, createSelectorAliases } from '@cssxio/compiler';
+import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 import { assertPluginOptions, loadTheme, type CssxPluginOptions } from './options';
 import type { IncomingSourceMap } from './source-map-from-context';
 import type { CssxCandidateOrigin } from './stylesheet';
 import { compiledCssRule } from './compiled-css-rule';
 import { wrapCssLayer } from './wrap-css-layer';
-import { findSxCalls } from './find-sx-calls';
-import { transformedExpression } from './transformed-expression';
+import { transformAstroSxModule } from './transform-astro-sx';
 import { transformVueSfcModule } from './transform-vue-sfc';
 
 export { sourceMapFromContext } from './source-map-from-context';
@@ -78,7 +77,7 @@ export async function transformCssxModule(
     return null;
   }
   if (sourceId.endsWith('.astro')) {
-    return transformAstroSxModule(code, id, options);
+    return transformAstroSxModule(code, id, options, transformCssxModule);
   }
   if (sourceId.endsWith('.vue')) {
     return transformVueSfcModule(code, id, options, transformCssxModule);
@@ -136,60 +135,6 @@ export async function transformCssxModule(
   };
 }
 
-/**
- * Transforms `sx` expressions embedded in an Astro template without parsing its HTML as JavaScript.
- *
- * @param code Astro component source.
- * @param id Astro component identifier.
- * @param options Adapter options.
- * @returns Transformed Astro source and its compiled CSS metadata.
- */
-async function transformAstroSxModule(
-  code: string,
-  id: string,
-  options: CssxPluginOptions & {
-    readonly classNameAllocator?: ClassNameAllocator;
-    readonly stableClassNames?: boolean;
-    readonly stableClassNameFileName?: string;
-  },
-): Promise<TransformResult | null> {
-  const calls = findSxCalls(code);
-  if (calls.length === 0) {
-    return null;
-  }
-
-  const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator();
-  const importSource = options.importSource ?? '@cssxio/cssx';
-  const candidates: Record<string, string> = {};
-  const composites: Record<string, readonly string[]> = {};
-  const rules: CssxRule[] = [];
-  let transformedCode = code;
-
-  for (const call of [...calls].reverse()) {
-    const transformed = (await transformCssxModule(
-      `import { sx } from ${JSON.stringify(importSource)};\nconst style = ${call.code};`,
-      `${id}.ts`,
-      { ...options, classNameAllocator },
-    )) as TransformResult;
-    const expression = transformedExpression(transformed.code);
-    transformedCode = `${transformedCode.slice(0, call.start)}${expression}${transformedCode.slice(call.end)}`;
-    Object.assign(candidates, transformed.candidates);
-    Object.assign(composites, transformed.composites);
-    rules.push(...transformed.rules);
-  }
-
-  return {
-    code: transformedCode,
-    rules,
-    candidates,
-    composites,
-    atomicClasses: [],
-    origins: {},
-    cssOnlySignature: transformedCode,
-  };
-}
-
-/** Finds complete `sx(...)` calls without interpreting the surrounding Astro template. */
 /** CSSX metadata written by the Babel transform. */
 interface CssxMetadata {
   /** Maps utility strings to generated class names. */
