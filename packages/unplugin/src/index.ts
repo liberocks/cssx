@@ -5,7 +5,7 @@ import { basename, dirname, relative, resolve, sep } from 'node:path';
 import { createUnplugin } from 'unplugin';
 import type { UnpluginFactory } from 'unplugin';
 
-import { dataFromMetadata } from './data-from-metadata';
+import { createGenerateBundleHandler } from './create-generate-bundle-handler';
 import { invalidateViteRunner, type ViteHotUpdateModule } from './invalidate-vite-runner';
 import { RULES_METADATA_KEY, type ModuleCssxData } from './module-cssx-data';
 import { configureCompilationAsset, storeCompilationData, type NativeCompiler } from './native';
@@ -38,38 +38,6 @@ export { transformCssxModule, type IncomingSourceMap, type TransformResult } fro
 
 /** Matches JavaScript, TypeScript, Astro, and Vue module IDs, with an optional query. */
 const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro|vue)(?:\?.*)?$/;
-
-/** Rollup-compatible context used to read metadata and emit final assets. */
-interface RollupLikeContext {
-  /**
-   * Returns module information, including metadata when it is available.
-   *
-   * @param id Source module ID.
-   * @returns Module information or null when the module is absent.
-   */
-  getModuleInfo(id: string): { readonly meta?: unknown } | null;
-  /**
-   * Emits one asset into the current build output.
-   *
-   * @param asset CSS asset to emit.
-   * @param asset.type Asset category.
-   * @param asset.fileName Relative output file name.
-   * @param asset.source CSS asset contents.
-   * @returns The build tool's emitted-file reference.
-   */
-  emitFile(asset: { readonly type: 'asset'; readonly fileName: string; readonly source: string }): unknown;
-}
-
-/** One output item from a Rollup-compatible bundle. */
-interface RollupLikeOutput {
-  /** Output item kind, such as `chunk` or `asset`. */
-  readonly type: string;
-  /** Source modules included by a chunk. */
-  readonly modules?: Readonly<Record<string, unknown>>;
-}
-
-/** A Rollup-compatible output bundle indexed by output file name. */
-type RollupLikeBundle = Readonly<Record<string, RollupLikeOutput>>;
 
 /** Development server API used to serve and refresh the in-memory stylesheet. */
 interface ViteServerLike {
@@ -150,65 +118,14 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
    * @returns A promise for the configured theme source, or undefined.
    */
   const getTheme = (): Promise<string | undefined> => loadTheme(options);
-  /**
-   * Collects data from live output modules and emits the production stylesheet.
-   *
-   * @param _outputOptions Build output options, which CSSX does not need.
-   * @param bundle Output bundle used to identify modules that remain in the build.
-   * @returns Nothing after CSS and its optional source map are emitted.
-   */
-  const generateBundle = async function (
-    this: RollupLikeContext,
-    _outputOptions: unknown,
-    bundle: RollupLikeBundle,
-  ): Promise<void> {
-    const liveIds = new Set(
-      Object.values(bundle)
-        .flatMap((output) => (output.type === 'chunk' ? Object.keys(output.modules ?? {}) : []))
-        .map(moduleId),
-    );
-    if (meta.framework !== 'vite') {
-      for (const id of rollupDataById.keys()) {
-        if (!liveIds.has(id)) {
-          rollupDataById.delete(id);
-        }
-      }
-    }
-    const data =
-      meta.framework === 'vite'
-        ? [...rollupDataById.values()]
-        : [...liveIds].map((id) => {
-            const metadata = dataFromMetadata(this.getModuleInfo(id)?.meta);
-            return Object.keys(metadata.candidates).length > 0 ? metadata : (rollupDataById.get(id) ?? metadata);
-          });
-    const compiled = await compileCssxStylesheet(
-      data,
-      await getTheme(),
-      options.layer,
-      sourceMap,
-      options.darkMode,
-      options.preflight,
-    );
-    if (!compiled.css) {
-      return;
-    }
-    const fileName = resolveCssFileName(cssFileName, compiled.css);
-    if (Object.hasOwn(bundle, fileName)) {
-      throw new Error(`CSSX CSS asset collision at "${fileName}".`);
-    }
-    this.emitFile({
-      type: 'asset',
-      fileName,
-      source: cssWithSourceMapComment(compiled, fileName),
-    });
-    if (compiled.map) {
-      const mapFileName = `${fileName}.map`;
-      if (Object.hasOwn(bundle, mapFileName)) {
-        throw new Error(`CSSX CSS map asset collision at "${mapFileName}".`);
-      }
-      this.emitFile({ type: 'asset', fileName: mapFileName, source: cssSourceMap(compiled.map, fileName) });
-    }
-  };
+  const generateBundle = createGenerateBundleHandler({
+    framework: meta.framework,
+    options,
+    cssFileName,
+    sourceMap,
+    rollupDataById,
+    getTheme,
+  });
 
   return {
     name: '@cssxio/unplugin',
