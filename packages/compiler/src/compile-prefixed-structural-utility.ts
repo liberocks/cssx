@@ -41,9 +41,5 @@ export function compilePrefixedStructuralUtility(
   if (typography) {
     return typography;
   }
-  const animation = /^animate-(.+)$/.exec(utility);
-  if (animation) {
-    return compileAnimationUtility(animation[1]!, theme);
-  }
-  return compileTransformUtility(utility, negative, theme);
+  return compileAnimationUtility(utility, theme) ?? compileTransformUtility(utility, negative, theme);
 }

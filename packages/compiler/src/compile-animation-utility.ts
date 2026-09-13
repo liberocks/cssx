@@ -3,13 +3,18 @@ import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 
 /**
- * Compiles one animation utility value.
+ * Compiles a named, arbitrary, or theme-backed animation utility.
  *
- * @param name Animation value without the utility prefix.
+ * @param utility Complete animation utility without variants.
  * @param theme Active resolved theme.
- * @returns Animation declaration, or null when the value is unknown.
+ * @returns Animation declaration, or null when another recipe applies.
  */
-export function compileAnimationUtility(name: string, theme: CssxTheme): UtilityDeclaration | null {
+export function compileAnimationUtility(utility: string, theme: CssxTheme): UtilityDeclaration | null {
+  const match = /^animate-(.+)$/.exec(utility);
+  if (!match) {
+    return null;
+  }
+  const name = match[1]!;
   if (name === 'none') {
     return { property: 'animation', value: 'none' };
   }
