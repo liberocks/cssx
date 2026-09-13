@@ -1,21 +1,5 @@
+import { createShadowDeclarations } from './create-shadow-declarations';
 import type { UtilityDeclaration } from './utility-types';
-
-/** Shared box-shadow value that combines shadow and ring channels. */
-const CSSX_SHADOW_SINK =
-  'var(--cssx-shadow, 0 0 #0000), var(--cssx-ring-offset-shadow, 0 0 #0000), var(--cssx-ring-shadow, 0 0 #0000)';
-
-/**
- * Builds the custom-property and sink declarations for one shadow value.
- *
- * @param value CSS shadow value.
- * @returns Shadow declarations that remain compatible with ring utilities.
- */
-function shadowDeclarations(value: string): readonly UtilityDeclaration[] {
-  return [
-    { property: '--cssx-shadow', value, semanticGroup: 'shadow' },
-    { property: 'box-shadow', value: CSSX_SHADOW_SINK, semanticGroup: 'shadow' },
-  ];
-}
 
 /** Exact visual utility declarations that need no runtime value resolution. */
 export const EXACT_VISUAL_DECLARATIONS: Readonly<Record<string, readonly UtilityDeclaration[]>> = {
@@ -99,13 +83,13 @@ export const EXACT_VISUAL_DECLARATIONS: Readonly<Record<string, readonly Utility
   'border-r': [{ property: 'border-right-width', value: '1px' }],
   'border-b': [{ property: 'border-bottom-width', value: '1px' }],
   'border-l': [{ property: 'border-left-width', value: '1px' }],
-  shadow: shadowDeclarations('0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1)'),
-  'shadow-none': shadowDeclarations('0 0 #0000'),
-  'shadow-sm': shadowDeclarations('0 1px 2px 0 rgb(0 0 0 / .05)'),
-  'shadow-md': shadowDeclarations('0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1)'),
-  'shadow-lg': shadowDeclarations('0 10px 15px -3px rgb(0 0 0 / .1), 0 4px 6px -4px rgb(0 0 0 / .1)'),
-  'shadow-xl': shadowDeclarations('0 20px 25px -5px rgb(0 0 0 / .1), 0 8px 10px -6px rgb(0 0 0 / .1)'),
-  'shadow-2xl': shadowDeclarations('0 25px 50px -12px rgb(0 0 0 / .25)'),
+  shadow: createShadowDeclarations('0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1)'),
+  'shadow-none': createShadowDeclarations('0 0 #0000'),
+  'shadow-sm': createShadowDeclarations('0 1px 2px 0 rgb(0 0 0 / .05)'),
+  'shadow-md': createShadowDeclarations('0 4px 6px -1px rgb(0 0 0 / .1), 0 2px 4px -2px rgb(0 0 0 / .1)'),
+  'shadow-lg': createShadowDeclarations('0 10px 15px -3px rgb(0 0 0 / .1), 0 4px 6px -4px rgb(0 0 0 / .1)'),
+  'shadow-xl': createShadowDeclarations('0 20px 25px -5px rgb(0 0 0 / .1), 0 8px 10px -6px rgb(0 0 0 / .1)'),
+  'shadow-2xl': createShadowDeclarations('0 25px 50px -12px rgb(0 0 0 / .25)'),
   'transition-none': [{ property: 'transition-property', value: 'none' }],
   'transition-normal': [{ property: 'transition-behavior', value: 'normal' }],
   'transition-discrete': [{ property: 'transition-behavior', value: 'allow-discrete' }],
