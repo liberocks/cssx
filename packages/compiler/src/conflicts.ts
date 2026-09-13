@@ -1,14 +1,11 @@
 import { atomSymbolsForAllocator } from './atom-symbols-for-allocator';
+import { createClassNameAllocator } from './class-name-allocator';
 import { COMPILER_ABI } from './compiler-abi';
 import { compositeIdentity } from './composite-identity';
 import { compositeNameIdentity } from './composite-name-identity';
 import { parseCandidate, splitCandidateList } from './candidate';
 import { mergeCompiledStyles } from './merge-compiled-styles';
-import { normalizeClassNameOptions } from './normalize-class-name-options';
-import type { NormalizedClassNameOptions } from './normalize-class-name-options';
-import { randomClassFragment } from './random-class-fragment';
 import { classifyCandidate, classifyParsedCandidate } from './semantics';
-import { serialClassFragment } from './serial-class-fragment';
 import { packedAtomicClasses } from './packed-atomic-classes';
 import { serializeThemeSignature } from './serialize-theme-signature';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
@@ -125,6 +122,8 @@ export function classifyUtility(candidate: string): UtilityConflictRecord | null
   }
   return semantics;
 }
+
+export { createClassNameAllocator };
 
 export { mergeCompiledStyles };
 
@@ -642,64 +641,6 @@ function createAtomIdentities(
     });
   }
   return { symbols, allocationIdentities };
-}
-
-/**
- * Assigns unique names to identities in one compilation namespace.
- *
- * Serial names use a compact case-sensitive base-62 counter. Random names use
- * a stable hash and deterministic probing, so choosing a shorter hash cannot
- * silently collide.
- *
- * @param options User-supplied naming options.
- * @returns A stateful class-name allocator.
- */
-export function createClassNameAllocator(options: ClassNameOptions = {}): ClassNameAllocator {
-  return new GeneratedClassNameAllocator(normalizeClassNameOptions(options));
-}
-
-/** Allocates generated class names while preserving previous identity assignments. */
-class GeneratedClassNameAllocator implements ClassNameAllocator {
-  private readonly classNames = new Map<string, string>();
-  private readonly allocated = new Set<string>();
-  private serialCounter = 0;
-
-  constructor(private readonly naming: NormalizedClassNameOptions) {}
-
-  allocate(identities: readonly string[]): ReadonlyMap<string, string> {
-    const newIdentities = [...new Set(identities)].filter((identity) => !this.classNames.has(identity)).sort();
-    if (this.naming.variant === 'random' && this.naming.length !== undefined) {
-      const capacity = 36n ** BigInt(this.naming.length);
-      if (BigInt(newIdentities.length + this.allocated.size) > capacity) {
-        throw new Error(
-          `CSSX className.length ${this.naming.length} cannot name every generated class without a collision.`,
-        );
-      }
-    }
-    for (const identity of newIdentities) {
-      let attempt = 0;
-      let className = '';
-      do {
-        const core =
-          this.naming.variant === 'serial'
-            ? this.naming.prefix || this.naming.suffix
-              ? serialClassFragment(this.serialCounter++)
-              : String(this.serialCounter++)
-            : randomClassFragment(identity, this.naming.length, attempt);
-        className = `${this.naming.prefix}${core}${this.naming.suffix}`;
-        attempt++;
-      } while (this.allocated.has(className));
-      this.allocated.add(className);
-      this.classNames.set(identity, className);
-    }
-    return new Map(identities.map((identity) => [identity, this.classNames.get(identity)!] as const));
-  }
-
-  reserve(classNames: readonly string[]): void {
-    for (const className of classNames) {
-      this.allocated.add(className);
-    }
-  }
 }
 
 /**
