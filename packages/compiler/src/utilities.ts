@@ -1,4 +1,4 @@
-import { candidateScope, parseCandidate } from './candidate';
+import { parseCandidate } from './candidate';
 import type { ParsedCandidate } from './candidate';
 import { classSelectors } from './class-selectors';
 import { cssOrder } from './css-order';
@@ -10,78 +10,34 @@ import { readGeneratedClassNames } from './read-generated-class-names';
 import { replaceFallbackSelector } from './replace-fallback-selector';
 import { requiredAnimationKeyframes } from './required-animation-keyframes';
 import { requiredPropertyNames } from './required-property-names';
-import { resolveAnimationThemeReferences } from './resolve-animation-theme-references';
 import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
-import { parseTheme, resolveThemeValue, serializeThemeKeyframe, serializeThemeTokens } from './theme';
+import { parseTheme, serializeThemeKeyframe, serializeThemeTokens } from './theme';
 import type { CssxTheme } from './theme';
 import { atomizeDeclarations } from './utility-values';
 import { applyVariants } from './utility-variants';
 import type { VariantOptions } from './utility-variants';
 
-export type { UtilityDeclaration } from './utility-types';
+import type {
+  CompiledUtility,
+  ResolvedUtilityRecipe,
+  UtilityCompilation,
+  UtilityCssEntry,
+  UtilityRecipe,
+  UtilityRecipeResources,
+  UtilityWriteSet,
+} from './utility-recipe-types';
+import type { UtilityDeclaration } from './utility-types';
 
-/** CSS and metadata created from utility strings. */
-export interface UtilityCompilation {
-  /** Complete generated CSS, including prefix CSS. */
-  readonly css: string;
-  /** Theme CSS and shared CSS resources. */
-  readonly prefixCss: string;
-  /** Utility CSS entries in output order. */
-  readonly entries: readonly UtilityCssEntry[];
-  /** Generated class string keyed by source candidate. */
-  readonly classes: Readonly<Record<string, string>>;
-}
-
-/** One utility string and its generated CSS. */
-export interface UtilityCssEntry {
-  /** Source utility candidate. */
-  readonly candidate: string;
-  /** CSS emitted for this candidate and one generated class. */
-  readonly css: string;
-}
-
-/** Shared CSS resources needed by a utility. */
-export interface UtilityRecipeResources {
-  /** Keyframe names required by the utility. */
-  readonly keyframes: readonly string[];
-  /** Custom properties that must be registered before emitting CSS. */
-  readonly properties: readonly string[];
-}
-
-/** Style groups written by one utility part. */
-export interface UtilityWriteSet {
-  /** Semantic group written by this atom. */
-  readonly group: string;
-  /** Semantic groups cleared by this atom. */
-  readonly conflicts: readonly string[];
-}
-
-/** The compiled parts and metadata for one utility. */
-export interface UtilityRecipe {
-  /** Source utility candidate. */
-  readonly candidate: string;
-  /** Separate declaration atoms that can receive separate class names. */
-  readonly atoms: readonly (readonly UtilityDeclaration[])[];
-  /** Shared CSS resources required by the utility. */
-  readonly resources: UtilityRecipeResources;
-  /** Semantic write behavior for each declaration atom. */
-  readonly writes: readonly UtilityWriteSet[];
-  /** Precomputed CSS for a data-backed recipe, if one is required. */
-  readonly fallbackCss?: string;
-}
-
-/** Internal CSS entry before final ordering and result projection. */
-interface CompiledUtility {
-  /** Source utility candidate. */
-  readonly candidate: string;
-  /** Generated class name for this atom. */
-  readonly className: string;
-  /** CSS emitted for this atom. */
-  readonly css: string;
-  /** Stable cascade sort key. */
-  readonly order: string;
-}
+export type {
+  UtilityCompilation,
+  UtilityCssEntry,
+  UtilityRecipe,
+  UtilityRecipeResources,
+  UtilityWriteSet,
+  ResolvedUtilityRecipe,
+};
+export type { UtilityDeclaration };
 
 /**
  * Gets the CSS declaration groups for one utility.
@@ -103,13 +59,6 @@ export function getUtilityAtoms(candidateSource: string, theme: CssxTheme): read
  */
 export function describeUtilityRecipe(candidateSource: string, theme: CssxTheme): UtilityRecipe {
   return resolveUtilityRecipe(candidateSource, theme).recipe;
-}
-
-/** Internal parsed and classified recipe data reused during CSS serialization. */
-export interface ResolvedUtilityRecipe {
-  readonly recipe: UtilityRecipe;
-  readonly parsedCandidate: ParsedCandidate;
-  readonly semantics: UtilitySemantics;
 }
 
 /** Resolves a utility once for both recipe construction and CSS serialization. */
