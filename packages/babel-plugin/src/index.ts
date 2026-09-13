@@ -1,15 +1,10 @@
 import type { PluginObj, PluginPass } from '@babel/core';
 import type * as babelTypes from '@babel/types';
-import { createClassNameAllocator } from '@cssxio/compiler';
 
-import { compactLiveStyleRecords } from './compact-live-style-records';
-import { cssOnlySignature } from './css-only-signature';
-import { finalizeFoldedProps } from './finalize-folded-props';
+import { createPluginFileState } from './create-plugin-file-state';
 import type { FoldedPropsCall } from './finalize-folded-props';
-import { markReferencedStyleCandidates } from './mark-referenced-style-candidates';
-import { materializeLiveStyleMaps } from './materialize-live-style-maps';
-import type { CssxPluginOptions, FileState } from './plugin-types';
-import { removeDeadStyleMaps } from './remove-dead-style-maps';
+import { finalizePluginFile } from './finalize-plugin-file';
+import type { CssxPluginOptions } from './plugin-types';
 import { transformCssxCall } from './transform-cssx-call';
 
 /** Default module specifier used when the plugin options do not override it. */
@@ -38,7 +33,7 @@ export default function cssxBabelPlugin(
   api.assertVersion(7);
   const t = api.types;
   const importSource = options.importSource ?? DEFAULT_IMPORT_SOURCE;
-  let state: FileState;
+  let state = createPluginFileState(options);
   let fileName = '';
   let foldedProps: FoldedPropsCall[] = [];
 
@@ -48,56 +43,11 @@ export default function cssxBabelPlugin(
       Program: {
         enter(_path, babelState) {
           fileName = options.stableClassNameFileName ?? babelState.file.opts.filename ?? '';
-          state = {
-            classNameAllocator: options.classNameAllocator ?? createClassNameAllocator(options.className),
-            styles: new Map(),
-            styleCandidates: new Map(),
-            styleClasses: new Map(),
-            classes: new Map(),
-            candidateOrigins: new Map(),
-            liveCandidates: new Set(),
-            composites: new Map(),
-            liveComposites: new Set(),
-            liveFallbackClasses: new Set(),
-            cssRanges: [],
-          };
+          state = createPluginFileState(options);
           foldedProps = [];
         },
         exit(path, babelState) {
-          finalizeFoldedProps(path, t, foldedProps);
-          path.scope.crawl();
-          markReferencedStyleCandidates(path, t, state);
-          materializeLiveStyleMaps(path, t, state);
-          removeDeadStyleMaps(path, state);
-          compactLiveStyleRecords(path, t, state);
-          for (const statement of path.get('body')) {
-            if (!statement.isImportDeclaration() || statement.node.source.value !== importSource) {
-              continue;
-            }
-            for (const specifier of [...statement.get('specifiers')]) {
-              const local = specifier.node.local.name;
-              const binding = path.scope.getBinding(local);
-              if (binding?.referencePaths.length === 0) {
-                specifier.remove();
-              }
-            }
-            if (statement.node.specifiers.length === 0) {
-              statement.remove();
-            }
-          }
-          (babelState.file.metadata as Record<string, unknown>).cssx = {
-            candidates: Object.fromEntries(
-              [...state.classes].filter(([candidate]) => state.liveCandidates.has(candidate)),
-            ),
-            origins: Object.fromEntries(
-              [...state.candidateOrigins].filter(([candidate]) => state.liveCandidates.has(candidate)),
-            ),
-            composites: Object.fromEntries(
-              [...state.composites].filter(([className]) => state.liveComposites.has(className)),
-            ),
-            atomicClasses: [...state.liveFallbackClasses].sort(),
-            cssOnlySignature: cssOnlySignature(babelState.file.code, state.cssRanges),
-          };
+          finalizePluginFile({ program: path, babelState, types: t, importSource, state, foldedProps });
         },
       },
       CallExpression(path) {
