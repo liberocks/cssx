@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { serializeCss } from '@cssxio/compiler';
 import { compileCssxStylesheet, transformCssxModule } from './index';
-import { sourceMapFromContext } from './transform';
 import { decodeFirstMapping, pluginFor, source, transformRequired } from './transform-test-helpers';
 
 describe('CSSX unplugin transform', () => {
@@ -28,34 +27,6 @@ describe('CSSX unplugin transform', () => {
       },
     );
     expect(result.map?.sources).toEqual(['original.ts']);
-  });
-
-  it('accepts only complete incoming source maps from bundler contexts', () => {
-    expect(sourceMapFromContext(undefined, '/project/input.ts')).toBeUndefined();
-    expect(sourceMapFromContext({}, '/project/input.ts')).toBeUndefined();
-    expect(sourceMapFromContext({ getCombinedSourcemap: () => ({ version: 2 }) }, '/project/input.ts')).toBeUndefined();
-    expect(
-      sourceMapFromContext(
-        {
-          getCombinedSourcemap: () => ({
-            version: 3,
-            sources: ['original.ts'],
-            names: ['value'],
-            mappings: 'AAAA',
-            sourceRoot: '/source',
-            sourcesContent: [source],
-          }),
-        },
-        '/project/input.ts',
-      ),
-    ).toMatchObject({ file: '/project/input.ts', sourceRoot: '/source', names: ['value'] });
-    expect(sourceMapFromContext({ getCombinedSourcemap: () => null }, '/project/input.ts')).toBeUndefined();
-    expect(
-      sourceMapFromContext(
-        { getCombinedSourcemap: () => ({ version: 3, sources: [], mappings: '' }) },
-        '/project/input.ts',
-      ),
-    ).toMatchObject({ names: [], file: '/project/input.ts' });
   });
 
   it('retains an empty CSSX metadata record when an import has no utility literals', async () => {

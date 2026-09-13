@@ -5,8 +5,12 @@ import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 import { parse as parseVueSfc } from '@vue/compiler-sfc';
 import { assertPluginOptions, loadTheme, stableId, type CssxPluginOptions } from './options';
 import { quoteVueTemplateExpression } from './quote-vue-template-expression';
+import type { IncomingSourceMap } from './source-map-from-context';
 import type { CssxCandidateOrigin } from './stylesheet';
 import { templateAttributeQuote } from './template-attribute-quote';
+
+export { sourceMapFromContext } from './source-map-from-context';
+export type { IncomingSourceMap } from './source-map-from-context';
 
 /** The result of transforming one source module. */
 export interface TransformResult {
@@ -26,24 +30,6 @@ export interface TransformResult {
   readonly cssOnlySignature: string;
   /** Source map that continues a map supplied by an earlier transform. */
   readonly map?: NonNullable<Awaited<ReturnType<typeof transformAsync>>>['map'];
-}
-
-/** A source map accepted from a build tool. */
-export interface IncomingSourceMap {
-  /** Source map format version. CSSX accepts version 3. */
-  readonly version: number;
-  /** Source file names referenced by the map. */
-  readonly sources: string[];
-  /** Original identifier names referenced by the map. */
-  readonly names: string[];
-  /** Optional prefix for source file names. */
-  readonly sourceRoot?: string;
-  /** Optional source file contents. */
-  readonly sourcesContent?: string[];
-  /** Encoded source map segments. */
-  readonly mappings: string;
-  /** Name of the generated file. */
-  readonly file: string;
 }
 
 /** Extensions of JavaScript, TypeScript, Astro, and Vue modules handled by this transform. */
@@ -426,40 +412,6 @@ function transformedExpression(code: string): string {
   const start = code.indexOf(prefix) + prefix.length;
   const end = code.indexOf(';', start);
   return code.slice(start, end);
-}
-
-/**
- * Reads a source map from a build tool transform context.
- *
- * @param context A build tool transform context.
- * @param id The source module ID.
- * @returns A source map, when the context provides a compatible one.
- */
-export function sourceMapFromContext(context: unknown, id: string): IncomingSourceMap | undefined {
-  if (!context || typeof context !== 'object') {
-    return undefined;
-  }
-  const getCombinedSourcemap = (context as { readonly getCombinedSourcemap?: unknown }).getCombinedSourcemap;
-  if (typeof getCombinedSourcemap !== 'function') {
-    return undefined;
-  }
-  const sourceMap = getCombinedSourcemap.call(context);
-  if (!sourceMap || typeof sourceMap !== 'object') {
-    return undefined;
-  }
-  const map = sourceMap as Partial<IncomingSourceMap>;
-  if (map.version !== 3 || !Array.isArray(map.sources) || typeof map.mappings !== 'string') {
-    return undefined;
-  }
-  return {
-    version: map.version,
-    sources: [...map.sources],
-    names: [...(map.names ?? [])],
-    mappings: map.mappings,
-    file: map.file ?? id.split('?', 1).join(''),
-    ...(map.sourceRoot ? { sourceRoot: map.sourceRoot } : {}),
-    ...(map.sourcesContent ? { sourcesContent: [...map.sourcesContent] } : {}),
-  };
 }
 
 /** CSSX metadata written by the Babel transform. */
