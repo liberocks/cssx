@@ -3,7 +3,8 @@ import { parseThemeDeclarations } from './parse-theme-declarations';
 import { readThemeBalancedBlock } from './read-theme-balanced-block';
 import { readThemeModifier } from './read-theme-modifier';
 import { skipThemeWhitespaceAndComments } from './skip-theme-whitespace-and-comments';
-import { DEFAULT_KEYFRAMES, DEFAULT_THEME } from './theme-defaults';
+import { DEFAULT_THEME } from './theme-defaults';
+import { DEFAULT_KEYFRAMES } from './theme-keyframes';
 import type { CssxTheme, ThemeOutputMode } from './theme-types';
 
 /** Maximum accepted CSS source length for a theme. */

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { DEFAULT_KEYFRAMES, DEFAULT_THEME } from './theme-defaults';
+import { DEFAULT_THEME } from './theme-defaults';
 
 it('provides non-empty custom-property names and values for built-in theme tokens', () => {
   expect(Object.keys(DEFAULT_THEME).length).toBeGreaterThan(500);
@@ -18,11 +18,4 @@ it('includes documented breakpoint, spacing, typography, and animation defaults'
   expect(DEFAULT_THEME['--color-transparent']).toBe('transparent');
   expect(DEFAULT_THEME['--shadow-md']).toContain('rgb');
   expect(DEFAULT_THEME['--animate-spin']).toBe('spin 1s linear infinite');
-});
-
-it('stores valid built-in keyframe rules', () => {
-  expect(Object.keys(DEFAULT_KEYFRAMES)).toContain('spin');
-  for (const [name, rule] of Object.entries(DEFAULT_KEYFRAMES)) {
-    expect(rule.startsWith(`@keyframes ${name}{`), name).toBe(true);
-  }
 });
