@@ -4,7 +4,9 @@ import { compileUtilities, createClassNameAllocator, createSelectorAliases } fro
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 import { parse as parseVueSfc } from '@vue/compiler-sfc';
 import { assertPluginOptions, loadTheme, stableId, type CssxPluginOptions } from './options';
+import { quoteVueTemplateExpression } from './quote-vue-template-expression';
 import type { CssxCandidateOrigin } from './stylesheet';
+import { templateAttributeQuote } from './template-attribute-quote';
 
 /** The result of transforming one source module. */
 export interface TransformResult {
@@ -285,47 +287,6 @@ async function transformVueTemplateSx(
   };
 }
 
-/** Finds the opening quote delimiter of the attribute containing a template expression. */
-function templateAttributeQuote(source: string, expressionStart: number): '"' | "'" | undefined {
-  let tagStart = -1;
-  let attributeQuote: '"' | "'" | undefined;
-  for (let index = 0; index < expressionStart; index++) {
-    const character = source[index];
-    if (attributeQuote) {
-      if (character === attributeQuote) {
-        attributeQuote = undefined;
-      }
-      continue;
-    }
-    if (character === '<' && /[A-Za-z]/.test(source[index + 1] as string)) {
-      tagStart = index;
-      continue;
-    }
-    if (tagStart === -1) {
-      continue;
-    }
-    if (character === '>') {
-      tagStart = -1;
-    } else if (character === '"' || character === "'") {
-      attributeQuote = character;
-    }
-  }
-  return attributeQuote;
-}
-
-/** Requotes generated JavaScript strings so transformed code remains valid inside a Vue attribute. */
-export function quoteVueTemplateExpression(expression: string, attributeQuote: '"' | "'" | undefined): string {
-  if (!attributeQuote) {
-    return expression;
-  }
-  const quote = attributeQuote === '"' ? "'" : '"';
-  return expression.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, (literal) => {
-    const value = literal[0] === '"' ? JSON.parse(literal) : readSingleQuotedJavaScriptString(literal);
-    const json = JSON.stringify(value);
-    return quote === '"' ? json : `'${json.slice(1, -1).replaceAll("'", "\\'")}'`;
-  });
-}
-
 /** Remaps child-module candidate origins to the enclosing Vue SFC source. */
 function remapVueBlockOrigins(
   source: string,
@@ -371,14 +332,6 @@ function sourceOriginAtOffset(source: string, offset: number): CssxCandidateOrig
   const line = source.slice(0, boundedOffset).split('\n').length - 1;
   const lineStart = source.lastIndexOf('\n', boundedOffset - 1) + 1;
   return { line, column: boundedOffset - lineStart };
-}
-
-/** Decodes the limited single-quoted string syntax emitted by Babel. */
-export function readSingleQuotedJavaScriptString(literal: string): string {
-  return literal.slice(1, -1).replace(/\\(['"\\bnfrtv])/g, (_match, escaped: string) => {
-    const escapes: Readonly<Record<string, string>> = { b: '\b', n: '\n', f: '\f', r: '\r', t: '\t', v: '\v' };
-    return escapes[escaped] ?? escaped;
-  });
 }
 
 /**

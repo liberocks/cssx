@@ -2,6 +2,7 @@
  * Resolves the project root attached to a native loader transform context.
  *
  * @param context Native loader transform context.
+ * @param context.getNativeBuildContext Optional provider for native loader context.
  * @returns Native project root, when the context is Webpack or Rspack.
  */
 export function nativeBuildRoot(context: { getNativeBuildContext?: (() => unknown) | undefined }): string | undefined {

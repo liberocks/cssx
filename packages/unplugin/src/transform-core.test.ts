@@ -1,21 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { serializeCss } from '@cssxio/compiler';
 import { compileCssxStylesheet, transformCssxModule } from './index';
-import { quoteVueTemplateExpression, readSingleQuotedJavaScriptString, sourceMapFromContext } from './transform';
+import { sourceMapFromContext } from './transform';
 import { decodeFirstMapping, pluginFor, source, transformRequired } from './transform-test-helpers';
 
 describe('CSSX unplugin transform', () => {
-  it('decodes single-quoted Vue expressions with escaped quotes and control characters', () => {
-    expect(readSingleQuotedJavaScriptString("'it\\'s\\nready'")).toBe("it's\nready");
-    expect(readSingleQuotedJavaScriptString("'a\\qb'")).toBe('a\\qb');
-  });
-
-  it('requotes double-quoted JavaScript strings for Vue attributes', () => {
-    expect(quoteVueTemplateExpression('sx("it\'s")', '"')).toBe("sx('it\\'s')");
-    expect(quoteVueTemplateExpression("sx('p-4')", '"')).toBe("sx('p-4')");
-    expect(quoteVueTemplateExpression('sx("a\\nb")', '"')).toBe("sx('a\\nb')");
-  });
-
   it('returns transformed code and standalone CSS metadata', async () => {
     const result = await transformCssxModule(source, '/project/styles.ts');
 

@@ -20,7 +20,7 @@ import {
   viteCssPath,
   type CssxPluginOptions,
 } from './options';
-import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment, type CssxSourceModule } from './stylesheet';
+import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from './stylesheet';
 import { sourceMapFromContext, transformCssxModule } from './transform';
 import { sendViteStyles } from './vite-dev';
 
