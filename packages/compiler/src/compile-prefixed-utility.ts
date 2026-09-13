@@ -1,3 +1,4 @@
+import { compileBorderSpacingUtility } from './compile-border-spacing-utility';
 import { compileModernUtility } from './compile-modern-utility';
 import { compileMotionUtility } from './compile-motion-utility';
 import { compilePrefixedStructuralUtility } from './compile-prefixed-structural-utility';
@@ -5,7 +6,6 @@ import { compilePrefixedVisualUtility } from './compile-prefixed-visual-utility'
 import { compileSpacingUtility } from './compile-spacing-utility';
 import { isMotionUtilityCandidate } from './is-motion-utility-candidate';
 import type { CssxTheme } from './theme';
-import { resolveSpacingValue } from './utility-resolvers';
 import type { UtilityDeclaration } from './utility-types';
 
 /**
@@ -39,25 +39,9 @@ export function compilePrefixedUtility(
   if (spacing) {
     return spacing;
   }
-  const borderSpacing = /^border-spacing(?:-(x|y))?-(.+)$/.exec(utility);
+  const borderSpacing = compileBorderSpacingUtility(utility, negative, theme);
   if (borderSpacing) {
-    const axis = borderSpacing[1];
-    const value = resolveSpacingValue(borderSpacing[2]!, negative, theme);
-    if (!value) {
-      return null;
-    }
-    if (!axis) {
-      return { property: 'border-spacing', value };
-    }
-    const variable = `--cssx-border-spacing-${axis}`;
-    return [
-      { property: variable, value, semanticGroup: `border-spacing-${axis}` },
-      {
-        property: 'border-spacing',
-        value: 'var(--cssx-border-spacing-x, 0) var(--cssx-border-spacing-y, 0)',
-        semanticGroup: `border-spacing-${axis}`,
-      },
-    ];
+    return borderSpacing;
   }
   return (
     compilePrefixedVisualUtility(utility, negative, theme) ?? compilePrefixedStructuralUtility(utility, negative, theme)
