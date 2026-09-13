@@ -283,6 +283,19 @@ describe('CSSX compiler', () => {
     expect(result.css).toContain('.x-child-atom>span,.x-child-composite>span');
   });
 
+  it('applies composite selector aliases to fallback utilities', async () => {
+    const result = await compileUtilities(
+      ['-bg-conic-30'],
+      () => 'x-fallback-atom',
+      '',
+      { 'x-fallback-atom': ['x-fallback-composite'] },
+      new Set(['x-fallback-composite']),
+    );
+
+    expect(result.css).toContain('.x-fallback-composite{');
+    expect(result.css).not.toContain('.x-fallback-atom{');
+  });
+
   it('describes each recipe with its atoms, semantic writes, and required resources', () => {
     const theme = parseTheme(
       '@theme { --animate-wiggle: wiggle 1s linear infinite; @keyframes wiggle { to { transform: rotate(1deg); } } }',

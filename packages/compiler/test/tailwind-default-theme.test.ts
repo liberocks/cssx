@@ -31,6 +31,6 @@ describe('Tailwind 4 default theme utility matrix', () => {
 
     expect(result.css).toContain('font-size:1.875rem');
     expect(result.css).toContain('font-size:8rem');
-    expect(result.css).toContain('line-height:2.25rem');
+    expect(result.css).toContain('line-height:calc(2.25 / 1.875)');
   });
 });

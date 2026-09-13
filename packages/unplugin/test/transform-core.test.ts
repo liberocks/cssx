@@ -13,6 +13,7 @@ describe('CSSX unplugin transform', () => {
   it('requotes double-quoted JavaScript strings for Vue attributes', () => {
     expect(quoteVueTemplateExpression('sx("it\'s")', '"')).toBe("sx('it\\'s')");
     expect(quoteVueTemplateExpression("sx('p-4')", '"')).toBe("sx('p-4')");
+    expect(quoteVueTemplateExpression('sx("a\\nb")', '"')).toBe("sx('a\\nb')");
   });
 
   it('returns transformed code and standalone CSS metadata', async () => {
@@ -196,9 +197,15 @@ describe('CSSX unplugin transform', () => {
     expect(result.code).toContain('<template><h1 :class="sx(title.className, \'s');
     expect(result.code).not.toContain("'text-3xl'");
     expect(css).toContain('font-size:1.875rem');
-    expect(css).toContain('line-height:2.25rem');
+    expect(css).toContain('line-height:calc(2.25 / 1.875)');
     expect(css).toContain('font-weight:600');
     expect(css).toContain('color:oklch(62.27% 0.214 259.815)');
+    expect(result.origins['font-semibold']).toMatchObject({ line: 3 });
+    expect(result.origins['text-blue-500']).toMatchObject({ line: 7 });
+    const stylesheet = await compileCssxStylesheet([
+      { id: '/project/App.vue', candidates: result.candidates, origins: result.origins },
+    ]);
+    expect(stylesheet.map?.sources).toEqual(['/project/App.vue']);
   });
 
   it('handles Vue SFC parser errors, script variants, empty templates, and quoted expressions', async () => {
@@ -227,6 +234,12 @@ describe('CSSX unplugin transform', () => {
     expect(quoted.code).toContain('sx(');
     expect(quoted.atomicClasses.length).toBeGreaterThan(0);
     expect(serializeCss(quoted.rules)).toContain('font-size:1.125rem');
+
+    const nestedAttribute = await transformRequired(
+      `<script setup>\nimport { sx } from '@cssxio/cssx';\nconst kind = 'x';\nconst label = 'a\\nb';\n</script><template><main :class="kind === 'x' && sx(label === 'a\\nb' && 'p-4')" /></template>`,
+      '/project/Nested.vue',
+    );
+    expect(nestedAttribute.code).toContain(`:class="kind === 'x' && sx(label === 'a\\nb' && '`);
   });
 
   it('skips Astro templates without sx calls and handles escaped strings in dynamic expressions', async () => {

@@ -27,6 +27,7 @@ describe('CSSX utility compiler', () => {
         'translate-y-3',
         'scale-x-95',
         'scale-y-105',
+        'scale-z-110',
         '-rotate-45',
         'skew-x-6',
         '-skew-y-12',
@@ -42,7 +43,8 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('transition-behavior:allow-discrete');
     expect(result.css).toContain('--cssx-translate-x:calc(0.25rem * 2)');
     expect(result.css).toContain('--cssx-translate-y:calc(0.25rem * 3)');
-    expect(result.css).toContain('scale:var(--cssx-scale-x, 1) var(--cssx-scale-y, 1)');
+    expect(result.css).toContain('scale:var(--cssx-scale-x, 1) var(--cssx-scale-y, 1) var(--cssx-scale-z, 1)');
+    expect(result.css).toContain('--cssx-scale-z:1.1');
     expect(result.css).toContain('rotate:-45deg');
     expect(result.css).toContain('--cssx-skew-x:6deg');
     expect(result.css).toContain('--cssx-skew-y:-12deg');
@@ -133,7 +135,7 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('font-size:8rem');
     expect(result.css).toContain('font-size:4.25rem');
     expect(result.css).toContain('line-height:1.1');
-    expect(result.css).toContain('line-height:2');
+    expect(result.css).toContain('line-height:calc(0.25rem * 2)');
     expect(result.css).toContain('letter-spacing:-0.02em');
     expect(result.css).toContain('font-weight:700');
   });
@@ -196,6 +198,8 @@ describe('CSSX utility compiler', () => {
         'scroll-pbe-6',
         'border-bs-red-500',
         'mask-b-from-20%',
+        'mask-b-to-[25%]',
+        'mask-b-from-[#000]',
         'mask-b-to-transparent',
       ],
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
@@ -207,6 +211,8 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('scroll-padding-block-end:calc(0.25rem * 6)');
     expect(result.css).toContain('border-block-start-color:oklch(63.71% 0.237 25.331)');
     expect(result.css).toContain('--cssx-mask-b-from-position:20%');
+    expect(result.css).toContain('--cssx-mask-b-to-position:25%');
+    expect(result.css).toContain('--cssx-mask-b-from-color:#000');
     expect(result.css).toContain('--cssx-mask-b-to-color:transparent');
     expect(result.css).toContain('mask-image:var(--cssx-mask-b)');
   });

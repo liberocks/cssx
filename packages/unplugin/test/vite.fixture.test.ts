@@ -2,12 +2,14 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import vue from '@vitejs/plugin-vue';
 import { build, createServer } from 'vite';
 import { describe, expect, it } from 'vitest';
 import cssxVite from '../src/vite';
 
 const require = createRequire(import.meta.url);
+const cssxSource = fileURLToPath(new URL('../../cssx/src/index.ts', import.meta.url));
 
 /** Reads a CSSX virtual Vite asset without opening a network socket. */
 async function readViteAsset(server: { readonly middlewares: unknown }, url: string): Promise<string> {
@@ -67,8 +69,9 @@ import { sx } from '@cssxio/cssx';
 const styles = cssx.create({ title: 'text-3xl font-semibold' });
 const title = cssx.props(styles.title);
 const active = true;
+const kind = 'x';
 </script>
-<template><main :class="sx(title.className, 'p-4', active && 'text-blue-500')">CSSX</main></template>`,
+<template><main :class="kind === 'x' && sx(title.className, 'p-4', active && 'text-blue-500')">CSSX</main></template>`,
       );
       await writeFile(
         join(root, 'src/main.ts'),
@@ -83,7 +86,7 @@ const active = true;
         root,
         logLevel: 'silent',
         plugins: [cssxVite({ cssFileName: 'assets/cssx.css', sourceMap: false }), vue()],
-        resolve: { alias: { vue: require.resolve('vue'), '@cssxio/cssx': require.resolve('@cssxio/cssx') } },
+        resolve: { alias: { vue: require.resolve('vue'), '@cssxio/cssx': cssxSource } },
         build: { emptyOutDir: true, outDir: 'dist' },
       });
 

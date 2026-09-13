@@ -2,6 +2,7 @@ import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
 import { cloneDeclarations } from './utility-values';
 import {
+  isLengthCssValue,
   resolveArbitraryCssValue,
   resolveColorValue,
   resolveOpacityModifier,
@@ -195,6 +196,13 @@ export function compileMaskUtility(
 function resolveMaskPosition(raw: string, theme: CssxTheme): string | null {
   if (/^\d+(?:\.\d+)?%$/.test(raw)) {
     return raw;
+  }
+  if (raw.startsWith('[') && raw.endsWith(']')) {
+    const value = resolveArbitraryCssValue(raw);
+    if (!isLengthCssValue(value)) {
+      return null;
+    }
+    return value.replace(/^(?:length|size):/, '');
   }
   return resolveSpacingValue(raw, false, theme);
 }

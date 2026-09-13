@@ -143,13 +143,13 @@ export function compileTransformUtility(
     if (axis === 'scale-x') {
       return [
         { property: '--cssx-scale-x', value },
-        { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1)' },
+        { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1) var(--cssx-scale-z, 1)' },
       ];
     }
     if (axis === 'scale-y') {
       return [
         { property: '--cssx-scale-y', value },
-        { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1)' },
+        { property: 'scale', value: 'var(--cssx-scale-x, 1) var(--cssx-scale-y, 1) var(--cssx-scale-z, 1)' },
       ];
     }
     if (axis === 'scale-z') {

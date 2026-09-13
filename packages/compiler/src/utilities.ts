@@ -366,11 +366,12 @@ function compileCandidate(
     if (classNames.length !== 1) {
       throw new Error(`CSSX expected one generated class for fallback utility "${candidateSource}".`);
     }
+    const selectors = classSelectors(classNames[0]!, selectorAliases, includedClasses);
     return [
       {
         candidate: candidateSource,
         className: classNames[0]!,
-        css: replaceFallbackSelector(fallbackCss, candidateSource, classNames[0]!),
+        css: selectors.map((selector) => replaceFallbackSelector(fallbackCss, candidateSource, selector)).join(''),
         order: cssOrder(candidate, semanticGroup, atoms.flat()),
       },
     ];
@@ -408,9 +409,9 @@ function compileCandidate(
     .filter((entry): entry is CompiledUtility => entry !== null);
 }
 
-/** Rebinds an oracle CSS rule from its source utility selector to a CSSX class. */
-function replaceFallbackSelector(css: string, candidate: string, className: string): string {
-  return css.split(`.${escapeCssIdentifier(candidate)}`).join(`.${escapeCssIdentifier(className)}`);
+/** Rebinds one oracle CSS rule from its source utility selector to a CSSX selector. */
+function replaceFallbackSelector(css: string, candidate: string, selector: string): string {
+  return css.split(`.${escapeCssIdentifier(candidate)}`).join(selector);
 }
 
 /** Returns the required atomic selector and stable composite aliases. */

@@ -174,6 +174,7 @@ async function transformVueSfcModule(
   const composites: Record<string, readonly string[]> = {};
   const rules: CssxRule[] = [];
   const atomicClasses = new Set<string>();
+  const origins: Record<string, CssxCandidateOrigin> = {};
 
   for (const block of [parsed.descriptor.script, parsed.descriptor.scriptSetup]) {
     if (!block?.content.includes(options.importSource ?? '@cssxio/cssx')) {
@@ -187,6 +188,7 @@ async function transformVueSfcModule(
     replacements.push({ start: block.loc.start.offset, end: block.loc.end.offset, code: transformed.code });
     Object.assign(candidates, transformed.candidates);
     Object.assign(composites, transformed.composites);
+    Object.assign(origins, remapVueBlockOrigins(code, block.loc.start.offset, transformed.origins));
     rules.push(...transformed.rules);
     for (const className of transformed.atomicClasses) {
       atomicClasses.add(className);
@@ -200,6 +202,7 @@ async function transformVueSfcModule(
       replacements.push({ start: template.loc.start.offset, end: template.loc.end.offset, code: transformed.code });
       Object.assign(candidates, transformed.candidates);
       Object.assign(composites, transformed.composites);
+      Object.assign(origins, remapVueBlockOrigins(code, template.loc.start.offset, transformed.origins));
       rules.push(...transformed.rules);
       for (const className of transformed.atomicClasses) {
         atomicClasses.add(className);
@@ -220,7 +223,7 @@ async function transformVueSfcModule(
     candidates,
     composites,
     atomicClasses: [...atomicClasses],
-    origins: {},
+    origins,
     cssOnlySignature: transformedCode,
   };
 }
@@ -245,14 +248,16 @@ async function transformVueTemplateSx(
   const composites: Record<string, readonly string[]> = {};
   const rules: CssxRule[] = [];
   const atomicClasses = new Set<string>();
+  const origins: Record<string, CssxCandidateOrigin> = {};
   let transformedCode = code;
 
   for (const call of [...calls].reverse()) {
-    const transformed = (await transformCssxModule(
-      `import { sx } from ${JSON.stringify(importSource)};\nconst style = ${call.code};`,
-      `${sourceId}.cssx-vue-template.ts`,
-      { ...options, classNameAllocator },
-    )) as TransformResult;
+    const wrapperPrefix = `import { sx } from ${JSON.stringify(importSource)};\nconst style = `;
+    const wrapperSource = `${wrapperPrefix}${call.code};`;
+    const transformed = (await transformCssxModule(wrapperSource, `${sourceId}.cssx-vue-template.ts`, {
+      ...options,
+      classNameAllocator,
+    })) as TransformResult;
     const expression = quoteVueTemplateExpression(
       transformedExpression(transformed.code),
       templateAttributeQuote(code, call.start),
@@ -260,6 +265,10 @@ async function transformVueTemplateSx(
     transformedCode = `${transformedCode.slice(0, call.start)}${expression}${transformedCode.slice(call.end)}`;
     Object.assign(candidates, transformed.candidates);
     Object.assign(composites, transformed.composites);
+    Object.assign(
+      origins,
+      remapVueTemplateOrigins(code, call.start, wrapperSource, wrapperPrefix.length, transformed.origins),
+    );
     rules.push(...transformed.rules);
     for (const className of transformed.atomicClasses) {
       atomicClasses.add(className);
@@ -271,21 +280,37 @@ async function transformVueTemplateSx(
     candidates,
     composites,
     atomicClasses: [...atomicClasses],
-    origins: {},
+    origins,
     cssOnlySignature: transformedCode,
   };
 }
 
-/** Finds the quote delimiter of the attribute containing a template expression. */
+/** Finds the opening quote delimiter of the attribute containing a template expression. */
 function templateAttributeQuote(source: string, expressionStart: number): '"' | "'" | undefined {
-  const tagStart = source.lastIndexOf('<', expressionStart);
-  const attributeSource = source.slice(tagStart + 1, expressionStart);
-  const doubleQuote = attributeSource.lastIndexOf('"');
-  const singleQuote = attributeSource.lastIndexOf("'");
-  if (doubleQuote === -1 && singleQuote === -1) {
-    return undefined;
+  let tagStart = -1;
+  let attributeQuote: '"' | "'" | undefined;
+  for (let index = 0; index < expressionStart; index++) {
+    const character = source[index];
+    if (attributeQuote) {
+      if (character === attributeQuote) {
+        attributeQuote = undefined;
+      }
+      continue;
+    }
+    if (character === '<' && /[A-Za-z]/.test(source[index + 1] as string)) {
+      tagStart = index;
+      continue;
+    }
+    if (tagStart === -1) {
+      continue;
+    }
+    if (character === '>') {
+      tagStart = -1;
+    } else if (character === '"' || character === "'") {
+      attributeQuote = character;
+    }
   }
-  return doubleQuote > singleQuote ? '"' : "'";
+  return attributeQuote;
 }
 
 /** Requotes generated JavaScript strings so transformed code remains valid inside a Vue attribute. */
@@ -296,8 +321,56 @@ export function quoteVueTemplateExpression(expression: string, attributeQuote: '
   const quote = attributeQuote === '"' ? "'" : '"';
   return expression.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, (literal) => {
     const value = literal[0] === '"' ? JSON.parse(literal) : readSingleQuotedJavaScriptString(literal);
-    return `${quote}${value.replaceAll('\\', '\\\\').replaceAll(quote, `\\${quote}`)}${quote}`;
+    const json = JSON.stringify(value);
+    return quote === '"' ? json : `'${json.slice(1, -1).replaceAll("'", "\\'")}'`;
   });
+}
+
+/** Remaps child-module candidate origins to the enclosing Vue SFC source. */
+function remapVueBlockOrigins(
+  source: string,
+  blockOffset: number,
+  childOrigins: Readonly<Record<string, CssxCandidateOrigin>>,
+): Record<string, CssxCandidateOrigin> {
+  const origins: Record<string, CssxCandidateOrigin> = {};
+  const childSource = source.slice(blockOffset);
+  for (const [candidate, origin] of Object.entries(childOrigins)) {
+    origins[candidate] = sourceOriginAtOffset(source, blockOffset + sourceOffsetAtOrigin(childSource, origin));
+  }
+  return origins;
+}
+
+/** Remaps wrapper-module origins to their static `sx()` call in a Vue template. */
+function remapVueTemplateOrigins(
+  source: string,
+  callOffset: number,
+  wrapperSource: string,
+  wrapperPrefixLength: number,
+  childOrigins: Readonly<Record<string, CssxCandidateOrigin>>,
+): Record<string, CssxCandidateOrigin> {
+  const origins: Record<string, CssxCandidateOrigin> = {};
+  for (const [candidate, origin] of Object.entries(childOrigins)) {
+    const wrapperOffset = sourceOffsetAtOrigin(wrapperSource, origin);
+    origins[candidate] = sourceOriginAtOffset(source, callOffset + Math.max(0, wrapperOffset - wrapperPrefixLength));
+  }
+  return origins;
+}
+
+/** Returns a zero-based source offset for a zero-based line and column pair. */
+function sourceOffsetAtOrigin(source: string, origin: CssxCandidateOrigin): number {
+  const linePrefixLength = source
+    .split('\n')
+    .slice(0, origin.line)
+    .reduce((offset, line) => offset + line.length + 1, 0);
+  return Math.min(source.length, linePrefixLength + origin.column);
+}
+
+/** Returns a zero-based line and column pair for a source offset. */
+function sourceOriginAtOffset(source: string, offset: number): CssxCandidateOrigin {
+  const boundedOffset = Math.min(source.length, offset);
+  const line = source.slice(0, boundedOffset).split('\n').length - 1;
+  const lineStart = source.lastIndexOf('\n', boundedOffset - 1) + 1;
+  return { line, column: boundedOffset - lineStart };
 }
 
 /** Decodes the limited single-quoted string syntax emitted by Babel. */
