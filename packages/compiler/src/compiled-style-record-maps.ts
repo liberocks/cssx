@@ -3,9 +3,8 @@ import { createClassNameAllocator } from './class-name-allocator';
 import { collectStyleMapCandidates } from './collect-style-map-candidates';
 import { compileCandidates } from './compile-candidates';
 import type { CompiledStyle } from './compiled-style';
-import type { CompiledUtility } from './compiled-utility';
-import { compositeIdentity } from './composite-identity';
 import { createAtomIdentities } from './create-atom-identities';
+import { createCompiledStyleRecordMap } from './create-compiled-style-record-map';
 import { createStyleMapCompositionRecords } from './create-style-map-composition-records';
 import { planReusability } from './plan-reusability';
 import type { StyleCompilerOptions } from './style-compiler';
@@ -75,31 +74,18 @@ export function compileStyleRecordMaps(
   );
 
   for (const [mapName, candidates] of Object.entries(candidatesByMap)) {
-    const styles: Record<string, CompiledStyle> = Object.create(null) as Record<string, CompiledStyle>;
-    const classNamesByStyle: Record<string, string> = Object.create(null) as Record<string, string>;
-    const recordsByStyle = compositionRecords.recordsByMap[mapName]!;
-    const compositionAtomsByStyle = compositionRecords.compositionAtomsByMap[mapName]!;
-    for (const name of Object.keys(candidates)) {
-      const atomicIdentities = compositionAtomsByStyle[name]!;
-      const identity = compositeIdentity(atomicIdentities);
-      const plannedClassName = plannedCompositions.classNames.get(identity) ?? '';
-      const className = plannedClassName
-        .split(' ')
-        .map((value) => allocatedAtomClasses.get(value) ?? value)
-        .join(' ');
-      const records = recordsByStyle[name]!.map((record) => {
-        const [atomicIdentity, ...rest] = record;
-        return [atomicIdentity === null ? null : allocatedAtomClasses.get(atomicIdentity)!, ...rest] as CompiledUtility;
-      });
-      styles[name] = { $$css: 2, c: className, _: records };
-      classNamesByStyle[name] = className;
-      for (const fragment of plannedCompositions.fragments.get(identity) ?? []) {
-        composites[fragment.className] = fragment.atomicClasses.map((atomicIdentity) =>
-          allocatedAtomClasses.get(atomicIdentity)!,
-        );
-      }
+    const projection = createCompiledStyleRecordMap({
+      candidates,
+      classes,
+      recordsByStyle: compositionRecords.recordsByMap[mapName]!,
+      compositionAtomsByStyle: compositionRecords.compositionAtomsByMap[mapName]!,
+      allocatedAtomClasses,
+      plannedCompositions,
+    });
+    styleMaps[mapName] = projection.styleMap;
+    for (const [className, atomicClasses] of Object.entries(projection.composites)) {
+      composites[className] = atomicClasses;
     }
-    styleMaps[mapName] = { styles, classes, candidates, classNames: classNamesByStyle, composites };
   }
 
   return { styleMaps, classes, composites };
