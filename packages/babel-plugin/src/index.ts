@@ -29,6 +29,7 @@ import { markStyleClass } from './mark-style-class';
 import { markAllStyleClasses } from './mark-all-style-classes';
 import { markFallbackClasses } from './mark-fallback-classes';
 import { markAllFallbackClasses } from './mark-all-fallback-classes';
+import { resolveStyleArgument } from './resolve-style-argument';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
@@ -209,7 +210,7 @@ export default function cssxBabelPlugin(
       if (types.isSpreadElement(argument)) {
         return;
       }
-      const resolved = resolveStyleArgument(argument, types);
+      const resolved = resolveStyleArgument(argument, types, state);
       if (resolved === undefined) {
         return;
       }
@@ -519,60 +520,5 @@ export default function cssxBabelPlugin(
       result[key] = utilityString;
     }
     return result;
-  }
-
-  /**
-   * Resolves one props argument to compiled styles that can be folded.
-   *
-   * It accepts null, false, nested arrays without holes or spreads, and non-computed dot access to a
-   * style created in this module. It returns null for ignored null and false values. All unsupported
-   * forms, including undefined, return undefined as a sentinel that leaves the props call at runtime.
-   *
-   * @param node Props argument or nested array element to resolve.
-   * @param types Babel node helpers.
-   * @returns Compiled styles, null for an ignored input, or undefined when folding must stop.
-   */
-  function resolveStyleArgument(
-    node:
-      | import('@babel/types').Expression
-      | import('@babel/types').JSXNamespacedName
-      | import('@babel/types').SpreadElement
-      | import('@babel/types').ArgumentPlaceholder,
-    types: typeof t,
-  ): readonly CompiledStyle[] | null | undefined {
-    if (types.isNullLiteral(node) || types.isBooleanLiteral(node, { value: false })) {
-      return null;
-    }
-    if (types.isArrayExpression(node)) {
-      const styles: CompiledStyle[] = [];
-      for (const element of node.elements) {
-        if (!element || types.isSpreadElement(element)) {
-          return undefined;
-        }
-        const resolved = resolveStyleArgument(element, types);
-        if (resolved === undefined) {
-          return undefined;
-        }
-        if (resolved) {
-          styles.push(...resolved);
-        }
-      }
-      return styles;
-    }
-    if (
-      !types.isMemberExpression(node) ||
-      node.computed ||
-      !types.isIdentifier(node.object) ||
-      !types.isIdentifier(node.property)
-    ) {
-      return undefined;
-    }
-    const map = state.styles.get(node.object.name);
-    const style = map?.[node.property.name];
-    const candidates = state.styleCandidates.get(node.object.name);
-    if (style && candidates) {
-      markStyleKeyCandidates(state, candidates, node.property.name);
-    }
-    return style ? [style] : undefined;
   }
 }
