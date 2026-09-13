@@ -1,7 +1,7 @@
+import { applyResponsiveConditionVariant } from './apply-responsive-condition-variant';
 import type { VariantOptions } from './apply-variants';
 import { normalizeArbitraryAtRule } from './normalize-arbitrary-at-rule';
 import { resolveViewTransitionVariant } from './resolve-view-transition-variant';
-import { resolveThemeValue } from './theme';
 import type { CssxTheme } from './theme';
 import type { VariantRenderState } from './variant-render-state';
 
@@ -50,24 +50,8 @@ export function applyConditionVariant(
     state.atRules.push(`@supports (${variant.slice(10, -1).replace(':', ': ')})`);
   } else if (variant.startsWith('not-supports-[') && variant.endsWith(']')) {
     state.atRules.push(`@supports not (${variant.slice(14, -1).replace(':', ': ')})`);
-  } else if ((variant.startsWith('min-[') || variant.startsWith('max-[')) && variant.endsWith(']')) {
-    const value = variant.slice(5, -1);
-    if (!value || /[;{}]/.test(value)) {
-      throw new Error(`Invalid CSSX responsive variant "${variant}".`);
-    }
-    state.atRules.push(variant.startsWith('min-') ? `@media (width >= ${value})` : `@media (width < ${value})`);
-  } else if (variant.startsWith('max-')) {
-    const breakpoint = resolveThemeValue(theme, `--breakpoint-${variant.slice(4)}`);
-    if (!breakpoint) {
-      return false;
-    }
-    state.atRules.push(`@media (width < ${breakpoint})`);
   } else {
-    const breakpoint = resolveThemeValue(theme, `--breakpoint-${variant}`);
-    if (!breakpoint) {
-      return false;
-    }
-    state.atRules.push(`@media (width >= ${breakpoint})`);
+    return applyResponsiveConditionVariant(variant, theme, state);
   }
   return true;
 }
