@@ -2,16 +2,14 @@ import { transformAsync } from '@babel/core';
 import cssxBabelPlugin from '@cssxio/babel-plugin';
 import { compileUtilities, createClassNameAllocator, createSelectorAliases } from '@cssxio/compiler';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
-import { parse as parseVueSfc } from '@vue/compiler-sfc';
 import { assertPluginOptions, loadTheme, type CssxPluginOptions } from './options';
 import type { IncomingSourceMap } from './source-map-from-context';
 import type { CssxCandidateOrigin } from './stylesheet';
 import { compiledCssRule } from './compiled-css-rule';
 import { wrapCssLayer } from './wrap-css-layer';
-import { remapVueBlockOrigins } from './remap-vue-block-origins';
 import { findSxCalls } from './find-sx-calls';
 import { transformedExpression } from './transformed-expression';
-import { transformVueTemplateSx } from './transform-vue-template-sx';
+import { transformVueSfcModule } from './transform-vue-sfc';
 
 export { sourceMapFromContext } from './source-map-from-context';
 export type { IncomingSourceMap } from './source-map-from-context';
@@ -83,7 +81,7 @@ export async function transformCssxModule(
     return transformAstroSxModule(code, id, options);
   }
   if (sourceId.endsWith('.vue')) {
-    return transformVueSfcModule(code, id, options);
+    return transformVueSfcModule(code, id, options, transformCssxModule);
   }
   const theme = await loadTheme(options);
   const transformed = (await transformAsync(code, {
@@ -135,94 +133,6 @@ export async function transformCssxModule(
     origins,
     cssOnlySignature,
     map: transformed.map!,
-  };
-}
-
-/**
- * Transforms CSSX calls inside Vue Single-File Component script and template blocks.
- *
- * Vue templates expose imports from `script setup` to template expressions, so
- * `:class="sx(...)"` uses the same CSSX API as JSX while retaining native SFC
- * syntax for the Vue plugin that runs later in Vite's transform pipeline.
- */
-async function transformVueSfcModule(
-  code: string,
-  id: string,
-  options: CssxPluginOptions & {
-    readonly classNameAllocator?: ClassNameAllocator;
-    readonly stableClassNames?: boolean;
-    readonly stableClassNameFileName?: string;
-  },
-): Promise<TransformResult | null> {
-  const sourceId = id.split('?', 1).join('');
-  const parsed = parseVueSfc(code, { filename: sourceId });
-  if (parsed.errors.length > 0) {
-    throw new Error(parsed.errors[0]!.message);
-  }
-
-  const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator();
-  const replacements: Array<{ readonly start: number; readonly end: number; readonly code: string }> = [];
-  const candidates: Record<string, string> = {};
-  const composites: Record<string, readonly string[]> = {};
-  const rules: CssxRule[] = [];
-  const atomicClasses = new Set<string>();
-  const origins: Record<string, CssxCandidateOrigin> = {};
-
-  for (const block of [parsed.descriptor.script, parsed.descriptor.scriptSetup]) {
-    if (!block?.content.includes(options.importSource ?? '@cssxio/cssx')) {
-      continue;
-    }
-    const extension = block.lang === 'js' || block.lang === 'jsx' || block.lang === 'tsx' ? block.lang : 'ts';
-    const transformed = (await transformCssxModule(block.content, `${sourceId}.cssx-vue-script.${extension}`, {
-      ...options,
-      classNameAllocator,
-    }))!;
-    replacements.push({ start: block.loc.start.offset, end: block.loc.end.offset, code: transformed.code });
-    Object.assign(candidates, transformed.candidates);
-    Object.assign(composites, transformed.composites);
-    Object.assign(origins, remapVueBlockOrigins(code, block.loc.start.offset, transformed.origins));
-    rules.push(...transformed.rules);
-    for (const className of transformed.atomicClasses) {
-      atomicClasses.add(className);
-    }
-  }
-
-  const template = parsed.descriptor.template;
-  if (template?.content.includes('sx')) {
-    const transformed = await transformVueTemplateSx(
-      template.content,
-      sourceId,
-      options,
-      classNameAllocator,
-      transformCssxModule,
-    );
-    if (transformed) {
-      replacements.push({ start: template.loc.start.offset, end: template.loc.end.offset, code: transformed.code });
-      Object.assign(candidates, transformed.candidates);
-      Object.assign(composites, transformed.composites);
-      Object.assign(origins, remapVueBlockOrigins(code, template.loc.start.offset, transformed.origins));
-      rules.push(...transformed.rules);
-      for (const className of transformed.atomicClasses) {
-        atomicClasses.add(className);
-      }
-    }
-  }
-
-  if (replacements.length === 0) {
-    return null;
-  }
-  let transformedCode = code;
-  for (const replacement of replacements.sort((left, right) => right.start - left.start)) {
-    transformedCode = `${transformedCode.slice(0, replacement.start)}${replacement.code}${transformedCode.slice(replacement.end)}`;
-  }
-  return {
-    code: transformedCode,
-    rules,
-    candidates,
-    composites,
-    atomicClasses: [...atomicClasses],
-    origins,
-    cssOnlySignature: transformedCode,
   };
 }
 
