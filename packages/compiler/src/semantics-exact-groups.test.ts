@@ -3,6 +3,7 @@ import { expect, it } from 'vitest';
 import { EXACT_GROUPS } from './semantics-exact-groups';
 
 it('assigns exact utilities to their atomic semantic groups', () => {
+  expect(Object.keys(EXACT_GROUPS)).toHaveLength(145);
   expect(EXACT_GROUPS.block).toEqual({ group: 'display' });
   expect(EXACT_GROUPS.border).toEqual({ group: 'border-width' });
   expect(EXACT_GROUPS['border-none']).toEqual({ group: 'border-style' });
