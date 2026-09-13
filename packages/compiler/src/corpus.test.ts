@@ -7,7 +7,7 @@ import { compileSourceUtilities, compileStyleRecords, compileUtilities } from '.
 import { classifyParsedCandidate } from '../src/semantics';
 import { parseTheme } from '../src/theme';
 import { resolveUtilityRecipe } from '../src/utilities';
-import { TAILWIND_4_FALLBACKS } from './fallback.generated';
+import { UTILITY_FALLBACKS } from './fallback.generated';
 
 interface TailwindManifest {
   readonly source: {
@@ -62,7 +62,7 @@ describe('Tailwind 4 IntelliSense snapshot corpus', () => {
     const emitted = new Map(compiled.entries.map((entry) => [entry.candidate, entry.css]));
 
     for (const candidate of fallbackCandidates) {
-      expect(emitted.get(candidate) ?? '', candidate).toBe(TAILWIND_4_FALLBACKS[candidate]!.css);
+      expect(emitted.get(candidate) ?? '', candidate).toBe(UTILITY_FALLBACKS[candidate]!.css);
     }
   }, 60_000);
 

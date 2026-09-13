@@ -25,8 +25,8 @@ const fixturePath = path.join(
   'fixtures',
   `tailwind-${tailwindMajorVersion}.json`,
 );
-const fallbackPath = path.join(root, 'packages', 'compiler', 'src', 'tailwind-fallback.generated.ts');
-const themeOutputPath = path.join(root, 'packages', 'compiler', 'src', 'tailwind-theme-defaults.generated.ts');
+const fallbackPath = path.join(root, 'packages', 'compiler', 'src', 'fallback.generated.ts');
+const themeOutputPath = path.join(root, 'packages', 'compiler', 'src', 'theme-defaults.generated.ts');
 
 const [snapshot, tailwindPackage, themeCss] = await Promise.all([
   readFile(snapshotPath, 'utf8'),
@@ -61,11 +61,11 @@ const source = {
 await writeFile(fixturePath, `${JSON.stringify({ source, total: candidates.length, candidates }, null, 2)}\n`);
 await writeFile(
   fallbackPath,
-  `import type { TailwindFallback } from './tailwind-fallback';\n\n/** Generated from the pinned Tailwind 4.3.3 compiler. */\nexport const TAILWIND_4_FALLBACKS: Readonly<Record<string, TailwindFallback>> = Object.freeze(${JSON.stringify(fallbacks)});\n`,
+  `import type { UtilityFallback } from './fallback';\n\n/** Generated from the pinned upstream compiler. */\nexport const UTILITY_FALLBACKS: Readonly<Record<string, UtilityFallback>> = Object.freeze(${JSON.stringify(fallbacks)});\n`,
 );
 await writeFile(
   themeOutputPath,
-  `/** Generated from Tailwind 4.3.3's pinned theme.css. */\nexport const TAILWIND_4_DEFAULT_THEME: Readonly<Record<string, string>> = Object.freeze(${JSON.stringify(defaultTheme)});\n`,
+  `/** Generated from the pinned upstream theme.css. */\nexport const DEFAULT_THEME: Readonly<Record<string, string>> = Object.freeze(${JSON.stringify(defaultTheme)});\n`,
 );
 console.log(`Wrote ${path.relative(root, fixturePath)} (${candidates.length} candidates).`);
 
@@ -104,7 +104,7 @@ function parseTheme(sourceCss) {
 function extractCandidateCss(sourceCss, candidate) {
   const selector = `.${escapeCssIdentifier(candidate)}`;
   const index = findExactSelector(sourceCss, selector);
-  if (index === -1) return { css: '', group: 'tailwind-noop' };
+  if (index === -1) return { css: '', group: 'fallback-noop' };
   const open = sourceCss.indexOf('{', index);
   const close = matchingBrace(sourceCss, open);
   let headerStart = sourceCss.lastIndexOf('}', index) + 1;
@@ -157,7 +157,7 @@ function splitSelectors(value) {
 /** Produces a conservative merge group from the first declaration in an oracle rule. */
 function declarationGroup(value) {
   const property = /(?:^|[;{])\s*(--[a-z0-9-]+|[a-z-]+)\s*:/i.exec(value)?.[1];
-  return property ? `tailwind-${property}` : 'tailwind-utility';
+  return property ? `fallback-${property}` : 'fallback-utility';
 }
 
 /** Escapes a utility string for exact matching in Tailwind's generated CSS. */

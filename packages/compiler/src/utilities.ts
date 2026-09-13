@@ -1,6 +1,6 @@
 import { candidateScope, parseCandidate } from './candidate';
 import type { ParsedCandidate } from './candidate';
-import { tailwindFallback } from './fallback';
+import { utilityFallback } from './fallback';
 import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
@@ -70,7 +70,7 @@ export interface UtilityRecipe {
   readonly resources: UtilityRecipeResources;
   /** Semantic write behavior for each declaration atom. */
   readonly writes: readonly UtilityWriteSet[];
-  /** Pinned Tailwind CSS for a data-backed recipe, if one is required. */
+  /** Precomputed CSS for a data-backed recipe, if one is required. */
   readonly fallbackCss?: string;
 }
 
@@ -132,7 +132,7 @@ export function resolveParsedUtilityRecipe(
   semantics: UtilitySemantics,
   theme: CssxTheme,
 ): ResolvedUtilityRecipe {
-  const fallback = tailwindFallback(candidateSource);
+  const fallback = utilityFallback(candidateSource);
   let declarations: UtilityDeclaration[];
   try {
     declarations = compileDeclarations(candidate.utility, candidate.negative, theme);
@@ -164,7 +164,7 @@ export function resolveParsedUtilityRecipe(
   };
 }
 
-/** Builds a CSSX recipe from checked-in Tailwind semantics. */
+/** Builds a CSSX recipe from checked-in fallback semantics. */
 function fallbackRecipe(
   candidateSource: string,
   candidate: ParsedCandidate,
@@ -177,7 +177,7 @@ function fallbackRecipe(
     conflicts: [group],
   };
   const atoms = css
-    ? [[{ property: '--cssx-tailwind-fallback', value: 'initial', semanticGroup: group } satisfies UtilityDeclaration]]
+    ? [[{ property: '--cssx-fallback', value: 'initial', semanticGroup: group } satisfies UtilityDeclaration]]
     : [];
   return {
     recipe: {

@@ -1,5 +1,5 @@
 import { candidateScope, parseCandidate } from './candidate';
-import { tailwindFallback } from './fallback';
+import { utilityFallback } from './fallback';
 import { DIRECTIONAL_CONFLICTS } from './semantics-directional-conflicts';
 import { EXACT_GROUPS } from './semantics-exact-groups';
 import { PREFIX_GROUPS } from './semantics-prefix-groups';
@@ -36,7 +36,7 @@ export function classifyCandidate(candidateSource: string): UtilitySemantics | n
 export function classifyParsedCandidate(candidate: ReturnType<typeof parseCandidate>): UtilitySemantics | null {
   const utility = candidate.utility;
   const group = classifyUtilityGroup(utility);
-  const fallback = group ? undefined : tailwindFallback(candidate.raw);
+  const fallback = group ? undefined : utilityFallback(candidate.raw);
   if (!group && !fallback) {
     return null;
   }
