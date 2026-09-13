@@ -3,6 +3,7 @@ import type { ParsedCandidate } from './candidate';
 import { classSelectors } from './class-selectors';
 import { cssOrder } from './css-order';
 import { utilityFallback } from './fallback';
+import { fallbackRecipe } from './fallback-recipe';
 import { propertyRegistration } from './property-registration';
 import { readGeneratedClassNames } from './read-generated-class-names';
 import { replaceFallbackSelector } from './replace-fallback-selector';
@@ -165,34 +166,6 @@ export function resolveParsedUtilityRecipe(
         const group = atom[0]?.semanticGroup ?? semantics.group;
         return { group, conflicts: atom[0]?.semanticConflicts ?? [group] };
       }),
-    },
-    parsedCandidate: candidate,
-    semantics,
-  };
-}
-
-/** Builds a CSSX recipe from checked-in fallback semantics. */
-function fallbackRecipe(
-  candidateSource: string,
-  candidate: ParsedCandidate,
-  group: string,
-  css: string,
-): ResolvedUtilityRecipe {
-  const semantics: UtilitySemantics = {
-    scope: candidateScope(candidate),
-    group,
-    conflicts: [group],
-  };
-  const atoms = css
-    ? [[{ property: '--cssx-fallback', value: 'initial', semanticGroup: group } satisfies UtilityDeclaration]]
-    : [];
-  return {
-    recipe: {
-      candidate: candidateSource,
-      atoms,
-      resources: { keyframes: [], properties: [] },
-      writes: atoms.map(() => ({ group, conflicts: [group] })),
-      ...(css ? { fallbackCss: css } : {}),
     },
     parsedCandidate: candidate,
     semantics,
