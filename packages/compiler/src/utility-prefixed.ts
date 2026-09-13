@@ -1,16 +1,14 @@
+import { compileBackdropFilterUtility } from './compile-backdrop-filter-utility';
 import { compileBorderWidthUtility } from './compile-border-width-utility';
 import { compileColorUtility } from './compile-color-utility';
+import { compileFilterUtility } from './compile-filter-utility';
 import { compileGradientUtility } from './compile-gradient-utility';
 import { compileModernUtility } from './compile-modern-utility';
+import { compileRingUtility } from './compile-ring-utility';
+import { compileShadowUtility } from './compile-shadow-utility';
 import { compileSpacingUtility } from './compile-spacing-utility';
 import { compileTextDecorationUtility } from './compile-text-decoration-utility';
 import type { CssxTheme } from './theme';
-import {
-  compileBackdropFilterUtility,
-  compileFilterUtility,
-  compileRingUtility,
-  compileShadowUtility,
-} from './utility-effects';
 import { compileMotionUtility, isMotionUtilityCandidate } from './utility-motion';
 import { flexValue, resolveArbitraryCssValue, resolveDimensionValue, resolveSpacingValue } from './utility-resolvers';
 import { compileAnimationUtility, compileDimensionUtility, compileTransformUtility } from './utility-transform';

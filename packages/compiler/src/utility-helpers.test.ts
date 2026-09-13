@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { parseTheme } from './theme';
 import { describeUtilityRecipe, compileUtilities } from './utilities';
-import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility } from './utility-effects';
 import { compileCoreLayoutUtility, compileContainerUtility } from './utility-layout';
 import { compileMotionUtility, isMotionUtilityCandidate } from './utility-motion';
 import { compilePrefixedUtility } from './utility-prefixed';
@@ -102,13 +101,6 @@ describe('utility helper edge cases', () => {
   });
 
   it('covers filter, transform, and motion value branches', () => {
-    expect(compileFilterUtility('opacity-50', false)).toBeNull();
-    expect(compileFilterUtility('hue-rotate-45', true)?.[0]?.value).toBe('hue-rotate(-45deg)');
-    expect(compileFilterUtility('drop-shadow', false)).toHaveLength(2);
-    expect(compileBackdropFilterUtility('backdrop-opacity-50', false)).toHaveLength(3);
-    expect(compileBackdropFilterUtility('blur-sm', false)).toBeNull();
-    expect(compileRingUtility('ring-offset-2', theme)).toHaveLength(3);
-    expect(compileRingUtility('ring-red-500/50', theme)?.[0]?.value).toContain('color-mix');
     expect(compileTransformUtility('rotate-[15deg]', true, theme)?.[0]).toEqual({
       property: 'rotate',
       value: '-15deg',
@@ -272,16 +264,6 @@ describe('utility helper edge cases', () => {
         '@theme prefix(app) { --animate-reveal: reveal 1s; }',
       ),
     ).resolves.toMatchObject({ entries: expect.any(Array) });
-
-    expect(compileFilterUtility('hue-rotate-[.5turn]', true)?.[0]?.value).toBe('hue-rotate(.5turn)');
-    expect(compileFilterUtility('hue-rotate-invalid', false)).toBeNull();
-    expect(compileFilterUtility('drop-shadow-[0_1px_2px_black]', false)?.[0]?.value).toContain(
-      'drop-shadow(0_1px_2px_black)',
-    );
-    expect(compileBackdropFilterUtility('backdrop-drop-shadow', false)).toBeNull();
-    expect(compileRingUtility('ring-offset-invalid', theme)).toBeNull();
-    expect(compileRingUtility('ring', theme)).toHaveLength(3);
-    expect(compileRingUtility('ring-red-500/101', theme)).toBeNull();
 
     expect(compileContainerUtility('container', emptyTheme)).toEqual([
       { property: 'width', value: '100%', semanticGroup: 'container' },
