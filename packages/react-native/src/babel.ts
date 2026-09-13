@@ -1,8 +1,9 @@
 import type { PluginObj, PluginPass } from '@babel/core';
 import type * as BabelTypes from '@babel/types';
 
-import { isCreateCall, readStyleMap } from './babel-helpers';
 import { create, type NativeCompilerOptions } from './index';
+import { isCreateCall } from './is-create-call';
+import { readStyleMap } from './read-style-map';
 
 export interface NativeBabelOptions extends NativeCompilerOptions {
   readonly importSource?: string;
