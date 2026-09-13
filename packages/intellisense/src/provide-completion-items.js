@@ -22,13 +22,14 @@ function provideCompletionItems(editor, document, position) {
     !isCssxString(document, position, editor)
   ) {
     return undefined;
+  } else {
+    const range = document.getWordRangeAtPosition(position, /[^\s'"`]+/) ?? new editor.Range(position, position);
+    const partial = document.getText(range);
+    const separatorIndex = partial.lastIndexOf(':');
+    const variantPrefix = separatorIndex === -1 ? '' : partial.slice(0, separatorIndex + 1);
+    const utilityPrefix = partial.slice(variantPrefix.length);
+    return entries(utilityPrefix).map(createCompletionItem.bind(null, editor, range, variantPrefix));
   }
-  const range = document.getWordRangeAtPosition(position, /[^\s'"`]+/) ?? new editor.Range(position, position);
-  const partial = document.getText(range);
-  const separatorIndex = partial.lastIndexOf(':');
-  const variantPrefix = separatorIndex === -1 ? '' : partial.slice(0, separatorIndex + 1);
-  const utilityPrefix = partial.slice(variantPrefix.length);
-  return entries(utilityPrefix).map(createCompletionItem.bind(null, editor, range, variantPrefix));
 }
 
 module.exports = { provideCompletionItems };
