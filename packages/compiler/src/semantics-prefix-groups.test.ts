@@ -3,6 +3,7 @@ import { expect, it } from 'vitest';
 import { PREFIX_GROUPS } from './semantics-prefix-groups';
 
 it('places every strictly longer prefix before its matching parent prefix', () => {
+  expect(PREFIX_GROUPS).toHaveLength(258);
   for (let leftIndex = 0; leftIndex < PREFIX_GROUPS.length; leftIndex++) {
     const [leftPrefix] = PREFIX_GROUPS[leftIndex]!;
     for (let rightIndex = leftIndex + 1; rightIndex < PREFIX_GROUPS.length; rightIndex++) {
