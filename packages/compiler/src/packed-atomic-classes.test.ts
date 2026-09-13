@@ -16,7 +16,10 @@ it('keeps winning atomic classes in source order across independent scopes', () 
 });
 
 it('omits empty classes and returns no classes for empty records', () => {
-  const records: CompiledUtility[] = [['visible', 'base', 'layout', 'layout'], ['', 'base', 'hidden', 'hidden']];
+  const records: CompiledUtility[] = [
+    ['visible', 'base', 'layout', 'layout'],
+    ['', 'base', 'hidden', 'hidden'],
+  ];
 
   expect(packedAtomicClasses(records)).toEqual(['visible']);
   expect(packedAtomicClasses([])).toEqual([]);

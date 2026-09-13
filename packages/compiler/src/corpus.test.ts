@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { parseCandidate } from '../src/candidate';
 import { compileSourceUtilities, compileStyleRecords, compileUtilities } from '../src/index';
 import { classifyParsedCandidate } from '../src/semantics';
-import { TAILWIND_4_FALLBACKS } from '../src/tailwind-fallback.generated';
 import { parseTheme } from '../src/theme';
 import { resolveUtilityRecipe } from '../src/utilities';
+import { TAILWIND_4_FALLBACKS } from './fallback.generated';
 
 interface TailwindManifest {
   readonly source: {

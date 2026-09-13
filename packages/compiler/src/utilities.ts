@@ -1,9 +1,9 @@
 import { candidateScope, parseCandidate } from './candidate';
 import type { ParsedCandidate } from './candidate';
+import { tailwindFallback } from './fallback';
 import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
-import { tailwindFallback } from './tailwind-fallback';
 import { parseTheme, resolveThemeValue, serializeThemeKeyframe, serializeThemeTokens } from './theme';
 import type { CssxTheme } from './theme';
 import {

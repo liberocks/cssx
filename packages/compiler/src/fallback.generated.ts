@@ -1,4 +1,4 @@
-import type { TailwindFallback } from './tailwind-fallback';
+import type { TailwindFallback } from './fallback';
 
 /** Generated from the pinned Tailwind 4.3.3 compiler. */
 export const TAILWIND_4_FALLBACKS: Readonly<Record<string, TailwindFallback>> = Object.freeze({

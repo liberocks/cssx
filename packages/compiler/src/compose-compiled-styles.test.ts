@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 
-import type { CompiledStyle } from './conflicts';
 import { createClassNameAllocator } from './class-name-allocator';
 import { composeCompiledStyles } from './compose-compiled-styles';
+import type { CompiledStyle } from './conflicts';
 
 it('returns an empty composition for styles without utility records', () => {
   expect(composeCompiledStyles([])).toEqual({ className: '', atomicClasses: [] });
@@ -20,7 +20,10 @@ it('reduces conflicting records and allocates a composite with the shared alloca
   const second: CompiledStyle = {
     $$css: 2,
     c: 'second',
-    _: [[null, 'base', 'layout', 'layout'], ['new', 'base', 'layout', 'layout']],
+    _: [
+      [null, 'base', 'layout', 'layout'],
+      ['new', 'base', 'layout', 'layout'],
+    ],
   };
   const allocator = createClassNameAllocator({ prefix: '', suffix: '' });
 

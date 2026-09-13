@@ -1,5 +1,5 @@
 /** Generated from Tailwind 4.3.3's pinned theme.css. */
-export const TAILWIND_4_DEFAULT_THEME: Readonly<Record<string, string>> = Object.freeze({
+export const DEFAULT_THEME: Readonly<Record<string, string>> = Object.freeze({
   '--font-sans':
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
   '--font-serif': "ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif",

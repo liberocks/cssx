@@ -1,8 +1,8 @@
 import { candidateScope, parseCandidate } from './candidate';
+import { tailwindFallback } from './fallback';
 import { DIRECTIONAL_CONFLICTS } from './semantics-directional-conflicts';
 import { EXACT_GROUPS } from './semantics-exact-groups';
 import { PREFIX_GROUPS } from './semantics-prefix-groups';
-import { tailwindFallback } from './tailwind-fallback';
 import { isLengthCssValue } from './utility-resolvers';
 
 /** Style groups used to merge one utility with later utilities. */

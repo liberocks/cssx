@@ -1,14 +1,15 @@
 import { atomSymbolsForAllocator } from './atom-symbols-for-allocator';
+import { parseCandidate, splitCandidateList } from './candidate';
 import { createClassNameAllocator } from './class-name-allocator';
+import { classifyUtility } from './classify-utility';
 import { COMPILER_ABI } from './compiler-abi';
-import { compositeIdentity } from './composite-identity';
-import { compositeNameIdentity } from './composite-name-identity';
 import { composeCompiledStyles } from './compose-compiled-styles';
 import type { StyleComposition } from './compose-compiled-styles';
-import { parseCandidate, splitCandidateList } from './candidate';
+import { compositeIdentity } from './composite-identity';
+import { compositeNameIdentity } from './composite-name-identity';
 import { mergeCompiledStyles } from './merge-compiled-styles';
-import { classifyCandidate, classifyParsedCandidate } from './semantics';
 import { packedAtomicClasses } from './packed-atomic-classes';
+import { classifyCandidate, classifyParsedCandidate } from './semantics';
 import { serializeThemeSignature } from './serialize-theme-signature';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 import { parseTheme } from './theme';
@@ -111,19 +112,7 @@ export interface ClassNameAllocator {
   reserve(classNames: readonly string[]): void;
 }
 
-/**
- * Finds the style groups used by one static utility.
- *
- * @param candidate A static utility string.
- * @returns Its style groups, or null when CSSX does not support it.
- */
-export function classifyUtility(candidate: string): UtilityConflictRecord | null {
-  const semantics = classifyCandidate(candidate);
-  if (!semantics) {
-    return null;
-  }
-  return semantics;
-}
+export { classifyUtility };
 
 export { createClassNameAllocator };
 

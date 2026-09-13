@@ -1,4 +1,4 @@
-import { TAILWIND_4_FALLBACKS } from './tailwind-fallback.generated';
+import { TAILWIND_4_FALLBACKS } from './fallback.generated';
 
 /**
  * Checked-in Tailwind 4.3.3 semantics for candidates that do not have a

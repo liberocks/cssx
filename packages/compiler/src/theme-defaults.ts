@@ -1,9 +1,9 @@
-import { TAILWIND_4_DEFAULT_THEME } from './tailwind-theme-defaults.generated';
 import { DEFAULT_DOCUMENTED_COLOR_TOKENS } from './theme-colors';
+import { DEFAULT_THEME as DEFAULT_THEME_GENERATED } from './theme-defaults.generated';
 
 /** Built-in theme tokens used unless a theme block overrides or resets them. */
 export const DEFAULT_THEME: Readonly<Record<string, string>> = {
-  ...TAILWIND_4_DEFAULT_THEME,
+  ...DEFAULT_THEME_GENERATED,
   // CSSX's documented palette includes its own additional color families and
   // preserves its existing precision contract for public output.
   ...DEFAULT_DOCUMENTED_COLOR_TOKENS,
