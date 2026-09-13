@@ -3,11 +3,13 @@ import cssxBabelPlugin from '@cssxio/babel-plugin';
 import { compileUtilities, createClassNameAllocator, createSelectorAliases } from '@cssxio/compiler';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 import { parse as parseVueSfc } from '@vue/compiler-sfc';
-import { assertPluginOptions, loadTheme, stableId, type CssxPluginOptions } from './options';
+import { assertPluginOptions, loadTheme, type CssxPluginOptions } from './options';
 import { quoteVueTemplateExpression } from './quote-vue-template-expression';
 import type { IncomingSourceMap } from './source-map-from-context';
 import type { CssxCandidateOrigin } from './stylesheet';
 import { templateAttributeQuote } from './template-attribute-quote';
+import { compiledCssRule } from './compiled-css-rule';
+import { wrapCssLayer } from './wrap-css-layer';
 
 export { sourceMapFromContext } from './source-map-from-context';
 export type { IncomingSourceMap } from './source-map-from-context';
@@ -426,25 +428,4 @@ interface CssxMetadata {
   readonly atomicClasses: readonly string[];
   /** Source with CSSX utility literals removed. */
   readonly cssOnlySignature: string;
-}
-
-/**
- * Converts compiled CSS into the rule shape used for stylesheet collection.
- *
- * @param css Compiled CSS for one module.
- * @returns A CSSX rule with a stable generated class name.
- */
-function compiledCssRule(css: string): CssxRule {
-  return { className: `cssx-${stableId(css)}`, css };
-}
-
-/**
- * Wraps CSS in the configured layer when one is set.
- *
- * @param css CSS to wrap.
- * @param layer Optional CSS layer name.
- * @returns The original CSS or CSS wrapped in an `@layer` rule.
- */
-function wrapCssLayer(css: string, layer: string | undefined): string {
-  return css && layer ? `@layer ${layer}{${css}}` : css;
 }
