@@ -4,6 +4,7 @@ export { isLengthCssValue } from './is-length-css-value';
 export { resolveArbitraryCssValue } from './resolve-arbitrary-css-value';
 export { resolveBorderWidthValue } from './resolve-border-width-value';
 export { flexValue } from './flex-value';
+export { isBackgroundImageValue } from './is-background-image-value';
 export { isLengthArbitraryValue } from './is-length-arbitrary-value';
 export { resolveColorValue } from './resolve-color-value';
 export { resolveOpacityModifier } from './resolve-opacity-modifier';
@@ -114,16 +115,4 @@ export function splitColorModifier(value: string): { readonly value: string; rea
     }
   }
   return { value };
-}
-
-/**
- * Checks whether arbitrary text is a supported background image.
- *
- * @param value Arbitrary value without brackets.
- * @returns Whether the value is an image expression.
- */
-export function isBackgroundImageValue(value: string): boolean {
-  return (
-    value.startsWith('image:') || /^(?:url|linear-gradient|radial-gradient|conic-gradient|image-set)\(/.test(value)
-  );
 }
