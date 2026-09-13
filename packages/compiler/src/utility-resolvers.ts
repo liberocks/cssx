@@ -1,20 +1,11 @@
-import { resolveThemeToken } from './theme';
 import type { CssxTheme } from './theme';
 import { resolveSpacingValue } from './resolve-spacing-value';
 export { isLengthCssValue } from './is-length-css-value';
 export { resolveArbitraryCssValue } from './resolve-arbitrary-css-value';
 export { resolveBorderWidthValue } from './resolve-border-width-value';
 export { flexValue } from './flex-value';
+export { resolveColorValue } from './resolve-color-value';
 export { resolveSpacingValue } from './resolve-spacing-value';
-
-/**
- * Resolves a spacing value against the active spacing token.
- *
- * @param raw Utility value.
- * @param negative Whether the value is negated.
- * @param theme Active resolved theme.
- * @returns CSS spacing value, or null when unsupported.
- */
 /**
  * Resolves named, fractional, viewport, and spacing dimension values.
  *
@@ -71,20 +62,6 @@ export function resolveDimensionValue(
     return `${negative ? '-' : ''}${(numerator / denominator) * 100}%`;
   }
   return resolveSpacingValue(raw, negative, theme);
-}
-
-/**
- * Resolves an arbitrary or theme-backed color.
- *
- * @param raw Utility color value.
- * @param theme Active resolved theme.
- * @returns CSS color, or null when no token exists.
- */
-export function resolveColorValue(raw: string, theme: CssxTheme): string | null {
-  if (raw.startsWith('[') && raw.endsWith(']')) {
-    return raw.slice(1, -1);
-  }
-  return resolveThemeToken(theme, `--color-${raw}`) ?? null;
 }
 
 /**
