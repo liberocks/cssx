@@ -5,6 +5,7 @@ import { utilityFallback } from './fallback';
 import { propertyRegistration } from './property-registration';
 import { readGeneratedClassNames } from './read-generated-class-names';
 import { requiredPropertyNames } from './required-property-names';
+import { resolveAnimationThemeReferences } from './resolve-animation-theme-references';
 import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
@@ -596,13 +597,4 @@ function requiredAnimationKeyframes(declarations: readonly UtilityDeclaration[],
     }
   }
   return [...required].sort();
-}
-
-/** Resolves theme variables in an animation declaration for resource discovery. */
-function resolveAnimationThemeReferences(value: string, theme: CssxTheme): string {
-  return value.replaceAll(/var\((--[a-z0-9_-]+)\)/gi, (reference, emittedName: string) => {
-    const prefix = theme.prefix ? `--${theme.prefix}-` : '';
-    const tokenName = prefix && emittedName.startsWith(prefix) ? `--${emittedName.slice(prefix.length)}` : emittedName;
-    return resolveThemeValue(theme, tokenName) ?? reference;
-  });
 }
