@@ -1,3 +1,4 @@
+import { appendSelectorText } from './append-selector-text';
 import { readSelectorAttributeEnd } from './read-selector-attribute-end';
 import { readSelectorStringEnd } from './read-selector-string-end';
 
@@ -24,13 +25,6 @@ export function parseSelector(selector: string): SelectorAst {
   let text = '';
   let hasNesting = false;
 
-  const pushText = () => {
-    if (text) {
-      nodes.push({ type: 'text', value: text });
-    }
-    text = '';
-  };
-
   for (let index = 0; index < selector.length; index++) {
     const character = selector[index];
     if (character === '\\') {
@@ -39,27 +33,31 @@ export function parseSelector(selector: string): SelectorAst {
       continue;
     }
     if (character === '&') {
-      pushText();
+      appendSelectorText(nodes, text);
+      text = '';
       nodes.push({ type: 'nesting' });
       hasNesting = true;
       continue;
     }
     if (character === '[') {
-      pushText();
+      appendSelectorText(nodes, text);
+      text = '';
       const end = readSelectorAttributeEnd(selector, index);
       nodes.push({ type: 'attribute', value: selector.slice(index, end + 1) });
       index = end;
       continue;
     }
     if (character === '"' || character === "'") {
-      pushText();
+      appendSelectorText(nodes, text);
+      text = '';
       const end = readSelectorStringEnd(selector, index, character);
       nodes.push({ type: 'string', value: selector.slice(index, end + 1) });
       index = end;
       continue;
     }
     if (character === '/' && selector[index + 1] === '*') {
-      pushText();
+      appendSelectorText(nodes, text);
+      text = '';
       const end = selector.indexOf('*/', index + 2);
       if (end === -1) {
         throw new Error('Invalid CSSX arbitrary selector comment.');
@@ -70,6 +68,6 @@ export function parseSelector(selector: string): SelectorAst {
     }
     text += character;
   }
-  pushText();
+  appendSelectorText(nodes, text);
   return { nodes, hasNesting };
 }
