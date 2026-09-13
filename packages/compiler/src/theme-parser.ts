@@ -6,9 +6,9 @@ import { readThemeBalancedBlock } from './read-theme-balanced-block';
 import { rewriteThemeReferences } from './rewrite-theme-references';
 import { themeTokenName } from './theme-token-name';
 import { referencedThemeTokens } from './referenced-theme-tokens';
-import { splitThemeDeclarations } from './split-theme-declarations';
 import { resolveThemeTokenValue } from './resolve-theme-token-value';
 import { parseThemeDeclarations } from './parse-theme-declarations';
+import { validateKeyframeBody } from './validate-keyframe-body';
 
 /** Maximum accepted CSS source length for a theme. */
 const MAX_THEME_LENGTH = 131_072;
@@ -113,44 +113,6 @@ function extractKeyframes(block: string, keyframes: Record<string, string>): str
     index++;
   }
   return declarations;
-}
-
-/**
- * Validates the restricted selector and declaration grammar allowed in keyframes.
- *
- * @param body Content inside one keyframes rule.
- * @param name Keyframe name used in error messages.
- * @returns Nothing.
- */
-function validateKeyframeBody(body: string, name: string): void {
-  let index = 0;
-  while (index < body.length) {
-    index = skipThemeWhitespaceAndComments(body, index);
-    if (index >= body.length) {
-      return;
-    }
-    const selectorStart = index;
-    while (body[index] !== '{' && index < body.length) {
-      index++;
-    }
-    const selector = body.slice(selectorStart, index).trim();
-    if (!selector || !selector.split(',').every((part) => /^(from|to|\d{1,3}(?:\.\d+)?%)$/.test(part.trim()))) {
-      throw new Error(`Invalid CSSX @keyframes selector in ${name}.`);
-    }
-    if (body[index] !== '{') {
-      throw new Error(`Unterminated CSSX @keyframes ${name}.`);
-    }
-    const declarationBlock = readThemeBalancedBlock(body, index);
-    for (const declaration of splitThemeDeclarations(declarationBlock.content)) {
-      const separator = declaration.indexOf(':');
-      const property = declaration.slice(0, separator).trim();
-      const value = declaration.slice(separator + 1).trim();
-      if (separator === -1 || !/^(--[a-z0-9_-]+|[a-z-]+)$/i.test(property) || !value || /[{};]/.test(value)) {
-        throw new Error(`Invalid CSSX @keyframes declaration in ${name}.`);
-      }
-    }
-    index = declarationBlock.end;
-  }
 }
 
 /**
