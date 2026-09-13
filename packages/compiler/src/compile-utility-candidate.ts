@@ -2,6 +2,7 @@ import type { VariantOptions } from './apply-variants';
 import { compileCandidate } from './compile-candidate';
 import { readGeneratedClassNames } from './read-generated-class-names';
 import { resolveUtilityRecipe } from './resolve-utility-recipe';
+import { selectLiveGeneratedClasses } from './select-live-generated-classes';
 import type { CssxTheme } from './theme';
 import type { CompiledUtility } from './utility-recipe-types';
 
@@ -54,11 +55,7 @@ export function compileUtilityCandidate(options: CompileUtilityCandidateOptions)
     ? [className(candidate)]
     : readGeneratedClassNames(candidate, className(candidate));
   const compiledClassName = generatedClasses.join(' ');
-  const liveClasses = includedClasses
-    ? generatedClasses.filter(
-        (generatedClass) => includedClasses.has(generatedClass) || (selectorAliases[generatedClass]?.length ?? 0) > 0,
-      )
-    : generatedClasses;
+  const liveClasses = selectLiveGeneratedClasses(generatedClasses, includedClasses, selectorAliases);
   if (liveClasses.length === 0) {
     return { className: compiledClassName, compiled: [], requiredKeyframes: new Set(), requiredProperties: new Set() };
   }
