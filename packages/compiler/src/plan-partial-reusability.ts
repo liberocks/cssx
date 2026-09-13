@@ -1,10 +1,15 @@
 import type { ClassNameAllocator } from './class-name';
 import { compositeIdentity } from './composite-identity';
 import { compositeNameIdentity } from './composite-name-identity';
+import { createPartialReusabilityPlan } from './create-partial-reusability-plan';
 import { factorReusableGroups } from './factor-reusable-groups';
-import type { ReusabilityPlan, ReusableFragment } from './reusability';
+import { residualAtomicClassesByComposition } from './residual-atomic-classes-by-composition';
+import { residualCompositionIdentities } from './residual-composition-identities';
+import type { ReusabilityPlan } from './reusability';
+import { reusableFragmentsByComposition } from './reusable-fragments-by-composition';
 import { reusableGroups } from './reusable-groups';
 import { selectReusableGroups } from './select-reusable-groups';
+import { selectedAtomsByComposition } from './selected-atoms-by-composition';
 
 /**
  * Builds reusable aliases and residual classes for an intermediate budget.
@@ -21,67 +26,20 @@ export function planPartialReusability(
   budget: number | 'auto',
   allocator: ClassNameAllocator,
 ): ReusabilityPlan {
+  let totalAtomOccurrences = 0;
+  for (const atomicClasses of canonicalCompositions) {
+    totalAtomOccurrences += atomicClasses.length;
+  }
   const groups = factorReusableGroups(reusableGroups(canonicalCompositions));
-  const selectedGroups = selectReusableGroups(
-    groups,
-    canonicalCompositions.reduce((total, atomicClasses) => total + atomicClasses.length, 0),
-    budget,
-  );
-  const atomsByComposition = canonicalCompositions.map(() => new Set<string>());
+  const selectedGroups = selectReusableGroups(groups, totalAtomOccurrences, budget);
+  const fragmentIdentities: string[] = [];
   for (const group of selectedGroups) {
-    for (const compositionIndex of group.compositionIndexes) {
-      const selectedAtoms = atomsByComposition[compositionIndex];
-      for (const atomicClass of group.atomicClasses) {
-        selectedAtoms!.add(atomicClass);
-      }
-    }
+    fragmentIdentities.push(compositeNameIdentity(compositeIdentity(group.atomicClasses)));
   }
-
-  const fragmentIdentities = selectedGroups.map((group) =>
-    compositeNameIdentity(compositeIdentity(group.atomicClasses)),
-  );
   const fragmentNames = allocator.allocate(fragmentIdentities);
-  const fragmentsByComposition = new Map<string, ReusableFragment[]>();
-  const classNames = new Map<string, string>();
-  const residualIdentities = new Set<string>();
-  const fragmentsForIndex = canonicalCompositions.map(() => [] as ReusableFragment[]);
-
-  for (const group of selectedGroups) {
-    const identity = compositeIdentity(group.atomicClasses);
-    const className = fragmentNames.get(compositeNameIdentity(identity))!;
-    const fragment = { className, atomicClasses: group.atomicClasses };
-    for (const compositionIndex of group.compositionIndexes) {
-      fragmentsForIndex[compositionIndex]!.push(fragment);
-    }
-  }
-  for (let index = 0; index < canonicalCompositions.length; index++) {
-    const residualAtoms = canonicalCompositions[index]!.filter(
-      (atomicClass) => !atomsByComposition[index]!.has(atomicClass),
-    );
-    const residualIdentity = compositeIdentity(residualAtoms);
-    if (residualIdentity) {
-      residualIdentities.add(compositeNameIdentity(residualIdentity));
-    }
-  }
-  const residualNames = allocator.allocate([...residualIdentities]);
-
-  for (let index = 0; index < identities.length; index++) {
-    const identity = identities[index]!;
-    if (!identity || classNames.has(identity)) {
-      continue;
-    }
-    const fragments = fragmentsForIndex[index]!;
-    const residualAtoms = canonicalCompositions[index]!.filter(
-      (atomicClass) => !atomsByComposition[index]!.has(atomicClass),
-    );
-    const residualIdentity = compositeIdentity(residualAtoms);
-    const residualClassName = residualIdentity ? residualNames.get(compositeNameIdentity(residualIdentity))! : '';
-    const className = [...fragments.map((fragment) => fragment.className), residualClassName].filter(Boolean).join(' ');
-    classNames.set(identity, className);
-    fragmentsByComposition.set(identity, [
-      ...fragments,
-      ...(residualClassName ? [{ className: residualClassName, atomicClasses: residualAtoms }] : []),
-    ]);
-  }
-  return { classNames, fragments: fragmentsByComposition };
+  const selectedAtoms = selectedAtomsByComposition(canonicalCompositions, selectedGroups);
+  const reusableFragments = reusableFragmentsByComposition(canonicalCompositions.length, selectedGroups, fragmentNames);
+  const residualAtoms = residualAtomicClassesByComposition(canonicalCompositions, selectedAtoms);
+  const residualNames = allocator.allocate(residualCompositionIdentities(residualAtoms));
+  return createPartialReusabilityPlan(identities, reusableFragments, residualAtoms, residualNames);
 }
