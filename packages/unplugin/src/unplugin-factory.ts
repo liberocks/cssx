@@ -1,7 +1,4 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
-import { Buffer } from 'node:buffer';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import { basename, dirname, resolve } from 'node:path';
 import { createUnplugin } from 'unplugin';
 import type { UnpluginFactory } from 'unplugin';
 
@@ -9,20 +6,13 @@ import { configureViteDevelopmentServer } from './configure-vite-development-ser
 import type { ViteServerLike } from './configure-vite-development-server';
 import { createGenerateBundleHandler } from './create-generate-bundle-handler';
 import { createTransformHandler } from './create-transform-handler';
+import { createUniversalEsbuildHooks } from './create-universal-esbuild-hooks';
 import { createViteHotUpdateHandler } from './create-vite-hot-update-handler';
 import { RULES_METADATA_KEY, type ModuleCssxData } from './module-cssx-data';
 import { configureCompilationAsset, type NativeCompiler } from './native';
 import { nativeBuildState } from './native-build-state';
-import {
-  assertPluginOptions,
-  loadTheme,
-  moduleId,
-  resolveCssFileName,
-  resolveEsbuildAssetPath,
-  type CssxPluginOptions,
-} from './options';
+import { assertPluginOptions, loadTheme, moduleId, type CssxPluginOptions } from './options';
 import { scanProjectCssxSourceModules } from './project-scan';
-import { compileCssxStylesheet, cssWithSourceMapComment } from './stylesheet';
 import { sendViteStyles } from './vite-dev';
 
 export {
@@ -57,10 +47,6 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
   const classNameAllocator = createClassNameAllocator();
   /** Transformed module data retained for the universal esbuild adapter. */
   const esbuildDataById = new Map<string, ModuleCssxData>();
-  /** CSS asset written by the universal esbuild adapter in the previous build. */
-  let emittedEsbuildAsset: string | undefined;
-  /** Working directory used to normalize universal esbuild module IDs. */
-  let esbuildWorkingDirectory = process.cwd();
   /** Active Vite development server, available after server configuration. */
   let viteServer: ViteServerLike | undefined;
   /**
@@ -69,6 +55,13 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
    * @returns A promise for the configured theme source, or undefined.
    */
   const getTheme = (): Promise<string | undefined> => loadTheme(options);
+  const esbuildHooks = createUniversalEsbuildHooks({
+    options,
+    cssFileName,
+    sourceMap,
+    dataById: esbuildDataById,
+    getTheme,
+  });
   const generateBundle = createGenerateBundleHandler({
     framework: meta.framework,
     options,
@@ -90,7 +83,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         rollupDataById,
         esbuildDataById,
         cssFileName,
-        getEsbuildWorkingDirectory: () => esbuildWorkingDirectory,
+        getEsbuildWorkingDirectory: esbuildHooks.getWorkingDirectory,
         notifyViteStyles: (path) => {
           if (viteServer) {
             sendViteStyles(viteServer, path);
@@ -161,65 +154,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
       : {}),
     ...(meta.framework === 'esbuild'
       ? {
-          esbuild: {
-            config(buildOptions) {
-              buildOptions.metafile = true;
-            },
-            setup(build) {
-              const workingDirectory = build.initialOptions.absWorkingDir ?? process.cwd();
-              esbuildWorkingDirectory = workingDirectory;
-              build.onEnd(async (result) => {
-                if (!result.metafile) {
-                  return;
-                }
-                const liveIds = new Set(Object.keys(result.metafile.inputs).map((id) => resolve(workingDirectory, id)));
-                for (const id of esbuildDataById.keys()) {
-                  if (!liveIds.has(id)) {
-                    esbuildDataById.delete(id);
-                  }
-                }
-
-                const compiled = await compileCssxStylesheet(
-                  [...esbuildDataById.values()],
-                  await getTheme(),
-                  options.layer,
-                  sourceMap,
-                  options.darkMode,
-                  options.preflight,
-                );
-                const assetPath = resolveEsbuildAssetPath(
-                  workingDirectory,
-                  build.initialOptions,
-                  resolveCssFileName(cssFileName, compiled.css),
-                );
-                if (!compiled.css) {
-                  if (emittedEsbuildAsset) {
-                    await unlink(emittedEsbuildAsset).catch(() => undefined);
-                  }
-                  emittedEsbuildAsset = undefined;
-                  return;
-                }
-                const css = cssWithSourceMapComment(compiled, basename(assetPath));
-                if (build.initialOptions.write === false) {
-                  const outputFiles = result.outputFiles;
-                  if (!outputFiles) {
-                    return;
-                  }
-                  const output = { path: assetPath, contents: Buffer.from(css), hash: '', text: css };
-                  const existing = outputFiles.findIndex((file) => file.path === assetPath);
-                  if (existing !== -1) {
-                    throw new Error(`CSSX CSS asset collision at "${assetPath}".`);
-                  }
-                  outputFiles.push(output);
-                  return;
-                }
-
-                await mkdir(dirname(assetPath), { recursive: true });
-                await writeFile(assetPath, css);
-                emittedEsbuildAsset = assetPath;
-              });
-            },
-          },
+          esbuild: { config: esbuildHooks.config, setup: esbuildHooks.setup },
         }
       : {}),
   };
