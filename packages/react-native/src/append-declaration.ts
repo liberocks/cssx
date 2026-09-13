@@ -1,5 +1,6 @@
+import { appendCustomTransform } from './append-custom-transform';
+import { appendTransform } from './append-transform';
 import { logicalProperties, propertyNames } from './native-properties';
-import { appendCustomTransform, appendTransform } from './native-transforms';
 import type { NativeStyleValue } from './native-types';
 import { nativeValue } from './native-values';
 
