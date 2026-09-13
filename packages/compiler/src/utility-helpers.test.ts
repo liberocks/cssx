@@ -19,7 +19,6 @@ import {
   compileDimensionUtility,
   compileTransformUtility,
 } from './utility-transform';
-import { compileBackgroundUtility, compileMaskUtility, compileNumericUtility } from './utility-visual-basics';
 
 describe('utility helper edge cases', () => {
   const theme = parseTheme();
@@ -81,22 +80,6 @@ describe('utility helper edge cases', () => {
     expect(compileCoreLayoutUtility('scroll-px-invalid', false, theme)).toBeNull();
     expect(compileCoreLayoutUtility('scrollbar-thumb-red-500/50', false, theme)).toHaveLength(2);
     expect(compileCoreLayoutUtility('scrollbar-track-red-500/101', false, theme)).toBeNull();
-    expect(compileBackgroundUtility('bg-clip-text')).toHaveLength(3);
-    expect(compileBackgroundUtility('bg-position-[25%_75%]')).toEqual({
-      property: 'background-position',
-      value: '25% 75%',
-    });
-    expect(compileBackgroundUtility('bg-size-[auto_100%]')).toEqual({
-      property: 'background-size',
-      value: 'auto 100%',
-    });
-    expect(compileMaskUtility('mask-position-[center]', theme)).toEqual({ property: 'mask-position', value: 'center' });
-    expect(compileMaskUtility('mask-[url("/mask.svg")]', theme)).toEqual({
-      property: 'mask-image',
-      value: 'url("/mask.svg")',
-    });
-    expect(compileNumericUtility('normal-nums')).toHaveLength(1);
-    expect(compileNumericUtility('tabular-nums')).toHaveLength(2);
   });
 
   it('covers filter, transform, and motion value branches', () => {

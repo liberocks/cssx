@@ -1,10 +1,13 @@
 import { compileBackdropFilterUtility } from './compile-backdrop-filter-utility';
+import { compileBackgroundUtility } from './compile-background-utility';
 import { compileBorderWidthUtility } from './compile-border-width-utility';
 import { compileColorUtility } from './compile-color-utility';
 import { compileFilterUtility } from './compile-filter-utility';
 import { compileGradientUtility } from './compile-gradient-utility';
+import { compileMaskUtility } from './compile-mask-utility';
 import { compileModernUtility } from './compile-modern-utility';
 import { compileMotionUtility } from './compile-motion-utility';
+import { compileNumericUtility } from './compile-numeric-utility';
 import { compileRingUtility } from './compile-ring-utility';
 import { compileShadowUtility } from './compile-shadow-utility';
 import { compileSpacingUtility } from './compile-spacing-utility';
@@ -15,7 +18,6 @@ import { flexValue, resolveArbitraryCssValue, resolveDimensionValue, resolveSpac
 import { compileAnimationUtility, compileDimensionUtility, compileTransformUtility } from './utility-transform';
 import type { UtilityDeclaration } from './utility-types';
 import { leadingValue, trackingValue } from './utility-values';
-import { compileBackgroundUtility, compileMaskUtility, compileNumericUtility } from './utility-visual-basics';
 
 /**
  * Routes supported prefixed utilities to their specialized compiler.
