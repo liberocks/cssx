@@ -1,6 +1,7 @@
 import { DEFAULT_KEYFRAMES, DEFAULT_THEME } from './theme-defaults';
 import type { CssxTheme, ThemeOutputMode } from './theme-types';
 import { readThemeModifier } from './read-theme-modifier';
+import { themeTokenName } from './theme-token-name';
 
 /** Maximum accepted CSS source length for a theme. */
 const MAX_THEME_LENGTH = 131_072;
@@ -254,17 +255,6 @@ function collectThemeTokenReferences(theme: CssxTheme, name: string, names: Set<
  */
 function rewriteThemeReferences(theme: CssxTheme, value: string): string {
   return value.replace(/var\((--[a-z0-9_-]+)/gi, (_match, name: string) => `var(${themeTokenName(theme, name)}`);
-}
-
-/**
- * Gets the emitted custom-property name for a logical token name.
- *
- * @param theme Active resolved theme.
- * @param name Logical token name.
- * @returns Emitted custom-property name.
- */
-function themeTokenName(theme: CssxTheme, name: string): string {
-  return theme.prefix ? `--${theme.prefix}-${name.slice(2)}` : name;
 }
 
 /**
