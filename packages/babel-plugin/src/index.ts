@@ -17,7 +17,7 @@ import { cssOnlySignature } from './css-only-signature';
 import { stableCompositeName } from './stable-composite-name';
 import { styleMapExpression } from './style-map-expression';
 import { withStableCompositeNames } from './with-stable-composite-names';
-import { packedRecordKey } from './packed-record-key';
+import { compactLiveStyleRecords } from './compact-live-style-records';
 import { markEmittedClassNames } from './mark-emitted-class-names';
 import { resolveStyleArgument } from './resolve-style-argument';
 import { readStyleMap } from './read-style-map';
@@ -83,7 +83,7 @@ export default function cssxBabelPlugin(
           markReferencedStyleCandidates(path, t, state);
           materializeLiveStyleMaps(path, t, state);
           removeDeadStyleMaps(path, state);
-          compactLiveStyleRecords(path);
+          compactLiveStyleRecords(path, t, state);
           for (const statement of path.get('body')) {
             if (!statement.isImportDeclaration() || statement.node.source.value !== importSource) {
               continue;
@@ -278,60 +278,5 @@ export default function cssxBabelPlugin(
       state,
     };
     transformSxCall(path, types, context);
-  }
-
-  /** Interns repeated conflict tuples when a style map must remain available at runtime. */
-  function compactLiveStyleRecords(program: NodePath<import('@babel/types').Program>): void {
-    for (const styleName of state.styles.keys()) {
-      const binding = program.scope.getBinding(styleName);
-      if (!binding?.path.isVariableDeclarator() || !binding.path.parentPath?.isVariableDeclaration()) {
-        continue;
-      }
-      const entries = new Map<string, { record: import('@babel/types').ArrayExpression; uses: number }>();
-      const recordArrays: {
-        readonly records: import('@babel/types').ArrayExpression;
-        readonly index: number;
-        readonly record: import('@babel/types').ArrayExpression;
-      }[] = [];
-      const styles = binding.path.node.init as import('@babel/types').ObjectExpression;
-      for (const property of styles.properties) {
-        const style = property as import('@babel/types').ObjectProperty;
-        const records = (style.value as import('@babel/types').ObjectExpression).properties.find(
-          (styleProperty) => t.isObjectProperty(styleProperty) && t.isIdentifier(styleProperty.key, { name: '_' }),
-        ) as import('@babel/types').ObjectProperty;
-        const recordValues = records.value as import('@babel/types').ArrayExpression;
-        for (let index = 0; index < recordValues.elements.length; index++) {
-          const record = recordValues.elements[index] as import('@babel/types').ArrayExpression;
-          const key = packedRecordKey(record, t);
-          const entry = entries.get(key) ?? { record, uses: 0 };
-          entry.uses++;
-          entries.set(key, entry);
-          recordArrays.push({ records: recordValues, index, record });
-        }
-      }
-      const interned = new Map<string, import('@babel/types').Identifier>();
-      const declarations: import('@babel/types').VariableDeclarator[] = [];
-      for (const [key, entry] of entries) {
-        if (entry.uses < 2) {
-          continue;
-        }
-        const identifier = program.scope.generateUidIdentifier('c');
-        interned.set(key, identifier);
-        declarations.push(t.variableDeclarator(identifier, entry.record));
-      }
-      if (declarations.length === 0) {
-        continue;
-      }
-      for (const { records, index, record } of recordArrays) {
-        const identifier = interned.get(packedRecordKey(record, t));
-        if (!identifier) {
-          continue;
-        }
-        records.elements[index] = t.identifier(identifier.name);
-      }
-      const declaration = binding.path.parentPath;
-      const statement = declaration.parentPath?.isExportNamedDeclaration() ? declaration.parentPath : declaration;
-      statement.insertBefore(t.variableDeclaration('const', declarations));
-    }
   }
 }
