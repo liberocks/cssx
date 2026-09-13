@@ -4,7 +4,7 @@ import { parse as parseVueSfc } from '@vue/compiler-sfc';
 import type { CssxPluginOptions } from './options';
 import { remapVueBlockOrigins } from './remap-vue-block-origins';
 import type { CssxCandidateOrigin } from './stylesheet';
-import type { TransformResult } from './transform';
+import type { TransformResult } from './transform-cssx-module';
 import { transformVueTemplateSx } from './transform-vue-template-sx';
 
 /** Options forwarded to script and template transforms for a Vue SFC. */

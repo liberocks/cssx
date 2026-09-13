@@ -2,7 +2,7 @@ import { createClassNameAllocator } from '@cssxio/compiler';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 import type { CssxPluginOptions } from './options';
 import { findSxCalls } from './find-sx-calls';
-import type { TransformResult } from './transform';
+import type { TransformResult } from './transform-cssx-module';
 import { transformedExpression } from './transformed-expression';
 
 /** Options forwarded to synthetic Astro expression modules. */

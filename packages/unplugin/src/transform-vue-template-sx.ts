@@ -5,7 +5,7 @@ import { remapVueTemplateOrigins } from './remap-vue-template-origins';
 import type { CssxCandidateOrigin } from './stylesheet';
 import { templateAttributeQuote } from './template-attribute-quote';
 import { findSxCalls } from './find-sx-calls';
-import type { TransformResult } from './transform';
+import type { TransformResult } from './transform-cssx-module';
 import { transformedExpression } from './transformed-expression';
 
 /** Options forwarded to the JavaScript transformer for synthetic Vue template modules. */
