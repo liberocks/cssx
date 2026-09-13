@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import type { ClassNameAllocator } from './class-name';
 import type { CompiledCandidate } from './compile-candidates';
 import { createAtomIdentities } from './create-atom-identities';
-import { parseTheme } from './theme-parser';
+import { parseTheme } from './theme';
 import type { UtilityConflictRecord } from './utility-conflict-record';
 import type { UtilityDeclaration } from './utility-types';
 

@@ -1,7 +1,7 @@
 import { atomSemantics } from './atom-semantics';
 import { parseCandidate } from './parse-candidate';
 import { classifyParsedCandidate } from './semantics';
-import type { parseTheme } from './theme-parser';
+import type { parseTheme } from './theme';
 import type { getUtilityAtoms } from './utilities';
 import { resolveParsedUtilityRecipe } from './utilities';
 import type { UtilityConflictRecord } from './utility-conflict-record';

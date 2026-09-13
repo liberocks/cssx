@@ -3,8 +3,8 @@ import { type ClassNameAllocator } from './class-name';
 import { type CompiledCandidate } from './compile-candidates';
 import { COMPILER_ABI } from './compiler-abi';
 import { serializeThemeSignature } from './serialize-theme-signature';
+import type { parseTheme } from './theme';
 import { themeNamespace } from './theme-namespace';
-import type { parseTheme } from './theme-parser';
 
 /**
  * Creates deterministic symbolic atom identities from emitted declarations.

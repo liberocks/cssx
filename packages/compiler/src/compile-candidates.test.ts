@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 
 import { compileCandidates } from './compile-candidates';
-import { parseTheme } from './theme-parser';
+import { parseTheme } from './theme';
 
 const theme = parseTheme();
 

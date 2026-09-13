@@ -2,12 +2,8 @@ import { extractThemeKeyframes } from './extract-theme-keyframes';
 import { parseThemeDeclarations } from './parse-theme-declarations';
 import { readThemeBalancedBlock } from './read-theme-balanced-block';
 import { readThemeModifier } from './read-theme-modifier';
-import { referencedThemeTokens } from './referenced-theme-tokens';
-import { resolveThemeTokenValue } from './resolve-theme-token-value';
-import { rewriteThemeReferences } from './rewrite-theme-references';
 import { skipThemeWhitespaceAndComments } from './skip-theme-whitespace-and-comments';
 import { DEFAULT_KEYFRAMES, DEFAULT_THEME } from './theme-defaults';
-import { themeTokenName } from './theme-token-name';
 import type { CssxTheme, ThemeOutputMode } from './theme-types';
 
 /** Maximum accepted CSS source length for a theme. */
@@ -75,67 +71,4 @@ export function parseTheme(source = ''): CssxTheme {
     index = block.end;
   }
   return Object.freeze({ tokens: Object.freeze(tokens), keyframes: Object.freeze(keyframes), mode, prefix });
-}
-
-/**
- * Resolves a token for normal declaration output.
- *
- * @param theme Active resolved theme.
- * @param name Token name including its custom-property prefix.
- * @returns Concrete value for inline mode or a variable reference for other modes.
- */
-export function resolveThemeToken(theme: CssxTheme, name: string): string | undefined {
-  const value = resolveThemeValue(theme, name);
-  if (value === undefined) {
-    return undefined;
-  }
-  return theme.mode === 'inline' ? value : `var(${themeTokenName(theme, name)})`;
-}
-
-/**
- * Resolves a theme token to its concrete value, including for media queries.
- *
- * @param theme Active resolved theme.
- * @param name Token name including its custom-property prefix.
- * @returns Concrete value, or undefined when the token is absent or reset.
- */
-export function resolveThemeValue(theme: CssxTheme, name: string): string | undefined {
-  const value = theme.tokens[name];
-  if (value === undefined || value === 'initial') {
-    return undefined;
-  }
-  return resolveThemeTokenValue(theme.tokens, value, new Set([name]));
-}
-
-/**
- * Emits a variable root for non-inline themes, retaining only referenced values when possible.
- *
- * @param theme Active resolved theme.
- * @param css Utility CSS that may reference theme variables.
- * @returns Root variable CSS, or an empty string for inline or unused output.
- */
-export function serializeThemeTokens(theme: CssxTheme, css: string): string {
-  if (theme.mode === 'inline') {
-    return '';
-  }
-  const names = theme.mode === 'static' ? Object.keys(theme.tokens) : referencedThemeTokens(theme, css);
-  if (names.length === 0) {
-    return '';
-  }
-  return `:root{${names
-    .sort()
-    .map((name) => `${themeTokenName(theme, name)}:${rewriteThemeReferences(theme, theme.tokens[name]!)}`)
-    .join(';')}}`;
-}
-
-/**
- * Serializes one referenced keyframe rule for the active theme output mode.
- *
- * @param theme Active resolved theme.
- * @param name Keyframe identifier.
- * @returns Rewritten keyframe CSS, or undefined when the name is unknown.
- */
-export function serializeThemeKeyframe(theme: CssxTheme, name: string): string | undefined {
-  const keyframe = theme.keyframes[name];
-  return keyframe === undefined ? undefined : rewriteThemeReferences(theme, keyframe);
 }
