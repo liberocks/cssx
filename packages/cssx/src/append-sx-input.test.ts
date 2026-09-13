@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { appendSxInput } from './append-sx-input';
 
 describe('appendSxInput', () => {

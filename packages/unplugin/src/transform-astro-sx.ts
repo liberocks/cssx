@@ -1,7 +1,8 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
-import type { CssxPluginOptions } from './options';
+
 import { findSxCalls } from './find-sx-calls';
+import type { CssxPluginOptions } from './options';
 import type { TransformResult } from './transform-cssx-module';
 import { transformedExpression } from './transformed-expression';
 

@@ -1,6 +1,6 @@
-import { createSignal } from 'solid-js';
 import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
+import { createSignal } from 'solid-js';
 
 import solidLogo from './assets/solid.svg';
 

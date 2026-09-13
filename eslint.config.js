@@ -1,5 +1,5 @@
-import tseslint from 'typescript-eslint';
 import jsdoc from 'eslint-plugin-jsdoc';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {

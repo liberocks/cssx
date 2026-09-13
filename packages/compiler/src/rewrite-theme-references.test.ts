@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { rewriteThemeReferences } from './rewrite-theme-references';
 
 it('rewrites custom property references for prefixed theme output', () => {

@@ -1,16 +1,17 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
-import { createUnplugin } from 'unplugin';
-import type { UnpluginFactory } from 'unplugin';
 import { Buffer } from 'node:buffer';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { basename, dirname, relative, resolve, sep } from 'node:path';
+import { createUnplugin } from 'unplugin';
+import type { UnpluginFactory } from 'unplugin';
+
+import { dataFromMetadata } from './data-from-metadata';
+import { invalidateViteRunner, type ViteHotUpdateModule } from './invalidate-vite-runner';
+import { RULES_METADATA_KEY, type ModuleCssxData } from './module-cssx-data';
 import { configureCompilationAsset, storeCompilationData, type NativeCompiler } from './native';
 import { nativeBuildRoot } from './native-build-root';
 import { nativeBuildState } from './native-build-state';
 import { nativeStylesheetHmr } from './native-stylesheet-hmr';
-import { dataFromMetadata } from './data-from-metadata';
-import { RULES_METADATA_KEY, type ModuleCssxData } from './module-cssx-data';
-import { scanProjectCssxSourceModules } from './project-scan';
 import {
   assertPluginOptions,
   loadTheme,
@@ -20,10 +21,10 @@ import {
   viteCssPath,
   type CssxPluginOptions,
 } from './options';
+import { scanProjectCssxSourceModules } from './project-scan';
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from './stylesheet';
 import { sourceMapFromContext, transformCssxModule } from './transform';
 import { sendViteStyles } from './vite-dev';
-import { invalidateViteRunner, type ViteHotUpdateModule } from './invalidate-vite-runner';
 
 export {
   compileCssxStylesheet,

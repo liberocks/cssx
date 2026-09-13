@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { candidateScope } from './candidate-scope';
 
 it('includes variants and importance in a merge scope', () => {

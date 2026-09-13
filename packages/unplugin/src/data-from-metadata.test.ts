@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { dataFromMetadata } from './data-from-metadata';
 import { RULES_METADATA_KEY } from './module-cssx-data';
 

@@ -1,8 +1,9 @@
 import { transformSync } from '@babel/core';
-import * as babelTypes from '@babel/types';
 import type { NodePath } from '@babel/core';
+import * as babelTypes from '@babel/types';
 import type { CallExpression, ObjectExpression } from '@babel/types';
 import { expect, it } from 'vitest';
+
 import type { FileState } from './plugin-types';
 import { readStyleMap } from './read-style-map';
 

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { splitThemeDeclarations } from './split-theme-declarations';
 
 it('splits only top-level semicolons and drops empty declarations', () => {

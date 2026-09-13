@@ -1,8 +1,9 @@
+import { rspack } from '@rspack/core';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { rspack } from '@rspack/core';
 import { describe, expect, it } from 'vitest';
+
 import cssxRspack from '../src/rspack';
 
 describe('CSSX Rspack fixture', () => {

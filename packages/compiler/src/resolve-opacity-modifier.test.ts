@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { resolveOpacityModifier } from './resolve-opacity-modifier';
 
 it('normalizes valid opacity modifiers and rejects unsafe values', () => {

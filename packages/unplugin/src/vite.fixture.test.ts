@@ -1,11 +1,12 @@
+import vue from '@vitejs/plugin-vue';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import vue from '@vitejs/plugin-vue';
 import { build, createServer } from 'vite';
 import { describe, expect, it } from 'vitest';
+
 import cssxVite from '../src/vite';
 
 const require = createRequire(import.meta.url);

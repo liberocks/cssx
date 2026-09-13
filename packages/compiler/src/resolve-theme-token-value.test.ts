@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { resolveThemeTokenValue } from './resolve-theme-token-value';
 
 it('inlines nested token references while preserving surrounding syntax', () => {

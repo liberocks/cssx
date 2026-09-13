@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
-import { parseTheme } from './theme';
+
 import { resolveSpacingValue } from './resolve-spacing-value';
+import { parseTheme } from './theme';
 
 it('resolves special, arbitrary, and themed spacing values', () => {
   const theme = parseTheme('');

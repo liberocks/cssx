@@ -1,5 +1,6 @@
 import { compileStyleRecords } from '@cssxio/compiler';
 import { expect, it } from 'vitest';
+
 import { withStableCompositeNames } from './with-stable-composite-names';
 
 it('replaces style composite names and maps each composite to its atomic classes', () => {

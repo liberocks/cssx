@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { dataFromValue } from './data-from-value';
 
 it('normalizes malformed and valid CSSX metadata values', () => {

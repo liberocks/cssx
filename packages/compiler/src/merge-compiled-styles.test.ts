@@ -5,8 +5,22 @@ import { mergeCompiledStyles } from './merge-compiled-styles';
 
 it('returns surviving classes from compiled styles in source order', () => {
   const styles: CompiledStyle[] = [
-    { $$css: 2, c: 'first', _: [['old', 'base', 'layout', 'layout'], ['color', 'base', 'color', 'color']] },
-    { $$css: 2, c: 'second', _: [[null, 'base', 'layout', 'layout'], ['new', 'base', 'layout', 'layout']] },
+    {
+      $$css: 2,
+      c: 'first',
+      _: [
+        ['old', 'base', 'layout', 'layout'],
+        ['color', 'base', 'color', 'color'],
+      ],
+    },
+    {
+      $$css: 2,
+      c: 'second',
+      _: [
+        [null, 'base', 'layout', 'layout'],
+        ['new', 'base', 'layout', 'layout'],
+      ],
+    },
   ];
 
   expect(mergeCompiledStyles(styles)).toBe('color new');

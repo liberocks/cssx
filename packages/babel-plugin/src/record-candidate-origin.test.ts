@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { recordCandidateOrigin } from './record-candidate-origin';
 
 it('stores the first candidate origin with a zero-based line', () => {

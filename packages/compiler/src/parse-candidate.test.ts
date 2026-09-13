@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { parseCandidate } from './parse-candidate';
 
 it('parses variants, importance, and negation independently', () => {

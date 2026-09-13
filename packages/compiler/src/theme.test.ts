@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { parseTheme, resolveThemeToken, serializeThemeKeyframe, serializeThemeTokens } from '../src/theme';
 
 describe('CSSX theme parsing', () => {

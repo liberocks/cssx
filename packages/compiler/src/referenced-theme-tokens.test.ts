@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { referencedThemeTokens } from './referenced-theme-tokens';
 
 it('collects referenced tokens and transitive dependencies for prefixed and unprefixed output', () => {

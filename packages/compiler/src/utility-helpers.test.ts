@@ -1,10 +1,26 @@
 import { describe, expect, it } from 'vitest';
+
+import { parseTheme } from '../src/theme';
+import { describeUtilityRecipe, compileUtilities } from '../src/utilities';
+import {
+  compileBorderWidthUtility,
+  compileDivideUtility,
+  compileOutlineUtility,
+  compilePlaceholderUtility,
+  compileSpaceUtility,
+  compileSpacingUtility,
+} from '../src/utility-box-model';
+import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility } from '../src/utility-effects';
+import { compileCoreLayoutUtility, compileContainerUtility } from '../src/utility-layout';
+import { compileModernUtility } from '../src/utility-modern';
+import { compileMotionUtility, isMotionUtilityCandidate } from '../src/utility-motion';
 import {
   compileColorUtility,
   compileGradientUtility,
   compileTextDecorationUtility,
   resolveUtilityColor,
 } from '../src/utility-paint';
+import { compilePrefixedUtility } from '../src/utility-prefixed';
 import {
   flexValue,
   isLengthCssValue,
@@ -20,22 +36,7 @@ import {
   compileDimensionUtility,
   compileTransformUtility,
 } from '../src/utility-transform';
-import {
-  compileBorderWidthUtility,
-  compileDivideUtility,
-  compileOutlineUtility,
-  compilePlaceholderUtility,
-  compileSpaceUtility,
-  compileSpacingUtility,
-} from '../src/utility-box-model';
-import { compileCoreLayoutUtility, compileContainerUtility } from '../src/utility-layout';
-import { compileModernUtility } from '../src/utility-modern';
-import { compileMotionUtility, isMotionUtilityCandidate } from '../src/utility-motion';
 import { compileBackgroundUtility, compileMaskUtility, compileNumericUtility } from '../src/utility-visual-basics';
-import { compileBackdropFilterUtility, compileFilterUtility, compileRingUtility } from '../src/utility-effects';
-import { compilePrefixedUtility } from '../src/utility-prefixed';
-import { describeUtilityRecipe, compileUtilities } from '../src/utilities';
-import { parseTheme } from '../src/theme';
 
 describe('utility helper edge cases', () => {
   const theme = parseTheme();

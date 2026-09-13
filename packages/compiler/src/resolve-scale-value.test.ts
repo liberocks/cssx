@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { resolveScaleValue } from './resolve-scale-value';
 
 it('resolves percentage scale values', () => {

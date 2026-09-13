@@ -1,5 +1,5 @@
-import { vitePlugin as remix } from '@remix-run/dev';
 import cssx from '@cssxio/unplugin/vite';
+import { vitePlugin as remix } from '@remix-run/dev';
 import { defineConfig } from 'vite';
 
 const theme = `

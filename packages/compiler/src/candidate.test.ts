@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { candidateScope, parseCandidate, splitCandidateList } from '../src/candidate';
 import { classifyCandidate } from '../src/semantics';
 

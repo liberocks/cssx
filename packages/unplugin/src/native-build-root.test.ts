@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { nativeBuildRoot } from './native-build-root';
 
 it('reads native loader roots and ignores non-native contexts', () => {

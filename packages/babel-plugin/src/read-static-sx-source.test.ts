@@ -1,5 +1,6 @@
 import * as babelTypes from '@babel/types';
 import { expect, it } from 'vitest';
+
 import { readStaticSxSource } from './read-static-sx-source';
 
 it('joins static strings and nested arrays while ignoring null and false', () => {

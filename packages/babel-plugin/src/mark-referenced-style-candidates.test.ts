@@ -1,10 +1,11 @@
 import { transformSync } from '@babel/core';
 import type { NodePath } from '@babel/core';
 import * as babelTypes from '@babel/types';
-import { expect, it } from 'vitest';
 import type { CompiledStyle } from '@cssxio/compiler';
-import type { FileState } from './plugin-types';
+import { expect, it } from 'vitest';
+
 import { markReferencedStyleCandidates } from './mark-referenced-style-candidates';
+import type { FileState } from './plugin-types';
 
 const createState = (): FileState => {
   const style = (composite: string, atom: string): CompiledStyle => ({

@@ -1,4 +1,5 @@
 import { sep } from 'node:path';
+
 import { validateCssFileName } from './validate-css-file-name';
 
 /**

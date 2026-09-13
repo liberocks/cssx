@@ -1,6 +1,7 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 import { parse as parseVueSfc } from '@vue/compiler-sfc';
+
 import type { CssxPluginOptions } from './options';
 import { remapVueBlockOrigins } from './remap-vue-block-origins';
 import type { CssxCandidateOrigin } from './stylesheet';

@@ -1,7 +1,7 @@
+import { create, props } from '@cssxio/react-native';
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { create, props } from '@cssxio/react-native';
 
 const styles = create({
   screen: 'flex-1 items-center justify-center bg-gray-900 p-6',

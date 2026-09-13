@@ -1,9 +1,10 @@
 import { parseCandidate, splitCandidateList } from './candidate';
-import { classifyCandidate, classifyParsedCandidate } from './semantics';
-import { parseTheme, resolveThemeValue } from './theme';
-import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
-import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 import { mergeCompiledStyles } from './merge-compiled-styles';
+import { classifyCandidate, classifyParsedCandidate } from './semantics';
+import { serializeThemeSignature } from './serialize-theme-signature';
+import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
+import { parseTheme } from './theme';
+import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
 
 /** Compiler identity included in generated class-name hashes. */
 const COMPILER_ABI = 'cssx-utility-compiler-v2';
@@ -855,19 +856,6 @@ const SHORTHAND_SEMANTIC_SLOTS: Readonly<Record<string, Omit<UtilityConflictReco
  * @param theme Parsed theme used for the signature.
  * @returns Stable theme signature for hashing.
  */
-function serializeThemeSignature(theme: ReturnType<typeof parseTheme>): string {
-  const outputSignature = theme.mode === 'inline' && !theme.prefix ? '' : `${theme.mode}:${theme.prefix}|`;
-  const tokens = Object.keys(theme.tokens)
-    .sort()
-    .map((name) => `${name}:${resolveThemeValue(theme, name) ?? 'initial'}`)
-    .join('|');
-  const keyframes = Object.keys(theme.keyframes)
-    .sort()
-    .map((name) => `${name}:${theme.keyframes[name]!}`)
-    .join('|');
-  return `${outputSignature}${tokens}|${keyframes}`;
-}
-
 /** A composite class and the atomic classes that implement it. */
 export interface StyleComposition {
   /** Stable class for the complete reduced style. */

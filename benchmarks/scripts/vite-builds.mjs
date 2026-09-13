@@ -1,8 +1,8 @@
 import { execFile } from 'node:child_process';
 import { readdir, readFile } from 'node:fs/promises';
-import { gzipSync } from 'node:zlib';
 import { dirname, extname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const gzipOptions = Object.freeze({ level: 6 });

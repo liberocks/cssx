@@ -1,5 +1,4 @@
 import type { CssxTheme } from './theme';
-import type { UtilityDeclaration } from './utility-types';
 import { compileBorderWidthUtility, compileSpacingUtility } from './utility-box-model';
 import {
   compileBackdropFilterUtility,
@@ -7,13 +6,14 @@ import {
   compileRingUtility,
   compileShadowUtility,
 } from './utility-effects';
-import { compileColorUtility, compileGradientUtility, compileTextDecorationUtility } from './utility-paint';
-import { compileAnimationUtility, compileDimensionUtility, compileTransformUtility } from './utility-transform';
 import { compileModernUtility } from './utility-modern';
 import { compileMotionUtility, isMotionUtilityCandidate } from './utility-motion';
-import { compileBackgroundUtility, compileMaskUtility, compileNumericUtility } from './utility-visual-basics';
+import { compileColorUtility, compileGradientUtility, compileTextDecorationUtility } from './utility-paint';
 import { flexValue, resolveArbitraryCssValue, resolveDimensionValue, resolveSpacingValue } from './utility-resolvers';
+import { compileAnimationUtility, compileDimensionUtility, compileTransformUtility } from './utility-transform';
+import type { UtilityDeclaration } from './utility-types';
 import { leadingValue, trackingValue } from './utility-values';
+import { compileBackgroundUtility, compileMaskUtility, compileNumericUtility } from './utility-visual-basics';
 
 /**
  * Routes supported prefixed utilities to their specialized compiler.

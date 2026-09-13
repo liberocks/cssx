@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { collectStyleInputs } from './collect-style-inputs';
 import type { CompiledStyle, CompiledUtility } from './types';
 

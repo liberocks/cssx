@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { splitTopLevel } from './split-top-level';
 
 it('preserves separators inside nested and quoted candidate syntax', () => {

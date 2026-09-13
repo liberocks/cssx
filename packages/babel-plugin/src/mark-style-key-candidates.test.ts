@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { markStyleKeyCandidates } from './mark-style-key-candidates';
 
 it('marks candidates for the selected style key', () => {

@@ -1,8 +1,8 @@
-import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
+import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const execFileAsync = promisify(execFile);

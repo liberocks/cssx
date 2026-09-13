@@ -1,6 +1,7 @@
 import type { DarkMode } from '@cssxio/compiler';
-import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment, type CssxSourceModule } from './stylesheet';
+
 import { resolveCssFileName } from './options';
+import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment, type CssxSourceModule } from './stylesheet';
 
 /** A native bundler module that can store CSSX build metadata. */
 interface ModuleWithCssxRules {

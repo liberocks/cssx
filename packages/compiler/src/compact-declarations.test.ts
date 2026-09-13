@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { compactDeclarations } from './compact-declarations';
 
 it('expands compact utility declarations', () => {

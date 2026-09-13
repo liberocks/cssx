@@ -1,6 +1,6 @@
+import { create, props } from '@cssxio/react-native';
 import React, { useState } from 'react';
 import { SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
-import { create, props } from '@cssxio/react-native';
 
 const styles = create({
   screen: 'flex-1 items-center justify-center bg-blue-600 p-6',

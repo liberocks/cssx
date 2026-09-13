@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { stableCompositeName } from './stable-composite-name';
 
 it('creates stable CSS-safe names that vary with file, location, and semantic kind', () => {

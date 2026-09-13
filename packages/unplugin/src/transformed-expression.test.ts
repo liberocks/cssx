@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { transformedExpression } from './transformed-expression';
 
 it('extracts the generated expression from the synthetic module body', () => {

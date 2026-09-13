@@ -1,7 +1,8 @@
 import type { NodePath } from '@babel/core';
 import * as babelTypes from '@babel/types';
-import { styleMapExpression } from './style-map-expression';
+
 import type { FileState } from './plugin-types';
+import { styleMapExpression } from './style-map-expression';
 
 /**
  * Materializes style maps that still have runtime references after folding.

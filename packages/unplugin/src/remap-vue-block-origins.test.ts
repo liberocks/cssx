@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { remapVueBlockOrigins } from './remap-vue-block-origins';
 
 it('maps child candidate locations back into their enclosing Vue source block', () => {

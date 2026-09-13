@@ -1,4 +1,5 @@
 import type { CssxRule } from '@cssxio/compiler';
+
 import type { CssxSourceModule } from './stylesheet';
 
 /** Metadata key used to retain transformed CSSX data until assets are emitted. */

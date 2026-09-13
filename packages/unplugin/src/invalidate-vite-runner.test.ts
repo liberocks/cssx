@@ -1,4 +1,5 @@
 import { expect, it, vi } from 'vitest';
+
 import { invalidateViteRunner } from './invalidate-vite-runner';
 
 it('invalidates evaluated modules returned from the Vite graph', () => {

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { markAllCandidates } from './mark-all-candidates';
 
 it('marks all style candidates as live', () => {

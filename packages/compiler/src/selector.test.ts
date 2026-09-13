@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { replaceNestingSelectors } from '../src/selector';
 
 describe('selector AST rewriting', () => {

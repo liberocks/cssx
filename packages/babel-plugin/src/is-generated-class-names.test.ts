@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { isGeneratedClassNames } from './is-generated-class-names';
 
 it('recognizes one or more serialized CSSX class names only', () => {

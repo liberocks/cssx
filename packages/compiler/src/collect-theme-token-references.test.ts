@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { collectThemeTokenReferences } from './collect-theme-token-references';
 
 it('collects transitive live tokens once while skipping reset or missing values', () => {

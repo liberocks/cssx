@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { remapVueTemplateOrigins } from './remap-vue-template-origins';
 
 it('maps wrapper candidates to the original template call location', () => {

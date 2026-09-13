@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { nativeBuildStateKey } from './native-build-state-key';
 
 it('creates a stable, root-scoped native state key', () => {

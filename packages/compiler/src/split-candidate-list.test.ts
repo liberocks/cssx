@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { splitCandidateList } from './split-candidate-list';
 
 it('splits top-level whitespace while validating nested syntax', () => {

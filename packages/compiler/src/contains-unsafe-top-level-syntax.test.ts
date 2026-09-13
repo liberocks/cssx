@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { containsUnsafeTopLevelSyntax } from './contains-unsafe-top-level-syntax';
 
 it('rejects only delimiters that escape nested candidate values', () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { compileStyleRecords, mergeCompiledStyles } from '../src/index';
 
 describe('CSSX semantic conflict classifier', () => {

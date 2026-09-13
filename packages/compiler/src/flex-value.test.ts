@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { flexValue } from './flex-value';
 
 it('resolves integer and fractional flex values', () => {

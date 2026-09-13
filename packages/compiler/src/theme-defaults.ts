@@ -1,5 +1,5 @@
-import { DEFAULT_DOCUMENTED_COLOR_TOKENS } from './theme-colors';
 import { TAILWIND_4_DEFAULT_THEME } from './tailwind-theme-defaults.generated';
+import { DEFAULT_DOCUMENTED_COLOR_TOKENS } from './theme-colors';
 
 /** Built-in theme tokens used unless a theme block overrides or resets them. */
 export const DEFAULT_THEME: Readonly<Record<string, string>> = {

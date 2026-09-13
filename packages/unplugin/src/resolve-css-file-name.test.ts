@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { resolveCssFileName } from './resolve-css-file-name';
 
 it('replaces filename hash markers', () => {

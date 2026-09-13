@@ -1,6 +1,7 @@
 import { transformSync } from '@babel/core';
-import { describe, expect, it } from 'vitest';
 import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
+import { describe, expect, it } from 'vitest';
+
 import cssxBabelPlugin from '../src/index';
 
 function transform(source: string, options: Parameters<typeof cssxBabelPlugin>[1] = {}) {

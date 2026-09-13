@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { splitColorModifier } from './split-color-modifier';
 
 it('splits only top-level opacity modifiers', () => {

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { isBackgroundImageValue } from './is-background-image-value';
 
 it('recognizes supported background image forms', () => {

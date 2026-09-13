@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
-import type { FileState } from './plugin-types';
+
 import { markEmittedClassNames } from './mark-emitted-class-names';
+import type { FileState } from './plugin-types';
 
 it('tracks composite names and fallback atoms while ignoring extra whitespace', () => {
   const state = {

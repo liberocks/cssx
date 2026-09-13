@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { readSingleQuotedJavaScriptString } from './read-single-quoted-javascript-string';
 
 it('decodes supported escapes while preserving unknown escapes', () => {

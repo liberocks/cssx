@@ -1,5 +1,5 @@
-import type { UtilityDeclaration } from './utility-types';
 import { compactDeclarations } from './compact-declarations';
+import type { UtilityDeclaration } from './utility-types';
 
 /** Exact single-property layout declarations stored in compact source form. */
 const SIMPLE_DECLARATIONS = compactDeclarations([

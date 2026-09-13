@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { readThemeBalancedBlock } from './read-theme-balanced-block';
 
 it('reads nested and quoted braces while rejecting unterminated blocks', () => {

@@ -1,6 +1,6 @@
+import * as cssx from '@cssxio/cssx';
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import * as cssx from '@cssxio/cssx';
 
 const styles = cssx.create({
   main: 'flex min-h-screen items-center justify-center bg-slate-950 p-8 text-white',

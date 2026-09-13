@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { rollup, watch } from 'rollup';
 import type { OutputAsset, RollupWatcher, RollupWatcherEvent } from 'rollup';
 import { describe, expect, it } from 'vitest';
+
 import cssxRollup from '../src/rollup';
 
 describe('CSSX Rollup fixture', () => {

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { wrapCssLayer } from './wrap-css-layer';
 
 it('wraps nonempty CSS when a layer is configured', () => {

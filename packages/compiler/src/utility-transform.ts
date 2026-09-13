@@ -1,8 +1,8 @@
 import { resolveThemeToken } from './theme';
 import type { CssxTheme } from './theme';
+import { resolveArbitraryCssValue, resolveDimensionValue } from './utility-resolvers';
 import type { UtilityDeclaration } from './utility-types';
 import { resolveAngleValue, resolveScaleValue } from './utility-values';
-import { resolveArbitraryCssValue, resolveDimensionValue } from './utility-resolvers';
 
 /**
  * Compiles width, height, and logical dimension utilities.

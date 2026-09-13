@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+
 const manager = process.argv[2];
 if (!['bun', 'npm', 'pnpm', 'yarn'].includes(manager)) {
   throw new Error('Usage: node tests/scripts/packed-consumer.mjs <bun|npm|pnpm|yarn>');

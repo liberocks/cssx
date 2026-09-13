@@ -1,8 +1,9 @@
 import type { NodePath, PluginObj, PluginPass } from '@babel/core';
 import * as babelTypes from '@babel/types';
 import type { CallExpression } from '@babel/types';
-import type { CssxPluginOptions, FileState } from './plugin-types';
-import { recordCandidateOrigin } from './state-helpers';
+import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
+import type { CompiledStyle } from '@cssxio/compiler';
+
 import {
   assertModuleScope,
   assertNoComputedCssxApiCall,
@@ -11,20 +12,20 @@ import {
   isSxCall,
   isPropsCall,
 } from './ast-helpers';
-import { compileStyleRecords, composeCompiledStyles, createClassNameAllocator } from '@cssxio/compiler';
-import type { CompiledStyle } from '@cssxio/compiler';
-import { cssOnlySignature } from './css-only-signature';
-import { stableCompositeName } from './stable-composite-name';
-import { styleMapExpression } from './style-map-expression';
-import { withStableCompositeNames } from './with-stable-composite-names';
 import { compactLiveStyleRecords } from './compact-live-style-records';
+import { cssOnlySignature } from './css-only-signature';
 import { markEmittedClassNames } from './mark-emitted-class-names';
-import { resolveStyleArgument } from './resolve-style-argument';
-import { readStyleMap } from './read-style-map';
-import { transformSxCall } from './transform-sx-call';
 import { markReferencedStyleCandidates } from './mark-referenced-style-candidates';
 import { materializeLiveStyleMaps } from './materialize-live-style-maps';
+import type { CssxPluginOptions, FileState } from './plugin-types';
+import { readStyleMap } from './read-style-map';
 import { removeDeadStyleMaps } from './remove-dead-style-maps';
+import { resolveStyleArgument } from './resolve-style-argument';
+import { stableCompositeName } from './stable-composite-name';
+import { recordCandidateOrigin } from './state-helpers';
+import { styleMapExpression } from './style-map-expression';
+import { transformSxCall } from './transform-sx-call';
+import { withStableCompositeNames } from './with-stable-composite-names';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';

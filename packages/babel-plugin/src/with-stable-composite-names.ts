@@ -1,4 +1,5 @@
 import type { CompiledStyle, CompiledStyleRecordMap } from '@cssxio/compiler';
+
 import { atomicClassesForStyle } from './atomic-classes-for-style';
 import { stableCompositeName } from './stable-composite-name';
 

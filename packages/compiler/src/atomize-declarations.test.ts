@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { atomizeDeclarations } from './atomize-declarations';
 
 it('keeps transform channels paired with their sink', () => {

@@ -1,6 +1,5 @@
 import { resolveThemeValue } from './theme';
 import type { CssxTheme } from './theme';
-import type { UtilityDeclaration } from './utility-types';
 import {
   resolveColorValue,
   resolveDimensionValue,
@@ -8,6 +7,7 @@ import {
   resolveSpacingValue,
   splitColorModifier,
 } from './utility-resolvers';
+import type { UtilityDeclaration } from './utility-types';
 
 /**
  * Compiles the responsive container utility from theme breakpoints.

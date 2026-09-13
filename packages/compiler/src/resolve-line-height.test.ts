@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
-import { parseTheme } from './theme';
+
 import { resolveLineHeight } from './resolve-line-height';
+import { parseTheme } from './theme';
 
 it('resolves token, numeric, and arbitrary line-height modifiers', () => {
   const theme = parseTheme('@theme { --leading-tight: 1.25; }');

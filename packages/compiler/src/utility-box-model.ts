@@ -1,6 +1,4 @@
 import type { CssxTheme } from './theme';
-import type { UtilityDeclaration } from './utility-types';
-import { cloneDeclarations } from './utility-values';
 import {
   isLengthCssValue,
   resolveArbitraryCssValue,
@@ -11,6 +9,8 @@ import {
   resolveDimensionValue,
   splitColorModifier,
 } from './utility-resolvers';
+import type { UtilityDeclaration } from './utility-types';
+import { cloneDeclarations } from './utility-values';
 
 /**
  * Compiles directional border-width utilities.

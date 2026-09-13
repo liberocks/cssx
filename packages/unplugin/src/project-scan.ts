@@ -1,6 +1,7 @@
+import { createClassNameAllocator } from '@cssxio/compiler';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
-import { createClassNameAllocator } from '@cssxio/compiler';
+
 import type { CssxPluginOptions } from './options';
 import type { CssxSourceModule } from './stylesheet';
 import { transformCssxModule } from './transform';

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import * as cssx from '@cssxio/cssx';
 import { sx } from '@cssxio/cssx';
+import { ref } from 'vue';
 
 const count = ref(0);
 const styles = cssx.create({

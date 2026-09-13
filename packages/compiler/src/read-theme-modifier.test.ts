@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { readThemeModifier } from './read-theme-modifier';
 
 it('reads supported theme output modes and prefixes', () => {

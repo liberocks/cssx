@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { resolveColorValue } from './resolve-color-value';
 import { parseTheme } from './theme';
 

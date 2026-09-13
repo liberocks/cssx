@@ -1,12 +1,13 @@
 import type { NodePath } from '@babel/core';
 import * as babelTypes from '@babel/types';
+
+import { memberPropertyName } from './ast-helpers';
 import { markAllCandidates } from './mark-all-candidates';
 import { markAllFallbackClasses } from './mark-all-fallback-classes';
 import { markAllStyleClasses } from './mark-all-style-classes';
 import { markFallbackClasses } from './mark-fallback-classes';
 import { markStyleClass } from './mark-style-class';
 import { markStyleKeyCandidates } from './mark-style-key-candidates';
-import { memberPropertyName } from './ast-helpers';
 import type { FileState } from './plugin-types';
 
 /**

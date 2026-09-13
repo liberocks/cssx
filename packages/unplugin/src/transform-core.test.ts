@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { serializeCss } from '@cssxio/compiler';
+import { describe, expect, it } from 'vitest';
+
 import { compileCssxStylesheet, transformCssxModule } from './index';
 import { decodeFirstMapping, pluginFor, source, transformRequired } from './transform-test-helpers';
 

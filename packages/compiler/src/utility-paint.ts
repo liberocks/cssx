@@ -1,5 +1,4 @@
 import type { CssxTheme } from './theme';
-import type { UtilityDeclaration } from './utility-types';
 import {
   isBackgroundImageValue,
   isLengthArbitraryValue,
@@ -9,6 +8,7 @@ import {
   resolveSpacingValue,
   splitColorModifier,
 } from './utility-resolvers';
+import type { UtilityDeclaration } from './utility-types';
 
 /**
  * Resolves utility-only color keywords and theme colors.

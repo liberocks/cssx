@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { create, props, sx } from '../src/index';
 
 describe('React Native runtime', () => {

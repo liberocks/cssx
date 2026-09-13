@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { isLengthArbitraryValue } from './is-length-arbitrary-value';
 
 it('recognizes supported arbitrary length values', () => {

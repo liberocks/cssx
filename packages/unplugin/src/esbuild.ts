@@ -1,8 +1,9 @@
+import { createClassNameAllocator } from '@cssxio/compiler';
+import type { Loader, Plugin } from 'esbuild';
 import { Buffer } from 'node:buffer';
 import { mkdir, readFile, realpath, unlink, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
-import type { Loader, Plugin } from 'esbuild';
-import { createClassNameAllocator } from '@cssxio/compiler';
+
 import { compileCssxStylesheet, transformCssxModule } from './index';
 import type { CssxPluginOptions } from './index';
 import { loadTheme, resolveCssFileName, resolveEsbuildAssetPath } from './options';

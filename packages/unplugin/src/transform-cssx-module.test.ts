@@ -1,5 +1,6 @@
 import { serializeCss } from '@cssxio/compiler';
 import { expect, it } from 'vitest';
+
 import { transformCssxModule } from './transform-cssx-module';
 
 it('compiles CSSX source into transformed JavaScript and utility rules', async () => {

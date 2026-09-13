@@ -2,13 +2,14 @@ import { transformAsync } from '@babel/core';
 import cssxBabelPlugin from '@cssxio/babel-plugin';
 import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
+
+import { compiledCssRule } from './compiled-css-rule';
 import { assertPluginOptions, loadTheme, type CssxPluginOptions } from './options';
 import type { IncomingSourceMap } from './source-map-from-context';
 import type { CssxCandidateOrigin } from './stylesheet';
-import { compiledCssRule } from './compiled-css-rule';
-import { wrapCssLayer } from './wrap-css-layer';
 import { transformAstroSxModule } from './transform-astro-sx';
 import { transformVueSfcModule } from './transform-vue-sfc';
+import { wrapCssLayer } from './wrap-css-layer';
 
 /** The result of transforming one source module. */
 export interface TransformResult {

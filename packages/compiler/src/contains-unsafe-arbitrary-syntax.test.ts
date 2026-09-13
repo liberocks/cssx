@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { containsUnsafeArbitrarySyntax } from './contains-unsafe-arbitrary-syntax';
 
 it('rejects arbitrary declaration delimiters outside quoted text', () => {

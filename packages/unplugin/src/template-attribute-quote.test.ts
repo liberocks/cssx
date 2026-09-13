@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { templateAttributeQuote } from './template-attribute-quote';
 
 it('returns the delimiter of a Vue attribute containing the expression', () => {

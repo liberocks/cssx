@@ -1,6 +1,6 @@
-import type { CssxCandidateOrigin } from './stylesheet';
 import { sourceOffsetAtOrigin } from './source-offset-at-origin';
 import { sourceOriginAtOffset } from './source-origin-at-offset';
+import type { CssxCandidateOrigin } from './stylesheet';
 
 /** Remaps child-module candidate origins to the enclosing Vue SFC source. */
 export function remapVueBlockOrigins(

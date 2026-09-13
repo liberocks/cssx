@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { cloneDeclarations } from './clone-declarations';
 
 it('creates mutable declaration copies', () => {

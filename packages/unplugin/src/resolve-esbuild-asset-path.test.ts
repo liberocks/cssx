@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { expect, it } from 'vitest';
+
 import { resolveEsbuildAssetPath } from './resolve-esbuild-asset-path';
 
 it('uses esbuild output directories and files', () => {

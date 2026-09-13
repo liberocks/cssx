@@ -1,5 +1,6 @@
 import { transformAsync } from '@babel/core';
 import { describe, expect, it } from 'vitest';
+
 import plugin from '../src/babel';
 
 async function transform(source: string, options: Record<string, unknown> = {}): Promise<string> {

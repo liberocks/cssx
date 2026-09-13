@@ -1,5 +1,6 @@
 import { compileSourceUtilities } from '@cssxio/compiler';
 import type { DarkMode } from '@cssxio/compiler';
+
 import { collectUtilityCandidates } from './collect-utility-candidates';
 import { createStylesheet } from './create-stylesheet';
 import { existingStylesheet } from './existing-stylesheet';

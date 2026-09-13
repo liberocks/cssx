@@ -1,6 +1,7 @@
-import Image from 'next/image';
 import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
+import Image from 'next/image';
+
 import { ClientCssx } from './client-cssx';
 
 const styles = cssx.create({

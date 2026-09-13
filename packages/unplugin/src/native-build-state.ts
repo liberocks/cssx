@@ -1,6 +1,7 @@
 import { createClassNameAllocator, type ClassNameAllocator } from '@cssxio/compiler';
-import { nativeBuildStateKey } from './native-build-state-key';
+
 import type { ModuleCssxData } from './module-cssx-data';
+import { nativeBuildStateKey } from './native-build-state-key';
 import type { CssxPluginOptions } from './options';
 
 /** CSSX state shared by native compiler instances in one project build. */

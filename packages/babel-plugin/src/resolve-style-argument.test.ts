@@ -1,6 +1,7 @@
 import * as babelTypes from '@babel/types';
 import type { CompiledStyle } from '@cssxio/compiler';
 import { expect, it } from 'vitest';
+
 import type { FileState } from './plugin-types';
 import { resolveStyleArgument } from './resolve-style-argument';
 

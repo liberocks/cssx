@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { compiledCssRule } from './compiled-css-rule';
 
 it('creates a stable stylesheet rule name from the compiled CSS', () => {

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { isWhitespaceCode } from './is-whitespace-code';
 
 it('recognizes supported utility-list whitespace', () => {

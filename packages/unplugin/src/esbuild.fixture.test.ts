@@ -1,9 +1,10 @@
+import { build, context } from 'esbuild';
+import type { Plugin } from 'esbuild';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { build, context } from 'esbuild';
-import type { Plugin } from 'esbuild';
 import { describe, expect, it } from 'vitest';
+
 import cssxEsbuild from '../src/esbuild';
 
 describe('CSSX esbuild fixture', () => {

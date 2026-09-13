@@ -2,12 +2,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { compileSourceUtilities, compileStyleRecords, compileUtilities } from '../src/index';
-import { parseTheme } from '../src/theme';
-import { classifyParsedCandidate } from '../src/semantics';
 import { parseCandidate } from '../src/candidate';
-import { resolveUtilityRecipe } from '../src/utilities';
+import { compileSourceUtilities, compileStyleRecords, compileUtilities } from '../src/index';
+import { classifyParsedCandidate } from '../src/semantics';
 import { TAILWIND_4_FALLBACKS } from '../src/tailwind-fallback.generated';
+import { parseTheme } from '../src/theme';
+import { resolveUtilityRecipe } from '../src/utilities';
 
 interface TailwindManifest {
   readonly source: {

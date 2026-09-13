@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { resolveBorderWidthValue } from './resolve-border-width-value';
 
 it('resolves named and arbitrary border widths', () => {

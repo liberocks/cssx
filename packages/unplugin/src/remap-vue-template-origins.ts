@@ -1,6 +1,6 @@
-import type { CssxCandidateOrigin } from './stylesheet';
 import { sourceOffsetAtOrigin } from './source-offset-at-origin';
 import { sourceOriginAtOffset } from './source-origin-at-offset';
+import type { CssxCandidateOrigin } from './stylesheet';
 
 /** Remaps wrapper-module origins to their static `sx()` call in a Vue template. */
 export function remapVueTemplateOrigins(

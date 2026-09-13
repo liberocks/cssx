@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+
 // @ts-expect-error The editor extension ships CommonJS without declaration files.
 import { activate, deactivate, loadEditorApi } from '../src/extension.js';
 

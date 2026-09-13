@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { nativeBuildState } from './native-build-state';
 
 it('shares native state only between equivalent project options', () => {

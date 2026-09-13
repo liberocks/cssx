@@ -1,6 +1,7 @@
 import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
 import type { DarkMode } from '@cssxio/compiler';
 import { basename } from 'node:path';
+
 import { CSSX_PREFLIGHT } from './preflight';
 
 /** The source location of one utility string. */

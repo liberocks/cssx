@@ -2,27 +2,27 @@ import { candidateScope, parseCandidate } from './candidate';
 import type { ParsedCandidate } from './candidate';
 import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
+import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
+import { tailwindFallback } from './tailwind-fallback';
 import { parseTheme, resolveThemeValue, serializeThemeKeyframe, serializeThemeTokens } from './theme';
-import type { UtilityDeclaration } from './utility-types';
-import { atomizeDeclarations, cloneDeclarations } from './utility-values';
-import { applyVariants } from './utility-variants';
-import type { VariantOptions } from './utility-variants';
-import { EXACT_DECLARATIONS } from './utility-exact-declarations';
-import { compileArbitraryProperty } from './utility-transform';
+import type { CssxTheme } from './theme';
 import {
   compileDivideUtility,
   compileOutlineUtility,
   compilePlaceholderUtility,
   compileSpaceUtility,
 } from './utility-box-model';
+import { EXACT_DECLARATIONS } from './utility-exact-declarations';
 import { compileContainerUtility, compileCoreLayoutUtility } from './utility-layout';
 import { compilePrefixedUtility } from './utility-prefixed';
+import { compileArbitraryProperty } from './utility-transform';
+import type { UtilityDeclaration } from './utility-types';
 import { compileFontSizeUtility } from './utility-typography';
-import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
-import { tailwindFallback } from './tailwind-fallback';
+import { atomizeDeclarations, cloneDeclarations } from './utility-values';
+import { applyVariants } from './utility-variants';
+import type { VariantOptions } from './utility-variants';
 
 export type { UtilityDeclaration } from './utility-types';
-import type { CssxTheme } from './theme';
 
 /** CSS and metadata created from utility strings. */
 export interface UtilityCompilation {

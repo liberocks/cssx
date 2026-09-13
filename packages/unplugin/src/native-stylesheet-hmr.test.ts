@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { nativeStylesheetHmr } from './native-stylesheet-hmr';
 
 it('creates a scoped stylesheet HMR bridge', () => {

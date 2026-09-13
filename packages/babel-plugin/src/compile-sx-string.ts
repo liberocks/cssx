@@ -1,5 +1,6 @@
 import { compileStyleRecords } from '@cssxio/compiler';
 import type { ReusabilityBudget } from '@cssxio/compiler';
+
 import { atomicClassesForStyle } from './atomic-classes-for-style';
 import { markEmittedClassNames } from './mark-emitted-class-names';
 import type { FileState } from './plugin-types';

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { sourceMapFromContext } from './source-map-from-context';
 
 it('rejects missing or incompatible build-tool source maps', () => {

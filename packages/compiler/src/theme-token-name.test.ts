@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { themeTokenName } from './theme-token-name';
 
 it('applies an optional theme token prefix', () => {

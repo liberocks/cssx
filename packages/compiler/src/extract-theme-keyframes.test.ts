@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { extractThemeKeyframes } from './extract-theme-keyframes';
 
 it('removes validated keyframes while retaining surrounding declarations', () => {

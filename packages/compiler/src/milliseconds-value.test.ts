@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { millisecondsValue } from './milliseconds-value';
 
 it('normalizes duration values', () => {

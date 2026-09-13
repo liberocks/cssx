@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { create, props, reduceCompiledUtilities, sx, type CompiledUtility } from './index';
 
 describe('CSSX runtime', () => {

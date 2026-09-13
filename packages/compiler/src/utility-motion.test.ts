@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { compileStyleRecords, compileUtilities } from '../src/index';
 
 const className = (candidate: string) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`;

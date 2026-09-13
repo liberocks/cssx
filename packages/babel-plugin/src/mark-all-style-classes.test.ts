@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
-import type { FileState } from './plugin-types';
+
 import { markAllStyleClasses } from './mark-all-style-classes';
+import type { FileState } from './plugin-types';
 
 it('marks every composite and atom in the referenced style map as reachable', () => {
   const state = {

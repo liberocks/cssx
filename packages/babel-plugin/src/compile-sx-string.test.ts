@@ -1,7 +1,8 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
 import { expect, it } from 'vitest';
-import type { FileState } from './plugin-types';
+
 import { compileSxString } from './compile-sx-string';
+import type { FileState } from './plugin-types';
 
 const createState = (): FileState =>
   ({

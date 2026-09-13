@@ -1,5 +1,6 @@
 import { createClassNameAllocator, serializeCss } from '@cssxio/compiler';
 import { expect, it } from 'vitest';
+
 import { transformCssxModule } from './transform';
 import { transformVueTemplateSx } from './transform-vue-template-sx';
 

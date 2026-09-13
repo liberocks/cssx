@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = resolve(import.meta.dirname, '../..');
 const frameworkRunner = fileURLToPath(new URL('../scripts/start-framework.mjs', import.meta.url));

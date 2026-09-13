@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+
 import { printResults } from './scripts/shared.mjs';
 import { WORKLOAD_VARIANT_NAMES, createWorkload, readVariantArgument } from './scripts/workload.mjs';
 

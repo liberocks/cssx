@@ -1,6 +1,5 @@
 import en from './en.ts';
 import jp from './jp.ts';
-
 import type { Lang } from './type.ts';
 
 export { plainText, renderRich } from './type.ts';

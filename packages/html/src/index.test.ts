@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { RUNTIME_STYLESHEET_ATTRIBUTE, start } from '../src/index';
 
 class TestElement {

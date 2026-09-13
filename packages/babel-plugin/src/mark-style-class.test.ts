@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
-import type { FileState } from './plugin-types';
+
 import { markStyleClass } from './mark-style-class';
+import type { FileState } from './plugin-types';
 
 it('marks an existing style composite as reachable and ignores a missing key', () => {
   const state = {

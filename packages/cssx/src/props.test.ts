@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { props } from './props';
 
 describe('props', () => {

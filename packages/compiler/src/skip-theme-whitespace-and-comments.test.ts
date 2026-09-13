@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { skipThemeWhitespaceAndComments } from './skip-theme-whitespace-and-comments';
 
 it('skips CSS whitespace and comments while rejecting unterminated comments', () => {

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { quoteVueTemplateExpression } from './quote-vue-template-expression';
 
 it('leaves expressions unchanged outside quoted attributes', () => {

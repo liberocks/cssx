@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { validateCssFileName } from './validate-css-file-name';
 
 it('accepts safe relative CSS paths', () => {

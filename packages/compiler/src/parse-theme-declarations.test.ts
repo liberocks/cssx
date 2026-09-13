@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { parseThemeDeclarations } from './parse-theme-declarations';
 
 it('applies token declarations and namespace resets in order', () => {

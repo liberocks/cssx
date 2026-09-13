@@ -1,7 +1,7 @@
+import { resolveLineHeight } from './resolve-line-height';
 import { resolveThemeToken } from './theme';
 import type { CssxTheme } from './theme';
 import type { UtilityDeclaration } from './utility-types';
-import { resolveLineHeight } from './resolve-line-height';
 
 /**
  * Compiles Tailwind-compatible font-size utilities from the active `--text-*`

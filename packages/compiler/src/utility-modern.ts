@@ -1,7 +1,7 @@
 import { resolveThemeToken } from './theme';
 import type { CssxTheme } from './theme';
-import type { UtilityDeclaration } from './utility-types';
 import { resolveArbitraryCssValue, resolveSpacingValue } from './utility-resolvers';
+import type { UtilityDeclaration } from './utility-types';
 
 /** Fixed modern utility declarations keyed by complete utility name. */
 const FIXED_VALUES: Readonly<Record<string, readonly [property: string, value: string]>> = {

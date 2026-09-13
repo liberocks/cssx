@@ -1,7 +1,8 @@
 import type { CompiledStyle } from '@cssxio/compiler';
 import { expect, it } from 'vitest';
-import type { FileState } from './plugin-types';
+
 import { markAllFallbackClasses } from './mark-all-fallback-classes';
+import type { FileState } from './plugin-types';
 
 it('marks fallback atoms across all styles in a style map', () => {
   const style = (className: string): CompiledStyle => ({

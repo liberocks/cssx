@@ -1,10 +1,11 @@
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
+
+import { findSxCalls } from './find-sx-calls';
 import type { CssxPluginOptions } from './options';
 import { quoteVueTemplateExpression } from './quote-vue-template-expression';
 import { remapVueTemplateOrigins } from './remap-vue-template-origins';
 import type { CssxCandidateOrigin } from './stylesheet';
 import { templateAttributeQuote } from './template-attribute-quote';
-import { findSxCalls } from './find-sx-calls';
 import type { TransformResult } from './transform-cssx-module';
 import { transformedExpression } from './transformed-expression';
 

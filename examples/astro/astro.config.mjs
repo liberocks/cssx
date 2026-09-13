@@ -1,5 +1,5 @@
-import { defineConfig } from 'astro/config';
 import cssx from '@cssxio/unplugin/vite';
+import { defineConfig } from 'astro/config';
 
 const theme = `
 @theme reference {

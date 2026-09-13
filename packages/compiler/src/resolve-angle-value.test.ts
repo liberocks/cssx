@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { resolveAngleValue } from './resolve-angle-value';
 
 it('resolves numeric and arbitrary angle values', () => {

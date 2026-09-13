@@ -1,5 +1,6 @@
 import type { NodePath } from '@babel/core';
 import * as babelTypes from '@babel/types';
+
 import type { FileState } from './plugin-types';
 
 /**

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { sourceOriginAtOffset } from './source-origin-at-offset';
 
 it('converts bounded source offsets to zero-based line and column coordinates', () => {

@@ -1,7 +1,8 @@
 import { describeUtilityRecipe, parseTheme } from '@cssxio/compiler';
+
 import { appendDeclaration } from './append-declaration';
-import { platformCandidate } from './platform-candidate';
 import type { NativePlatform, NativeStyle, NativeStyleValue } from './native-types';
+import { platformCandidate } from './platform-candidate';
 
 /**
  * Compiles resolved utility candidates to a React Native style object.

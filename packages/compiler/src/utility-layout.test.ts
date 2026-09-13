@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { compileUtilities } from '../src/index';
 
 describe('CSSX utility compiler', () => {

@@ -1,6 +1,7 @@
 import { transformSync } from '@babel/core';
-import cssxPlugin from '../../packages/babel-plugin/dist/index.js';
 import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
+
+import cssxPlugin from '../../packages/babel-plugin/dist/index.js';
 import './assert-compiler-build.mjs';
 import { bundleCss, bundleJavaScript, isDirectExecution, measure, printResults } from './shared.mjs';
 import { createWorkload, readVariantArgument } from './workload.mjs';

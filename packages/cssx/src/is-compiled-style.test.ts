@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { isCompiledStyle } from './is-compiled-style';
 
 describe('isCompiledStyle', () => {

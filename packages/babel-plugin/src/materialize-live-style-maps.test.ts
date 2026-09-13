@@ -3,8 +3,9 @@ import type { NodePath } from '@babel/core';
 import * as babelTypes from '@babel/types';
 import { compileStyleRecords } from '@cssxio/compiler';
 import { expect, it } from 'vitest';
-import type { FileState } from './plugin-types';
+
 import { materializeLiveStyleMaps } from './materialize-live-style-maps';
+import type { FileState } from './plugin-types';
 
 const compile = (source: string, state: FileState) =>
   transformSync(source, {

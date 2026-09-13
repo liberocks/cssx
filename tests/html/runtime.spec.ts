@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 test('styles the raw HTML example without rewriting classes', async ({ page }) => {
   await page.goto(pathToFileURL(resolve(import.meta.dirname, '../../examples/html/index.html')).href);

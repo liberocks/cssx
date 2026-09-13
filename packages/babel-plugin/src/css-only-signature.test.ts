@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { cssOnlySignature } from './css-only-signature';
 
 it('removes utility ranges in source order and preserves all other text', () => {

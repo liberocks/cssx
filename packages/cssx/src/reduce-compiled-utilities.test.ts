@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { reduceCompiledUtilities } from './reduce-compiled-utilities';
 import type { CompiledUtility } from './types';
 

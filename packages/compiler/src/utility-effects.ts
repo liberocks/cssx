@@ -1,12 +1,12 @@
 import type { CssxTheme } from './theme';
-import type { UtilityDeclaration } from './utility-types';
+import { resolveUtilityColor } from './utility-paint';
 import {
   resolveArbitraryCssValue,
   resolveBorderWidthValue,
   resolveOpacityModifier,
   splitColorModifier,
 } from './utility-resolvers';
-import { resolveUtilityColor } from './utility-paint';
+import type { UtilityDeclaration } from './utility-types';
 
 /** Shared box-shadow value that combines shadow, ring offset, and ring channels. */
 const CSSX_SHADOW_SINK =

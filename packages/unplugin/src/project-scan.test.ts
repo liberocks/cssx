@@ -2,6 +2,7 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+
 import { scanProjectCssxSourceModules } from '../src/project-scan';
 import { compileCssxStylesheet } from '../src/stylesheet';
 

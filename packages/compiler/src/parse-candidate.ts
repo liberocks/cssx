@@ -1,8 +1,8 @@
+import type { ParsedCandidate } from './candidate-types';
 import { containsUnsafeArbitrarySyntax } from './contains-unsafe-arbitrary-syntax';
 import { containsUnsafeTopLevelSyntax } from './contains-unsafe-top-level-syntax';
 import { normalizeCandidateVariants } from './normalize-candidate-variants';
 import { splitTopLevel } from './split-top-level';
-import type { ParsedCandidate } from './candidate-types';
 
 /**
  * Parses supported static candidate syntax and rejects CSS injection delimiters.

@@ -1,5 +1,6 @@
 import type { CompiledStyle } from '@cssxio/compiler';
 import { expect, it } from 'vitest';
+
 import { atomicClassesForStyle } from './atomic-classes-for-style';
 
 it('returns unique non-null atomic classes in record order', () => {

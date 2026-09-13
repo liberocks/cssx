@@ -2,6 +2,7 @@ import { transformSync } from '@babel/core';
 import type { NodePath } from '@babel/core';
 import * as babelTypes from '@babel/types';
 import { expect, it } from 'vitest';
+
 import type { FileState } from './plugin-types';
 import { removeDeadStyleMaps } from './remove-dead-style-maps';
 

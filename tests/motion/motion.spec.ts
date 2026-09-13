@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+
 import { compileUtilities } from '../../packages/compiler/src/index';
 
 /** Creates deterministic class names for browser motion fixtures. */

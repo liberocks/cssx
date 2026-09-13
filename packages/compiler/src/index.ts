@@ -1,3 +1,14 @@
+import { compileStyleRecords, compileStyleRecordMaps } from './conflicts';
+import type {
+  ClassNameAllocator,
+  ClassNameOptions,
+  CompiledStyle,
+  CompiledStyleRecordMap,
+  ReusabilityBudget,
+} from './conflicts';
+import { compileUtilities } from './utilities';
+import type { DarkMode } from './utility-variants';
+
 export {
   classifyUtility,
   compileStyleRecords,
@@ -31,17 +42,6 @@ export type { DarkMode } from './utility-variants';
 export type { CssxTheme, ThemeOutputMode } from './theme';
 export { parseTheme } from './theme';
 export { splitCandidateList } from './candidate';
-
-import { compileStyleRecords, compileStyleRecordMaps } from './conflicts';
-import type {
-  ClassNameAllocator,
-  ClassNameOptions,
-  CompiledStyle,
-  CompiledStyleRecordMap,
-  ReusabilityBudget,
-} from './conflicts';
-import { compileUtilities } from './utilities';
-import type { DarkMode } from './utility-variants';
 
 /** One generated class name and the CSS rule it identifies. */
 export interface CssxRule {

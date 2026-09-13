@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { normalizeCandidateVariants } from './normalize-candidate-variants';
 
 it('orders commutative variants while preserving ordered arbitrary variants', () => {

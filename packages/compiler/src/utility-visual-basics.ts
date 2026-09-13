@@ -1,6 +1,4 @@
 import type { CssxTheme } from './theme';
-import type { UtilityDeclaration } from './utility-types';
-import { cloneDeclarations } from './utility-values';
 import {
   isLengthCssValue,
   resolveArbitraryCssValue,
@@ -9,6 +7,8 @@ import {
   resolveSpacingValue,
   splitColorModifier,
 } from './utility-resolvers';
+import type { UtilityDeclaration } from './utility-types';
+import { cloneDeclarations } from './utility-values';
 
 /** Combined numeric font-variant value fed by independent utility channels. */
 const CSSX_NUMERIC_SINK =

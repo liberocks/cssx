@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 // @ts-expect-error The editor extension ships CommonJS without declaration files.
 import { documentation, entries } from '../src/catalog.js';
 

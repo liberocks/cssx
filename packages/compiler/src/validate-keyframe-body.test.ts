@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+
 import { validateKeyframeBody } from './validate-keyframe-body';
 
 it('accepts supported keyframe selectors and declarations', () => {
