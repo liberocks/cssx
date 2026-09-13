@@ -1,22 +1,22 @@
-import { createHash } from 'node:crypto';
 import { access, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { compilerArtifactHashes } from './compiler-artifact-hashes';
+import { expectArtifactWithinBudget } from './expect-artifact-within-budget';
 import {
   approvedDependencies,
   dependencyFields,
-  expectArtifactWithinBudget,
   packageDirectories,
   publicExports,
-  readManifest,
-  runCommand,
-  runNode,
   workspaceRoot,
-} from './package-contract-test-helpers';
-import type { PackageManifest } from './package-contract-test-helpers';
+} from './package-contract-data';
+import type { PackageManifest } from './package-contract-data';
+import { readManifest } from './read-manifest';
+import { runCommand } from './run-command';
+import { runNode } from './run-node';
 
 let fixtureDirectory: string;
 
@@ -269,12 +269,7 @@ void props;
     expect(Object.keys(manifest.artifacts)).toEqual(
       expect.arrayContaining(['dist/index.js', 'dist/index.cjs', 'dist/index.d.ts']),
     );
-    for (const [artifact, expectedHash] of Object.entries(manifest.artifacts)) {
-      const actualHash = createHash('sha256')
-        .update(await readFile(join(workspaceRoot, 'packages/compiler', artifact)))
-        .digest('hex');
-      expect(actualHash).toBe(expectedHash);
-    }
+    expect(await compilerArtifactHashes()).toEqual(manifest.artifacts);
   });
 
   it('keeps published CSSX package graphs within the approved dependency set', async () => {

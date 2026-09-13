@@ -21,7 +21,7 @@ export default defineConfig({
       include: ['packages/*/src/**/*.{js,ts}'],
       // Astro is integration-tested by its own build; keep this TypeScript
       // coverage gate focused on compiler and adapter source.
-      exclude: ['**/*.d.ts', '**/*.test.{js,ts}', '**/*-test-helpers.{js,ts}', 'packages/docs/**'],
+      exclude: ['**/*.d.ts', '**/*.test.{js,ts}', 'packages/docs/**'],
       thresholds: {
         100: true,
         perFile: true,

@@ -7,7 +7,7 @@ import cssxEsbuild from './esbuild';
 import { unpluginFactory } from './index';
 import { configureCompilationAsset, storeCompilationData, type NativeCompiler } from './native';
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from './stylesheet';
-import { source } from './transform-test-helpers';
+import { source } from './transform-test-source';
 
 const staticSource =
   "import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ root: 'p-4' }); export const props = cssx.props(styles.root);";
