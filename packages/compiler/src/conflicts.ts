@@ -3,6 +3,7 @@ import { classifyCandidate, classifyParsedCandidate } from './semantics';
 import { parseTheme, resolveThemeValue } from './theme';
 import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
+import { mergeCompiledStyles } from './merge-compiled-styles';
 
 /** Compiler identity included in generated class-name hashes. */
 const COMPILER_ABI = 'cssx-utility-compiler-v2';
@@ -115,6 +116,8 @@ export function classifyUtility(candidate: string): UtilityConflictRecord | null
   }
   return semantics;
 }
+
+export { mergeCompiledStyles };
 
 /**
  * Compiles one static style map to records for the runtime.
@@ -865,19 +868,6 @@ function serializeThemeSignature(theme: ReturnType<typeof parseTheme>): string {
   return `${outputSignature}${tokens}|${keyframes}`;
 }
 
-/**
- * Merges compiled styles from left to right.
- *
- * @param styles Compiled styles to merge.
- * @returns The final class string.
- */
-export function mergeCompiledStyles(styles: readonly CompiledStyle[]): string {
-  return reducePackedUtilities(styles.flatMap((style) => style._))
-    .map((record) => record[0])
-    .filter((className): className is string => className !== null)
-    .join(' ');
-}
-
 /** A composite class and the atomic classes that implement it. */
 export interface StyleComposition {
   /** Stable class for the complete reduced style. */
@@ -901,30 +891,6 @@ export function composeCompiledStyles(
     styles.flatMap((style) => style._),
     classNameAllocator,
   );
-}
-
-/** Reduces compiled utility records without projecting their class names. */
-function reducePackedUtilities(records: readonly CompiledUtility[]): readonly CompiledUtility[] {
-  const blockedByScope = new Map<string, Set<string>>();
-  const output: CompiledUtility[] = [];
-  for (let index = records.length - 1; index >= 0; index--) {
-    const record = records[index];
-    if (!record) {
-      continue;
-    }
-    const blocked = blockedByScope.get(record[1]) ?? new Set<string>();
-    blockedByScope.set(record[1], blocked);
-    if (record[0] !== null && blocked.has(record[2])) {
-      continue;
-    }
-    for (let conflictIndex = 2; conflictIndex < record.length; conflictIndex++) {
-      blocked.add(record[conflictIndex]!);
-    }
-    if (record[0]) {
-      output.push(record);
-    }
-  }
-  return output.reverse();
 }
 
 /** Creates a stable composite identity from reduced atomic records. */
