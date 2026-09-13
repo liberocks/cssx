@@ -1,4 +1,5 @@
 import { MAX_NESTING_DEPTH } from './candidate-limits';
+import { consumeEscapedOrQuotedCharacter } from './consume-escaped-or-quoted-character';
 import { isWhitespaceCode } from './is-whitespace-code';
 
 /** Separator source used while scanning nested candidate syntax. */
@@ -38,25 +39,10 @@ export function scanTopLevelSeparators(source: string, mode: TopLevelSeparatorMo
   for (let index = 0; index < source.length;) {
     const codePoint = source.codePointAt(index)!;
     const character = String.fromCodePoint(codePoint);
-    if (escaped) {
-      escaped = false;
-      index += character.length;
-      continue;
-    }
-    if (character === '\\') {
-      escaped = true;
-      index += character.length;
-      continue;
-    }
-    if (quote) {
-      if (character === quote) {
-        quote = '';
-      }
-      index += character.length;
-      continue;
-    }
-    if (character === '"' || character === "'") {
-      quote = character;
+    const protectedCharacter = consumeEscapedOrQuotedCharacter(character, quote, escaped);
+    quote = protectedCharacter.quote;
+    escaped = protectedCharacter.escaped;
+    if (protectedCharacter.protected) {
       index += character.length;
       continue;
     }
