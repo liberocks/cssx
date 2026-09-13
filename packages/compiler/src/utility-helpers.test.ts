@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { parseTheme } from './theme';
 import { describeUtilityRecipe, compileUtilities } from './utilities';
-import { compileCoreLayoutUtility, compileContainerUtility } from './utility-layout';
 import { compilePrefixedUtility } from './utility-prefixed';
 import {
   flexValue,
@@ -38,33 +37,6 @@ describe('utility helper edge cases', () => {
 
   it('keeps special colors and rejects invalid transform and arbitrary-property input', () => {
     expect(compilePrefixedUtility('leading-6', false, emptyTheme)).toBeNull();
-  });
-
-  it('resolves layout, modern platform, and visual utility alternatives', () => {
-    expect(compileContainerUtility('not-container', theme)).toBeNull();
-    expect(compileContainerUtility('container', theme)).toHaveLength(6);
-    expect(compileCoreLayoutUtility('overflow-x-scroll', false, theme)).toEqual({
-      property: 'overflow-x',
-      value: 'scroll',
-    });
-    expect(compileCoreLayoutUtility('overscroll-y-contain', false, theme)).toEqual({
-      property: 'overscroll-behavior-y',
-      value: 'contain',
-    });
-    expect(compileCoreLayoutUtility('aspect-[4/3]', false, theme)).toEqual({ property: 'aspect-ratio', value: '4/3' });
-    expect(compileCoreLayoutUtility('size-invalid', false, theme)).toBeNull();
-    expect(compileCoreLayoutUtility('start-2', false, theme)).toEqual({
-      property: 'inset-inline-start',
-      value: 'calc(0.25rem * 2)',
-    });
-    expect(compileCoreLayoutUtility('auto-rows-min', false, theme)).toEqual({
-      property: 'grid-auto-rows',
-      value: 'min-content',
-    });
-    expect(compileCoreLayoutUtility('scroll-px-2', false, theme)).toHaveLength(2);
-    expect(compileCoreLayoutUtility('scroll-px-invalid', false, theme)).toBeNull();
-    expect(compileCoreLayoutUtility('scrollbar-thumb-red-500/50', false, theme)).toHaveLength(2);
-    expect(compileCoreLayoutUtility('scrollbar-track-red-500/101', false, theme)).toBeNull();
   });
 
   it('covers filter, transform, and motion value branches', () => {
@@ -183,22 +155,6 @@ describe('utility helper edge cases', () => {
         '@theme prefix(app) { --animate-reveal: reveal 1s; }',
       ),
     ).resolves.toMatchObject({ entries: expect.any(Array) });
-
-    expect(compileContainerUtility('container', emptyTheme)).toEqual([
-      { property: 'width', value: '100%', semanticGroup: 'container' },
-    ]);
-    expect(compileCoreLayoutUtility('overscroll-contain', false, theme)).toEqual({
-      property: 'overscroll-behavior',
-      value: 'contain',
-    });
-    expect(compileCoreLayoutUtility('overscroll-x-auto', false, theme)).toEqual({
-      property: 'overscroll-behavior-x',
-      value: 'auto',
-    });
-    expect(compileCoreLayoutUtility('end-2', false, theme)).toMatchObject({ property: 'inset-inline-end' });
-    expect(compileCoreLayoutUtility('end-invalid', false, theme)).toBeNull();
-    expect(compileCoreLayoutUtility('stroke-3', false, theme)).toEqual({ property: 'stroke-width', value: '3' });
-    expect(compileCoreLayoutUtility('scrollbar-thumb-invalid', false, theme)).toBeNull();
 
     expect(compilePrefixedUtility('basis-invalid', false, theme)).toBeNull();
     expect(compilePrefixedUtility('flex-1/0', false, theme)).toBeNull();

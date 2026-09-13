@@ -1,11 +1,12 @@
 import { compileArbitraryProperty } from './compile-arbitrary-property';
+import { compileContainerUtility } from './compile-container-utility';
+import { compileCoreLayoutUtility } from './compile-core-layout-utility';
 import { compileDivideUtility } from './compile-divide-utility';
 import { compileOutlineUtility } from './compile-outline-utility';
 import { compilePlaceholderUtility } from './compile-placeholder-utility';
 import { compileSpaceUtility } from './compile-space-utility';
 import type { CssxTheme } from './theme';
 import { EXACT_DECLARATIONS } from './utility-exact-declarations';
-import { compileContainerUtility, compileCoreLayoutUtility } from './utility-layout';
 import { compilePrefixedUtility } from './utility-prefixed';
 import type { UtilityDeclaration } from './utility-types';
 import { compileFontSizeUtility } from './utility-typography';
