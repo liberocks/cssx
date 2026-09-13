@@ -3,6 +3,7 @@ import type { ParsedCandidate } from './candidate';
 import { escapeCssIdentifier } from './escape-css-identifier';
 import { utilityFallback } from './fallback';
 import { propertyRegistration } from './property-registration';
+import { readGeneratedClassNames } from './read-generated-class-names';
 import { requiredPropertyNames } from './required-property-names';
 import { classifyParsedCandidate } from './semantics';
 import type { UtilitySemantics } from './semantics';
@@ -313,24 +314,6 @@ async function compileUtilityList(
     entries: uniqueCompiled.map(({ candidate, css }) => ({ candidate, css })),
     css: `${prefixCss}${utilityCss}`,
   };
-}
-
-/**
- * Validates a callback result and splits it into generated class names.
- *
- * @param candidate Source utility candidate.
- * @param value Class string returned by the caller callback.
- * @returns Safe non-empty class names.
- */
-function readGeneratedClassNames(candidate: string, value: string): readonly string[] {
-  const classes = value.split(/\s+/).filter(Boolean);
-  if (
-    classes.length === 0 ||
-    classes.some((className) => !/^(?:[A-Za-z_][A-Za-z0-9_-]*|[0-9][A-Za-z0-9_-]*)$/.test(className))
-  ) {
-    throw new Error(`CSSX received an unsafe generated class name for utility "${candidate}".`);
-  }
-  return classes;
 }
 
 /**
