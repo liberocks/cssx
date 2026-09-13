@@ -5,6 +5,7 @@ import { serializeThemeSignature } from './serialize-theme-signature';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 import { parseTheme } from './theme';
 import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
+import { hashClassNameIdentity } from './hash-class-name-identity';
 
 /** Compiler identity included in generated class-name hashes. */
 const COMPILER_ABI = 'cssx-utility-compiler-v2';
@@ -776,11 +777,13 @@ function serialClassFragment(value: number): string {
  */
 function randomClassFragment(identity: string, length: number | undefined, attempt: number): string {
   if (length === undefined) {
-    return attempt === 0 ? hash(identity) : `${hash(identity)}-${hash(`${identity}\u0000${attempt}`)}`;
+    return attempt === 0
+      ? hashClassNameIdentity(identity)
+      : `${hashClassNameIdentity(identity)}-${hashClassNameIdentity(`${identity}\u0000${attempt}`)}`;
   }
   let fragment = '';
   for (let part = 0; fragment.length < length; part++) {
-    fragment += hash(`${identity}\u0000${attempt}\u0000${part}`).padStart(13, '0');
+    fragment += hashClassNameIdentity(`${identity}\u0000${attempt}\u0000${part}`).padStart(13, '0');
   }
   return fragment.slice(0, length);
 }
@@ -926,21 +929,6 @@ function compositeIdentity(atomicClasses: readonly string[]): string {
 /** Adds the compiler namespace to a composite identity before it receives a name. */
 function compositeNameIdentity(identity: string): string {
   return `${COMPILER_ABI}\u0000composite\u0000${identity}`;
-}
-
-/**
- * Computes a compact deterministic 64-bit hash for generated class names.
- *
- * @param value Full class-name identity.
- * @returns Base-36 hash text.
- */
-function hash(value: string): string {
-  let result = 0xcbf29ce484222325n;
-  for (let index = 0; index < value.length; index++) {
-    result ^= BigInt(value.charCodeAt(index));
-    result = BigInt.asUintN(64, result * 0x100000001b3n);
-  }
-  return result.toString(36);
 }
 
 /**
