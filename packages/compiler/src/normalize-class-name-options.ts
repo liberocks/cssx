@@ -1,4 +1,4 @@
-import type { ClassNameOptions } from './conflicts';
+import type { ClassNameOptions } from './class-name';
 
 /** Fully validated options used while allocating generated classes. */
 export interface NormalizedClassNameOptions {

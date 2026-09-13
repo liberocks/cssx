@@ -1,4 +1,4 @@
-import type { CompiledStyle } from './conflicts';
+import type { CompiledStyle } from './compiled-style';
 import { reducePackedUtilities } from './reduce-packed-utilities';
 
 /**

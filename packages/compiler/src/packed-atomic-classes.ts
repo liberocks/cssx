@@ -1,4 +1,4 @@
-import type { CompiledUtility } from './conflicts';
+import type { CompiledUtility } from './compiled-utility';
 
 /**
  * Extracts the atomic classes that survive a runtime composition.

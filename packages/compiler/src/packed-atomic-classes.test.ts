@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import type { CompiledUtility } from './conflicts';
+import type { CompiledUtility } from './compiled-utility';
 import { packedAtomicClasses } from './packed-atomic-classes';
 
 it('keeps winning atomic classes in source order across independent scopes', () => {

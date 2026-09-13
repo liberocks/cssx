@@ -1,4 +1,4 @@
-import type { ClassNameAllocator } from './conflicts';
+import type { ClassNameAllocator } from './class-name';
 
 /** Symbol maps retained for each allocator while compiler calls share it. */
 const atomSymbolsByAllocator = new WeakMap<object, Map<string, string>>();

@@ -1,7 +1,8 @@
+import type { ClassNameAllocator } from './class-name';
 import { createClassNameAllocator } from './class-name-allocator';
+import type { CompiledStyle } from './compiled-style';
 import { compositeIdentity } from './composite-identity';
 import { compositeNameIdentity } from './composite-name-identity';
-import type { ClassNameAllocator, CompiledStyle } from './conflicts';
 import { packedAtomicClasses } from './packed-atomic-classes';
 
 /** A composite class and the atomic classes that implement it. */

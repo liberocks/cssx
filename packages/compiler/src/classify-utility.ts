@@ -1,5 +1,5 @@
-import type { UtilityConflictRecord } from './conflicts';
 import { classifyCandidate } from './semantics';
+import type { UtilityConflictRecord } from './utility-conflict-record';
 
 /**
  * Finds the style groups used by one static utility.

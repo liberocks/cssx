@@ -1,4 +1,4 @@
-import type { CompiledUtility } from './conflicts';
+import type { CompiledUtility } from './compiled-utility';
 
 /**
  * Removes utility records superseded by later records in the same scope.

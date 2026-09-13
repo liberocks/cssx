@@ -1,4 +1,4 @@
-import type { ClassNameAllocator, ClassNameOptions } from './conflicts';
+import type { ClassNameAllocator, ClassNameOptions } from './class-name';
 import { normalizeClassNameOptions } from './normalize-class-name-options';
 import type { NormalizedClassNameOptions } from './normalize-class-name-options';
 import { randomClassFragment } from './random-class-fragment';
