@@ -1,16 +1,16 @@
+import { atomSymbolsForAllocator } from './atom-symbols-for-allocator';
 import { parseCandidate, splitCandidateList } from './candidate';
 import { mergeCompiledStyles } from './merge-compiled-styles';
+import { normalizeClassNameOptions } from './normalize-class-name-options';
+import type { NormalizedClassNameOptions } from './normalize-class-name-options';
+import { randomClassFragment } from './random-class-fragment';
 import { classifyCandidate, classifyParsedCandidate } from './semantics';
+import { serialClassFragment } from './serial-class-fragment';
 import { serializeThemeSignature } from './serialize-theme-signature';
 import { SHORTHAND_WRITE_SETS } from './shorthand-write-sets';
 import { parseTheme } from './theme';
 import { themeNamespace } from './theme-namespace';
-import { atomSymbolsForAllocator } from './atom-symbols-for-allocator';
 import { getUtilityAtoms, resolveParsedUtilityRecipe } from './utilities';
-import { normalizeClassNameOptions } from './normalize-class-name-options';
-import type { NormalizedClassNameOptions } from './normalize-class-name-options';
-import { randomClassFragment } from './random-class-fragment';
-import { serialClassFragment } from './serial-class-fragment';
 
 /** Compiler identity included in generated class-name hashes. */
 const COMPILER_ABI = 'cssx-utility-compiler-v2';
