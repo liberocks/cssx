@@ -3,8 +3,9 @@ import { icons } from '@iconify-json/tabler';
 interface Props {
   name: keyof typeof icons.icons | string;
   class?: string;
+  className?: string;
 }
 const icon = icons.icons[Astro.props.name as keyof typeof icons.icons];
 ---
 
-<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" class={Astro.props.class} set:html={icon.body} />
+<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" class={Astro.props.className ?? Astro.props.class} set:html={icon.body} />
