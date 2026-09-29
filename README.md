@@ -829,7 +829,7 @@ raw class strings or be modeled as explicit static style choices.
 
 ## Package releases
 
-The **npm-release** workflow defaults to `auto`, which detects every public
+The **Release packages** workflow defaults to `auto`, which detects every public
 package changed since its last release tag. This includes the npm packages and
 the `cssx-intellisense` Visual Studio Code extension. It applies the selected
 version bump to those packages, adds patch releases for dependents whose
@@ -842,29 +842,28 @@ published, and tagged. GitHub repository auto-merge remains disabled for
 ordinary pull requests.
 
 Configure npm trusted publishing separately for each npm package, with
-repository `liberocks/cssx` and workflow file `npm-release.yml`. Do not select
+repository `liberocks/cssx` and workflow file `release-packages.yml`. Do not select
 an npm environment: this workflow does not use a GitHub Actions environment.
 It has the required OIDC `id-token: write` permission and therefore publishes
 without an npm token.
 
 For `cssx-intellisense`, configure a trusted publishing policy for repository
-`liberocks/cssx` and workflow file `npm-release.yml` in the Visual Studio
+`liberocks/cssx` and workflow file `release-packages.yml` in the Visual Studio
 Marketplace publisher settings. The release job uses `@vscode/vsce publish
 --oidc` and needs no Marketplace token secret. The policy must be in place
-before the first release.
+before the first automated publication.
 
 If a release fails after its version-bump PR has merged but before the registry
 accepts the publish, first correct the trusted-publisher setting. Then rerun
-**npm-release** for the same explicitly selected package with **retry existing
+**Release packages** for the same explicitly selected package with **retry existing
 version** enabled. That guarded mode verifies `main` and publishes only the
 current version when it is still unpublished and has no tag; it neither creates
 another version-bump PR nor skips ahead to a new version. The chosen bump value
 is ignored in retry mode. It also detects an existing package-version tag or
 GitHub Release and skips that artifact while completing any missing release
-artifacts. For the first automated IntelliSense release, select
-`cssx-intellisense` and choose a version bump so the release PR versions the
-current extension contents before publication. Version `0.1.0` has already
-been published manually; a patch bump will publish `0.1.1`.
+artifacts. For an IntelliSense release, select `cssx-intellisense` and choose a
+version bump so the release PR versions the current extension contents before
+publication. Version `0.1.1` is currently published.
 
 Each GitHub Release lists the commits merged since that package's previous tag.
 For a package's first automated release, it uses the `release-baseline` tag

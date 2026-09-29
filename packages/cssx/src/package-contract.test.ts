@@ -285,7 +285,7 @@ void props;
   });
 
   it('pins all GitHub Actions workflow dependencies to immutable commit revisions', async () => {
-    for (const workflow of ['.github/workflows/ci.yml', '.github/workflows/npm-release.yml']) {
+    for (const workflow of ['.github/workflows/ci.yml', '.github/workflows/release-packages.yml']) {
       const content = await readFile(join(workspaceRoot, workflow), 'utf8');
       const actions = [...content.matchAll(/^\s*- uses:\s+[^@\s]+@([^\s#]+)/gm)].map((match) => match[1]);
       expect(actions.length, `${workflow} has no actions`).toBeGreaterThan(0);
@@ -293,9 +293,9 @@ void props;
     }
   });
 
-  it('defaults npm releases to the changed-package selector', async () => {
-    const workflow = await readFile(join(workspaceRoot, '.github/workflows/npm-release.yml'), 'utf8');
-    expect(workflow).toContain('name: npm-release');
+  it('defaults package releases to the changed-package selector', async () => {
+    const workflow = await readFile(join(workspaceRoot, '.github/workflows/release-packages.yml'), 'utf8');
+    expect(workflow).toContain('name: Release packages');
     expect(workflow).toContain('package:');
     expect(workflow).toContain('default: auto');
     expect(workflow).toContain('- auto');
