@@ -1,5 +1,5 @@
-name: npm-release
-run-name: npm-release ${{ inputs.package }} (${{ inputs.bump }}) from main by @${{ github.actor }}
+name: Release packages
+run-name: Release packages ${{ inputs.package }} (${{ inputs.bump }}) from main by @${{ github.actor }}
 
 on:
   workflow_dispatch:
