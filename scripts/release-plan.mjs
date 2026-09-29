@@ -8,20 +8,28 @@ const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const execFileAsync = promisify(execFile);
 
 export const releasePackages = [
-  { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [] },
-  { name: '@cssxio/babel-plugin', directory: 'packages/babel-plugin', dependencies: ['@cssxio/compiler'] },
-  { name: '@cssxio/cssx', directory: 'packages/cssx', dependencies: [] },
-  { name: '@cssxio/html', directory: 'packages/html', dependencies: ['@cssxio/compiler'] },
+  { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [], registry: 'npm' },
+  {
+    name: '@cssxio/babel-plugin',
+    directory: 'packages/babel-plugin',
+    dependencies: ['@cssxio/compiler'],
+    registry: 'npm',
+  },
+  { name: '@cssxio/cssx', directory: 'packages/cssx', dependencies: [], registry: 'npm' },
+  { name: '@cssxio/html', directory: 'packages/html', dependencies: ['@cssxio/compiler'], registry: 'npm' },
   {
     name: '@cssxio/react-native',
     directory: 'packages/react-native',
     dependencies: ['@cssxio/compiler'],
+    registry: 'npm',
   },
   {
     name: '@cssxio/unplugin',
     directory: 'packages/unplugin',
     dependencies: ['@cssxio/babel-plugin', '@cssxio/compiler'],
+    registry: 'npm',
   },
+  { name: 'cssx-intellisense', directory: 'packages/intellisense', dependencies: [], registry: 'vscode' },
 ];
 const packageByName = new Map(releasePackages.map((packageInfo) => [packageInfo.name, packageInfo]));
 
@@ -35,7 +43,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     await applyPlan(options);
   } else {
     fail(
-      'Usage: node scripts/release-plan.mjs <plan|apply> --package <auto|npm-package> --bump <major|minor|patch> --output <path>',
+      'Usage: node scripts/release-plan.mjs <plan|apply> --package <auto|release-package> --bump <major|minor|patch> --output <path>',
     );
   }
 }
