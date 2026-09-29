@@ -5,6 +5,11 @@
   "version": "0.1.0",
   "publisher": "cssxio",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liberocks/cssx.git",
+    "directory": "packages/intellisense"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
