@@ -1,6 +1,6 @@
 {
   "name": "cssx-intellisense",
-  "displayName": "CSSX IntelliSense",
+  "displayName": "CSSX Utility Assistant",
   "description": "Completion and hover documentation for CSSX static utility strings.",
   "version": "0.1.0",
   "publisher": "cssxio",
@@ -34,7 +34,7 @@
   "main": "./src/extension.js",
   "contributes": {
     "configuration": {
-      "title": "CSSX IntelliSense",
+      "title": "CSSX Utility Assistant",
       "properties": {
         "cssxIntelliSense.classFunctions": {
           "type": "array",

@@ -1,4 +1,4 @@
-# CSSX IntelliSense
+# CSSX Utility Assistant
 
 A small editor extension for static CSSX utility strings. It shows completion
 and hover help in `cssx.create`, `sx`, and common `class` and `className`
