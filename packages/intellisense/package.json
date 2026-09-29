@@ -2,8 +2,9 @@
   "name": "cssx-intellisense",
   "displayName": "CSSX Utility Assistant",
   "description": "Completion and hover documentation for CSSX static utility strings.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "cssxio",
+  "icon": "icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
