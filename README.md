@@ -861,9 +861,10 @@ current version when it is still unpublished and has no tag; it neither creates
 another version-bump PR nor skips ahead to a new version. The chosen bump value
 is ignored in retry mode. It also detects an existing package-version tag or
 GitHub Release and skips that artifact while completing any missing release
-artifacts. For the first IntelliSense release, select `cssx-intellisense` and
-choose a version bump (for example, `patch`) so the release PR versions the
-current extension contents before publication.
+artifacts. For the first automated IntelliSense release, select
+`cssx-intellisense` and choose a version bump so the release PR versions the
+current extension contents before publication. Version `0.1.0` has already
+been published manually; a patch bump will publish `0.1.1`.
 
 Each GitHub Release lists the commits merged since that package's previous tag.
 For a package's first automated release, it uses the `release-baseline` tag
