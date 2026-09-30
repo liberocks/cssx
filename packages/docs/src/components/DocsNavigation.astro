@@ -1,0 +1,222 @@
+---
+import * as cssx from '@cssxio/cssx';
+
+import type { Locale } from '../localization/index.ts';
+import { defaultLocale } from '../localization/index.ts';
+import Icon from './Icon.astro';
+import ShowIf from './ShowIf.astro';
+import { styles } from './DocsNavigation.styles.ts';
+
+interface Props {
+  variant: 'desktop' | 'mobile';
+  lang: Locale;
+  homePath: string;
+}
+
+const { variant, lang, homePath } = Astro.props;
+const docsPath = lang === defaultLocale ? '/docs' : `/${lang}/docs`;
+
+const sections = [
+  {
+    title: 'Overview',
+    links: [
+      ['Quick Start', 'quick-start'],
+      ['Menu', 'menu'],
+      ['Dropdown', 'dropdown'],
+      ['Button', 'button'],
+      ['Input', 'input'],
+    ],
+  },
+  {
+    title: 'Handbook',
+    links: [
+      ['Styling', 'quick-start'],
+      ['Animation', 'menu'],
+      ['Composition', 'dropdown'],
+      ['Forms', 'button'],
+      ['llms.txt', 'input'],
+    ],
+  },
+  {
+    title: 'Handbook',
+    links: [
+      ['Styling', 'quick-start'],
+      ['Animation', 'menu'],
+      ['Composition', 'dropdown'],
+      ['Forms', 'button'],
+      ['llms.txt', 'input'],
+    ],
+  },
+  {
+    title: 'Handbook',
+    links: [
+      ['Styling', 'quick-start'],
+      ['Animation', 'menu'],
+      ['Composition', 'dropdown'],
+      ['Forms', 'button'],
+      ['llms.txt', 'input'],
+    ],
+  },
+  {
+    title: 'Handbook',
+    links: [
+      ['Styling', 'quick-start'],
+      ['Animation', 'menu'],
+      ['Composition', 'dropdown'],
+      ['Forms', 'button'],
+      ['llms.txt', 'input'],
+    ],
+  },
+] as const;
+
+const navigationId = `docs-navigation-${variant}`;
+---
+
+<ShowIf condition={variant === 'desktop'}>
+  <aside {...cssx.props(styles.desktop)} style="height: calc(100dvh - 2rem);" data-docs-navigation>
+    <a href={homePath} {...cssx.props(styles.homeLink)}>
+      <img src="/images/logo.png" alt="cssx" {...cssx.props(styles.logo)} />
+    </a>
+    <div {...cssx.props(styles.scrollArea)} data-docs-navigation-scroll-area>
+      <nav aria-label="Documentation navigation" {...cssx.props(styles.navigation)} data-docs-navigation-list>
+        {sections.map((section) => (
+          <div {...cssx.props(styles.section)}>
+            <div {...cssx.props(styles.heading)}>{section.title}</div>
+            {section.links.map(([label, slug]) => (
+              <a href={`${docsPath}/${slug}`} {...cssx.props(styles.link)}>{label}</a>
+            ))}
+          </div>
+        ))}
+      </nav>
+      <div {...cssx.props(styles.scrollbar)} aria-hidden="true" data-docs-navigation-scrollbar hidden>
+        <div {...cssx.props(styles.scrollbarThumb)} data-docs-navigation-scrollbar-thumb></div>
+      </div>
+    </div>
+    <footer {...cssx.props(styles.footer)}>
+      <a href="https://github.com/liberocks/cssx" target="_blank" rel="noreferrer" {...cssx.props(styles.footerLink)}>
+        <Icon name="brand-github" {...cssx.props(styles.footerIcon)} />
+        GitHub
+      </a>
+      <a href="https://www.npmjs.com/package/@cssxio/cssx" target="_blank" rel="noreferrer" {...cssx.props(styles.footerLink)}>
+        <Icon name="brand-npm" {...cssx.props(styles.footerIcon)} />
+        npm 0.7.0
+      </a>
+    </footer>
+  </aside>
+</ShowIf>
+<ShowIf condition={variant === 'mobile'}>
+  <div data-docs-navigation>
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      aria-controls={navigationId}
+      {...cssx.props(styles.mobileTrigger)}
+      data-docs-navigation-trigger
+    >
+      Navigation
+    </button>
+    <dialog id={navigationId} aria-labelledby={`${navigationId}-title`} {...cssx.props(styles.mobileSheet)} data-docs-navigation-sheet>
+      <div {...cssx.props(styles.mobileSheetContent)}>
+        <h2 id={`${navigationId}-title`} {...cssx.props(styles.sheetTitle)}>Documentation navigation</h2>
+        <div {...cssx.props(styles.mobileSearchHeader)}>
+          <div {...cssx.props(styles.sheetHandle)} aria-hidden="true"></div>
+          <input type="search" aria-label="Search documentation" placeholder="Search" autocomplete="off" {...cssx.props(styles.mobileSearchInput)} data-docs-navigation-search />
+        </div>
+        <nav aria-label="Documentation navigation" {...cssx.props(styles.mobileNavigation)} data-docs-navigation-list>
+          {sections.map((section) => (
+            <div {...cssx.props(styles.mobileSection)} data-docs-navigation-section>
+              <div {...cssx.props(styles.mobileHeading)}>{section.title}</div>
+              {section.links.map(([label, slug]) => (
+                <a href={`${docsPath}/${slug}`} {...cssx.props(styles.mobileLink)} data-docs-navigation-link>{label}</a>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </div>
+    </dialog>
+  </div>
+</ShowIf>
+
+<script>
+  for (const scrollArea of document.querySelectorAll('[data-docs-navigation-scroll-area]')) {
+    const navigation = scrollArea.querySelector('[data-docs-navigation-list]');
+    const scrollbar = scrollArea.querySelector('[data-docs-navigation-scrollbar]');
+    const thumb = scrollArea.querySelector('[data-docs-navigation-scrollbar-thumb]');
+
+    if (!(navigation instanceof HTMLElement) || !(scrollbar instanceof HTMLElement) || !(thumb instanceof HTMLElement)) continue;
+
+    let hideScrollbarTimer: ReturnType<typeof setTimeout>;
+
+    const updateScrollbar = () => {
+      const isScrollable = navigation.scrollHeight > navigation.clientHeight;
+      scrollbar.hidden = !isScrollable;
+
+      if (!isScrollable) return;
+
+      const thumbHeight = Math.max(20, (navigation.clientHeight ** 2) / navigation.scrollHeight);
+      const scrollRange = navigation.scrollHeight - navigation.clientHeight;
+      const thumbRange = navigation.clientHeight - thumbHeight;
+      const scrollProgress = scrollRange === 0 ? 0 : navigation.scrollTop / scrollRange;
+
+      thumb.style.height = `${thumbHeight}px`;
+      thumb.style.transform = `translateY(${thumbRange * scrollProgress}px)`;
+    };
+
+    navigation.addEventListener('scroll', () => {
+      updateScrollbar();
+      scrollbar.dataset.scrolling = 'true';
+      clearTimeout(hideScrollbarTimer);
+      hideScrollbarTimer = setTimeout(() => delete scrollbar.dataset.scrolling, 700);
+    }, { passive: true });
+
+    new ResizeObserver(updateScrollbar).observe(navigation);
+    updateScrollbar();
+  }
+
+  for (const root of document.querySelectorAll('[data-docs-navigation]')) {
+    const trigger = root.querySelector('[data-docs-navigation-trigger]');
+    const sheet = root.querySelector('[data-docs-navigation-sheet]');
+    const search = root.querySelector('[data-docs-navigation-search]');
+
+    if (!(trigger instanceof HTMLButtonElement) || !(sheet instanceof HTMLDialogElement)) continue;
+
+    const openSheet = () => {
+      sheet.showModal();
+      if (search instanceof HTMLInputElement) search.focus();
+    };
+    const closeSheet = () => sheet.close();
+
+    trigger.addEventListener('click', openSheet);
+    sheet.addEventListener('click', (event) => {
+      if (event.target === sheet) closeSheet();
+    });
+    sheet.addEventListener('close', () => trigger.focus());
+
+    if (search instanceof HTMLInputElement) {
+      const sections = sheet.querySelectorAll('[data-docs-navigation-section]');
+
+      search.addEventListener('input', () => {
+        const query = search.value.trim().toLowerCase();
+
+        sections.forEach((section) => {
+          let matches = 0;
+          section.querySelectorAll('[data-docs-navigation-link]').forEach((link) => {
+            const isMatch = link.textContent?.toLowerCase().includes(query) ?? false;
+            link.toggleAttribute('hidden', !isMatch);
+            if (isMatch) matches += 1;
+          });
+          section.toggleAttribute('hidden', matches === 0);
+        });
+      });
+
+      sheet.addEventListener('close', () => {
+        search.value = '';
+        search.dispatchEvent(new Event('input'));
+      });
+    }
+
+    sheet.querySelectorAll('[data-docs-navigation-link]').forEach((link) => {
+      link.addEventListener('click', closeSheet);
+    });
+  }
+</script>

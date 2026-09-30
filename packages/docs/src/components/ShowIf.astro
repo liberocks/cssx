@@ -1,0 +1,15 @@
+---
+export interface ShowIfProps<T = unknown> {
+  /** The value that controls whether the default slot renders. */
+  condition: T;
+}
+
+type Props = ShowIfProps;
+
+const { condition } = Astro.props;
+const html = condition && Astro.slots.has('default')
+  ? await Astro.slots.render('default', [condition])
+  : '';
+---
+
+<Fragment set:html={html} />

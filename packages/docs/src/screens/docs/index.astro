@@ -1,11 +1,15 @@
 ---
-import { sx } from '@cssxio/cssx';
+import * as cssx from '@cssxio/cssx';
 
-import BaseLayout from '../../layouts/BaseLayout.astro';
 import ThemeToggle from '../../components/ThemeToggle.astro';
 import LanguageToggle from '../../components/LanguageToggle.astro';
+import DocsNavigation from '../../components/DocsNavigation.astro';
+import DocsSearch from '../../components/DocsSearch.astro';
 import { defaultLocale, locales, plainText, renderRich } from '../../localization/index.ts';
 import type { Locale } from '../../localization/index.ts';
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { styles } from './styles.ts';
+import { sx } from '@cssxio/cssx';
 
 interface Props {
   lang: Locale;
@@ -16,40 +20,39 @@ const t = locales[lang];
 const homePath = lang === defaultLocale ? '/' : `/${lang}`;
 ---
 
-<BaseLayout title={plainText(t.docs.title)} lang={lang}>
-  <div class={sx('max-w-full mx-auto md:max-w-xl min-h-screen flex flex-col p-4')}>
-    <header class={sx('flex flex-row-reverse justify-between items-center gap-4 py-4')}>
-      <div class={sx('flex justify-start items-center gap-4')}>
+<DocsLayout title={plainText(t.docs.title)} lang={lang}>
+  <div {...cssx.props(styles.page)}>
+    <header {...cssx.props(styles.header)}>
+      <a href={homePath} {...cssx.props(styles.mobileHomeLink)}>
+        <img src="/images/logo.png" alt="cssx" {...cssx.props(styles.logo)} />
+      </a>
+      <div {...cssx.props(styles.toggles)}>
+        <DocsNavigation variant="mobile" lang={lang} homePath={homePath} />
+        <DocsSearch lang={lang} class={sx('hidden', 'lg:inline-flex')} />
         <LanguageToggle />
         <ThemeToggle />
       </div>
-      <a href={homePath}>
-        <img src="/images/logo.png" alt="cssx" class={sx('w-auto h-6 opacity-80 dark:invert')} />
-      </a>
     </header>
 
-    <main class={sx('flex flex-col gap-10 justify-center flex-1')}>
-      <div class={sx('flex flex-col gap-4')}>
-        <h1
-          class={sx('text-3xl text-gray-900 dark:text-gray-50')}
-          set:html={renderRich(t.docs.title)}
-        />
-        <p
-          class={sx('text-lg font-light text-gray-600 dark:text-gray-300 leading-relaxed')}
-          set:html={renderRich(t.docs.description)}
-        />
+    <main {...cssx.props(styles.main)}>
+      <DocsNavigation variant="desktop" lang={lang} homePath={homePath} />
+      <div {...cssx.props(styles.content)}>
+        <h1 id="menu" class={sx('text-3xl font-semibold text-gray-800 dark:text-gray-200 mb-4')}>Menu</h1>
+        <div class={sx('text-gray-600 text-lg dark:text-gray-400')}>A list of actions in a dropdown, enhanced with keyboard navigation.</div>
+        <h2 id="section-title" class={sx('text-xl font-semibold text-gray-800 dark:text-gray-200 mt-8 mb-4')}>Section title</h2>
+        <div class={sx('text-gray-800 dark:text-gray-200')}>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</div>
       </div>
-      <div>
-        <a
-          class={sx(
-            'bg-black dark:bg-white dark:text-black text-white text-base font-light px-6 py-2.5',
-            'rounded-full tracking-wide hover:bg-black/50 dark:hover:bg-white/50',
-            'flex w-full items-center justify-center md:inline-flex md:w-auto',
-          )}
-          href={homePath}
-          set:html={renderRich(t.docs.backHome)}
-        ></a>
-      </div>
+      <nav aria-label="On this page" {...cssx.props(styles.toc)}>
+        <h2 {...cssx.props(styles.tocHeading)}>On this page</h2>
+        <ul {...cssx.props(styles.tocList)}>
+          <li><a href="#menu" {...cssx.props(styles.tocLink)}>(Top)</a></li>
+          <li>
+            <ul {...cssx.props(styles.tocNestedList)}>
+              <li><a href="#section-title" {...cssx.props(styles.tocLink)}>Section title</a></li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
     </main>
   </div>
-</BaseLayout>
+</DocsLayout>

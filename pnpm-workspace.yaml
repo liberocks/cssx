@@ -6,3 +6,10 @@ packages:
   - benchmarks/stylex
   - benchmarks/tailwind
   - tests
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - '@cssxio/babel-plugin@0.6.0'
+  - '@cssxio/compiler@0.8.0'

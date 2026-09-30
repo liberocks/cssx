@@ -16,6 +16,7 @@ packages/intellisense/*.vsix
 benchmarks/node_modules/
 benchmarks/*/dist/
 benchmarks/*/src/corpus.tsx
+.wrangler
 coverage/
 tests/.tmp/
 design/
