@@ -31,6 +31,7 @@ export async function withClassNameManifest<T>(
   const lockPath = `${path}.lock`;
   const started = Date.now();
   let lock: Awaited<ReturnType<typeof open>> | undefined;
+  let missingLockPermissionRetries = 0;
   while (!lock) {
     await mkdir(dirname(path), { recursive: true });
     let candidate: Awaited<ReturnType<typeof open>>;
@@ -46,11 +47,17 @@ export async function withClassNameManifest<T>(
           await stat(lockPath);
         } catch (statError) {
           if ((statError as NodeJS.ErrnoException).code === 'ENOENT') {
-            throw error;
+            missingLockPermissionRetries += 1;
+            if (missingLockPermissionRetries > 1) {
+              throw error;
+            }
+            await new Promise((resolvePromise) => setTimeout(resolvePromise, LOCK_RETRY_MS));
+            continue;
           }
           throw statError;
         }
       }
+      missingLockPermissionRetries = 0;
       if (await removeAbandonedLock(lockPath)) {
         continue;
       }

@@ -188,6 +188,24 @@ it('surfaces unexpected errors while opening a manifest lock', async () => {
   }
 });
 
+it('retries a denied lock open once when the competing lock has disappeared', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-lock-open-race-'));
+  const path = join(root, 'classes.json');
+  const open = vi.spyOn(fileSystem, 'open');
+  try {
+    open.mockRejectedValueOnce(Object.assign(new Error('lock was just released'), { code: 'EPERM' }));
+
+    const result = await withClassNameManifest(path, {}, async (allocator) =>
+      allocator.allocate(['after-lock-release']),
+    );
+
+    expect(result.size).toBe(1);
+  } finally {
+    open.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it('surfaces unexpected errors while checking a denied lock open', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-lock-stat-error-'));
   const path = join(root, 'classes.json');
@@ -196,7 +214,7 @@ it('surfaces unexpected errors while checking a denied lock open', async () => {
   const stat = vi.spyOn(fileSystem, 'stat');
   const failure = Object.assign(new Error('lock stat failed'), { code: 'EIO' });
   try {
-    await writeFile(lockPath, `${process.pid}\\n`);
+    await writeFile(lockPath, `${process.pid}\n`);
     open.mockRejectedValueOnce(Object.assign(new Error('lock open denied'), { code: 'EPERM' }));
     stat.mockRejectedValueOnce(failure);
 
@@ -302,10 +320,12 @@ it('removes a newly created lock when recording its owner fails', async () => {
 it('surfaces unexpected errors when opening the manifest lock', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-open-error-'));
   const failure = Object.assign(new Error('lock open failed'), { code: 'EACCES' });
+  const open = vi.spyOn(fileSystem, 'open');
   try {
-    vi.mocked(fileSystem.open).mockRejectedValueOnce(failure);
+    open.mockRejectedValue(failure);
     await expect(withClassNameManifest(join(root, 'classes.json'), {}, async () => undefined)).rejects.toBe(failure);
   } finally {
+    open.mockRestore();
     await rm(root, { recursive: true, force: true });
   }
 });
