@@ -1,14 +1,14 @@
 import { existsSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 
 import { assertPluginOptions } from './assert-plugin-options';
+import { resolveNextLoaderPath } from './next-loader-path';
 import type { CssxPluginOptions } from './options';
 
-/** Resolves this package's published Next loader entry from the consumer project. */
-const require = createRequire(resolve(process.cwd(), 'package.json'));
+/** CommonJS output directory, or undefined for ESM and source module builds. */
+const commonJsDirectory = getCommonJsModuleDirectory();
 /** Absolute loader path required by both Next.js bundlers. */
-const loaderPath = require.resolve('@cssxio/unplugin/next-loader');
+const loaderPath = resolveNextLoaderPath(import.meta.url, commonJsDirectory);
 
 /** Subset of Next's Webpack configuration accessed by this adapter. */
 type NextWebpackConfig = {
@@ -141,4 +141,11 @@ function hasAppRouterRootLayout(projectRoot: string): boolean {
   return ['app', 'src/app'].some((directory) =>
     extensions.some((extension) => existsSync(resolve(projectRoot, directory, `layout.${extension}`))),
   );
+}
+
+/** Returns the CommonJS output directory when loaded from the package's CommonJS entry. */
+function getCommonJsModuleDirectory(): string | undefined {
+  // The CommonJS branch is verified against the built package in the release workflow.
+  /* v8 ignore next */
+  return typeof __dirname === 'string' ? __dirname : undefined;
 }

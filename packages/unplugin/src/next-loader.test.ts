@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, it, vi } from 'vitest';
 
+import { installFakeMdxCompiler } from '../test-support/install-fake-mdx';
 import cssxNextLoader, { type CssxNextLoaderOptions } from './next-loader';
 
 const nextExampleRoot = resolve(import.meta.dirname, '../../../examples/next');
@@ -88,32 +89,42 @@ it('refreshes styles for CSSX modules during development and honors inline theme
 });
 
 it('compiles MDX source with source-addressed naming and appends input maps for plain modules', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-mdx-loader-'));
+  const sourceFile = join(root, 'content.mdx');
   const settings: CssxNextLoaderOptions = {
-    projectRoot: nextExampleRoot,
-    styleSheetFile: join(tmpdir(), 'cssx-next-mdx.css'),
+    projectRoot: root,
+    styleSheetFile: join(root, '.cssx', 'generated.css'),
     importSource,
-    manifestPath: join(tmpdir(), 'cssx-next-mdx-manifest.json'),
+    manifestPath: join(root, '.cssx', 'classnames.json'),
     development: false,
     cssx: { naming: 'source', sourceMap: false, preflight: false },
   };
-  const mdx = await runLoader(
-    resolve(nextExampleRoot, 'app/content.mdx'),
-    `import { sx } from '${importSource}';\n\n<div className={sx('p-4')}>MDX</div>`,
-    settings,
-  );
-  expect(mdx.code).toContain('MDX');
-  expect(mdx.code).toContain('d');
+  try {
+    await installFakeMdxCompiler(
+      root,
+      `import { sx } from '${importSource}'; export default function MDXContent() { return <div className={sx('p-4')}>MDX</div>; }`,
+    );
+    const mdx = await runLoader(
+      sourceFile,
+      `import { sx } from '${importSource}';\n\n<div className={sx('p-4')}>MDX</div>`,
+      settings,
+    );
+    expect(mdx.code).toContain('MDX');
+    expect(mdx.code).toContain('d');
 
-  const inputMap = { version: 3 as const, sources: ['plain.ts'], names: [], mappings: '' };
-  const plain = await runLoader(
-    resolve(nextExampleRoot, 'plain.ts'),
-    'export const plain = true;',
-    { ...settings, projectRoot: '' },
-    inputMap,
-    nextExampleRoot,
-  );
-  expect(plain.code).toBe('export const plain = true;');
-  expect(plain.map).toBe(inputMap);
+    const inputMap = { version: 3 as const, sources: ['plain.ts'], names: [], mappings: '' };
+    const plain = await runLoader(
+      resolve(nextExampleRoot, 'plain.ts'),
+      'export const plain = true;',
+      { ...settings, projectRoot: '' },
+      inputMap,
+      nextExampleRoot,
+    );
+    expect(plain.code).toBe('export const plain = true;');
+    expect(plain.map).toBe(inputMap);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 it('uses process.cwd when both configured roots are empty and converts thrown values to Errors', async () => {

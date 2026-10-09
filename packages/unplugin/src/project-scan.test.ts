@@ -1,10 +1,11 @@
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { scanProjectCssxSourceModules } from '../src/project-scan';
 import { compileCssxStylesheet } from '../src/stylesheet';
+import { installFakeMdxCompiler } from '../test-support/install-fake-mdx';
 
 describe('project source scanning', () => {
   it('emits source-addressed aliases for every CSSX module in the project', async () => {
@@ -72,7 +73,10 @@ describe('project source scanning', () => {
   it('compiles MDX source that imports CSSX before scanning its styles', async () => {
     const root = await mkdtemp(join(tmpdir(), 'cssx-project-scan-mdx-'));
     try {
-      await symlink(resolve(import.meta.dirname, '../../../examples/next/node_modules'), join(root, 'node_modules'));
+      await installFakeMdxCompiler(
+        root,
+        `import { sx } from '@cssxio/cssx'; export default function MDXContent() { return <div className={sx('p-4')}>Styled</div>; }`,
+      );
       await writeFile(
         join(root, 'content.mdx'),
         "import { sx } from '@cssxio/cssx';\n\n<div className={sx('p-4')}>Styled</div>",

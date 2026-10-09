@@ -1,17 +1,18 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { expect, it } from 'vitest';
 
+import { installFakeMdxCompiler } from '../test-support/install-fake-mdx';
 import { compileNextMdx } from './next-mdx';
-
-const projectRoot = resolve(import.meta.dirname, '../../../examples/next');
 
 it('compiles MDX with string and option-bearing plugin entries', async () => {
   const pluginRoot = await mkdtemp(join(tmpdir(), 'cssx-mdx-plugin-'));
+  const projectRoot = await mkdtemp(join(tmpdir(), 'cssx-mdx-project-'));
   const stringPluginPath = join(pluginRoot, 'append-string.mjs');
   const tuplePluginPath = join(pluginRoot, 'append-tuple.mjs');
   try {
+    await installFakeMdxCompiler(projectRoot);
     await writeFile(
       stringPluginPath,
       `export default function append() { return (tree) => { tree.children.push({ type: 'paragraph', children: [{ type: 'text', value: 'string-plugin' }] }); }; }`,
@@ -29,6 +30,7 @@ it('compiles MDX with string and option-bearing plugin entries', async () => {
     expect(output).toContain('tuple-plugin');
   } finally {
     await rm(pluginRoot, { recursive: true, force: true });
+    await rm(projectRoot, { recursive: true, force: true });
   }
 }, 30_000);
 
@@ -46,11 +48,14 @@ it('reports when the consuming project has no MDX compiler', async () => {
 
 it('rejects plugin modules that do not expose a default plugin function', async () => {
   const pluginRoot = await mkdtemp(join(tmpdir(), 'cssx-mdx-invalid-plugin-'));
+  const projectRoot = await mkdtemp(join(tmpdir(), 'cssx-mdx-invalid-project-'));
   const pluginPath = join(pluginRoot, 'invalid.mjs');
   try {
+    await installFakeMdxCompiler(projectRoot);
     await writeFile(pluginPath, 'export const namedPlugin = () => {};');
     await expect(compileNextMdx('# Title', projectRoot, { remarkPlugins: [pluginPath] })).rejects.toThrow();
   } finally {
     await rm(pluginRoot, { recursive: true, force: true });
+    await rm(projectRoot, { recursive: true, force: true });
   }
 });
