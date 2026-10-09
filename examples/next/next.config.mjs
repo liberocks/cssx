@@ -1,4 +1,4 @@
-import cssx from '@cssxio/unplugin/webpack';
+import { withCSSX } from '@cssxio/unplugin/next';
 
 const theme = `
 @theme reference {
@@ -7,11 +7,6 @@ const theme = `
 `;
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  webpack(config) {
-    config.plugins.push(cssx({ cssFileName: 'static/cssx.css', theme, stableClassNames: true }));
-    return config;
-  },
-};
+const nextConfig = withCSSX({}, { theme, mdx: {} });
 
 export default nextConfig;

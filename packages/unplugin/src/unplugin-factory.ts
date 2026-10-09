@@ -11,7 +11,7 @@ import { createUniversalEsbuildHooks } from './create-universal-esbuild-hooks';
 import { createViteHotUpdateHandler } from './create-vite-hot-update-handler';
 import type { ModuleCssxData } from './module-cssx-data';
 import type { NativeCompiler } from './native';
-import { assertPluginOptions, loadTheme, moduleId, type CssxPluginOptions } from './options';
+import { assertPluginOptions, effectiveClassNameOptions, loadTheme, moduleId, type CssxPluginOptions } from './options';
 import { sendViteStyles } from './vite-dev';
 
 export {
@@ -25,7 +25,7 @@ export type { CssxPluginOptions } from './options';
 export { transformCssxModule, type IncomingSourceMap, type TransformResult } from './transform';
 
 /** Matches JavaScript, TypeScript, Astro, and Vue module IDs, with an optional query. */
-const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro|vue)(?:\?.*)?$/;
+const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro|vue|md|mdx)(?:\?.*)?$/;
 
 /**
  * Creates the CSSX adapter hooks consumed by Unplugin for one build tool.
@@ -36,6 +36,9 @@ const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro|vue)(?:\?.*)?$/;
  */
 export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (options = {}, meta) => {
   assertPluginOptions(options);
+  if (options.classNameAllocator && options.className) {
+    throw new Error('CSSX classNameAllocator owns naming. Omit className when supplying a custom allocator.');
+  }
   /** Relative CSS output path template used by this adapter instance. */
   const cssFileName = options.cssFileName ?? 'cssx.css';
   /** Whether the generated stylesheet includes a CSS source map. */
@@ -43,7 +46,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
   /** Transformed module data retained for Rollup-compatible output generation. */
   const rollupDataById = new Map<string, ModuleCssxData>();
   /** Serial namespace shared by every module transformed by this adapter instance. */
-  const classNameAllocator = createClassNameAllocator();
+  const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator(effectiveClassNameOptions(options));
   /** Transformed module data retained for the universal esbuild adapter. */
   const esbuildDataById = new Map<string, ModuleCssxData>();
   /** Active Vite development server, available after server configuration. */

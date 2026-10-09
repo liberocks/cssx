@@ -1,13 +1,14 @@
 import type { ModuleCssxData } from './module-cssx-data';
 import type { CssxPluginOptions } from './options';
 import { moduleId, viteCssPath } from './options';
+import { scanProjectCssxSourceModules } from './project-scan';
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from './stylesheet';
 import { sendViteStyles } from './vite-dev';
 
 /** Development server APIs used to serve and refresh the in-memory stylesheet. */
 export interface ViteServerLike {
   /** Server configuration used to determine the base URL. */
-  readonly config: { readonly base?: string };
+  readonly config: { readonly base?: string; readonly root?: string };
   /** Optional file watcher used to remove deleted modules. */
   readonly watcher?: {
     /** Registers a listener for a watched file event. */
@@ -78,16 +79,13 @@ export function configureViteDevelopmentServer(
       return next();
     }
     void getTheme()
-      .then((theme) =>
-        compileCssxStylesheet(
-          [...rollupDataById.values()],
-          theme,
-          options.layer,
-          sourceMap,
-          options.darkMode,
-          options.preflight,
-        ),
-      )
+      .then(async (theme) => {
+        const sourceData =
+          options.coordination === 'manifest'
+            ? await scanProjectCssxSourceModules(server.config.root ?? process.cwd(), options)
+            : [...rollupDataById.values()];
+        return compileCssxStylesheet(sourceData, theme, options.layer, sourceMap, options.darkMode, options.preflight);
+      })
       .then((compiled) => {
         if (pathname === `${cssPath}.map`) {
           response.setHeader('Content-Type', 'application/json; charset=utf-8');

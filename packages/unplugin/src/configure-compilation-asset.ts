@@ -1,8 +1,12 @@
 import type { DarkMode } from '@cssxio/compiler';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 
+import { createCssxDebugReport } from './create-debug-report';
 import { mergeCssxSourceModules } from './merge-cssx-source-modules';
 import type { NativeCompiler } from './native-types';
 import { resolveCssFileName } from './options';
+import type { CssxPluginOptions } from './options';
 import { sourceDataFromModule } from './source-data-from-module';
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from './stylesheet';
 import type { CssxSourceModule } from './stylesheet-types';
@@ -33,6 +37,7 @@ export function configureCompilationAsset(
   darkMode?: DarkMode,
   preflight = true,
   projectSourceData?: (() => Promise<readonly CssxSourceModule[]>) | undefined,
+  pluginOptions?: CssxPluginOptions,
 ): void {
   // Next writes server compiler assets beneath `.next/server`, where browsers
   // cannot load them. Its client compiler emits the public stylesheet, using
@@ -64,6 +69,18 @@ export function configureCompilationAsset(
           darkMode,
           preflight,
         );
+        if (pluginOptions?.debug) {
+          const report = createCssxDebugReport(sourceData, compiled.css, pluginOptions);
+          if (pluginOptions.debug === true) {
+            console.info(
+              `CSSX: ${report.naming.mode} naming; ${report.classes.filter((item) => item.selectorFound).length}/${report.classes.length} generated classes have selectors; compiler mappings ${report.serverClientMappings.status}${report.serverClientMappings.conflicts.length ? ` (${report.serverClientMappings.conflicts.length} utility conflicts)` : ''}.`,
+            );
+          } else {
+            const reportPath = resolve(compiler.context, pluginOptions.debug.reportFile);
+            await mkdir(dirname(reportPath), { recursive: true });
+            await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+          }
+        }
         if (!compiled.css) {
           return;
         }

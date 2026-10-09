@@ -10,6 +10,7 @@ import type { CssxPluginOptions } from './options';
 import { sourceMapFromContext } from './source-map-from-context';
 import { storeCompilationData } from './store-compilation-data';
 import { transformCssxModule } from './transform';
+import { withClassNameManifest } from './with-class-name-manifest';
 
 /** Minimal Rollup-compatible context needed while transforming one module. */
 export interface TransformContextLike {
@@ -62,18 +63,33 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
     }
     const root = nativeBuildRoot(this);
     const sharedNativeState = root ? nativeBuildState(root, options) : undefined;
-    const transformed = await transformCssxModule(
-      code,
-      id,
-      {
-        ...options,
-        classNameAllocator: sharedNativeState?.classNameAllocator ?? classNameAllocator,
-        ...(options.stableClassNames
-          ? { stableClassNameFileName: relative(root ?? process.cwd(), moduleId(id)).replaceAll(sep, '/') }
-          : {}),
+    const transformOptions = {
+      ...options,
+      className: {
+        ...options.className,
+        ...(options.naming === 'hash' ? { variant: 'random' as const } : {}),
+        ...(options.naming === 'serial' ? { variant: 'serial' as const } : {}),
       },
-      sourceMapFromContext(this, id),
-    );
+      stableClassNames: options.stableClassNames || options.naming === 'source',
+      classNameAllocator: sharedNativeState?.classNameAllocator ?? classNameAllocator,
+      ...(options.stableClassNames || options.naming === 'source'
+        ? { stableClassNameFileName: relative(root ?? process.cwd(), moduleId(id)).replaceAll(sep, '/') }
+        : {}),
+    };
+    const compilerOptions = { ...transformOptions };
+    delete compilerOptions.coordination;
+    delete compilerOptions.manifestPath;
+    const transformed =
+      options.coordination === 'manifest'
+        ? await withClassNameManifest(options.manifestPath!, compilerOptions.className, (allocator) =>
+            transformCssxModule(
+              code,
+              id,
+              { ...compilerOptions, classNameAllocator: allocator },
+              sourceMapFromContext(this, id),
+            ),
+          )
+        : await transformCssxModule(code, id, transformOptions, sourceMapFromContext(this, id));
     const data: ModuleCssxData = {
       id: moduleId(id),
       rules: transformed?.rules ?? [],

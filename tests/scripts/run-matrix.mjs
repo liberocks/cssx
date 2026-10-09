@@ -18,7 +18,7 @@ const run = (arguments_, env = {}) => {
   if (result.status !== 0) process.exit(result.status ?? 1);
 };
 
-run(['--dir', '..', '--filter', '@cssxio/html', 'build']);
+run(['--dir', '..', 'build:packages']);
 
 run([
   'exec',
@@ -44,9 +44,15 @@ run(['exec', 'playwright', 'test', 'motion', '--config', 'playwright.config.ts']
 
 for (const framework of frameworks) {
   for (const mode of ['development', 'production']) {
-    const relativeSpec = framework;
-    const arguments_ = ['exec', 'playwright', 'test', relativeSpec, '--config', 'playwright.config.ts'];
-    if (update) arguments_.push('--update-snapshots');
-    run(arguments_, { CSSX_VISUAL_FRAMEWORK: framework, CSSX_VISUAL_MODE: mode });
+    const bundlers = framework === 'next' ? ['webpack', 'turbopack'] : [undefined];
+    for (const bundler of bundlers) {
+      const arguments_ = ['exec', 'playwright', 'test', framework, '--config', 'playwright.config.ts'];
+      if (update) arguments_.push('--update-snapshots');
+      run(arguments_, {
+        CSSX_VISUAL_FRAMEWORK: framework,
+        CSSX_VISUAL_MODE: mode,
+        ...(bundler ? { CSSX_NEXT_BUNDLER: bundler } : {}),
+      });
+    }
   }
 }

@@ -1,8 +1,10 @@
 import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { ClientCssx } from './client-cssx';
+import Content from './content.mdx';
 
 const styles = cssx.create({
   page: 'flex min-h-[100vh] items-center justify-center bg-slate-100 p-6 font-[var(--font-display)]',
@@ -22,6 +24,7 @@ export default function Page() {
       <main data-cssx-probe="create" {...cssx.props(styles.main)}>
         <span data-cssx-server className={sx('hidden bg-red-500')} />
         <ClientCssx />
+        <Content />
         <Image {...cssx.props(styles.logo)} src="/next.svg" alt="Next.js logo" width={100} height={20} priority />
         <div {...cssx.props(styles.intro)}>
           <h1 {...cssx.props(styles.title)}>To get started, edit the page.tsx file.</h1>
@@ -46,6 +49,9 @@ export default function Page() {
           <a {...cssx.props(styles.secondary)} href="https://nextjs.org/docs">
             Documentation
           </a>
+          <Link data-cssx-navigation href="/second" {...cssx.props(styles.secondary)}>
+            Second route
+          </Link>
         </div>
       </main>
     </div>

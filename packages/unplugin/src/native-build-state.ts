@@ -3,6 +3,7 @@ import { createClassNameAllocator, type ClassNameAllocator } from '@cssxio/compi
 import type { ModuleCssxData } from './module-cssx-data';
 import { nativeBuildStateKey } from './native-build-state-key';
 import type { CssxPluginOptions } from './options';
+import { effectiveClassNameOptions } from './options';
 
 /** CSSX state shared by native compiler instances in one project build. */
 export interface NativeBuildState {
@@ -26,7 +27,10 @@ export function nativeBuildState(root: string, options: CssxPluginOptions): Nati
   const key = nativeBuildStateKey(root, options);
   let state = nativeBuildStates.get(key);
   if (!state) {
-    state = { classNameAllocator: createClassNameAllocator(), transformedDataById: new Map() };
+    state = {
+      classNameAllocator: options.classNameAllocator ?? createClassNameAllocator(effectiveClassNameOptions(options)),
+      transformedDataById: new Map(),
+    };
     nativeBuildStates.set(key, state);
   }
   return state;

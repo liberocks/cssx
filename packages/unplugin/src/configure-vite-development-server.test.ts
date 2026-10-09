@@ -1,3 +1,6 @@
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
 
 import {
@@ -8,7 +11,7 @@ import {
 import type { ModuleCssxData } from './module-cssx-data';
 
 /** Captures middleware and watcher callbacks registered by Vite configuration. */
-function createServerHarness(base?: string) {
+function createServerHarness(base?: string, root?: string) {
   let middleware:
     | ((
         request: { readonly url?: string },
@@ -19,7 +22,7 @@ function createServerHarness(base?: string) {
   let unlink: ((path: string) => void) | undefined;
   const updates: unknown[] = [];
   const server: ViteServerLike = {
-    config: { base },
+    config: { base, root },
     watcher: {
       on(_event, listener) {
         unlink = listener;
@@ -124,6 +127,56 @@ it('does not claim source-map requests when maps are disabled', async () => {
 
   expect(await requestMiddleware(harness.middleware()!, '/cssx.css.map')).toMatchObject({ continued: true });
   expect(getTheme).not.toHaveBeenCalled();
+});
+
+it('scans the project when development CSS uses manifest coordination', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-vite-manifest-'));
+  try {
+    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(
+      join(root, 'src', 'card.tsx'),
+      "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');",
+    );
+    const harness = createServerHarness(undefined, root);
+    configureViteDevelopmentServer(
+      harness.server,
+      configuration({
+        options: {
+          naming: 'serial',
+          coordination: 'manifest',
+          manifestPath: join(root, '.cssx', 'classnames.json'),
+          preflight: false,
+        },
+      }),
+    );
+
+    const response = await requestMiddleware(harness.middleware()!, '/cssx.css');
+    expect(response.body).toContain('.s0x{padding:calc(0.25rem * 4);}');
+
+    const previousCwd = process.cwd();
+    process.chdir(root);
+    try {
+      const cwdHarness = createServerHarness();
+      configureViteDevelopmentServer(
+        cwdHarness.server,
+        configuration({
+          options: {
+            naming: 'serial',
+            coordination: 'manifest',
+            manifestPath: join(root, '.cssx', 'classnames.json'),
+            preflight: false,
+          },
+        }),
+      );
+      expect((await requestMiddleware(cwdHarness.middleware()!, '/cssx.css')).body).toContain(
+        '.s0x{padding:calc(0.25rem * 4);}',
+      );
+    } finally {
+      process.chdir(previousCwd);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 it('returns compiler errors as text and handles non-Error rejection values', async () => {

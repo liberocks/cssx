@@ -2,15 +2,19 @@ import { createClassNameAllocator } from '@cssxio/compiler';
 import type { Plugin } from 'esbuild';
 import { Buffer } from 'node:buffer';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import { basename, dirname, resolve } from 'node:path';
+import { basename, dirname, relative, resolve, sep } from 'node:path';
 
+import { assertPluginOptions } from './assert-plugin-options';
 import { canonicalPath } from './canonical-path';
 import { compileEsbuildStylesheet } from './compile-esbuild-stylesheet';
 import { transformCssxModule } from './index';
 import type { CssxPluginOptions } from './index';
 import { loaderFor } from './loader-for';
 import { resolveCssFileName, resolveEsbuildAssetPath } from './options';
+import { effectiveClassNameOptions } from './options';
+import { scanProjectCssxSourceModules } from './project-scan';
 import type { CssxSourceModule } from './stylesheet';
+import { withClassNameManifest } from './with-class-name-manifest';
 
 /** Matches JavaScript and TypeScript source files handled by esbuild. */
 const SCRIPT_ID = /\.[cm]?[jt]sx?$/;
@@ -24,10 +28,14 @@ const SCRIPT_ID = /\.[cm]?[jt]sx?$/;
  * @returns An esbuild plugin.
  */
 export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
+  assertPluginOptions(options);
+  if (options.classNameAllocator && options.className) {
+    throw new Error('CSSX classNameAllocator owns naming. Omit className when supplying a custom allocator.');
+  }
   /** Candidate data indexed by canonical source path for the current build. */
   const dataById = new Map<string, CssxSourceModule>();
   /** Serial namespace shared by all transformed modules in this esbuild plugin instance. */
-  const classNameAllocator = createClassNameAllocator();
+  const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator(effectiveClassNameOptions(options));
   /** CSS asset written by the previous build, used to remove stale output. */
   let emittedAsset: string | undefined;
   /** CSS source map written by the previous build, used to remove stale output. */
@@ -39,7 +47,23 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
       build.initialOptions.metafile = true;
       build.onLoad({ filter: SCRIPT_ID }, async ({ path }) => {
         const code = await readFile(path, 'utf8');
-        const transformed = await transformCssxModule(code, path, { ...options, classNameAllocator });
+        const stable = options.stableClassNames || options.naming === 'source';
+        const transformOptions = {
+          ...options,
+          className: effectiveClassNameOptions(options),
+          stableClassNames: stable,
+          ...(stable ? { stableClassNameFileName: relative(workingDirectory, path).replaceAll(sep, '/') } : {}),
+          classNameAllocator,
+        };
+        const compilerOptions = { ...transformOptions };
+        delete compilerOptions.coordination;
+        delete compilerOptions.manifestPath;
+        const transformed =
+          options.coordination === 'manifest'
+            ? await withClassNameManifest(options.manifestPath!, compilerOptions.className, (allocator) =>
+                transformCssxModule(code, path, { ...compilerOptions, classNameAllocator: allocator }),
+              )
+            : await transformCssxModule(code, path, transformOptions);
         if (!transformed) {
           return undefined;
         }
@@ -67,7 +91,13 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
             dataById.delete(id);
           }
         }
-        const compiled = await compileEsbuildStylesheet([...dataById], options);
+        const sourceData =
+          options.coordination === 'manifest'
+            ? (await scanProjectCssxSourceModules(workingDirectory, options)).map(
+                (module) => [module.id, module] as const,
+              )
+            : [...dataById];
+        const compiled = await compileEsbuildStylesheet(sourceData, options);
         const assetPath = resolveEsbuildAssetPath(
           workingDirectory,
           build.initialOptions,

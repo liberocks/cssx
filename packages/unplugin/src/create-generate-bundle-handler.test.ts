@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, it } from 'vitest';
 
 import { createGenerateBundleHandler } from './create-generate-bundle-handler';
@@ -80,4 +83,33 @@ it('does not emit an empty stylesheet and rejects output filename collisions', a
       },
     ),
   ).rejects.toThrow('CSSX CSS asset collision');
+});
+
+it('scans sources through the persisted manifest for Rollup output', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-rollup-manifest-'));
+  const previousCwd = process.cwd();
+  const records: Array<{ readonly fileName: string; readonly source: string }> = [];
+  try {
+    await writeFile(join(root, 'page.tsx'), "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');");
+    process.chdir(root);
+    const handler = createGenerateBundleHandler({
+      framework: 'rollup',
+      options: {
+        naming: 'serial',
+        coordination: 'manifest',
+        manifestPath: join(root, '.cssx', 'classnames.json'),
+        preflight: false,
+      },
+      cssFileName: 'cssx.css',
+      sourceMap: false,
+      rollupDataById: new Map(),
+      getTheme: async () => undefined,
+    });
+    await handler.call({ getModuleInfo: () => null, emitFile: (asset) => records.push(asset) }, {}, {});
+
+    expect(records[0]?.source).toContain('.s0x{padding:calc(0.25rem * 4);}');
+  } finally {
+    process.chdir(previousCwd);
+    await rm(root, { recursive: true, force: true });
+  }
 });

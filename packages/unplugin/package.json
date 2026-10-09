@@ -33,6 +33,16 @@
       "import": "./dist/webpack.js",
       "require": "./dist/webpack.cjs"
     },
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "import": "./dist/next.js",
+      "require": "./dist/next.cjs"
+    },
+    "./next-loader": {
+      "types": "./dist/next-loader.d.ts",
+      "import": "./dist/next-loader.js",
+      "require": "./dist/next-loader.cjs"
+    },
     "./rspack": {
       "types": "./dist/rspack.d.ts",
       "import": "./dist/rspack.js",
@@ -49,7 +59,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts src/vite.ts src/rollup.ts src/webpack.ts src/rspack.ts src/esbuild.ts --format esm,cjs --dts --minify --clean"
+    "build": "tsup src/index.ts src/vite.ts src/rollup.ts src/webpack.ts src/rspack.ts src/esbuild.ts src/next.ts src/next-loader.ts --format esm,cjs --dts --minify --clean"
   },
   "dependencies": {
     "@babel/core": "^7.29.7",

@@ -2,6 +2,7 @@ import { dataFromMetadata } from './data-from-metadata';
 import type { ModuleCssxData } from './module-cssx-data';
 import { moduleId, resolveCssFileName } from './options';
 import type { CssxPluginOptions } from './options';
+import { scanProjectCssxSourceModules } from './project-scan';
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from './stylesheet';
 import type { CssxSourceModule } from './stylesheet-types';
 
@@ -74,13 +75,15 @@ export function createGenerateBundleHandler(configuration: GenerateBundleHandler
         }
       }
     }
-    const data: CssxSourceModule[] =
-      framework === 'vite'
-        ? [...rollupDataById.values()]
-        : [...liveIds].map((id) => {
-            const metadata = dataFromMetadata(this.getModuleInfo(id)?.meta);
-            return Object.keys(metadata.candidates).length > 0 ? metadata : (rollupDataById.get(id) ?? metadata);
-          });
+    const data: readonly CssxSourceModule[] =
+      options.coordination === 'manifest'
+        ? await scanProjectCssxSourceModules(process.cwd(), options)
+        : framework === 'vite'
+          ? [...rollupDataById.values()]
+          : [...liveIds].map((id) => {
+              const metadata = dataFromMetadata(this.getModuleInfo(id)?.meta);
+              return Object.keys(metadata.candidates).length > 0 ? metadata : (rollupDataById.get(id) ?? metadata);
+            });
     const compiled = await compileCssxStylesheet(
       data,
       await getTheme(),

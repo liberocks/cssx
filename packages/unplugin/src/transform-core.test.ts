@@ -428,4 +428,14 @@ describe('CSSX unplugin transform', () => {
     expect(transformed.code).toMatch(/className: "s[0-9A-Za-z]+x"/);
     expect(transformed.code).not.toContain('className: "d');
   });
+
+  it('applies allocator options through the Webpack adapter', async () => {
+    const plugin = pluginFor('webpack', { className: { prefix: 'web-', suffix: '-css' } });
+    const transformed = await plugin.transform.handler(
+      `import { sx } from '@cssxio/cssx'; export const className = sx('p-4');`,
+      '/project/styles.ts',
+    );
+
+    expect(transformed.code).toMatch(/"web-[0-9A-Za-z]+-css"/);
+  });
 });

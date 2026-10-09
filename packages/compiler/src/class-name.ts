@@ -17,3 +17,12 @@ export interface ClassNameAllocator {
   /** Reserves class names that were allocated outside this allocator. */
   reserve(classNames: readonly string[]): void;
 }
+
+/** JSON-safe snapshot of a built-in class-name allocator. */
+export interface ClassNameAllocatorSnapshot {
+  readonly version: 1;
+  readonly options: ClassNameOptions;
+  readonly serialCounter: number;
+  readonly assignments: readonly (readonly [identity: string, className: string])[];
+  readonly reserved: readonly string[];
+}

@@ -52,3 +52,17 @@ it('skips ignored directories, non-source files, and symbolic links', async () =
     await rm(root, { recursive: true, force: true });
   }
 });
+
+it('deduplicates nested and repeated additional source roots', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-source-roots-'));
+  const source = join(root, 'src');
+  const file = join(source, 'plain.ts');
+  try {
+    await mkdir(source, { recursive: true });
+    await writeFile(file, '');
+
+    await expect(findProjectSourceFiles(root, [source, source])).resolves.toEqual([file]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

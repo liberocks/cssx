@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   assertPluginOptions,
+  effectiveClassNameOptions,
   loadTheme,
   moduleId,
   resolveCssFileName,
@@ -49,5 +50,18 @@ describe('unplugin options', () => {
       resolve('/project/dist/cssx.css'),
     );
     expect(resolveEsbuildAssetPath('/project', {}, 'cssx.css')).toBe(resolve('/project/cssx.css'));
+  });
+
+  it('resolves generated naming independently from composite naming mode', () => {
+    expect(effectiveClassNameOptions({ naming: 'hash' })).toEqual({ variant: 'random' });
+    expect(effectiveClassNameOptions({ naming: 'serial' })).toEqual({ variant: 'serial' });
+    expect(effectiveClassNameOptions({ naming: 'source', className: { prefix: 'cssx-' } })).toEqual({
+      prefix: 'cssx-',
+    });
+    expect(effectiveClassNameOptions({ className: { prefix: 'custom-' } })).toEqual({ prefix: 'custom-' });
+    expect(() => effectiveClassNameOptions({ naming: 'hash', className: { variant: 'serial' } })).toThrow('conflicts');
+    expect(() => effectiveClassNameOptions({ naming: 'serial', className: { variant: 'random' } })).toThrow(
+      'conflicts',
+    );
   });
 });

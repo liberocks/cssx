@@ -68,6 +68,7 @@ export function frameworkVisualSuite(framework: string): void {
 
   test.describe(`${framework} (${mode})`, () => {
     test('serves the CSSX example with an extracted stylesheet', async ({ page }) => {
+      test.skip(framework === 'next', 'The dedicated Next fixture checks Next-managed CSS assets.');
       await page.goto('/');
       await expect(page.locator('body')).toBeVisible();
       await expect(page.locator('link[rel="stylesheet"][href*="cssx"]')).toHaveCount(1);
@@ -95,6 +96,7 @@ export function frameworkVisualSuite(framework: string): void {
     });
 
     test('hot-reloads CSSX styles without navigating', async ({ page }) => {
+      test.skip(framework === 'next', 'The dedicated Next fixture checks App Router style updates.');
       test.skip(mode !== 'development', 'Stylesheet HMR only runs during development.');
       const fixture = hmrFixtures[framework as keyof typeof hmrFixtures];
       if (!fixture) {

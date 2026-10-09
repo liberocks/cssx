@@ -1,3 +1,4 @@
+import { createClassNameAllocator } from '@cssxio/compiler';
 import { expect, it } from 'vitest';
 
 import { unpluginFactory } from './unplugin-factory';
@@ -31,4 +32,13 @@ it('rejects invalid options before installing bundler hooks', () => {
   expect(() => unpluginFactory({ sourceMap: 'false' } as never, { framework: 'vite', versions: {} } as never)).toThrow(
     'sourceMap must be a boolean',
   );
+});
+
+it('rejects custom allocator conflicts before creating build hooks', () => {
+  expect(() =>
+    unpluginFactory({ classNameAllocator: createClassNameAllocator(), className: { prefix: 'custom' } }, {
+      framework: 'rollup',
+      versions: {},
+    } as never),
+  ).toThrow('classNameAllocator owns naming');
 });

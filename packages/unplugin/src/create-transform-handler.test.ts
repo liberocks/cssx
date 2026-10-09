@@ -1,4 +1,7 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
 
 import { createTransformHandler } from './create-transform-handler';
@@ -99,4 +102,52 @@ it('adds the native stylesheet HMR runtime for transformed Webpack modules', asy
   );
 
   expect(result.code).toContain('styles.css');
+});
+
+it.each(['hash', 'serial'] as const)('applies the explicit %s naming mode', async (naming) => {
+  const handler = createTransformHandler({
+    framework: 'rollup',
+    options: { naming },
+    classNameAllocator: createClassNameAllocator({ variant: naming === 'hash' ? 'random' : 'serial' }),
+    rollupDataById: new Map(),
+    esbuildDataById: new Map(),
+    cssFileName: 'cssx.css',
+    getEsbuildWorkingDirectory: () => '/project',
+    notifyViteStyles: vi.fn(),
+  });
+  const result = await handler.call(
+    {},
+    "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');",
+    '/project/page.tsx',
+  );
+
+  expect(result.code).toContain('s');
+});
+
+it('transforms source modules inside the shared manifest transaction', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-transform-manifest-'));
+  const manifestPath = join(root, 'classes.json');
+  const previousCwd = process.cwd();
+  try {
+    process.chdir(root);
+    const handler = createTransformHandler({
+      framework: 'rollup',
+      options: { naming: 'serial', coordination: 'manifest', manifestPath },
+      classNameAllocator: createClassNameAllocator(),
+      rollupDataById: new Map(),
+      esbuildDataById: new Map(),
+      cssFileName: 'cssx.css',
+      getEsbuildWorkingDirectory: () => root,
+      notifyViteStyles: vi.fn(),
+    });
+    const result = await handler.call(
+      {},
+      "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');",
+      `${root}/page.tsx`,
+    );
+    expect(result.meta[RULES_METADATA_KEY]).toMatchObject({ candidates: { 'p-4': expect.any(String) } });
+  } finally {
+    process.chdir(previousCwd);
+    await rm(root, { recursive: true, force: true });
+  }
 });
