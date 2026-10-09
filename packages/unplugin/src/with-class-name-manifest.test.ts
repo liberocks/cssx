@@ -135,19 +135,35 @@ it('waits for a stale lock when checking its owner fails for permission reasons'
   }
 });
 
-it('waits briefly when a competing compiler lock cannot be read', async () => {
+it.each(['EACCES', 'EPERM'])('waits briefly when a competing compiler lock cannot be read (%s)', async (code) => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-unreadable-lock-'));
   const path = join(root, 'classes.json');
   const lockPath = `${path}.lock`;
   const read = vi.spyOn(fileSystem, 'readFile');
   try {
     await writeFile(lockPath, `${process.pid}\n`);
-    read.mockRejectedValueOnce(Object.assign(new Error('lock file is temporarily unavailable'), { code: 'EPERM' }));
+    read.mockRejectedValueOnce(Object.assign(new Error('lock file is temporarily unavailable'), { code }));
     const removeLock = new Promise<void>((resolve) => setTimeout(() => void rm(lockPath).then(resolve), 45));
     const result = await withClassNameManifest(path, {}, async (allocator) => allocator.allocate(['after-lock-read']));
     await removeLock;
 
     expect(result.size).toBe(1);
+  } finally {
+    read.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('surfaces unexpected errors while reading an occupied lock', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-lock-read-error-'));
+  const path = join(root, 'classes.json');
+  const lockPath = `${path}.lock`;
+  const read = vi.spyOn(fileSystem, 'readFile');
+  const failure = Object.assign(new Error('lock read failed'), { code: 'EIO' });
+  try {
+    await writeFile(lockPath, `${process.pid}\n`);
+    read.mockRejectedValueOnce(failure);
+    await expect(withClassNameManifest(path, {}, async () => undefined)).rejects.toMatchObject({ code: 'EIO' });
   } finally {
     read.mockRestore();
     await rm(root, { recursive: true, force: true });
