@@ -17,7 +17,7 @@ function run(args, cwd, env = {}) {
     const child = spawn(executable, projectArgs, {
       cwd,
       env: { ...process.env, ...env },
-      shell: process.platform === 'win32',
+      shell: framework !== 'next' && process.platform === 'win32',
       stdio: 'inherit',
     });
     child.once('error', reject);
@@ -39,7 +39,7 @@ function serve(args, cwd, env = {}) {
   const child = spawn(executable, projectArgs, {
     cwd,
     env: { ...process.env, ...env },
-    shell: process.platform === 'win32',
+    shell: framework !== 'next' && process.platform === 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   for (const stream of [child.stdout, child.stderr]) {
