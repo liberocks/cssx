@@ -34,6 +34,9 @@ export function frameworkServer(framework, mode) {
     cwd: root,
     command: `"${process.execPath}" "${frameworkRunner}" ${framework} ${mode}`,
     url: `http://127.0.0.1:${definition.port}`,
-    env: framework === 'next' ? { CSSX_NEXT_BUNDLER: process.env.CSSX_NEXT_BUNDLER ?? 'turbopack' } : {},
+    env:
+      framework === 'next'
+        ? { CSSX_NEXT_BUNDLER: process.env.CSSX_NEXT_BUNDLER ?? (mode === 'development' ? 'turbopack' : 'webpack') }
+        : {},
   };
 }

@@ -67,18 +67,20 @@ test('App Router styles hydrate, load as Next CSS assets, and survive route navi
 test('development edits update utilities and add CSSX call sites', async ({ page }) => {
   test.skip(!development, 'Development file edits run only against Next dev servers.');
   const original = await readFile(fixture, 'utf8');
+  const source = original.replaceAll('\r\n', '\n');
   try {
     await page.goto('/');
     const probe = page.locator('[data-cssx-hmr]');
     const red = await normalizedColor(page, 'oklch(63.71% 0.237 25.331)');
     await expect(probe).toHaveCSS('padding-top', '8px');
 
-    const changed = original
+    const changed = source
       .replace("sx('p-2 bg-blue-500')", "sx('p-6 bg-red-500')")
       .replace(
         '      HMR style\n    </div>',
         "      HMR style\n      <span data-cssx-added className={sx('rounded-full text-white')}>Added</span>\n    </div>",
       );
+    expect(changed).toContain('data-cssx-added');
     await writeFile(fixture, changed, 'utf8');
 
     await expect
