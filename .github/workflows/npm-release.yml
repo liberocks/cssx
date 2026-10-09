@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: npm package to release, or auto to release every changed package
+        description: Package to release, or auto to release every changed package
         required: true
         type: choice
         default: auto
@@ -17,6 +17,7 @@ on:
           - '@cssxio/html'
           - '@cssxio/react-native'
           - '@cssxio/unplugin'
+          - cssx-intellisense
       bump:
         description: Version bump
         required: true
@@ -26,14 +27,13 @@ on:
           - minor
           - major
       retry_existing_version:
-        description: Retry the current version for one explicitly selected package
+        description: Publish the current version without a bump for one explicitly selected package
         required: false
         default: false
         type: boolean
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: npm-release-main
@@ -63,6 +63,9 @@ jobs:
   release:
     needs: verify
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -202,10 +205,46 @@ jobs:
         if: steps.plan.outputs.has-release == 'true'
         run: |
           release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
-          while IFS=$'\t' read -r package version tag; do
-            if pnpm view "$package@$version" version >/dev/null 2>&1; then
+          vscode_version_is_published() {
+            local extension_id="$1"
+            local version="$2"
+            local metadata
+
+            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.0 show "$extension_id" --json)"; then
+              printf 'Could not query Visual Studio Marketplace metadata for %s\n' "$extension_id" >&2
+              return 2
+            fi
+            if [ "$metadata" = undefined ]; then return 1; fi
+            if ! jq -e 'type == "object" and (.versions | type == "array")' <<< "$metadata" >/dev/null; then
+              printf 'Unexpected Visual Studio Marketplace metadata for %s\n' "$extension_id" >&2
+              return 2
+            fi
+            jq -e --arg version "$version" 'any(.versions[]?; .version == $version)' <<< "$metadata" >/dev/null
+          }
+
+          while IFS=$'\t' read -r package version tag registry directory; do
+            package_is_published=false
+            case "$registry" in
+              npm)
+                if pnpm view "$package@$version" version >/dev/null 2>&1; then package_is_published=true; fi
+                ;;
+              vscode)
+                extension_id="$(jq -er '.publisher + "." + .name' "$directory/package.json")"
+                if vscode_version_is_published "$extension_id" "$version"; then
+                  package_is_published=true
+                else
+                  query_status=$?
+                  if [ "$query_status" -gt 1 ]; then exit "$query_status"; fi
+                fi
+                ;;
+              *)
+                printf 'Unknown release registry %s for %s\n' "$registry" "$package" >&2
+                exit 1
+                ;;
+            esac
+            if [ "$package_is_published" = true ]; then
               if [ "$release_mode" != retry ]; then
-                printf '%s@%s is already published\n' "$package" "$version" >&2
+                printf '%s@%s is already published to %s\n' "$package" "$version" "$registry" >&2
                 exit 1
               fi
               printf '%s@%s is already published; retry will create its missing package tag and update its commit release\n' "$package" "$version"
@@ -217,7 +256,7 @@ jobs:
               fi
               printf 'Tag %s already exists; retry will check its GitHub Release\n' "$tag"
             fi
-          done < <(jq -r '.packages[] | [.name, .nextVersion, .tag] | @tsv' "$RUNNER_TEMP/release-plan.json")
+          done < <(jq -r '.packages[] | [.name, .nextVersion, .tag, (.registry // "npm"), .directory] | @tsv' "$RUNNER_TEMP/release-plan.json")
       - name: Build release packages
         if: steps.plan.outputs.has-release == 'true'
         run: pnpm build
@@ -225,17 +264,61 @@ jobs:
         if: steps.plan.outputs.has-release == 'true'
         run: |
           release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
-          while IFS=$'\t' read -r package version; do
-            if pnpm view "$package@$version" version >/dev/null 2>&1; then
-              if [ "$release_mode" != retry ]; then
-                printf '%s@%s is already published\n' "$package" "$version" >&2
-                exit 1
-              fi
-              printf 'Skipping already-published %s@%s\n' "$package" "$version"
-              continue
+          vscode_version_is_published() {
+            local extension_id="$1"
+            local version="$2"
+            local metadata
+
+            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.0 show "$extension_id" --json)"; then
+              printf 'Could not query Visual Studio Marketplace metadata for %s\n' "$extension_id" >&2
+              return 2
             fi
-            pnpm --filter "$package" publish --access public --no-git-checks --provenance
-          done < <(jq -r '.packages[] | [.name, .nextVersion] | @tsv' "$RUNNER_TEMP/release-plan.json")
+            if [ "$metadata" = undefined ]; then return 1; fi
+            if ! jq -e 'type == "object" and (.versions | type == "array")' <<< "$metadata" >/dev/null; then
+              printf 'Unexpected Visual Studio Marketplace metadata for %s\n' "$extension_id" >&2
+              return 2
+            fi
+            jq -e --arg version "$version" 'any(.versions[]?; .version == $version)' <<< "$metadata" >/dev/null
+          }
+
+          while IFS=$'\t' read -r package version registry directory; do
+            case "$registry" in
+              npm)
+                if pnpm view "$package@$version" version >/dev/null 2>&1; then
+                  if [ "$release_mode" != retry ]; then
+                    printf '%s@%s is already published\n' "$package" "$version" >&2
+                    exit 1
+                  fi
+                  printf 'Skipping already-published %s@%s\n' "$package" "$version"
+                  continue
+                fi
+                pnpm --filter "$package" publish --access public --no-git-checks --provenance
+                ;;
+              vscode)
+                extension_id="$(jq -er '.publisher + "." + .name' "$directory/package.json")"
+                if vscode_version_is_published "$extension_id" "$version"; then
+                  if [ "$release_mode" != retry ]; then
+                    printf '%s@%s is already published\n' "$package" "$version" >&2
+                    exit 1
+                  fi
+                  printf 'Skipping already-published %s@%s\n' "$package" "$version"
+                  continue
+                else
+                  query_status=$?
+                  if [ "$query_status" -gt 1 ]; then exit "$query_status"; fi
+                fi
+                if [ "$release_mode" = retry ]; then
+                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.0 publish --no-dependencies --oidc --skip-duplicate)
+                else
+                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.0 publish --no-dependencies --oidc)
+                fi
+                ;;
+              *)
+                printf 'Unknown release registry %s for %s\n' "$registry" "$package" >&2
+                exit 1
+                ;;
+            esac
+          done < <(jq -r '.packages[] | [.name, .nextVersion, (.registry // "npm"), .directory] | @tsv' "$RUNNER_TEMP/release-plan.json")
       - name: Tag published packages
         if: steps.plan.outputs.has-release == 'true'
         run: |
