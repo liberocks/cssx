@@ -1,3 +1,4 @@
+import { createClassNameAllocator } from '@cssxio/compiler';
 import type { Plugin } from 'esbuild';
 import { expect, it } from 'vitest';
 
@@ -24,4 +25,13 @@ it('enables metafile tracking and registers script and completion hooks', () => 
   expect(loadFilter?.test('module.tsx')).toBe(true);
   expect(loadFilter?.test('module.css')).toBe(false);
   expect(endHandler).toBeDefined();
+});
+
+it('rejects allocator combinations whose naming options would be ignored', () => {
+  expect(() =>
+    cssxEsbuild({
+      classNameAllocator: createClassNameAllocator(),
+      className: { prefix: 'custom' },
+    }),
+  ).toThrow('classNameAllocator owns naming');
 });

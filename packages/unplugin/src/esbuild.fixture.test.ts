@@ -149,6 +149,42 @@ describe('CSSX esbuild fixture', () => {
     }
   }, 15_000);
 
+  it('uses manifest coordination for independent esbuild source transforms', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cssx-esbuild-manifest-'));
+    try {
+      const entry = join(root, 'main.ts');
+      await writeFile(
+        entry,
+        "import * as cssx from '@cssxio/cssx'; export const styles = cssx.create({ root: 'p-4' });",
+      );
+      const result = await build({
+        absWorkingDir: root,
+        bundle: true,
+        entryPoints: [entry],
+        format: 'esm',
+        metafile: true,
+        outdir: 'dist',
+        plugins: [
+          cssxEsbuild({
+            naming: 'source',
+            coordination: 'manifest',
+            manifestPath: join(root, '.cssx', 'classnames.json'),
+            preflight: false,
+            sourceMap: false,
+          }),
+        ],
+        write: false,
+      });
+
+      expect(result.outputFiles?.find((file) => file.path.endsWith('cssx.css'))?.text).toContain(
+        'padding:calc(0.25rem * 4);',
+      );
+      expect(await readFile(join(root, '.cssx', 'classnames.json'), 'utf8')).toContain('s0x');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('handles esbuild host edge cases for missing metadata, collisions, and disk output', async () => {
     const root = await mkdtemp(join(tmpdir(), 'cssx-esbuild-host-'));
     const entry = join(root, 'entry.jsx');

@@ -1,7 +1,7 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 
 import { withClassNameManifest } from './with-class-name-manifest';
 
@@ -45,6 +45,114 @@ it('fails clearly for corrupt manifest data', async () => {
   try {
     await writeFile(path, '{invalid', 'utf8');
     await expect(withClassNameManifest(path, {}, async () => undefined)).rejects.toThrow();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('removes abandoned locks and waits for a live compiler lock to clear', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-locks-'));
+  const path = join(root, 'classes.json');
+  const lockPath = `${path}.lock`;
+  const staleDate = new Date(Date.now() - 10 * 60_000);
+  try {
+    await writeFile(lockPath, '2147483647\n0\n');
+    await utimes(lockPath, staleDate, staleDate);
+    const allocator = await withClassNameManifest(path, {}, async (state) => state);
+    expect(allocator.allocate(['after-stale-lock']).size).toBe(1);
+
+    await writeFile(lockPath, `${process.pid}\n0\n`);
+    await utimes(lockPath, staleDate, staleDate);
+    const removeLiveLock = new Promise<void>((resolve) => setTimeout(() => void rm(lockPath).then(resolve), 45));
+    const result = await withClassNameManifest(path, {}, async (state) => state.allocate(['after-live-lock']));
+    await removeLiveLock;
+    expect(result.size).toBe(1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('removes a stale lock whose owner record is invalid', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-invalid-owner-'));
+  const path = join(root, 'classes.json');
+  const lockPath = `${path}.lock`;
+  const staleDate = new Date(Date.now() - 10 * 60_000);
+  try {
+    await writeFile(lockPath, 'not-a-process-id\n');
+    await utimes(lockPath, staleDate, staleDate);
+    const result = await withClassNameManifest(path, {}, async (allocator) =>
+      allocator.allocate(['valid-after-stale']),
+    );
+
+    expect(result.size).toBe(1);
+    await expect(readFile(lockPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('surfaces filesystem errors that prevent creation of the manifest lock', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-lock-error-'));
+  const notDirectory = join(root, 'file');
+  try {
+    await writeFile(notDirectory, 'not a directory');
+
+    await expect(
+      withClassNameManifest(join(notDirectory, 'nested', 'classes.json'), {}, async () => undefined),
+    ).rejects.toMatchObject({ code: 'ENOTDIR' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('waits for a stale lock when checking its owner fails for permission reasons', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-owner-permission-'));
+  const path = join(root, 'classes.json');
+  const lockPath = `${path}.lock`;
+  const staleDate = new Date(Date.now() - 10 * 60_000);
+  const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
+    throw Object.assign(new Error('permission denied'), { code: 'EPERM' });
+  });
+  try {
+    await writeFile(lockPath, `${process.pid}\n`);
+    await utimes(lockPath, staleDate, staleDate);
+    const removeLock = new Promise<void>((resolve) => setTimeout(() => void rm(lockPath).then(resolve), 45));
+    const result = await withClassNameManifest(path, {}, async (allocator) =>
+      allocator.allocate(['after-permission-error']),
+    );
+    await removeLock;
+
+    expect(result.size).toBe(1);
+  } finally {
+    kill.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('times out when a class-name lock remains occupied', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-timeout-'));
+  const path = join(root, 'classes.json');
+  try {
+    await writeFile(`${path}.lock`, `${process.pid}\n0\n`);
+    const now = vi.spyOn(Date, 'now');
+    now.mockReturnValueOnce(0).mockReturnValueOnce(1).mockReturnValueOnce(300_001);
+    await expect(withClassNameManifest(path, {}, async () => undefined)).rejects.toThrow('Timed out waiting');
+    now.mockRestore();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('releases its lock when the compiler transform fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-transform-error-'));
+  const path = join(root, 'classes.json');
+  try {
+    await expect(
+      withClassNameManifest(path, {}, async () => {
+        throw new Error('transform failed');
+      }),
+    ).rejects.toThrow('transform failed');
+    await expect(readFile(`${path}.lock`, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
   } finally {
     await rm(root, { recursive: true, force: true });
   }

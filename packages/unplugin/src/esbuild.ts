@@ -55,10 +55,13 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
           ...(stable ? { stableClassNameFileName: relative(workingDirectory, path).replaceAll(sep, '/') } : {}),
           classNameAllocator,
         };
+        const compilerOptions = { ...transformOptions };
+        delete compilerOptions.coordination;
+        delete compilerOptions.manifestPath;
         const transformed =
           options.coordination === 'manifest'
-            ? await withClassNameManifest(options.manifestPath!, transformOptions.className, (allocator) =>
-                transformCssxModule(code, path, { ...transformOptions, classNameAllocator: allocator }),
+            ? await withClassNameManifest(options.manifestPath!, compilerOptions.className, (allocator) =>
+                transformCssxModule(code, path, { ...compilerOptions, classNameAllocator: allocator }),
               )
             : await transformCssxModule(code, path, transformOptions);
         if (!transformed) {

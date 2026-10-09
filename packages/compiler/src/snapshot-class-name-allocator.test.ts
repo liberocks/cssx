@@ -25,6 +25,12 @@ it('restores serial assignments, reservations, and the next serial number', () =
   expect(restored.allocate(['new']).get('new')).not.toBe('outside');
 });
 
+it('rejects snapshots of custom allocators', () => {
+  expect(() => snapshotClassNameAllocator({ allocate: () => new Map(), reserve: () => undefined })).toThrow(
+    'only snapshot allocators created by createClassNameAllocator()',
+  );
+});
+
 it('rejects duplicate snapshot assignments', () => {
   expect(() =>
     restoreClassNameAllocator({

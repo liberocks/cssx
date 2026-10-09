@@ -1,4 +1,7 @@
 import type { BuildResult, PluginBuild } from 'esbuild';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, it } from 'vitest';
 
 import { createUniversalEsbuildHooks } from './create-universal-esbuild-hooks';
@@ -52,4 +55,41 @@ it('emits preflight CSS into in-memory esbuild output files', async () => {
   expect(outputFiles).toHaveLength(1);
   expect(outputFiles[0]?.path).toBe('/project/dist/cssx.css');
   expect(outputFiles[0]?.text).toContain('box-sizing:border-box');
+});
+
+it('scans source files from the shared manifest at build end', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-esbuild-hooks-manifest-'));
+  const previousCwd = process.cwd();
+  try {
+    await writeFile(join(root, 'page.tsx'), "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');");
+    process.chdir(root);
+    let onEnd: ((result: BuildResult) => void | Promise<void>) | undefined;
+    const build = {
+      initialOptions: { absWorkingDir: root, outfile: 'dist/app.js', write: false },
+      onEnd(callback: (result: BuildResult) => void | Promise<void>) {
+        onEnd = callback;
+      },
+    } as unknown as PluginBuild;
+    const hooks = createUniversalEsbuildHooks({
+      options: {
+        naming: 'serial',
+        coordination: 'manifest',
+        manifestPath: join(root, '.cssx', 'classnames.json'),
+        preflight: false,
+      },
+      cssFileName: 'cssx.css',
+      sourceMap: false,
+      dataById: new Map(),
+      getTheme: async () => undefined,
+    });
+    hooks.setup(build);
+    const outputFiles: NonNullable<BuildResult['outputFiles']> = [];
+
+    await onEnd?.({ metafile: { inputs: {} }, outputFiles } as BuildResult);
+
+    expect(outputFiles[0]?.text).toContain('.s0x{padding:calc(0.25rem * 4);}');
+  } finally {
+    process.chdir(previousCwd);
+    await rm(root, { recursive: true, force: true });
+  }
 });

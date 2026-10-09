@@ -1,3 +1,4 @@
+import { createClassNameAllocator } from '@cssxio/compiler';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { vi } from 'vitest';
@@ -65,6 +66,48 @@ it('fails clearly when the project has no App Router root layout', () => {
   } finally {
     process.chdir(nextExample);
   }
+});
+
+it('serializes stable naming, source roots, existing extensions, and a bare stylesheet path', () => {
+  const config = withCSSX(
+    { pageExtensions: ['tsx', 'js'] },
+    { stableClassNames: true, sourceRoots: ['shared'], mdx: { remarkPlugins: ['remark-gfm'] } },
+  ) as unknown as {
+    pageExtensions: string[];
+    turbopack?: { rules?: Record<string, unknown> };
+    webpack?: (base: { module?: { rules?: unknown[] } }, context: Record<string, unknown>) => unknown;
+  };
+  const webpackHook = config.webpack as unknown as (
+    base: { module?: { rules?: unknown[] } },
+    context: Record<string, unknown>,
+  ) => { module: { rules: Array<{ include: string[] }> } };
+  const webpackConfig = webpackHook({}, {});
+  const sourceRule = webpackConfig.module.rules[0]!;
+  const rootRule = webpackConfig.module.rules[1]!;
+
+  expect(sourceRule.include).toContain(resolve(nextExample, 'shared'));
+  expect(rootRule.include).toContain(resolve(nextExample, 'shared'));
+  expect(config.pageExtensions).toEqual(['tsx', 'js', 'md', 'mdx']);
+  expect(config.turbopack?.rules?.['*.tsx']).toMatchObject({
+    loaders: [{ options: { cssx: { naming: 'source' } } }],
+  });
+});
+
+it('invokes a default Webpack hook and reports allocator or Turbopack rule conflicts', () => {
+  const config = withCSSX({}) as unknown as {
+    webpack?: (base: { module?: { rules?: unknown[] } }, context: Record<string, unknown>) => unknown;
+  };
+  const webpackHook = config.webpack as unknown as (
+    base: { module?: { rules?: unknown[] } },
+    context: Record<string, unknown>,
+  ) => { module: { rules: unknown[] } };
+  expect(webpackHook({}, {}).module.rules).toHaveLength(2);
+
+  expect(() => withCSSX({}, { classNameAllocator: createClassNameAllocator() })).toThrow(
+    'cannot serialize classNameAllocator',
+  );
+  expect(() => withCSSX({ turbopack: { rules: { '*.ts': {} } } })).toThrow('owns turbopack.rules["*.ts"]');
+  expect(() => withCSSX({ turbopack: { rules: { '*.md': {} } } })).toThrow('owns turbopack.rules["*.md"]');
 });
 
 it('rejects incompatible legacy naming and manifest settings', () => {

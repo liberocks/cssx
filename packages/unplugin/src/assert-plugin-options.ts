@@ -11,10 +11,12 @@ export function assertPluginOptions(options: CssxPluginOptions): void {
   if (options.sourceRoots && options.sourceRoots.some((root) => typeof root !== 'string' || !root.trim())) {
     throw new Error('CSSX sourceRoots must contain non-empty file-system paths.');
   }
+  const debug = options.debug as CssxPluginOptions['debug'] | null;
   if (
-    options.debug !== undefined &&
-    typeof options.debug !== 'boolean' &&
-    (typeof options.debug !== 'object' || typeof options.debug.reportFile !== 'string' || !options.debug.reportFile)
+    debug === null ||
+    (debug !== undefined &&
+      typeof debug !== 'boolean' &&
+      (typeof debug !== 'object' || typeof debug.reportFile !== 'string' || !debug.reportFile))
   ) {
     throw new Error('CSSX debug must be a boolean or an object with a reportFile path.');
   }

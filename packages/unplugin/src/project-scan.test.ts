@@ -1,6 +1,6 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { scanProjectCssxSourceModules } from '../src/project-scan';
@@ -51,6 +51,38 @@ describe('project source scanning', () => {
       expect(await readFile(manifestPath, 'utf8')).toContain('s0x');
       const stylesheet = await compileCssxStylesheet(modules, undefined, undefined, false);
       expect(stylesheet.css).toContain('.s0x');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('ignores source files without CSSX imports, including MDX files', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cssx-project-scan-empty-'));
+    try {
+      await writeFile(join(root, 'plain.ts'), 'export const plain = true;');
+      await writeFile(join(root, 'content.mdx'), '# Ordinary Markdown');
+      await writeFile(join(root, 'content.md'), '# More ordinary Markdown');
+
+      await expect(scanProjectCssxSourceModules(root, {})).resolves.toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('compiles MDX source that imports CSSX before scanning its styles', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cssx-project-scan-mdx-'));
+    try {
+      await symlink(resolve(import.meta.dirname, '../../../examples/next/node_modules'), join(root, 'node_modules'));
+      await writeFile(
+        join(root, 'content.mdx'),
+        "import { sx } from '@cssxio/cssx';\n\n<div className={sx('p-4')}>Styled</div>",
+      );
+
+      const modules = await scanProjectCssxSourceModules(root, { naming: 'source' });
+
+      expect(modules).toHaveLength(1);
+      expect(modules[0]?.candidates).toHaveProperty('p-4');
+      expect(Object.keys(modules[0]?.composites ?? {})).toHaveLength(1);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

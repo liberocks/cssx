@@ -56,3 +56,71 @@ it('reports mapping conflicts even when compiler processes share a manifest', ()
 
   expect(report.serverClientMappings).toEqual({ status: 'mismatch', conflicts: ['p-4'] });
 });
+
+it('reports source naming, absent origins, empty composites, and orphaned atomic classes', () => {
+  const report = createCssxDebugReport(
+    [
+      {
+        id: 'src/empty.tsx',
+        candidates: { 'p-4': 's1x' },
+        composites: { s2x: [], s3x: ['unmatched'] },
+        atomicClasses: ['orphan'],
+      },
+    ],
+    '.s1x{padding:1rem}',
+    { stableClassNames: true },
+  );
+
+  expect(report.naming).toEqual({
+    mode: 'source',
+    reason: 'stableClassNames compatibility option selects source-addressed composites',
+  });
+  expect(report.serverClientMappings).toEqual({ status: 'consistent-in-process', conflicts: [] });
+  expect(report.coordination).toEqual({ mode: 'memory' });
+  expect(report.classes).toContainEqual({
+    className: 's3x',
+    module: 'src/empty.tsx',
+    utilities: [],
+    line: 1,
+    column: 1,
+    selectorFound: false,
+  });
+  expect(report.classes.find((entry) => entry.className === 'orphan')).toMatchObject({
+    utilities: [],
+    selectorFound: false,
+  });
+});
+
+it('explains explicit and default serial naming and composite locations without origins', () => {
+  const module: CssxSourceModule = {
+    id: 'src/no-origins.tsx',
+    candidates: { 'p-4': 's1x' },
+    composites: { s2x: ['s1x'] },
+    atomicClasses: ['s1x', 's2x'],
+  };
+  const explicit = createCssxDebugReport([module], '.s2x{padding:1rem}', { naming: 'serial' });
+  const fallback = createCssxDebugReport([module], '.s2x{padding:1rem}', {});
+
+  expect(explicit.naming).toEqual({ mode: 'serial', reason: 'explicit naming option' });
+  expect(fallback.naming).toEqual({ mode: 'serial', reason: 'default serial naming' });
+  expect(explicit.classes.find((entry) => entry.className === 's2x')).toMatchObject({ line: 1, column: 1 });
+});
+
+it('defaults missing atomic class lists to an empty list', () => {
+  const report = createCssxDebugReport(
+    [{ id: 'src/card.tsx', candidates: { 'p-4': 's0x' } }],
+    '.s0x{padding:1rem}',
+    {},
+  );
+
+  expect(report.classes).toEqual([
+    {
+      className: 's0x',
+      module: 'src/card.tsx',
+      utilities: ['p-4'],
+      line: 1,
+      column: 1,
+      selectorFound: true,
+    },
+  ]);
+});

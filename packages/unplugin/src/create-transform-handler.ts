@@ -76,13 +76,16 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
         ? { stableClassNameFileName: relative(root ?? process.cwd(), moduleId(id)).replaceAll(sep, '/') }
         : {}),
     };
+    const compilerOptions = { ...transformOptions };
+    delete compilerOptions.coordination;
+    delete compilerOptions.manifestPath;
     const transformed =
       options.coordination === 'manifest'
-        ? await withClassNameManifest(options.manifestPath!, transformOptions.className, (allocator) =>
+        ? await withClassNameManifest(options.manifestPath!, compilerOptions.className, (allocator) =>
             transformCssxModule(
               code,
               id,
-              { ...transformOptions, classNameAllocator: allocator },
+              { ...compilerOptions, classNameAllocator: allocator },
               sourceMapFromContext(this, id),
             ),
           )
