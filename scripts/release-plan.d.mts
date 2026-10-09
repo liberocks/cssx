@@ -1,9 +1,11 @@
 export type ReleaseBump = 'major' | 'minor' | 'patch';
+export type ReleaseRegistry = 'npm' | 'vscode';
 
 export type ReleasePackage = {
   readonly name: string;
   readonly directory: string;
   readonly dependencies: readonly string[];
+  readonly registry?: ReleaseRegistry;
 };
 
 export type ReleaseManifest = {

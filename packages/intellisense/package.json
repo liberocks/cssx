@@ -1,10 +1,16 @@
 {
   "name": "cssx-intellisense",
-  "displayName": "CSSX IntelliSense",
+  "displayName": "CSSX Utility Assistant",
   "description": "Completion and hover documentation for CSSX static utility strings.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "cssxio",
+  "icon": "icon.png",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liberocks/cssx.git",
+    "directory": "packages/intellisense"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -29,7 +35,7 @@
   "main": "./src/extension.js",
   "contributes": {
     "configuration": {
-      "title": "CSSX IntelliSense",
+      "title": "CSSX Utility Assistant",
       "properties": {
         "cssxIntelliSense.classFunctions": {
           "type": "array",

@@ -1,0 +1,13 @@
+<svg width="256" height="256" viewBox="0 0 463 463" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="463" height="463" fill="#000000" />
+  <g transform="translate(55.56 96.98) scale(0.76)" fill="#FFFFFF">
+    <path d="M166 64H296V194H166V64Z" />
+    <path d="M186 264H276V354H186V264Z" />
+    <path d="M359 77H463V181H359V77Z" />
+    <path d="M0 78H104V182H0V78Z" />
+    <path d="M89 167H193V271H89V167Z" />
+    <path d="M269 167H373V271H269V167Z" />
+    <path d="M282 0H360V78H282V0Z" />
+    <path d="M102 0H180V78H102V0Z" />
+  </g>
+</svg>
