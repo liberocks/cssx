@@ -9,6 +9,7 @@ examples/*/.cache/
 examples/*/.expo/
 examples/*/public/
 examples/next/AGENTS.md
+examples/next/.cssx/
 examples/next/CLAUDE.md
 examples/next/next-env.d.ts
 examples/next/tsconfig.json

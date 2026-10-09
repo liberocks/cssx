@@ -11,8 +11,10 @@ const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 /** Runs one process and resolves when it exits successfully. */
 function run(args, cwd, env = {}) {
+  const executable = framework === 'next' ? process.execPath : command;
+  const projectArgs = framework === 'next' ? [resolve(cwd, 'node_modules/next/dist/bin/next'), ...args.slice(2)] : args;
   return new Promise((resolveRun, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(executable, projectArgs, {
       cwd,
       env: { ...process.env, ...env },
       shell: process.platform === 'win32',
@@ -32,7 +34,9 @@ function run(args, cwd, env = {}) {
 /** Starts the persistent framework server and forwards lifecycle signals. */
 function serve(args, cwd, env = {}) {
   const output = [];
-  const child = spawn(command, args, {
+  const executable = framework === 'next' ? process.execPath : command;
+  const projectArgs = framework === 'next' ? [resolve(cwd, 'node_modules/next/dist/bin/next'), ...args.slice(2)] : args;
+  const child = spawn(executable, projectArgs, {
     cwd,
     env: { ...process.env, ...env },
     shell: process.platform === 'win32',
@@ -67,6 +71,7 @@ function serve(args, cwd, env = {}) {
 const example = resolve(root, 'examples', framework);
 const local = (binary, ...args) => ['exec', binary, ...args];
 const host = ['--host', '127.0.0.1', '--port', String(definition.port)];
+const nextBundlerFlag = process.env.CSSX_NEXT_BUNDLER === 'webpack' ? '--webpack' : '--turbopack';
 
 if (mode === 'development') {
   switch (framework) {
@@ -77,7 +82,10 @@ if (mode === 'development') {
       serve(local('gatsby', 'develop', '--host', '127.0.0.1', '--port', String(definition.port)), example);
       break;
     case 'next':
-      serve(local('next', 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', String(definition.port)), example);
+      serve(
+        local('next', 'dev', nextBundlerFlag, '--hostname', '127.0.0.1', '--port', String(definition.port)),
+        example,
+      );
       break;
     case 'react':
       serve(['run', 'dev'], example, {
@@ -111,7 +119,7 @@ if (mode === 'development') {
         serve(local('gatsby', 'serve', '-H', '127.0.0.1', '-p', String(definition.port)), example);
         break;
       case 'next':
-        await run(local('next', 'build', '--webpack'), example);
+        await run(local('next', 'build', nextBundlerFlag), example);
         serve(local('next', 'start', '--hostname', '127.0.0.1', '--port', String(definition.port)), example);
         break;
       case 'react':

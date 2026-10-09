@@ -32,6 +32,7 @@ export default defineConfig({
         url: server.url,
         timeout: 120_000,
         reuseExistingServer: false,
+        env: server.env,
       }
     : undefined,
 });

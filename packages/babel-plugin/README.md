@@ -29,4 +29,4 @@ export default {
 
 The plugin accepts an optional `theme` string containing CSS text with CSSX `@theme` input. Use `themeFile` in the CSSX adapter when the build tool should read theme CSS text from a file.
 
-Set `stableClassNames: true` when development builds need composite class names to remain stable across CSS-only edits, or when a framework transforms server and client modules in separate compiler processes. The generated names are derived from the source file and call site, so use the same setting consistently for a given build.
+`stableClassNames: true` is a legacy compatibility mode. It selects source-addressed composite names such as `d…`, so it overrides the expected serial composite output; atomic names still follow `className`. The names use the source file and call site and must be configured consistently across a build. New bundler integrations should select naming format and compiler coordination independently.
