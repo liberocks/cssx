@@ -63,25 +63,41 @@ it('prepares a root layout stylesheet, dependencies, maps, themes, and diagnosti
   }
 });
 
-it('refreshes styles for CSSX modules during development and honors inline themes', async () => {
+it('refreshes development styles from the root layout and honors inline themes', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-next-dev-'));
-  const pageFile = join(root, 'page.tsx');
+  const app = join(root, 'app');
+  const layoutFile = join(app, 'layout.tsx');
+  const pageFile = join(app, 'page.tsx');
   const styleSheetFile = join(root, '.cssx', 'next.css');
-  const source = `import { sx } from '${importSource}'; export const className = sx('p-4 bg-brand');`;
+  const layoutSource = 'export default function Layout({ children }) { return <html><body>{children}</body></html>; }';
+  const pageSource = `import { sx } from '${importSource}'; export const className = sx('p-4 bg-brand');`;
+  const settings: CssxNextLoaderOptions = {
+    projectRoot: root,
+    styleSheetFile,
+    importSource,
+    manifestPath: join(root, '.cssx', 'classnames.json'),
+    development: true,
+    cssx: { theme: '@theme reference { --color-brand: #171717; }', sourceMap: false, preflight: false },
+  };
   try {
+    await mkdir(app, { recursive: true });
     await writeFile(join(root, 'package.json'), '{}');
-    await writeFile(pageFile, source);
-    const result = await runLoader(pageFile, source, {
-      projectRoot: root,
-      styleSheetFile,
-      importSource,
-      manifestPath: join(root, '.cssx', 'classnames.json'),
-      development: true,
-      cssx: { theme: '@theme reference { --color-brand: #171717; }', sourceMap: false, preflight: false },
-    });
-    expect(result.code).toContain('s');
-    expect(result.map).toMatchObject({ version: 3 });
-    expect(await readFile(styleSheetFile, 'utf8')).toContain('--color-brand:#171717');
+    await writeFile(layoutFile, layoutSource);
+    await writeFile(pageFile, pageSource);
+
+    const firstLayout = await runLoader(layoutFile, layoutSource, settings);
+    const firstStyles = await readFile(styleSheetFile, 'utf8');
+    expect(firstLayout.dependencies).toContain(pageFile);
+    expect(firstStyles).toContain('--color-brand:#171717');
+
+    const changedPage = pageSource.replace("sx('p-4 bg-brand')", "sx('p-8 bg-brand')");
+    await writeFile(pageFile, changedPage);
+    const changedModule = await runLoader(pageFile, changedPage, settings);
+    expect(changedModule.code).not.toBe(changedPage);
+    expect(await readFile(styleSheetFile, 'utf8')).toBe(firstStyles);
+
+    await runLoader(layoutFile, layoutSource, settings);
+    expect(await readFile(styleSheetFile, 'utf8')).not.toBe(firstStyles);
     await expect(stat(`${styleSheetFile}.map`)).rejects.toMatchObject({ code: 'ENOENT' });
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -193,13 +209,14 @@ it('surfaces non-missing filesystem errors from watched project roots and styles
       }),
     ).rejects.toMatchObject({ code: 'ELOOP' });
 
+    await rm(join(root, 'pages'));
     const failingStylePath = join(root, 'block.css');
     await mkdir(failingStylePath);
-    const pageFile = join(root, 'page.tsx');
-    const pageSource = `import { sx } from '${importSource}'; export const className = sx('p-4');`;
-    await writeFile(pageFile, pageSource);
+    const layoutFile = join(root, 'app', 'layout.tsx');
+    const layoutSource = `import { sx } from '${importSource}'; export default function Layout() { return <html className={sx('p-4')} />; }`;
+    await writeFile(layoutFile, layoutSource);
     await expect(
-      runLoader(pageFile, pageSource, {
+      runLoader(layoutFile, layoutSource, {
         projectRoot: root,
         styleSheetFile: failingStylePath,
         importSource,

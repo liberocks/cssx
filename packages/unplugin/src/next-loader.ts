@@ -53,7 +53,7 @@ export default function cssxNextLoader(this: CssxLoaderContext, source: string, 
   );
 }
 
-/** Transforms one module and refreshes generated CSS when processing the root layout. */
+/** Transforms one module and refreshes generated CSS from the watched root layout. */
 async function runLoader(
   context: CssxLoaderContext,
   source: string,
@@ -112,7 +112,7 @@ async function runLoader(
       }
     }
   }
-  if (isRootLayout || (settings.development && source.includes(settings.importSource))) {
+  if (isRootLayout) {
     const modules = await scanProjectCssxSourceModules(root, {
       ...settings.cssx,
       coordination: 'manifest',
