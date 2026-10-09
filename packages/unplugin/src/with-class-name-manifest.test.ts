@@ -154,6 +154,60 @@ it.each(['EACCES', 'EPERM'])('waits briefly when a competing compiler lock canno
   }
 });
 
+it.each(['EACCES', 'EPERM'])('waits when opening an existing compiler lock is denied (%s)', async (code) => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-lock-open-'));
+  const path = join(root, 'classes.json');
+  const lockPath = `${path}.lock`;
+  const open = vi.spyOn(fileSystem, 'open');
+  try {
+    await writeFile(lockPath, `${process.pid}\n`);
+    open.mockRejectedValueOnce(Object.assign(new Error('lock file is temporarily unavailable'), { code }));
+    const removeLock = new Promise<void>((resolve) => setTimeout(() => void rm(lockPath).then(resolve), 45));
+    const result = await withClassNameManifest(path, {}, async (allocator) => allocator.allocate(['after-lock-open']));
+    await removeLock;
+
+    expect(result.size).toBe(1);
+  } finally {
+    open.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('surfaces unexpected errors while opening a manifest lock', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-lock-open-error-'));
+  const path = join(root, 'classes.json');
+  const open = vi.spyOn(fileSystem, 'open');
+  const failure = Object.assign(new Error('lock open failed'), { code: 'EIO' });
+  try {
+    open.mockRejectedValueOnce(failure);
+
+    await expect(withClassNameManifest(path, {}, async () => undefined)).rejects.toBe(failure);
+  } finally {
+    open.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('surfaces unexpected errors while checking a denied lock open', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-lock-stat-error-'));
+  const path = join(root, 'classes.json');
+  const lockPath = `${path}.lock`;
+  const open = vi.spyOn(fileSystem, 'open');
+  const stat = vi.spyOn(fileSystem, 'stat');
+  const failure = Object.assign(new Error('lock stat failed'), { code: 'EIO' });
+  try {
+    await writeFile(lockPath, `${process.pid}\\n`);
+    open.mockRejectedValueOnce(Object.assign(new Error('lock open denied'), { code: 'EPERM' }));
+    stat.mockRejectedValueOnce(failure);
+
+    await expect(withClassNameManifest(path, {}, async () => undefined)).rejects.toBe(failure);
+  } finally {
+    open.mockRestore();
+    stat.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it('surfaces unexpected errors while reading an occupied lock', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-lock-read-error-'));
   const path = join(root, 'classes.json');

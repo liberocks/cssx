@@ -37,8 +37,19 @@ export async function withClassNameManifest<T>(
     try {
       candidate = await open(lockPath, 'wx');
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
-        throw error;
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'EEXIST') {
+        if (code !== 'EACCES' && code !== 'EPERM') {
+          throw error;
+        }
+        try {
+          await stat(lockPath);
+        } catch (statError) {
+          if ((statError as NodeJS.ErrnoException).code === 'ENOENT') {
+            throw error;
+          }
+          throw statError;
+        }
       }
       if (await removeAbandonedLock(lockPath)) {
         continue;
