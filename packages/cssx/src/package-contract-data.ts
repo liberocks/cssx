@@ -68,6 +68,18 @@ export const publicExports = [
     exportPath: `./${adapter}`,
     exports: ['default'],
   })),
+  {
+    specifier: '@cssxio/unplugin/next',
+    packageDirectory: 'packages/unplugin',
+    exportPath: './next',
+    exports: ['default', 'withCSSX'],
+  },
+  {
+    specifier: '@cssxio/unplugin/next-loader',
+    packageDirectory: 'packages/unplugin',
+    exportPath: './next-loader',
+    exports: ['default'],
+  },
 ] as const;
 
 /** Unique package directories represented by the public export table. */
