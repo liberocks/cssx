@@ -2,6 +2,7 @@ import { atomSymbolsForAllocator } from './atom-symbols-for-allocator';
 import { type ClassNameAllocator } from './class-name';
 import { type CompiledCandidate } from './compile-candidates';
 import { COMPILER_ABI } from './compiler-abi';
+import { hashClassNameIdentity } from './hash-class-name-identity';
 import { serializeThemeSignature } from './serialize-theme-signature';
 import type { parseTheme } from './theme';
 import { themeNamespace } from './theme-namespace';
@@ -46,13 +47,20 @@ export function createAtomIdentities(
         )
         .join(';');
       const identity = `${COMPILER_ABI}\u0000${themeIdentity}\u0000${classification.scope}\u0000${payload}`;
-      const existing = symbolsByIdentity.get(identity);
-      if (existing) {
-        allocationIdentities.set(existing, identity);
-        return existing;
+      let symbol = symbolsByIdentity.get(identity);
+      if (!symbol) {
+        // These symbols participate in composition identity, so deriving them
+        // from encounter order makes independent compiler processes disagree.
+        const base = `a${hashClassNameIdentity(identity)}`;
+        const owners = new Map(
+          [...symbolsByIdentity].map(([knownIdentity, knownSymbol]) => [knownSymbol, knownIdentity]),
+        );
+        symbol = base;
+        for (let attempt = 1; owners.has(symbol) && owners.get(symbol) !== identity; attempt++) {
+          symbol = `${base}-${hashClassNameIdentity(`${identity}\\u0000${attempt}`)}`;
+        }
+        symbolsByIdentity.set(identity, symbol);
       }
-      const symbol = `a${symbolsByIdentity.size.toString(36)}`;
-      symbolsByIdentity.set(identity, symbol);
       allocationIdentities.set(symbol, identity);
       return symbol;
     });

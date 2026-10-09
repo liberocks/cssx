@@ -1,6 +1,7 @@
 import { allocateClassNames } from './allocate-class-names';
 import type { ClassNameAllocator, ClassNameOptions } from './class-name';
 import type { ClassNameAllocationState } from './class-name-allocation-state';
+import { classNameAllocatorStates } from './class-name-allocator-state';
 import { normalizeClassNameOptions } from './normalize-class-name-options';
 import { reserveClassNames } from './reserve-class-names';
 
@@ -18,8 +19,10 @@ export function createClassNameAllocator(options: ClassNameOptions = {}): ClassN
     serialCounter: 0,
   };
 
-  return {
+  const allocator: ClassNameAllocator = {
     allocate: allocateClassNames.bind(undefined, state),
     reserve: reserveClassNames.bind(undefined, state),
   };
+  classNameAllocatorStates.set(allocator, state);
+  return allocator;
 }

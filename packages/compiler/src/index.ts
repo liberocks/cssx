@@ -1,6 +1,9 @@
 export { splitCandidateList } from './candidate';
 export type { ClassNameAllocator, ClassNameOptions } from './class-name';
+export type { ClassNameAllocatorSnapshot } from './class-name';
 export { createClassNameAllocator } from './class-name-allocator';
+export { restoreClassNameAllocator } from './restore-class-name-allocator';
+export { snapshotClassNameAllocator } from './snapshot-class-name-allocator';
 export { classifyUtility } from './classify-utility';
 export type { CompileMapsResult } from './compile-maps-result';
 export type { CompileResult } from './compile-result';
