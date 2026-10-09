@@ -81,7 +81,17 @@ export async function withClassNameManifest<T>(
 async function removeAbandonedLock(lockPath: string): Promise<boolean> {
   try {
     const info = await stat(lockPath);
-    const [pidText] = (await readFile(lockPath, 'utf8')).split('\n');
+    let contents: string;
+    try {
+      contents = await readFile(lockPath, 'utf8');
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'EACCES' || code === 'EPERM') {
+        return false;
+      }
+      throw error;
+    }
+    const [pidText] = contents.split('\n');
     const pid = Number(pidText);
     if (Number.isSafeInteger(pid) && pid > 0) {
       try {

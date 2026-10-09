@@ -8,7 +8,7 @@ import { withClassNameManifest } from './with-class-name-manifest';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
-  return { ...actual, open: vi.fn(actual.open), rm: vi.fn(actual.rm) };
+  return { ...actual, open: vi.fn(actual.open), readFile: vi.fn(actual.readFile), rm: vi.fn(actual.rm) };
 });
 
 it('serializes independent allocations and restores the manifest between transforms', async () => {
@@ -131,6 +131,25 @@ it('waits for a stale lock when checking its owner fails for permission reasons'
     expect(result.size).toBe(1);
   } finally {
     kill.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('waits briefly when a competing compiler lock cannot be read', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-class-manifest-unreadable-lock-'));
+  const path = join(root, 'classes.json');
+  const lockPath = `${path}.lock`;
+  const read = vi.spyOn(fileSystem, 'readFile');
+  try {
+    await writeFile(lockPath, `${process.pid}\n`);
+    read.mockRejectedValueOnce(Object.assign(new Error('lock file is temporarily unavailable'), { code: 'EPERM' }));
+    const removeLock = new Promise<void>((resolve) => setTimeout(() => void rm(lockPath).then(resolve), 45));
+    const result = await withClassNameManifest(path, {}, async (allocator) => allocator.allocate(['after-lock-read']));
+    await removeLock;
+
+    expect(result.size).toBe(1);
+  } finally {
+    read.mockRestore();
     await rm(root, { recursive: true, force: true });
   }
 });
