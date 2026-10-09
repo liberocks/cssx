@@ -101,7 +101,7 @@ export function withCSSX(
     };
 
     const turbopack = config.turbopack ?? {};
-    const rules = turbopack.rules ?? {};
+    const rules = { ...(turbopack.rules ?? {}) };
     for (const pattern of ['*.js', '*.jsx', '*.ts', '*.tsx']) {
       if (rules[pattern]) {
         throw new Error(

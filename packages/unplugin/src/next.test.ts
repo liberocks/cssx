@@ -13,10 +13,12 @@ afterEach(() => process.chdir(originalCwd));
 
 it('preserves Next config and wires Webpack and Turbopack with manifest defaults', async () => {
   const existingWebpack = vi.fn((config: Record<string, unknown>) => ({ ...config, existing: true }));
+  const sharedRules = { '*.svg': { loaders: ['svg-loader'] } };
+  const sharedTurbopackConfig = { rules: sharedRules, resolveAlias: { '@alias': '/alias' } };
   const config = withCSSX(
     {
       webpack: existingWebpack as never,
-      turbopack: { rules: { '*.svg': { loaders: ['svg-loader'] } }, resolveAlias: { '@alias': '/alias' } },
+      turbopack: sharedTurbopackConfig,
     },
     { debug: true },
   );
@@ -30,6 +32,8 @@ it('preserves Next config and wires Webpack and Turbopack with manifest defaults
   });
   expect(turbopack.resolveAlias['@alias']).toBe('/alias');
   expect(turbopack.resolveAlias['@cssxio/unplugin/next-stylesheet.css']).toBeUndefined();
+  expect(sharedRules).toEqual({ '*.svg': { loaders: ['svg-loader'] } });
+  expect(Object.hasOwn(withCSSX({ turbopack: sharedTurbopackConfig }).turbopack?.rules ?? {}, '*.tsx')).toBe(true);
 
   const webpackHook = config.webpack as unknown as (
     base: { module: { rules: unknown[] }; resolve: { alias: Record<string, unknown> } },

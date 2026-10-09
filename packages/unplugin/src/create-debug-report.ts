@@ -43,7 +43,7 @@ export function createCssxDebugReport(
   const entries = new Map<string, { module: string; utilities: Set<string>; line: number; column: number }>();
   const mappings = new Map<string, Set<string>>();
   for (const module of [...modules].sort((left, right) => left.id.localeCompare(right.id))) {
-    const atomsByClass = new Map<string, Set<string>>();
+    const utilitiesByAtom = new Map<string, string[]>();
     for (const [utility, className] of Object.entries(module.candidates)) {
       const group = mappings.get(utility) ?? new Set<string>();
       group.add(className);
@@ -56,20 +56,23 @@ export function createCssxDebugReport(
       };
       entry.utilities.add(utility);
       entries.set(className, entry);
-      const atoms = atomsByClass.get(className) ?? new Set<string>();
-      atoms.add(utility);
-      atomsByClass.set(className, atoms);
+      const atomUtilities = utilitiesByAtom.get(className) ?? [];
+      atomUtilities.push(utility);
+      utilitiesByAtom.set(className, atomUtilities);
     }
     for (const [className, atomicClasses] of Object.entries(module.composites ?? {})) {
-      const utilities = Object.entries(module.candidates)
-        .filter(([, atom]) => atomicClasses.includes(atom))
-        .map(([utility]) => utility);
-      entries.set(className, {
+      const utilities = atomicClasses.flatMap((atomicClass) => utilitiesByAtom.get(atomicClass) ?? []);
+      const firstUtility = utilities[0];
+      const entry = entries.get(className) ?? {
         module: module.id,
-        utilities: new Set(utilities),
-        line: utilities.length ? (module.origins?.[utilities[0]!]?.line ?? 0) : 0,
-        column: utilities.length ? (module.origins?.[utilities[0]!]?.column ?? 0) : 0,
-      });
+        utilities: new Set<string>(),
+        line: firstUtility ? (module.origins?.[firstUtility]?.line ?? 0) : 0,
+        column: firstUtility ? (module.origins?.[firstUtility]?.column ?? 0) : 0,
+      };
+      for (const utility of utilities) {
+        entry.utilities.add(utility);
+      }
+      entries.set(className, entry);
     }
     for (const className of module.atomicClasses ?? []) {
       if (!entries.has(className)) {

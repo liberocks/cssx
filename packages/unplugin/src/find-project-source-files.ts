@@ -1,5 +1,5 @@
 import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 /** Extensions CSSX can transform as source modules. */
 const SOURCE_EXTENSIONS = new Set([
@@ -35,8 +35,14 @@ export async function findProjectSourceFiles(
 ): Promise<readonly string[]> {
   const files: string[] = [];
   const directories = [root, ...additionalRoots];
+  const visitedDirectories = new Set<string>();
   while (directories.length > 0) {
     const directory = directories.pop()!;
+    const normalizedDirectory = resolve(directory);
+    if (visitedDirectories.has(normalizedDirectory)) {
+      continue;
+    }
+    visitedDirectories.add(normalizedDirectory);
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const fileName = join(directory, entry.name);
       if (entry.isDirectory()) {

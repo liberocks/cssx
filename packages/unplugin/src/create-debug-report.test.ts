@@ -124,3 +124,34 @@ it('defaults missing atomic class lists to an empty list', () => {
     },
   ]);
 });
+
+it('preserves the first module and merges utilities when atomic and composite names overlap', () => {
+  const report = createCssxDebugReport(
+    [
+      {
+        id: 'src/first.tsx',
+        candidates: { 'p-4': 's1x' },
+        atomicClasses: ['s1x'],
+        origins: { 'p-4': { line: 2, column: 3 } },
+      },
+      {
+        id: 'src/second.tsx',
+        candidates: { 'text-white': 's2x' },
+        composites: { s1x: ['s2x'] },
+        atomicClasses: ['s1x', 's2x'],
+        origins: { 'text-white': { line: 7, column: 5 } },
+      },
+    ],
+    '.s1x{padding:1rem;color:white}',
+    {},
+  );
+
+  expect(report.classes.find((entry) => entry.className === 's1x')).toEqual({
+    className: 's1x',
+    module: 'src/first.tsx',
+    utilities: ['p-4', 'text-white'],
+    line: 3,
+    column: 4,
+    selectorFound: true,
+  });
+});

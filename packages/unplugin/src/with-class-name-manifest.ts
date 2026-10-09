@@ -32,10 +32,10 @@ export async function withClassNameManifest<T>(
   const started = Date.now();
   let lock: Awaited<ReturnType<typeof open>> | undefined;
   while (!lock) {
+    await mkdir(dirname(path), { recursive: true });
+    let candidate: Awaited<ReturnType<typeof open>>;
     try {
-      await mkdir(dirname(path), { recursive: true });
-      lock = await open(lockPath, 'wx');
-      await lock.writeFile(`${process.pid}\n${Date.now()}\n`);
+      candidate = await open(lockPath, 'wx');
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
         throw error;
@@ -47,15 +47,29 @@ export async function withClassNameManifest<T>(
         throw new Error(`Timed out waiting for CSSX class-name manifest lock: ${lockPath}`);
       }
       await new Promise((resolvePromise) => setTimeout(resolvePromise, LOCK_RETRY_MS));
+      continue;
     }
+    try {
+      await candidate.writeFile(`${process.pid}\n${Date.now()}\n`);
+    } catch (error) {
+      await candidate.close().catch(() => undefined);
+      await rm(lockPath, { force: true }).catch(() => undefined);
+      throw error;
+    }
+    lock = candidate;
   }
   try {
     const allocator = await readAllocator(path, options);
     const result = await transform(allocator);
     const snapshot = snapshotClassNameAllocator(allocator);
     const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
-    await writeFile(temporary, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
-    await rename(temporary, path);
+    try {
+      await writeFile(temporary, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+      await rename(temporary, path);
+    } catch (error) {
+      await rm(temporary, { force: true }).catch(() => undefined);
+      throw error;
+    }
     return result;
   } finally {
     await lock.close();
@@ -67,9 +81,6 @@ export async function withClassNameManifest<T>(
 async function removeAbandonedLock(lockPath: string): Promise<boolean> {
   try {
     const info = await stat(lockPath);
-    if (Date.now() - info.mtimeMs < LOCK_TIMEOUT_MS) {
-      return false;
-    }
     const [pidText] = (await readFile(lockPath, 'utf8')).split('\n');
     const pid = Number(pidText);
     if (Number.isSafeInteger(pid) && pid > 0) {
@@ -80,7 +91,12 @@ async function removeAbandonedLock(lockPath: string): Promise<boolean> {
         if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {
           return false;
         }
+        await rm(lockPath, { force: true });
+        return true;
       }
+    }
+    if (Date.now() - info.mtimeMs < LOCK_TIMEOUT_MS) {
+      return false;
     }
     await rm(lockPath, { force: true });
     return true;
