@@ -6,6 +6,7 @@ import { basename, dirname, resolve } from 'node:path';
 import type { ModuleCssxData } from './module-cssx-data';
 import { resolveCssFileName, resolveEsbuildAssetPath } from './options';
 import type { CssxPluginOptions } from './options';
+import { scanProjectCssxSourceModules } from './project-scan';
 import { compileCssxStylesheet, cssWithSourceMapComment } from './stylesheet';
 
 /** Configuration needed by the universal esbuild adapter hooks. */
@@ -60,8 +61,12 @@ export function createUniversalEsbuildHooks(configuration: CreateUniversalEsbuil
           }
         }
 
+        const sourceData =
+          options.coordination === 'manifest'
+            ? await scanProjectCssxSourceModules(workingDirectory, options)
+            : [...dataById.values()];
         const compiled = await compileCssxStylesheet(
-          [...dataById.values()],
+          sourceData,
           await getTheme(),
           options.layer,
           sourceMap,

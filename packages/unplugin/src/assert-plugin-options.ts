@@ -8,6 +8,43 @@ import { validateCssFileName } from './validate-css-file-name';
  * @returns Nothing.
  */
 export function assertPluginOptions(options: CssxPluginOptions): void {
+  if (options.sourceRoots && options.sourceRoots.some((root) => typeof root !== 'string' || !root.trim())) {
+    throw new Error('CSSX sourceRoots must contain non-empty file-system paths.');
+  }
+  if (
+    options.debug !== undefined &&
+    typeof options.debug !== 'boolean' &&
+    (typeof options.debug !== 'object' || typeof options.debug.reportFile !== 'string' || !options.debug.reportFile)
+  ) {
+    throw new Error('CSSX debug must be a boolean or an object with a reportFile path.');
+  }
+  if (options.naming !== undefined && !['serial', 'hash', 'source'].includes(options.naming)) {
+    throw new Error('CSSX naming must be "serial", "hash", or "source".');
+  }
+  if (options.coordination !== undefined && !['memory', 'manifest'].includes(options.coordination)) {
+    throw new Error('CSSX coordination must be "memory" or "manifest".');
+  }
+  if (options.stableClassNames && options.naming && options.naming !== 'source') {
+    throw new Error('CSSX stableClassNames selects source naming and conflicts with naming. Use naming: "source".');
+  }
+  if (options.stableClassNames && options.coordination === 'manifest') {
+    throw new Error('CSSX stableClassNames already selects source naming; remove it to use manifest coordination.');
+  }
+  if (options.naming === 'hash' && options.className?.variant === 'serial') {
+    throw new Error('CSSX naming: "hash" conflicts with className.variant: "serial".');
+  }
+  if (options.naming === 'serial' && options.className?.variant === 'random') {
+    throw new Error('CSSX naming: "serial" conflicts with className.variant: "random".');
+  }
+  if (options.coordination === 'manifest' && !options.manifestPath) {
+    throw new Error('CSSX coordination: "manifest" requires manifestPath.');
+  }
+  if (options.manifestPath && options.coordination !== 'manifest') {
+    throw new Error('CSSX manifestPath requires coordination: "manifest".');
+  }
+  if (options.coordination === 'manifest' && options.classNameAllocator) {
+    throw new Error('CSSX manifest coordination cannot use a custom classNameAllocator.');
+  }
   if (options.theme !== undefined && options.themeFile !== undefined) {
     throw new Error('CSSX accepts either theme or themeFile, not both.');
   }

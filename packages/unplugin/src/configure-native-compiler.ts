@@ -48,6 +48,9 @@ export function configureNativeCompiler({
     sharedNativeState.transformedDataById,
     options.darkMode,
     options.preflight,
-    options.stableClassNames ? () => scanProjectCssxSourceModules(compiler.context, options) : undefined,
+    options.stableClassNames || options.naming === 'source' || options.coordination === 'manifest'
+      ? () => scanProjectCssxSourceModules(compiler.context, options)
+      : undefined,
+    options,
   );
 }

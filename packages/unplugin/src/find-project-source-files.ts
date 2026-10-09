@@ -16,6 +16,8 @@ const SOURCE_EXTENSIONS = new Set([
   '.mts',
   '.mtsx',
   '.astro',
+  '.mdx',
+  '.md',
 ]);
 
 /** Generated and dependency directories excluded from project scanning. */
@@ -27,9 +29,12 @@ const IGNORED_DIRECTORIES = new Set(['.git', '.next', '.turbo', 'node_modules'])
  * @param root Project root to scan.
  * @returns Sorted absolute paths to CSSX-compatible source files.
  */
-export async function findProjectSourceFiles(root: string): Promise<readonly string[]> {
+export async function findProjectSourceFiles(
+  root: string,
+  additionalRoots: readonly string[] = [],
+): Promise<readonly string[]> {
   const files: string[] = [];
-  const directories = [root];
+  const directories = [root, ...additionalRoots];
   while (directories.length > 0) {
     const directory = directories.pop()!;
     for (const entry of await readdir(directory, { withFileTypes: true })) {
