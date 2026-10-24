@@ -1,5 +1,15 @@
 --- a/config/webpackDevServer.config.js
 +++ b/config/webpackDevServer.config.js
+@@ -22,5 +22,6 @@ module.exports = function (proxy, allowedHost) {
+   const disableFirewall =
+     !proxy || process.env.DANGEROUSLY_DISABLE_HOST_CHECK === 'true';
++  const httpsConfig = getHttpsConfig();
+   return {
+@@ -81,1 +82,3 @@
+-    https: getHttpsConfig(),
++    server: httpsConfig
++      ? { type: 'https', options: httpsConfig }
++      : 'http',
 @@ -109,27 +109,30 @@
      },
      // `proxy` is run between `before` and `after` `webpack-dev-server` hooks
