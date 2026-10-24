@@ -6,3 +6,12 @@ packages:
   - benchmarks/stylex
   - benchmarks/tailwind
   - tests
+overrides:
+  brace-expansion@1: ^1.1.21
+  brace-expansion@2: ^2.1.7
+  brace-expansion@5: ^5.0.12
+  esbuild: ^0.28.2
+  fast-uri: ^3.1.9
+  sharp: ^0.35.5
+  source-map-js: ^1.2.2
+  undici@7: ^7.30.1

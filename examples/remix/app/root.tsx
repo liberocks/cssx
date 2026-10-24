@@ -1,9 +1,8 @@
-import type { LinksFunction } from '@remix-run/node';
-import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 
 import appStyles from './app.css?url';
 
-export const links: LinksFunction = () => [
+export const links = () => [
   { rel: 'stylesheet', href: '/cssx.css' },
   { rel: 'stylesheet', href: appStyles },
 ];

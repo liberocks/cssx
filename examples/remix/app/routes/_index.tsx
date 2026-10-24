@@ -1,9 +1,8 @@
 import { sx } from '@cssxio/cssx';
 import * as cssx from '@cssxio/cssx';
-import type { MetaFunction } from '@remix-run/node';
 import { useState } from 'react';
 
-export const meta: MetaFunction = () => [{ title: 'Remix + CSSX' }];
+export const meta = () => [{ title: 'Remix + CSSX' }];
 
 const styles = cssx.create({
   page: 'flex min-h-[100vh] items-center justify-center bg-orange-50 p-8 font-[var(--font-display)]',

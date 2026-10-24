@@ -1,0 +1,78 @@
+diff --git a/lib/rsa.js b/lib/rsa.js
+index a4264822b4dcd6dca44ca3e59e410c982eed7183..2f509c6a6ea4905071335fe1b6aa2e794a5cdde6 100644
+--- a/lib/rsa.js
++++ b/lib/rsa.js
+@@ -301,6 +301,34 @@ var digestInfoValidator = {
+   }]
+ };
+ 
++/**
++ * Canonically DER-encodes a DigestInfo for a given digest algorithm OID and
++ * raw digest value. Comparing this encoding with the decoded value rejects
++ * non-canonical BER accepted by the intentionally lenient ASN.1 parser.
++ *
++ * @param oid the digest algorithm OID as a dotted string.
++ * @param digestBytes the raw digest value as a binary-encoded string.
++ * @param withParams true to include NULL parameters, false to omit them.
++ * @return the DER-encoded DigestInfo as a binary-encoded string.
++ */
++var _encodeDigestInfo = function(oid, digestBytes, withParams) {
++  var algorithmIdentifier = [asn1.create(
++    asn1.Class.UNIVERSAL, asn1.Type.OID, false,
++    asn1.oidToDer(oid).getBytes())];
++  if(withParams) {
++    algorithmIdentifier.push(asn1.create(
++      asn1.Class.UNIVERSAL, asn1.Type.NULL, false, ''));
++  }
++  var digestInfo = asn1.create(
++    asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
++      asn1.create(
++        asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, algorithmIdentifier),
++      asn1.create(
++        asn1.Class.UNIVERSAL, asn1.Type.OCTETSTRING, false, digestBytes)
++    ]);
++  return asn1.toDer(digestInfo).getBytes();
++};
++
+ /**
+  * Wrap digest in DigestInfo object.
+  *
+@@ -1168,11 +1196,10 @@ pki.setRsaPublicKey = pki.rsa.setPublicKey = function(n, e) {
+             parseAllBytes: options._parseAllDigestBytes
+           });
+ 
+-          // validate DigestInfo structure and element count
++          // validate DigestInfo structure
+           var capture = {};
+           var errors = [];
+-          if(!asn1.validate(obj, digestInfoValidator, capture, errors) ||
+-            obj.value.length !== 2) {
++          if(!asn1.validate(obj, digestInfoValidator, capture, errors)) {
+             var error = new Error(
+               'ASN.1 object does not contain a valid RSASSA-PKCS1-v1_5 ' +
+               'DigestInfo value.');
+@@ -1208,6 +1235,24 @@ pki.setRsaPublicKey = pki.rsa.setPublicKey = function(n, e) {
+             }
+           }
+ 
++          // Reject non-canonical encodings, including extra sequence elements,
++          // content in a NULL field, and non-minimal length octets. Re-encoding
++          // the parsed OID and digest detects all such slack in one comparison.
++          // Both the NULL-parameter and parameter-less forms are valid.
++          // See CVE-2026-33894 and CVE-2026-85393.
++          //
++          // Compare prefixes to preserve the unsupported
++          // _parseAllDigestBytes=false testing flag. In normal strict mode the
++          // ASN.1 parser has already rejected trailing bytes.
++          var expectedWithParams = _encodeDigestInfo(oid, capture.digest, true);
++          var expectedNoParams = _encodeDigestInfo(oid, capture.digest, false);
++          if(d.substring(0, expectedWithParams.length) !== expectedWithParams &&
++            d.substring(0, expectedNoParams.length) !== expectedNoParams) {
++            throw new Error(
++              'ASN.1 object does not contain a valid RSASSA-PKCS1-v1_5 ' +
++              'DigestInfo value.');
++          }
++
+           // compare the given digest to the decrypted one
+           return digest === capture.digest;
+         }

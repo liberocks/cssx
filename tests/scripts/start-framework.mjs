@@ -99,9 +99,7 @@ if (mode === 'development') {
       serve(local('vite', ...host), example);
       break;
     case 'remix':
-      serve(local('remix', 'vite:dev', '--host', '127.0.0.1', '--port', String(definition.port)), example, {
-        VITE_CJS_IGNORE_WARNING: 'true',
-      });
+      serve(local('react-router', 'dev', '--host', '127.0.0.1', '--port', String(definition.port)), example);
       break;
     default:
       throw new Error(`Unsupported development framework: ${framework}`);
@@ -135,8 +133,8 @@ if (mode === 'development') {
         serve(local('vite', 'preview', ...host), example);
         break;
       case 'remix':
-        await run(local('remix', 'vite:build'), example, { VITE_CJS_IGNORE_WARNING: 'true' });
-        serve(local('remix-serve', './build/server/index.js'), example, { PORT: String(definition.port) });
+        await run(local('react-router', 'build'), example);
+        serve(local('react-router-serve', './build/server/index.js'), example, { PORT: String(definition.port) });
         break;
       default:
         throw new Error(`Unsupported production framework: ${framework}`);
