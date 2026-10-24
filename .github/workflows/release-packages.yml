@@ -314,9 +314,9 @@ jobs:
                   exit 1
                 fi
                 if [ "$release_mode" = retry ]; then
-                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.0 publish --no-dependencies --skip-duplicate)
+                  (cd "$directory" && pnpm dlx --allow-build=@vscode/vsce-sign @vscode/vsce@4.0.0 publish --no-dependencies --skip-duplicate)
                 else
-                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.0 publish --no-dependencies)
+                  (cd "$directory" && pnpm dlx --allow-build=@vscode/vsce-sign @vscode/vsce@4.0.0 publish --no-dependencies)
                 fi
                 ;;
               *)
