@@ -8,7 +8,7 @@
     "start": "react-router-serve ./build/server/index.js"
   },
   "dependencies": {
-    "@cssxio/cssx": "^0.8.0",
+    "@cssxio/cssx": "^0.9.0",
     "@react-router/node": "7.18.4",
     "@react-router/serve": "7.18.4",
     "react": "^18.3.1",
@@ -17,7 +17,7 @@
     "isbot": "^5"
   },
   "devDependencies": {
-    "@cssxio/unplugin": "^0.8.0",
+    "@cssxio/unplugin": "^0.9.0",
     "@react-router/dev": "7.18.4",
     "@types/node": "^22.15.3",
     "@types/react": "^18.3.12",

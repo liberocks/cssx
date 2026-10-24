@@ -214,8 +214,8 @@ importers:
         specifier: ^7.28.0
         version: 7.29.7
       '@cssxio/compiler':
-        specifier: ^0.9.0
-        version: 0.9.0
+        specifier: ^0.10.0
+        version: link:../compiler
 
   packages/compiler: {}
 
@@ -249,8 +249,8 @@ importers:
   packages/html:
     dependencies:
       '@cssxio/compiler':
-        specifier: ^0.9.0
-        version: 0.9.0
+        specifier: ^0.10.0
+        version: link:../compiler
 
   packages/intellisense: {}
 
@@ -260,8 +260,8 @@ importers:
         specifier: ^7.28.0
         version: 7.29.7
       '@cssxio/compiler':
-        specifier: ^0.9.0
-        version: 0.9.0
+        specifier: ^0.10.0
+        version: link:../compiler
 
   packages/unplugin:
     dependencies:
@@ -269,11 +269,11 @@ importers:
         specifier: ^7.29.7
         version: 7.29.7
       '@cssxio/babel-plugin':
-        specifier: ^0.7.0
-        version: 0.7.0(@babel/core@7.29.7)
+        specifier: ^0.8.0
+        version: link:../babel-plugin
       '@cssxio/compiler':
-        specifier: ^0.9.0
-        version: 0.9.0
+        specifier: ^0.10.0
+        version: link:../compiler
       '@vue/compiler-sfc':
         specifier: ^3.5.0
         version: 3.5.42
@@ -655,16 +655,6 @@ packages:
     resolution:
       { integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw== }
     engines: { node: '>=12' }
-
-  '@cssxio/babel-plugin@0.7.0':
-    resolution:
-      { integrity: sha512-pRqGV2CRR9ehrwDjMf8yj6nBS9CUnxf8JlsZA5s+8R2rM4unXktX25h/LH5clOrTjdwA3mHSCGPjn4jKdm6Ukw== }
-    peerDependencies:
-      '@babel/core': ^7.28.0
-
-  '@cssxio/compiler@0.9.0':
-    resolution:
-      { integrity: sha512-hOso7GQsOFkFKvLEju7aS258zMKdMUJvbTfqrZiv52773MPIV4kNYLzp0/tCpVQw7wuQ5aISiBN04a8ucBrRfQ== }
 
   '@dual-bundle/import-meta-resolve@4.2.1':
     resolution:
@@ -4580,13 +4570,6 @@ snapshots:
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
-
-  '@cssxio/babel-plugin@0.7.0(@babel/core@7.29.7)':
-    dependencies:
-      '@babel/core': 7.29.7
-      '@cssxio/compiler': 0.9.0
-
-  '@cssxio/compiler@0.9.0': {}
 
   '@dual-bundle/import-meta-resolve@4.2.1': {}
 
