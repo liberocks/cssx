@@ -237,15 +237,12 @@ async function applyPlan({ input }) {
   await updateDependencyVersions(plan.packages);
 }
 
-/** Updates published CSSX dependency ranges in packages and runnable examples. */
+/** Updates published CSSX dependency ranges in released packages. */
 async function updateDependencyVersions(releasePackages) {
   const releasedVersions = new Map(releasePackages.map((packageInfo) => [packageInfo.name, packageInfo.nextVersion]));
-  const manifestPaths = [
-    ...releasePackages.map((packageInfo) => resolve(workspaceRoot, packageInfo.directory, 'package.json')),
-    ...['astro', 'electron', 'expo', 'gatsby', 'next', 'react', 'react-native', 'remix', 'solid', 'vite'].map(
-      (example) => resolve(workspaceRoot, 'examples', example, 'package.json'),
-    ),
-  ];
+  const manifestPaths = releasePackages.map((packageInfo) =>
+    resolve(workspaceRoot, packageInfo.directory, 'package.json'),
+  );
 
   for (const manifestPath of manifestPaths) {
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
