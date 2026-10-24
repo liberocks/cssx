@@ -210,7 +210,7 @@ jobs:
             local version="$2"
             local metadata
 
-            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.1-4 show "$extension_id" --json)"; then
+            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.0 show "$extension_id" --json)"; then
               printf 'Could not query Visual Studio Marketplace metadata for %s\n' "$extension_id" >&2
               return 2
             fi
@@ -262,6 +262,8 @@ jobs:
         run: pnpm build
       - name: Publish packages
         if: steps.plan.outputs.has-release == 'true'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
           vscode_version_is_published() {
@@ -269,7 +271,7 @@ jobs:
             local version="$2"
             local metadata
 
-            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.1-4 show "$extension_id" --json)"; then
+            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.0 show "$extension_id" --json)"; then
               printf 'Could not query Visual Studio Marketplace metadata for %s\n' "$extension_id" >&2
               return 2
             fi
@@ -307,10 +309,14 @@ jobs:
                   query_status=$?
                   if [ "$query_status" -gt 1 ]; then exit "$query_status"; fi
                 fi
+                if [ -z "$VSCE_PAT" ]; then
+                  printf 'Missing repository secret VSCE_PAT required to publish %s\n' "$extension_id" >&2
+                  exit 1
+                fi
                 if [ "$release_mode" = retry ]; then
-                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.1-4 publish --no-dependencies --oidc --skip-duplicate)
+                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.0 publish --no-dependencies --skip-duplicate)
                 else
-                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.1-4 publish --no-dependencies --oidc)
+                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.0 publish --no-dependencies)
                 fi
                 ;;
               *)
