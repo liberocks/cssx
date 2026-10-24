@@ -15,4 +15,14 @@ describe('catalog entries', () => {
     ]);
     expect(entries('unknown-')).toEqual([]);
   });
+
+  it('offers the compiler-supported spacing, layout, and line-clamp families', () => {
+    expect(entries('px-')).toContainEqual({ label: 'px-', detail: 'Horizontal padding utility family' });
+    expect(entries('place-content-')).toContainEqual({
+      label: 'place-content-',
+      detail: 'Place content utility family',
+    });
+    expect(entries('line-clamp-')).toContainEqual({ label: 'line-clamp-', detail: 'Line clamp utility family' });
+    expect(entries('truncate')).toContainEqual({ label: 'truncate', detail: 'CSSX utility' });
+  });
 });
