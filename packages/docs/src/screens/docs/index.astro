@@ -1,55 +1,62 @@
 ---
-import { sx } from '@cssxio/cssx';
-
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import ThemeToggle from '../../components/ThemeToggle.astro';
-import LanguageToggle from '../../components/LanguageToggle.astro';
-import { defaultLocale, locales, plainText, renderRich } from '../../localization/index.ts';
+import { getCollection } from 'astro:content';
 import type { Locale } from '../../localization/index.ts';
+import { defaultLocale } from '../../localization/index.ts';
+import DocsShell from './DocsShell.astro';
 
 interface Props {
   lang: Locale;
 }
 
 const { lang } = Astro.props;
-const t = locales[lang];
-const homePath = lang === defaultLocale ? '/' : `/${lang}`;
+const pages = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
+const docsPath = lang === defaultLocale ? '/docs' : `/${lang}/docs`;
+const startPage = pages.find((page) => page.id === 'getting-started/quick-start');
+const utilityPages = pages.filter((page) => page.data.section === 'Utilities' || page.data.section === 'Utility syntax');
+const advancedPages = pages.filter((page) => page.data.section === 'Advanced');
 ---
 
-<BaseLayout title={plainText(t.docs.title)} lang={lang}>
-  <div class={sx('max-w-full mx-auto md:max-w-xl min-h-screen flex flex-col p-4')}>
-    <header class={sx('flex flex-row-reverse justify-between items-center gap-4 py-4')}>
-      <div class={sx('flex justify-start items-center gap-4')}>
-        <LanguageToggle />
-        <ThemeToggle />
-      </div>
-      <a href={homePath}>
-        <img src="/images/logo.png" alt="cssx" class={sx('w-auto h-6 opacity-80 dark:invert')} />
-      </a>
-    </header>
+<DocsShell title="Documentation" lang={lang} pages={pages}>
+  <article class="docs-prose">
+    <p>Documentation</p>
+    <h1>CSSX utility reference</h1>
+    <p>Learn how to set up CSSX, then browse the utility families, supported values, variants, and composition rules documented by the compiler.</p>
 
-    <main class={sx('flex flex-col gap-10 justify-center flex-1')}>
-      <div class={sx('flex flex-col gap-4')}>
-        <h1
-          class={sx('text-3xl text-gray-900 dark:text-gray-50')}
-          set:html={renderRich(t.docs.title)}
-        />
-        <p
-          class={sx('text-lg font-light text-gray-600 dark:text-gray-300 leading-relaxed')}
-          set:html={renderRich(t.docs.description)}
-        />
+    {startPage && (
+      <section>
+        <h2>Start here</h2>
+        <div class="docs-home-links">
+          <a href={`${docsPath}/${startPage.id}`}>
+            <strong>{startPage.data.title}</strong>
+            <span>{startPage.data.description}</span>
+          </a>
+        </div>
+      </section>
+    )}
+
+    <section>
+      <h2>Utility reference</h2>
+      <p>Each reference page lists supported class patterns, the CSS behavior they produce, and a CSSX example.</p>
+      <div class="docs-home-links">
+        {utilityPages.map((page) => (
+          <a href={`${docsPath}/${page.id}`}>
+            <strong>{page.data.title}</strong>
+            <span>{page.data.description}</span>
+          </a>
+        ))}
       </div>
-      <div>
-        <a
-          class={sx(
-            'bg-black dark:bg-white dark:text-black text-white text-base font-light px-6 py-2.5',
-            'rounded-full tracking-wide hover:bg-black/50 dark:hover:bg-white/50',
-            'flex w-full items-center justify-center md:inline-flex md:w-auto',
-          )}
-          href={homePath}
-          set:html={renderRich(t.docs.backHome)}
-        ></a>
+    </section>
+
+    <section>
+      <h2>Advanced concepts</h2>
+      <div class="docs-home-links">
+        {advancedPages.map((page) => (
+          <a href={`${docsPath}/${page.id}`}>
+            <strong>{page.data.title}</strong>
+            <span>{page.data.description}</span>
+          </a>
+        ))}
       </div>
-    </main>
-  </div>
-</BaseLayout>
+    </section>
+  </article>
+</DocsShell>

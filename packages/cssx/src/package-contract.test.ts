@@ -421,7 +421,7 @@ void props;
 
     expect(html).toContain('href="/assets/cssx.css"');
     expect(html).toContain('Leanest style engine in the internet for your ultrafast applications.');
-    expect(docs).toContain('documentation is still taking shape.');
+    expect(docs).toContain('CSSX utility reference');
     expect(css).toContain('background-color:');
     expect(css).toContain('border-style:solid');
     expect(css).toContain('padding:');

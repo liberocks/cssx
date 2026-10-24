@@ -1,0 +1,202 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import type { Locale } from '../localization/index.ts';
+import { defaultLocale } from '../localization/index.ts';
+
+interface Props {
+  variant: 'desktop' | 'mobile';
+  pages: CollectionEntry<'docs'>[];
+  lang: Locale;
+  homePath: string;
+  currentId?: string;
+}
+
+const { variant, pages, lang, homePath, currentId } = Astro.props;
+const docsPath = lang === defaultLocale ? '/docs' : `/${lang}/docs`;
+const groups = ['Start here', 'Utility syntax', 'Utilities', 'Advanced'] as const;
+const sections = groups
+  .map((title) => ({
+    title,
+    pages: pages.filter((page) => page.data.section === title).sort((a, b) => a.data.order - b.data.order),
+  }))
+  .filter((section) => section.pages.length > 0);
+---
+
+{variant === 'mobile' ? (
+  <details class="docs-mobile-navigation">
+    <summary aria-label="Open documentation navigation">Contents</summary>
+    <nav aria-label="Documentation navigation">
+      {sections.map((section) => (
+        <section>
+          <h2>{section.title}</h2>
+          {section.pages.map((page) => (
+            <a href={`${docsPath}/${page.id}`} aria-current={page.id === currentId ? 'page' : undefined}>
+              {page.data.title}
+            </a>
+          ))}
+        </section>
+      ))}
+    </nav>
+  </details>
+) : (
+  <aside class="docs-desktop-navigation">
+    <a class="docs-logo" href={homePath}>
+      <img src="/images/logo.png" alt="CSSX home" />
+    </a>
+    <nav aria-label="Documentation navigation">
+      {sections.map((section) => (
+        <section>
+          <h2>{section.title}</h2>
+          {section.pages.map((page) => (
+            <a href={`${docsPath}/${page.id}`} aria-current={page.id === currentId ? 'page' : undefined}>
+              {page.data.title}
+            </a>
+          ))}
+        </section>
+      ))}
+    </nav>
+    <footer>
+      <a href="https://github.com/liberocks/cssx" target="_blank" rel="noreferrer">GitHub</a>
+      <a href="https://www.npmjs.com/package/@cssxio/cssx" target="_blank" rel="noreferrer">npm</a>
+    </footer>
+  </aside>
+)}
+
+<style>
+  .docs-logo {
+    display: inline-flex;
+    align-items: center;
+    height: 2rem;
+    flex: 0 0 auto;
+  }
+
+  .docs-logo img {
+    width: auto;
+    height: 1.5rem;
+    opacity: 0.82;
+  }
+
+  .docs-mobile-navigation {
+    display: none;
+  }
+
+  .docs-desktop-navigation {
+    position: sticky;
+    top: 1.5rem;
+    display: flex;
+    height: calc(100dvh - 3rem);
+    flex-direction: column;
+    gap: 1.2rem;
+    overflow: auto;
+    padding-right: 1rem;
+  }
+
+  .docs-desktop-navigation nav,
+  .docs-mobile-navigation nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .docs-desktop-navigation section,
+  .docs-mobile-navigation section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .docs-desktop-navigation h2,
+  .docs-mobile-navigation h2 {
+    margin: 0 0 0.35rem;
+    color: #737373;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .docs-desktop-navigation a:not(.docs-logo),
+  .docs-mobile-navigation nav a {
+    border-radius: 0.35rem;
+    padding: 0.35rem 0.5rem;
+    color: #525252;
+    font-size: 0.875rem;
+    text-decoration: none;
+  }
+
+  .docs-desktop-navigation a:not(.docs-logo):hover,
+  .docs-mobile-navigation nav a:hover,
+  .docs-desktop-navigation a[aria-current='page'],
+  .docs-mobile-navigation nav a[aria-current='page'] {
+    background: #f5f5f5;
+    color: #171717;
+  }
+
+  .docs-desktop-navigation footer {
+    display: flex;
+    gap: 1rem;
+    border-top: 1px solid #e5e5e5;
+    padding: 1rem 0.5rem 0;
+  }
+
+  .docs-desktop-navigation footer a {
+    padding: 0;
+    color: #737373;
+    font-size: 0.75rem;
+  }
+
+  :global([data-theme='dark']) .docs-desktop-navigation a,
+  :global([data-theme='dark']) .docs-mobile-navigation nav a {
+    color: #d4d4d4;
+  }
+
+  :global([data-theme='dark']) .docs-desktop-navigation a:not(.docs-logo):hover,
+  :global([data-theme='dark']) .docs-mobile-navigation nav a:hover,
+  :global([data-theme='dark']) .docs-desktop-navigation a[aria-current='page'],
+  :global([data-theme='dark']) .docs-mobile-navigation nav a[aria-current='page'] {
+    background: #262626;
+    color: #fafafa;
+  }
+
+  :global([data-theme='dark']) .docs-desktop-navigation footer {
+    border-color: #262626;
+  }
+
+  @media (max-width: 48rem) {
+    .docs-mobile-navigation {
+      position: relative;
+      display: block;
+    }
+
+    .docs-mobile-navigation summary {
+      cursor: pointer;
+      padding: 0.6rem 0.8rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .docs-mobile-navigation[open] nav {
+      position: absolute;
+      z-index: 10;
+      top: calc(100% + 0.6rem);
+      left: 0;
+      width: min(20rem, calc(100vw - 2rem));
+      max-height: 75dvh;
+      overflow: auto;
+      border: 1px solid #e5e5e5;
+      border-radius: 0.75rem;
+      background: white;
+      padding: 1rem;
+      box-shadow: 0 1rem 2.5rem #0002;
+    }
+
+    :global([data-theme='dark']) .docs-mobile-navigation[open] nav {
+      border-color: #404040;
+      background: #171717;
+    }
+
+    .docs-desktop-navigation {
+      display: none;
+    }
+  }
+</style>

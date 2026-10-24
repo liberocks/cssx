@@ -1,0 +1,24 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { render } from 'astro:content';
+import type { Locale } from '../../localization/index.ts';
+import DocsShell from './DocsShell.astro';
+
+interface Props {
+  page: CollectionEntry<'docs'>;
+  pages: CollectionEntry<'docs'>[];
+  lang: Locale;
+}
+
+const { page, pages, lang } = Astro.props;
+const { Content, headings } = await render(page);
+---
+
+<DocsShell title={page.data.title} lang={lang} pages={pages} currentId={page.id} headings={headings}>
+  <article class="docs-prose">
+    <p>{page.data.section}</p>
+    <h1>{page.data.title}</h1>
+    <p>{page.data.description}</p>
+    <Content />
+  </article>
+</DocsShell>
