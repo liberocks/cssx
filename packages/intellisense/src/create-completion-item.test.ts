@@ -66,3 +66,43 @@ it('uses catalog details when the entry is a variant keyword', () => {
     }),
   );
 });
+
+it('marks palette entries as colors and includes their swatch in documentation', () => {
+  class CompletionItem {
+    insertText?: string;
+    range?: unknown;
+    detail?: string;
+    documentation?: unknown;
+
+    constructor(
+      readonly label: string,
+      readonly kind: string,
+    ) {}
+  }
+  class MarkdownString {
+    constructor(readonly value: string) {}
+  }
+  const editor = {
+    CompletionItem,
+    CompletionItemKind: { Color: 'color', Keyword: 'keyword', Value: 'value' },
+    MarkdownString,
+  };
+
+  expect(
+    createCompletionItem(editor, {}, 'hover:', {
+      label: 'custom-palette',
+      detail: 'custom color',
+      colorHex: '#fb2c36',
+    }),
+  ).toEqual(
+    expect.objectContaining({
+      label: 'hover:custom-palette',
+      kind: 'color',
+      documentation: expect.objectContaining({ value: 'custom color — #fb2c36.' }),
+    }),
+  );
+
+  expect(createCompletionItem(editor, {}, '', { label: 'custom-utility', detail: 'Custom utility' })).toEqual(
+    expect.objectContaining({ documentation: expect.objectContaining({ value: 'Custom utility' }) }),
+  );
+});

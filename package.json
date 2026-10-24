@@ -14,6 +14,7 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "generate:tailwind-corpus": "pnpm --filter @cssxio/compiler build && node scripts/generate-tailwind-conformance.mjs",
+    "generate:intellisense-catalog": "node scripts/generate-intellisense-catalog.mjs",
     "lint": "eslint . --max-warnings 0",
     "test": "pnpm test:unit && pnpm test:package-contract",
     "test:unit": "vitest run --exclude packages/cssx/src/package-contract.test.ts",
@@ -22,7 +23,7 @@
     "test:visual:update": "pnpm --dir tests test:update",
     "test:release": "pnpm format:check && pnpm lint && pnpm test:coverage && pnpm test:package-contract && pnpm typecheck",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --exclude packages/cssx/src/package-contract.test.ts",
+    "test:coverage": "vitest run --coverage --exclude packages/cssx/src/package-contract.test.ts && node scripts/test-intellisense-coverage.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

@@ -34,6 +34,48 @@
   ],
   "main": "./src/extension.js",
   "contributes": {
+    "configurationDefaults": {
+      "[javascript]": {
+        "editor.quickSuggestions": {
+          "strings": "on"
+        }
+      },
+      "[typescript]": {
+        "editor.quickSuggestions": {
+          "strings": "on"
+        }
+      },
+      "[javascriptreact]": {
+        "editor.quickSuggestions": {
+          "strings": "on"
+        }
+      },
+      "[typescriptreact]": {
+        "editor.quickSuggestions": {
+          "strings": "on"
+        }
+      },
+      "[html]": {
+        "editor.quickSuggestions": {
+          "strings": "on"
+        }
+      },
+      "[astro]": {
+        "editor.quickSuggestions": {
+          "strings": "on"
+        }
+      },
+      "[vue]": {
+        "editor.quickSuggestions": {
+          "strings": "on"
+        }
+      },
+      "[svelte]": {
+        "editor.quickSuggestions": {
+          "strings": "on"
+        }
+      }
+    },
     "configuration": {
       "title": "CSSX Utility Assistant",
       "properties": {
@@ -52,6 +94,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Enable CSSX utility-string completion suggestions."
+        },
+        "cssxIntelliSense.colorDecorators": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show CSSX palette color swatches in utility strings."
         }
       }
     }

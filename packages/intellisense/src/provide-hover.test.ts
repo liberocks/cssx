@@ -16,36 +16,55 @@ function createEditor() {
   return {
     Hover,
     MarkdownString,
+    Range: class Range {
+      constructor(
+        readonly start: unknown,
+        readonly end: unknown,
+      ) {}
+    },
     workspace: { getConfiguration: () => ({ get: (_name: string, fallback: unknown) => fallback }) },
   };
 }
 
-function createDocument(line: string, text: string, range: unknown) {
+function createDocument(text: string) {
+  const lines = text.split('\n');
+  const starts: number[] = [];
+  lines.forEach((line, index) => starts.push(index === 0 ? 0 : starts[index - 1]! + lines[index - 1]!.length + 1));
   return {
     getText: () => text,
-    getWordRangeAtPosition: () => range,
-    lineAt: () => ({ text: line }),
+    offsetAt: ({ line, character }: { line: number; character: number }) => starts[line]! + character,
+    positionAt(offset: number) {
+      let line = 0;
+      for (let index = 1; index < starts.length; index += 1) {
+        if (starts[index]! > offset) {
+          break;
+        }
+        line = index;
+      }
+      return { line, character: offset - starts[line]! };
+    },
   };
 }
 
-it('returns documentation for known CSSX utility strings', () => {
+it('returns help for known utility strings', () => {
   const editor = createEditor();
-  const range = { start: 3, end: 7 };
-  const hover = provideHover(editor, createDocument("sx('flex", 'flex', range), { line: 0, character: 7 });
+  const source = "cssx.create({\n  title: 'text-sm',\n})";
+  const document = createDocument(source);
+  const hover = provideHover(editor, document, document.positionAt(source.indexOf('text-sm') + 4));
 
   expect(hover).toEqual(
-    expect.objectContaining({
-      contents: expect.objectContaining({ value: '**flex** — CSSX utility.' }),
-      range,
-    }),
+    expect.objectContaining({ contents: expect.objectContaining({ value: '**text-sm** — CSSX utility.' }) }),
   );
 });
 
-it('returns no hover outside utility strings, without a word range, or for unknown utilities', () => {
+it('returns no hover outside CSSX strings or for unknown utilities', () => {
   const editor = createEditor();
-  const position = { line: 0, character: 12 };
+  const source = "const value = 'flex'";
+  const document = createDocument(source);
 
-  expect(provideHover(editor, createDocument('const value = 1', 'flex', {}), position)).toBeUndefined();
-  expect(provideHover(editor, createDocument("sx('flex", 'flex', undefined), position)).toBeUndefined();
-  expect(provideHover(editor, createDocument("sx('unknown", 'unknown', {}), position)).toBeUndefined();
+  expect(provideHover(editor, document, document.positionAt(source.indexOf('flex') + 2))).toBeUndefined();
+  const unknown = "sx('unknown";
+  expect(
+    provideHover(editor, createDocument(unknown), createDocument(unknown).positionAt(unknown.length)),
+  ).toBeUndefined();
 });

@@ -5,6 +5,8 @@
 const { provideCompletionItems } = require('./provide-completion-items');
 /** Hover callback. */
 const { provideHover } = require('./provide-hover');
+/** Source color callbacks. */
+const { provideColorPresentations, provideDocumentColors } = require('./provide-color');
 /** Editor API loader. */
 const { loadEditorApi } = require('./load-editor-api');
 
@@ -36,11 +38,18 @@ function activate(context, editor = loadEditorApi()) {
     '-',
     '[',
     '/',
+    "'",
+    '"',
+    '`',
   );
   const hover = editor.languages.registerHoverProvider(LANGUAGE_SELECTOR, {
     provideHover: provideHover.bind(null, editor),
   });
-  context.subscriptions.push(provider, hover);
+  const color = editor.languages.registerColorProvider(LANGUAGE_SELECTOR, {
+    provideDocumentColors: provideDocumentColors.bind(null, editor),
+    provideColorPresentations: provideColorPresentations.bind(null, editor),
+  });
+  context.subscriptions.push(provider, hover, color);
 }
 
 module.exports = { activate };

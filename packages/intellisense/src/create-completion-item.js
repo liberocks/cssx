@@ -10,18 +10,25 @@ const { documentation } = require('./catalog');
  * @param {typeof import('vscode')} editor - The editor API.
  * @param {import('vscode').Range} range - The text range replaced by completion.
  * @param {string} variantPrefix - Variant text that must remain before the utility.
- * @param {{label: string, detail: string}} entry - Catalog entry to render.
+ * @param {{label: string, detail: string, colorHex?: string}} entry - Catalog entry to render.
  * @returns {import('vscode').CompletionItem} The populated completion item.
  */
 function createCompletionItem(editor, range, variantPrefix, entry) {
   const item = new editor.CompletionItem(
     `${variantPrefix}${entry.label}`,
-    entry.label.endsWith(':') ? editor.CompletionItemKind.Keyword : editor.CompletionItemKind.Value,
+    entry.label.endsWith(':')
+      ? editor.CompletionItemKind.Keyword
+      : entry.colorHex
+        ? editor.CompletionItemKind.Color
+        : editor.CompletionItemKind.Value,
   );
   item.insertText = `${variantPrefix}${entry.label}`;
   item.range = range;
   item.detail = entry.detail;
-  item.documentation = new editor.MarkdownString(documentation(`${variantPrefix}${entry.label}`) ?? entry.detail);
+  item.documentation = new editor.MarkdownString(
+    documentation(`${variantPrefix}${entry.label}`) ??
+      (entry.colorHex ? `${entry.detail} — ${entry.colorHex}.` : entry.detail),
+  );
   return item;
 }
 

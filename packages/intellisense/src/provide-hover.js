@@ -4,7 +4,7 @@
 /** Utility help-text lookup. */
 const { documentation } = require('./catalog');
 /** CSSX string detector. */
-const { isCssxString } = require('./is-cssx-string');
+const { cssxTokenAt } = require('./is-cssx-string');
 
 /**
  * Produces documentation hover content at the current editor position.
@@ -15,15 +15,12 @@ const { isCssxString } = require('./is-cssx-string');
  * @returns {import('vscode').Hover | undefined} Hover content when a known CSSX utility is under the cursor.
  */
 function provideHover(editor, document, position) {
-  if (!isCssxString(document, position, editor)) {
+  const current = cssxTokenAt(document, position, editor);
+  if (!current) {
     return undefined;
   }
-  const range = document.getWordRangeAtPosition(position, /[^\s'"`]+/);
-  if (!range) {
-    return undefined;
-  }
-  const detail = documentation(document.getText(range));
-  return detail ? new editor.Hover(new editor.MarkdownString(detail), range) : undefined;
+  const detail = documentation(current.completeToken);
+  return detail ? new editor.Hover(new editor.MarkdownString(detail), current.range) : undefined;
 }
 
 module.exports = { provideHover };
