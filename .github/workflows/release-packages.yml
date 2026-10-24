@@ -210,7 +210,7 @@ jobs:
             local version="$2"
             local metadata
 
-            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.0 show "$extension_id" --json)"; then
+            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.1-4 show "$extension_id" --json)"; then
               printf 'Could not query Visual Studio Marketplace metadata for %s\n' "$extension_id" >&2
               return 2
             fi
@@ -269,7 +269,7 @@ jobs:
             local version="$2"
             local metadata
 
-            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.0 show "$extension_id" --json)"; then
+            if ! metadata="$(pnpm dlx @vscode/vsce@4.0.1-4 show "$extension_id" --json)"; then
               printf 'Could not query Visual Studio Marketplace metadata for %s\n' "$extension_id" >&2
               return 2
             fi
@@ -308,9 +308,9 @@ jobs:
                   if [ "$query_status" -gt 1 ]; then exit "$query_status"; fi
                 fi
                 if [ "$release_mode" = retry ]; then
-                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.0 publish --no-dependencies --oidc --skip-duplicate)
+                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.1-4 publish --no-dependencies --oidc --skip-duplicate)
                 else
-                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.0 publish --no-dependencies --oidc)
+                  (cd "$directory" && pnpm dlx @vscode/vsce@4.0.1-4 publish --no-dependencies --oidc)
                 fi
                 ;;
               *)
