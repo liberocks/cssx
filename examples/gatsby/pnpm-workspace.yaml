@@ -51,3 +51,14 @@ overrides:
   uuid@<11.1.1: ^11.1.1
   webpack-dev-middleware@<7.4.5: ^7.4.5
   webpack@>=5.49.0 <=5.104.0: ^5.104.1
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  core-js: true
+  core-js-pure: true
+  es5-ext: true
+  gatsby: true
+  gatsby-cli: true
+  lmdb: true
+  msgpackr-extract: true
