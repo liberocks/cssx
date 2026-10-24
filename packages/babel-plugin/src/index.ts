@@ -1,16 +1,16 @@
 import type { PluginObj, PluginPass } from '@babel/core';
 import type * as babelTypes from '@babel/types';
 
-import { createPluginFileState } from './create-plugin-file-state';
-import type { FoldedPropsCall } from './finalize-folded-props';
-import { finalizePluginFile } from './finalize-plugin-file';
-import type { CssxPluginOptions } from './plugin-types';
-import { transformCssxCall } from './transform-cssx-call';
+import { createPluginFileState } from './state/create-plugin-file-state';
+import { finalizePluginFile } from './state/finalize-plugin-file';
+import type { CssxPluginOptions } from './state/plugin-types';
+import type { FoldedPropsCall } from './transforms/finalize-folded-props';
+import { transformCssxCall } from './transforms/transform-cssx-call';
 
 /** Default module specifier used when the plugin options do not override it. */
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
 
-export type { CssxPluginOptions } from './plugin-types';
+export type { CssxPluginOptions } from './state/plugin-types';
 
 /**
  * Compiles CSSX calls in one source module.

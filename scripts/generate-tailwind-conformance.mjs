@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import prettier from 'prettier';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tailwindMajorVersion = 4;
@@ -17,16 +18,10 @@ const snapshotPath = path.join(
 );
 const packagePath = path.join(tailwindRoot, 'packages', 'tailwindcss', 'package.json');
 const themePath = path.join(tailwindRoot, 'packages', 'tailwindcss', 'theme.css');
-const fixturePath = path.join(
-  root,
-  'packages',
-  'compiler',
-  'test',
-  'fixtures',
-  `tailwind-${tailwindMajorVersion}.json`,
-);
-const fallbackPath = path.join(root, 'packages', 'compiler', 'src', 'fallback.generated.ts');
-const themeOutputPath = path.join(root, 'packages', 'compiler', 'src', 'theme-defaults.generated.ts');
+const fixturePath = path.join(root, 'packages', 'compiler', 'src', 'fixtures', 'corpus.json');
+const fallbackOutputDirectory = path.join(root, 'packages', 'compiler', 'src', 'generated');
+const corpusPartsDirectory = path.join(path.dirname(fixturePath), 'corpus');
+const themeOutputPath = path.join(fallbackOutputDirectory, 'theme-defaults.generated.ts');
 
 const [snapshot, tailwindPackage, themeCss] = await Promise.all([
   readFile(snapshotPath, 'utf8'),
@@ -48,7 +43,19 @@ const candidates = match[1]
 
 const compiler = await loadPinnedCompiler();
 const css = compiler.build(candidates);
-const fallbacks = Object.fromEntries(candidates.map((candidate) => [candidate, extractCandidateCss(css, candidate)]));
+const fallbacks = Object.fromEntries(
+  candidates.map((candidate) => {
+    const fallback = extractCandidateCss(css, candidate);
+    return [
+      candidate,
+      {
+        ...fallback,
+        css: fallback.css.replaceAll('--tw-', '--cx-'),
+        group: fallback.group.replaceAll('--tw-', '--cx-'),
+      },
+    ];
+  }),
+);
 const defaultTheme = parseTheme(themeCss);
 const source = {
   repository: 'https://github.com/tailwindlabs/tailwindcss',
@@ -58,16 +65,76 @@ const source = {
   snapshot: 'packages/tailwindcss/src/__snapshots__/intellisense.test.ts.snap#getClassList-1',
 };
 
-await writeFile(fixturePath, `${JSON.stringify({ source, total: candidates.length, candidates }, null, 2)}\n`);
-await writeFile(
-  fallbackPath,
-  `import type { UtilityFallback } from './fallback';\n\n/** Generated from the pinned upstream compiler. */\nexport const UTILITY_FALLBACKS: Readonly<Record<string, UtilityFallback>> = Object.freeze(${JSON.stringify(fallbacks)});\n`,
+await mkdir(fallbackOutputDirectory, { recursive: true });
+await mkdir(corpusPartsDirectory, { recursive: true });
+const fallbackEntries = Object.entries(fallbacks);
+const fallbackChunks = chunk(fallbackEntries, 200);
+for (const entry of await readdir(fallbackOutputDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && /^fallback-\d{3}\.generated\.ts$/.test(entry.name)) {
+    await unlink(path.join(fallbackOutputDirectory, entry.name));
+  }
+}
+for (const entry of await readdir(corpusPartsDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && /^part-\d{3}\.json$/.test(entry.name)) {
+    await unlink(path.join(corpusPartsDirectory, entry.name));
+  }
+}
+
+const fallbackImports = [];
+for (const [index, entries] of fallbackChunks.entries()) {
+  const name = `fallback-${String(index).padStart(3, '0')}.generated.ts`;
+  const exportName = `UTILITY_FALLBACKS_${String(index).padStart(3, '0')}`;
+  fallbackImports.push(`import { ${exportName} } from './${name.replace(/\.ts$/, '')}';`);
+  const rows = entries
+    .map(([candidate, fallback]) => `  ${JSON.stringify(candidate)}: ${JSON.stringify(fallback)},`)
+    .join('\n');
+  await writeFormatted(
+    path.join(fallbackOutputDirectory, name),
+    `import type { UtilityFallback } from '../utilities/registry/fallback';\n\n/** Generated fallback shard ${index + 1} of ${fallbackChunks.length}. */\nexport const ${exportName}: Readonly<Record<string, UtilityFallback>> = Object.freeze({\n${rows}\n});\n`,
+  );
+}
+await writeFormatted(
+  path.join(fallbackOutputDirectory, 'fallback.generated.ts'),
+  `import type { UtilityFallback } from '../utilities/registry/fallback';\n${fallbackImports.join('\n')}\n\n/** Generated index for checked-in utility fallback shards. */\nexport const UTILITY_FALLBACKS: Readonly<Record<string, UtilityFallback>> = Object.freeze(\n  Object.assign({}, ${fallbackChunks.map((_, index) => `UTILITY_FALLBACKS_${String(index).padStart(3, '0')}`).join(', ')}),\n);\n`,
 );
-await writeFile(
+
+const corpusChunks = chunk(candidates, 300);
+const corpusParts = corpusChunks.map((_, index) => `part-${String(index).padStart(3, '0')}.json`);
+for (const [index, entries] of corpusChunks.entries()) {
+  await writeFormatted(path.join(corpusPartsDirectory, corpusParts[index]), `${JSON.stringify(entries, null, 2)}\n`);
+}
+await writeFormatted(
+  fixturePath,
+  `${JSON.stringify({ source, total: candidates.length, parts: corpusParts }, null, 2)}\n`,
+);
+const defaultThemeRows = Object.entries(defaultTheme)
+  .map(([name, value]) => `  '${name}': ${JSON.stringify(value)},`)
+  .join('\n');
+await writeFormatted(
   themeOutputPath,
-  `/** Generated from the pinned upstream theme.css. */\nexport const DEFAULT_THEME: Readonly<Record<string, string>> = Object.freeze(${JSON.stringify(defaultTheme)});\n`,
+  `/** Generated from the pinned upstream theme.css. */\nexport const DEFAULT_THEME: Readonly<Record<string, string>> = Object.freeze({\n${defaultThemeRows}\n});\n`,
 );
-console.log(`Wrote ${path.relative(root, fixturePath)} (${candidates.length} candidates).`);
+console.log(
+  `Wrote ${path.relative(root, fixturePath)} (${candidates.length} candidates in ${corpusChunks.length} parts) and ${fallbackChunks.length} fallback shards.`,
+);
+
+/** Divides generated records into stable-size output files.
+ * @template T
+ * @param {readonly T[]} values
+ * @param {number} size
+ * @returns {T[][]}
+ */
+function chunk(values, size) {
+  const chunks = [];
+  for (let index = 0; index < values.length; index += size) chunks.push(values.slice(index, index + size));
+  return chunks;
+}
+
+/** Writes generated source using the repository's formatting rules. */
+async function writeFormatted(filePath, source) {
+  const options = (await prettier.resolveConfig(filePath)) ?? {};
+  await writeFile(filePath, await prettier.format(source, { ...options, filepath: filePath }));
+}
 
 /** Loads the verified development-only Tailwind compiler used as the oracle. */
 async function loadPinnedCompiler() {

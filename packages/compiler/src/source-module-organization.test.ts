@@ -19,6 +19,30 @@ function listTypeScriptFiles(directory: string): string[] {
   });
 }
 
+/** Lists source and generated data files beneath a directory. */
+function listSourceFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      return listSourceFiles(entryPath);
+    }
+
+    return entry.isFile() && /\.(?:ts|tsx|js|json)$/.test(entry.name) ? [entryPath] : [];
+  });
+}
+
+/** Lists source directories beneath a package source root. */
+function listSourceDirectories(directory: string): string[] {
+  return [
+    directory,
+    ...readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      const entryPath = join(directory, entry.name);
+      return entry.isDirectory() ? listSourceDirectories(entryPath) : [];
+    }),
+  ];
+}
+
 /** Excludes declarations, generated data, and test files from implementation checks. */
 function isImplementationModule(filePath: string): boolean {
   return !filePath.endsWith('.d.ts') && !filePath.endsWith('.generated.ts') && !filePath.endsWith('.test.ts');
@@ -67,6 +91,7 @@ function hasExportedRuntimeDeclaration(filePath: string): boolean {
 
 describe('compiler source module organization', () => {
   const implementationModules = listTypeScriptFiles(sourceDirectory).filter(isImplementationModule);
+  const workspacePackageRoot = join(sourceDirectory, '..', '..', '..', 'packages');
 
   it('keeps each module-level function in its own implementation file', () => {
     const modulesWithMultipleFunctions = implementationModules.flatMap((filePath) => {
@@ -92,6 +117,30 @@ describe('compiler source module organization', () => {
     });
 
     expect(runtimeModulesWithoutTests).toEqual([]);
+  });
+
+  it('keeps package source folders at a readable size', () => {
+    const packageSourceRoots = readdirSync(workspacePackageRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => join(workspacePackageRoot, entry.name, 'src'))
+      .filter((directory) => existsSync(directory));
+    const oversizedFiles = packageSourceRoots.flatMap((directory) =>
+      listSourceFiles(directory).flatMap((filePath) => {
+        const lineCount = readFileSync(filePath, 'utf8').split(/\r?\n/).length;
+        return lineCount > 1_000 ? [`${filePath}: ${lineCount} lines`] : [];
+      }),
+    );
+    const crowdedDirectories = packageSourceRoots.flatMap((directory) =>
+      listSourceDirectories(directory).flatMap((sourceDirectory) => {
+        const fileCount = readdirSync(sourceDirectory, { withFileTypes: true }).filter((entry) =>
+          entry.isFile(),
+        ).length;
+        return fileCount > 80 ? [`${sourceDirectory}: ${fileCount} files`] : [];
+      }),
+    );
+
+    expect(oversizedFiles).toEqual([]);
+    expect(crowdedDirectories).toEqual([]);
   });
 });
 

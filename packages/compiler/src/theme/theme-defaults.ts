@@ -1,0 +1,55 @@
+import { DEFAULT_THEME as DEFAULT_THEME_GENERATED } from '../generated/theme-defaults.generated';
+import { DEFAULT_DOCUMENTED_COLOR_TOKENS } from './theme-colors';
+
+/** Built-in theme tokens used unless a theme block overrides or resets them. */
+export const DEFAULT_THEME: Readonly<Record<string, string>> = {
+  ...DEFAULT_THEME_GENERATED,
+  // CSSX's documented palette includes its own additional color families and
+  // preserves its existing precision contract for public output.
+  ...DEFAULT_DOCUMENTED_COLOR_TOKENS,
+  '--spacing': '0.25rem',
+  '--breakpoint-xs': '30rem',
+  '--breakpoint-sm': '40rem',
+  '--breakpoint-md': '48rem',
+  '--breakpoint-lg': '64rem',
+  '--breakpoint-xl': '80rem',
+  '--breakpoint-2xl': '96rem',
+  '--color-black': '#000',
+  '--color-white': '#fff',
+  '--color-transparent': 'transparent',
+  '--duration-instant': '0ms',
+  '--duration-fast': '100ms',
+  '--duration-normal': '200ms',
+  '--duration-slow': '300ms',
+  '--duration-slower': '500ms',
+  '--delay-none': '0ms',
+  '--delay-short': '75ms',
+  '--delay-normal': '150ms',
+  '--delay-long': '300ms',
+  '--ease-standard': 'cubic-bezier(.4, 0, .2, 1)',
+  '--ease-expressive': 'cubic-bezier(.2, .8, .2, 1)',
+  '--ease-spring-snappy':
+    'linear(0, 0.0962 6.25%, 0.3058 12.5%, 0.54 18.75%, 0.7469 25%, 0.9032 31.25%, 1.0051 37.5%, 1.06 43.75%, 1.0801 50%, 1.078 56.25%, 1.0642 62.5%, 1.0466 68.75%, 1.03 75%, 1.0167 81.25%, 1.0076 87.5%, 1.0023 93.75%, 1)',
+  '--ease-spring-gentle':
+    'linear(0, 0.0594 5%, 0.1857 10%, 0.3294 15%, 0.4659 20%, 0.5849 25%, 0.6833 30%, 0.762 35%, 0.8234 40%, 0.8704 45%, 0.9059 50%, 0.9324 55%, 0.952 60%, 0.9664 65%, 0.9768 70%, 0.9844 75%, 0.9899 80%, 0.9938 85%, 0.9966 90%, 0.9986 95%, 1)',
+  '--ease-spring-bouncy':
+    'linear(0, 0.0922 4%, 0.3092 8%, 0.5705 12%, 0.8157 16%, 1.0078 20%, 1.1318 24%, 1.1895 28%, 1.1937 32%, 1.162 36%, 1.1122 40%, 1.0591 44%, 1.0131 48%, 0.9797 52%, 0.9604 56%, 0.9536 60%, 0.9563 64%, 0.9648 68%, 0.9755 72%, 0.9859 76%, 0.9943 80%, 0.9999 84%, 1.0027 88%, 1.0031 92%, 1.002 96%, 1)',
+  '--ease-spring-soft':
+    'linear(0, 0.0436 4%, 0.1414 8%, 0.2597 12%, 0.3793 16%, 0.4901 20%, 0.5878 24%, 0.6709 28%, 0.74 32%, 0.7964 36%, 0.8418 40%, 0.878 44%, 0.9065 48%, 0.9288 52%, 0.9461 56%, 0.9595 60%, 0.9698 64%, 0.9778 68%, 0.9838 72%, 0.9884 76%, 0.9919 80%, 0.9945 84%, 0.9965 88%, 0.998 92%, 0.9992 96%, 1)',
+  '--stagger-tight': '40ms',
+  '--stagger-normal': '75ms',
+  '--stagger-relaxed': '120ms',
+  '--animate-spin': 'spin 1s linear infinite',
+  '--animate-ping': 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
+  '--animate-pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+  '--animate-bounce': 'bounce 1s infinite',
+  '--animate-fade-in': 'fade-in 200ms cubic-bezier(0, 0, .2, 1) both',
+  '--animate-fade-out': 'fade-out 150ms cubic-bezier(.4, 0, 1, 1) both',
+  '--animate-slide-in-up': 'slide-in-up 200ms cubic-bezier(0, 0, .2, 1) both',
+  '--animate-slide-in-down': 'slide-in-down 200ms cubic-bezier(0, 0, .2, 1) both',
+  '--animate-slide-in-left': 'slide-in-left 200ms cubic-bezier(0, 0, .2, 1) both',
+  '--animate-slide-in-right': 'slide-in-right 200ms cubic-bezier(0, 0, .2, 1) both',
+  '--animate-scale-in': 'scale-in 200ms cubic-bezier(0, 0, .2, 1) both',
+  '--animate-scale-out': 'scale-out 150ms cubic-bezier(.4, 0, 1, 1) both',
+  '--animate-shimmer': 'shimmer 2s linear infinite',
+};
