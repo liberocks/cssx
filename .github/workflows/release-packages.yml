@@ -27,7 +27,7 @@ on:
           - minor
           - major
       retry_existing_version:
-        description: Publish the current version without a bump for one explicitly selected package
+        description: Retry current versions for the selected package, or all changed packages when package is auto
         required: false
         default: false
         type: boolean

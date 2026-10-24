@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { createAutoReleasePlan, incrementVersion, isVersionInRange } from '../../../scripts/release-plan.mjs';
+import {
+  createAutoReleasePlan,
+  createAutoRetryPlan,
+  incrementVersion,
+  isVersionInRange,
+} from '../../../scripts/release-plan.mjs';
 import type { ReleaseBump, ReleaseManifest } from '../../../scripts/release-plan.mjs';
 
 const releases: readonly [ReleaseBump, string, string][] = [
@@ -40,6 +45,24 @@ describe('release plan', () => {
       expect.objectContaining({ name: '@cssxio/compiler', bump: 'minor', nextVersion: '0.3.0' }),
       expect.objectContaining({ name: '@cssxio/babel-plugin', bump: 'patch', nextVersion: '0.2.2' }),
       expect.objectContaining({ name: '@cssxio/unplugin', bump: 'patch', nextVersion: '0.2.1' }),
+    ]);
+  });
+
+  it('retries the current versions of every changed package without incrementing them', () => {
+    const packages = [
+      { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [] },
+      { name: '@cssxio/babel-plugin', directory: 'packages/babel-plugin', dependencies: ['@cssxio/compiler'] },
+    ];
+    const manifests = new Map<string, ReleaseManifest>([
+      ['@cssxio/compiler', { version: '0.10.0' }],
+      ['@cssxio/babel-plugin', { version: '0.8.0', dependencies: { '@cssxio/compiler': '^0.10.0' } }],
+    ]);
+
+    expect(
+      createAutoRetryPlan(packages, manifests, new Set(['@cssxio/compiler', '@cssxio/babel-plugin']), 'minor'),
+    ).toEqual([
+      expect.objectContaining({ name: '@cssxio/compiler', version: '0.10.0', nextVersion: '0.10.0' }),
+      expect.objectContaining({ name: '@cssxio/babel-plugin', version: '0.8.0', nextVersion: '0.8.0' }),
     ]);
   });
 

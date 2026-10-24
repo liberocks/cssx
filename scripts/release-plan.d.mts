@@ -27,5 +27,11 @@ export function createAutoReleasePlan(
   changedPackageNames: ReadonlySet<string>,
   bump: ReleaseBump,
 ): readonly PlannedReleasePackage[];
+export function createAutoRetryPlan(
+  packageInfos: readonly ReleasePackage[],
+  manifests: ReadonlyMap<string, ReleaseManifest>,
+  changedPackageNames: ReadonlySet<string>,
+  bump: ReleaseBump,
+): readonly PlannedReleasePackage[];
 export function incrementVersion(version: string, bump: ReleaseBump): string;
 export function isVersionInRange(range: string | undefined, version: string): boolean;

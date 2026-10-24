@@ -59,13 +59,11 @@ async function createPlan({
   }
   assertBump(bump);
   const retry = parseBooleanOption(retryExistingVersion ?? 'false', 'retry-existing-version');
-  if (selectedPackageName === 'auto' && retry) {
-    fail('The auto package selector cannot retry an existing version. Select one package instead.');
-  }
-
   const selectedPackages =
     selectedPackageName === 'auto'
-      ? await planAutoPackages(bump)
+      ? retry
+        ? await planAutoRetryPackages(bump)
+        : await planAutoPackages(bump)
       : [await planPackage(requirePackage(selectedPackageName), bump, retry)];
   const plan = {
     bump,
@@ -99,6 +97,16 @@ async function planAutoPackages(bump) {
   );
   const changedPackageNames = await findChangedPackageNames();
   return createAutoReleasePlan(releasePackages, manifests, changedPackageNames, bump);
+}
+
+async function planAutoRetryPackages(bump) {
+  const manifests = new Map(
+    await Promise.all(
+      releasePackages.map(async (packageInfo) => [packageInfo.name, await readPackageManifest(packageInfo)]),
+    ),
+  );
+  const changedPackageNames = await findChangedPackageNames();
+  return createAutoRetryPlan(releasePackages, manifests, changedPackageNames, bump);
 }
 
 export function createAutoReleasePlan(packageInfos, manifests, changedPackageNames, bump) {
@@ -145,6 +153,27 @@ export function createAutoReleasePlan(packageInfos, manifests, changedPackageNam
         version: manifest.version,
         nextVersion,
         tag: `${packageInfo.name}@${nextVersion}`,
+      };
+    });
+}
+
+export function createAutoRetryPlan(packageInfos, manifests, changedPackageNames, bump) {
+  assertBump(bump);
+  const selectedPackageNames = new Set(changedPackageNames);
+
+  for (const packageName of selectedPackageNames) requirePackage(packageName);
+
+  return packageInfos
+    .filter((packageInfo) => selectedPackageNames.has(packageInfo.name))
+    .map((packageInfo) => {
+      const manifest = manifests.get(packageInfo.name);
+      if (!manifest) fail(`Could not find the manifest for ${packageInfo.name}.`);
+      return {
+        ...packageInfo,
+        bump,
+        version: manifest.version,
+        nextVersion: manifest.version,
+        tag: `${packageInfo.name}@${manifest.version}`,
       };
     });
 }
