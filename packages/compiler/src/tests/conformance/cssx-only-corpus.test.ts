@@ -33,12 +33,8 @@ const CSSX_ONLY_CANDIDATES = [
 
 const tailwindManifest = JSON.parse(
   readFileSync(fileURLToPath(new URL('../../fixtures/corpus.json', import.meta.url)), 'utf8'),
-) as { readonly parts: readonly string[] };
-const tailwindCandidates = tailwindManifest.parts.flatMap((part) => {
-  return JSON.parse(
-    readFileSync(fileURLToPath(new URL(`../../fixtures/corpus/${part}`, import.meta.url)), 'utf8'),
-  ) as string[];
-});
+) as { readonly candidates: readonly string[] };
+const tailwindCandidates = tailwindManifest.candidates;
 
 describe('CSSX-only complete utility-family corpus', () => {
   it('stays distinct from the Tailwind corpus and compiles every family', () => {

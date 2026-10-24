@@ -18,17 +18,13 @@ interface TailwindManifest {
     readonly snapshot: string;
   };
   readonly total: number;
-  readonly parts: readonly string[];
+  readonly candidates: readonly string[];
 }
 
 const manifest = JSON.parse(
   readFileSync(fileURLToPath(new URL('../../fixtures/corpus.json', import.meta.url)), 'utf8'),
 ) as TailwindManifest;
-const corpusCandidates = manifest.parts.flatMap((part) => {
-  return JSON.parse(
-    readFileSync(fileURLToPath(new URL(`../../fixtures/corpus/${part}`, import.meta.url)), 'utf8'),
-  ) as string[];
-});
+const corpusCandidates = manifest.candidates;
 
 describe('Tailwind 4 IntelliSense snapshot corpus', () => {
   it('accounts for every candidate from the upstream IntelliSense snapshot', () => {
