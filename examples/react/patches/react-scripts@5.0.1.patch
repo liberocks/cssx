@@ -1,6 +1,6 @@
 --- a/config/webpackDevServer.config.js
 +++ b/config/webpackDevServer.config.js
-@@ -22,5 +22,6 @@ module.exports = function (proxy, allowedHost) {
+@@ -22,3 +22,4 @@ module.exports = function (proxy, allowedHost) {
    const disableFirewall =
      !proxy || process.env.DANGEROUSLY_DISABLE_HOST_CHECK === 'true';
 +  const httpsConfig = getHttpsConfig();
