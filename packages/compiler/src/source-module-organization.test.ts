@@ -1,10 +1,16 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 const sourceDirectory = fileURLToPath(new URL('.', import.meta.url));
+const fixtureAndDatasetDirectories = new Set(['fixture', 'fixtures', 'dataset', 'datasets', '__fixtures__']);
+
+/** Keeps dataset and test fixture contents outside the source-module line-count limit. */
+function isFixtureOrDataset(filePath: string): boolean {
+  return filePath.split(sep).some((segment) => fixtureAndDatasetDirectories.has(segment));
+}
 
 /** Lists TypeScript source files beneath a directory, including nested folders. */
 function listTypeScriptFiles(directory: string): string[] {
@@ -126,6 +132,10 @@ describe('compiler source module organization', () => {
       .filter((directory) => existsSync(directory));
     const oversizedFiles = packageSourceRoots.flatMap((directory) =>
       listSourceFiles(directory).flatMap((filePath) => {
+        if (isFixtureOrDataset(filePath)) {
+          return [];
+        }
+
         const lineCount = readFileSync(filePath, 'utf8').split(/\r?\n/).length;
         return lineCount > 1_000 ? [`${filePath}: ${lineCount} lines`] : [];
       }),
