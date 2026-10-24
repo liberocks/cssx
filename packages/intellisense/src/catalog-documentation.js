@@ -1,8 +1,13 @@
 'use strict';
+/* eslint-disable @typescript-eslint/no-require-imports */
 
-/** Static values used to resolve utility help text. */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { EXACT, RECIPES } = require('./catalog-data');
+/** Generated and authored completion entries. */
+const { ALL_ENTRIES } = require('./catalog-entries');
+/** Static value families provide details for arbitrary values. */
+const { RECIPES } = require('./catalog-data');
+
+/** Lookup used by hover and completion documentation. */
+const ENTRY_BY_LABEL = new Map(ALL_ENTRIES.map((entry) => [entry.label, entry]));
 
 /**
  * Gets short help text for one utility.
@@ -11,14 +16,35 @@ const { EXACT, RECIPES } = require('./catalog-data');
  * @returns {string | null} Help text, or null when the utility is unknown.
  */
 function documentation(candidate) {
-  const base = candidate.split(':').at(-1).replace(/^!|-$/g, '');
-  const exact = EXACT.includes(base);
-  const recipe = RECIPES.find(([prefix]) => base.startsWith(prefix));
-  return exact
-    ? `**${base}** — CSSX utility.`
-    : recipe
-      ? `**${base}** — ${recipe[1]} utility. Values are resolved during compilation.`
-      : null;
+  const utility = stripVariants(candidate).replace(/^!/, '').replace(/^-/, '');
+  const entry = ENTRY_BY_LABEL.get(utility);
+  if (entry) {
+    const color = entry.colorHex ? ` — ${entry.colorHex}` : '';
+    return `**${utility}** — ${entry.detail}${color}.`;
+  }
+  const recipe = RECIPES.find(([prefix]) => utility.startsWith(prefix));
+  return recipe ? `**${utility}** — ${recipe[1]} utility. Values are resolved during compilation.` : null;
 }
 
-module.exports = { documentation };
+/**
+ * Removes variant prefixes while respecting colons inside arbitrary values.
+ *
+ * @param {string} candidate - Complete utility candidate.
+ * @returns {string} Candidate utility without variants.
+ */
+function stripVariants(candidate) {
+  let squareDepth = 0;
+  let separator = -1;
+  for (let index = 0; index < candidate.length; index += 1) {
+    if (candidate[index] === '[') {
+      squareDepth += 1;
+    } else if (candidate[index] === ']') {
+      squareDepth = Math.max(0, squareDepth - 1);
+    } else if (candidate[index] === ':' && squareDepth === 0) {
+      separator = index;
+    }
+  }
+  return candidate.slice(separator + 1);
+}
+
+module.exports = { documentation, stripVariants };

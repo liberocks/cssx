@@ -9,10 +9,12 @@ describe('IntelliSense catalog', () => {
     expect(entries('animation-name-')).toEqual(
       expect.arrayContaining([{ label: 'animation-name-', detail: 'Animation name utility family' }]),
     );
-    expect(entries('motion-')).toEqual([
-      { label: 'motion-safe:', detail: 'CSSX variant' },
-      { label: 'motion-reduce:', detail: 'CSSX variant' },
-    ]);
+    expect(entries('motion-')).toEqual(
+      expect.arrayContaining([
+        { label: 'motion-safe:', detail: 'CSSX variant' },
+        { label: 'motion-reduce:', detail: 'CSSX variant' },
+      ]),
+    );
     expect(entries('unknown-')).toEqual([]);
   });
 

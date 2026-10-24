@@ -6,7 +6,7 @@ const { entries } = require('./catalog');
 /** Completion item factory. */
 const { createCompletionItem } = require('./create-completion-item');
 /** CSSX string detector. */
-const { isCssxString } = require('./is-cssx-string');
+const { cssxTokenAt } = require('./is-cssx-string');
 
 /**
  * Produces utility completions at the current editor position.
@@ -17,19 +17,34 @@ const { isCssxString } = require('./is-cssx-string');
  * @returns {import('vscode').CompletionItem[] | undefined} Completion items when the cursor is eligible.
  */
 function provideCompletionItems(editor, document, position) {
-  if (
-    !editor.workspace.getConfiguration('cssxIntelliSense').get('suggestions', true) ||
-    !isCssxString(document, position, editor)
-  ) {
+  if (!editor.workspace.getConfiguration('cssxIntelliSense').get('suggestions', true)) {
     return undefined;
-  } else {
-    const range = document.getWordRangeAtPosition(position, /[^\s'"`]+/) ?? new editor.Range(position, position);
-    const partial = document.getText(range);
-    const separatorIndex = partial.lastIndexOf(':');
-    const variantPrefix = separatorIndex === -1 ? '' : partial.slice(0, separatorIndex + 1);
-    const utilityPrefix = partial.slice(variantPrefix.length);
-    return entries(utilityPrefix).map(createCompletionItem.bind(null, editor, range, variantPrefix));
   }
+  const current = cssxTokenAt(document, position, editor);
+  if (!current) {
+    return undefined;
+  }
+
+  const separatorIndex = lastVariantSeparator(current.token);
+  const variantPrefix = separatorIndex === -1 ? '' : current.token.slice(0, separatorIndex + 1);
+  const utilityPrefix = current.token.slice(variantPrefix.length);
+  return entries(utilityPrefix).map(createCompletionItem.bind(null, editor, current.range, variantPrefix));
+}
+
+/** Finds the final variant separator outside arbitrary bracket syntax. */
+function lastVariantSeparator(candidate) {
+  let depth = 0;
+  let separator = -1;
+  for (let index = 0; index < candidate.length; index += 1) {
+    if (candidate[index] === '[') {
+      depth += 1;
+    } else if (candidate[index] === ']') {
+      depth = Math.max(0, depth - 1);
+    } else if (candidate[index] === ':' && depth === 0) {
+      separator = index;
+    }
+  }
+  return separator;
 }
 
 module.exports = { provideCompletionItems };

@@ -6,10 +6,12 @@ import { activate } from './activate.js';
 it('registers language providers and stores their disposables', () => {
   const completionDisposable = { dispose: vi.fn() };
   const hoverDisposable = { dispose: vi.fn() };
+  const colorDisposable = { dispose: vi.fn() };
   const editor = {
     languages: {
       registerCompletionItemProvider: vi.fn(() => completionDisposable),
       registerHoverProvider: vi.fn(() => hoverDisposable),
+      registerColorProvider: vi.fn(() => colorDisposable),
     },
   };
   const subscriptions: unknown[] = [];
@@ -24,10 +26,13 @@ it('registers language providers and stores their disposables', () => {
     '-',
     '[',
     '/',
+    "'",
+    '"',
+    '`',
   );
   expect(editor.languages.registerHoverProvider).toHaveBeenCalledWith(
     expect.arrayContaining(['vue', 'svelte']),
     expect.objectContaining({ provideHover: expect.any(Function) }),
   );
-  expect(subscriptions).toEqual([completionDisposable, hoverDisposable]);
+  expect(subscriptions).toEqual([completionDisposable, hoverDisposable, colorDisposable]);
 });
