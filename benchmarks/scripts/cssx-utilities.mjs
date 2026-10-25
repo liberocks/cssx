@@ -8,7 +8,7 @@ import { createWorkload, readVariantArgument } from './workload.mjs';
 /** Compiles pre-extracted utility candidates to final CSS without style-map composition. */
 export async function runCssxUtilityBenchmark(variant = 'large') {
   const workload = createWorkload(variant);
-  const candidates = [...new Set(workload.tailwindCandidates)];
+  const candidates = [...new Set(workload.cssxCandidates)];
   const classNames = Object.fromEntries(candidates.map((candidate, index) => [candidate, `u${index.toString(36)}`]));
   return measure(
     `CSSX pre-extracted utility compilation (${workload.variant})`,

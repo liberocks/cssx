@@ -70,6 +70,7 @@ export function validateCss(css, workload) {
     'line-height:1.25rem',
     'font-weight:600',
     'color:#fff',
+    'box-shadow:',
     'padding-left:',
     'padding-right:',
   ]) {

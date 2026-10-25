@@ -7,9 +7,9 @@ contains every component width and the shared canonical declarations.
 
 | Variant | Components | Declarations |
 | ------- | ---------: | -----------: |
-| Small   |        100 |        1,520 |
-| Medium  |        500 |        7,600 |
-| Large   |      1,000 |       15,200 |
+| Small   |        100 |        1,620 |
+| Medium  |        500 |        8,100 |
+| Large   |      1,000 |       16,200 |
 
 Run every canonical and Vite application suite:
 
@@ -35,7 +35,9 @@ CSSX uses its default serial names and automatic reusability planning. StyleX
 rules are converted to final CSS with `processStylexRules`; intermediate
 metadata is never counted. Tailwind receives the same component utility
 occurrences as its generated consumer JavaScript and imports its utilities
-layer without preflight or base CSS.
+layer without preflight or base CSS. The canonical corpus includes a bracketed
+box-shadow value with whitespace; CSSX receives literal spaces and Tailwind
+receives the equivalent underscore aliases.
 styled-components uses its standard runtime-tagged component definitions, so
 its rules are included in the JavaScript artifact rather than a separately
 extracted CSS artifact.
@@ -51,9 +53,10 @@ reproducible.
 
 The individual CSSX utility runner remains available for compiler profiling.
 It compares CSSX and Tailwind only after candidate extraction. Both receive
-the same deduplicated candidate list and report final CSS only. Tailwind imports
-its utilities layer without preflight or base CSS, so resets are not charged to
-only one implementation.
+equivalent deduplicated candidate lists and report final CSS only. The whitespace
+value uses literal spaces in CSSX and underscore aliases in Tailwind. Tailwind
+imports its utilities layer without preflight or base CSS, so resets are not
+charged to only one implementation.
 
 ## Measurement protocol
 
