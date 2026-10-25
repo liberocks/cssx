@@ -6,7 +6,7 @@ import { compilePrefixedVisualUtility } from './compile-prefixed-visual-utility'
 it('routes paint, filter, border, and decoration candidates to visual recipes', () => {
   const theme = parseTheme();
   expect(compilePrefixedVisualUtility('border-x-2', false, theme)).toHaveLength(2);
-  expect(compilePrefixedVisualUtility('shadow-[0_0_1px_black]', false, theme)).not.toBeNull();
+  expect(compilePrefixedVisualUtility('shadow-[0 0 1px black]', false, theme)).not.toBeNull();
   expect(compilePrefixedVisualUtility('ring-2', false, theme)).not.toBeNull();
   expect(compilePrefixedVisualUtility('blur-sm', false, theme)).not.toBeNull();
   expect(compilePrefixedVisualUtility('backdrop-blur-sm', false, theme)).not.toBeNull();

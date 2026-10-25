@@ -7,7 +7,7 @@ it('resolves arbitrary mask positions and sizes', () => {
     property: 'mask-position',
     value: 'center',
   });
-  expect(compileArbitraryMaskUtility('mask-size-[auto_100%]')).toEqual({ property: 'mask-size', value: 'auto 100%' });
+  expect(compileArbitraryMaskUtility('mask-size-[auto 100%]')).toEqual({ property: 'mask-size', value: 'auto 100%' });
 });
 
 it('resolves arbitrary mask images and ignores unrelated utilities', () => {

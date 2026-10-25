@@ -1,4 +1,5 @@
 import type { UtilityDeclaration } from '../registry/utility-types';
+import { resolveArbitraryCssValue } from '../values/utility-resolvers';
 import { gradientInterpolation } from './gradient-interpolation';
 
 /**
@@ -16,7 +17,7 @@ export function compileLinearGradientAngleUtility(utility: string, negative: boo
     return null;
   }
   const rawAngle = angle[1]!;
-  const value = rawAngle.startsWith('[') ? rawAngle.slice(1, -1) : `${negative ? '-' : ''}${rawAngle}deg`;
+  const value = rawAngle.startsWith('[') ? resolveArbitraryCssValue(rawAngle) : `${negative ? '-' : ''}${rawAngle}deg`;
   return [
     {
       property: 'background-image',

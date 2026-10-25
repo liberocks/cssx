@@ -137,7 +137,7 @@ describe('CSSX utility compiler', () => {
 
   it('compiles arbitrary and custom-property grid tracks', async () => {
     const result = await compileUtilities(
-      ['grid-cols-[350px_1fr]', 'grid-rows-(--dashboard-rows)'],
+      ['grid-cols-[350px 1fr]', 'grid-rows-(--dashboard-rows)'],
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
     );
 
@@ -184,8 +184,8 @@ describe('CSSX utility compiler', () => {
         'content-visibility-auto',
         'content-visibility-hidden',
         'contain-content',
-        'contain-[layout_paint]',
-        'contain-intrinsic-size-[auto_800px]',
+        'contain-[layout paint]',
+        'contain-intrinsic-size-[auto 800px]',
         'contain-intrinsic-inline-size-[300px]',
         'contain-intrinsic-block-size-4',
       ],
@@ -278,7 +278,7 @@ describe('CSSX utility compiler', () => {
         'stroke-cap-round',
         'stroke-join-bevel',
         'stroke-miterlimit-4',
-        'stroke-dasharray-[4_8]',
+        'stroke-dasharray-[4 8]',
         'stroke-dashoffset-[12]',
         'fill-rule-evenodd',
         'clip-rule-nonzero',

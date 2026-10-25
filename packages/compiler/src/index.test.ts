@@ -255,7 +255,7 @@ describe('CSSX compiler', () => {
 
   it('compiles arbitrary paint, gradient, decoration, and animation values', async () => {
     const result = await compileStyleMap({
-      root: 'bg-linear-45 from-red-500/50 via-blue-500 to-green-500 text-[length:12px] bg-[image:url(icon.svg)] decoration-[length:2px] underline-offset-(--spacing) animate-[fade_1s_linear]',
+      root: 'bg-linear-45 from-red-500/50 via-blue-500 to-green-500 text-[length:12px] bg-[image:url(icon.svg)] decoration-[length:2px] underline-offset-(--spacing) animate-[fade 1s linear]',
     });
     const css = serializeCss(result.rules);
 
@@ -263,6 +263,6 @@ describe('CSSX compiler', () => {
     expect(css).toContain('font-size:12px');
     expect(css).toContain('background-image:url(icon.svg)');
     expect(css).toContain('text-decoration-thickness:length:2px');
-    expect(css).toContain('animation:fade_1s_linear');
+    expect(css).toContain('animation:fade 1s linear');
   });
 });

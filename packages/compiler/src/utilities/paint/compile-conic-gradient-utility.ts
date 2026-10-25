@@ -1,4 +1,5 @@
 import type { UtilityDeclaration } from '../registry/utility-types';
+import { resolveArbitraryCssValue } from '../values/utility-resolvers';
 import { gradientInterpolation } from './gradient-interpolation';
 
 /**
@@ -17,7 +18,7 @@ export function compileConicGradientUtility(utility: string, negative: boolean):
   const rawAngle = conic[1];
   const angle = rawAngle
     ? rawAngle.startsWith('[')
-      ? rawAngle.slice(1, -1)
+      ? resolveArbitraryCssValue(rawAngle)
       : `${negative ? '-' : ''}${rawAngle}deg`
     : '';
   return [

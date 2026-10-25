@@ -1,3 +1,4 @@
+import { resolveArbitraryCssValue } from '../../shared/resolve-arbitrary-css-value';
 import { resolveThemeToken } from '../../theme/theme';
 import type { CssxTheme } from '../../theme/theme';
 
@@ -18,7 +19,7 @@ export function resolveSpacingValue(raw: string, negative: boolean, theme: CssxT
     return `${sign}100%`;
   }
   if (raw.startsWith('[') && raw.endsWith(']')) {
-    return `${sign}${raw.slice(1, -1)}`;
+    return `${sign}${resolveArbitraryCssValue(raw)}`;
   }
   if (!/^\d+(?:\.\d+)?$/.test(raw)) {
     return null;

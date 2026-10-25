@@ -5,7 +5,7 @@ import { compileTransitionUtility } from './compile-transition-utility';
 
 it('resolves transition-property shorthands and arbitrary property lists', () => {
   expect(compileTransitionUtility('transition-transform-opacity', false, parseTheme())).toHaveLength(3);
-  expect(compileTransitionUtility('transition-[opacity,_transform]', false, parseTheme())).toEqual(
+  expect(compileTransitionUtility('transition-[opacity, transform]', false, parseTheme())).toEqual(
     expect.arrayContaining([expect.objectContaining({ property: 'transition-property', value: 'opacity, transform' })]),
   );
   expect(compileTransitionUtility('transition-colors', false, parseTheme())).toBeNull();

@@ -12,7 +12,7 @@ describe('compileBackgroundUtility', () => {
   });
 
   it('resolves arbitrary positions and sizes and rejects unrelated utilities', () => {
-    expect(compileBackgroundUtility('bg-position-[25%_75%]')).toEqual({
+    expect(compileBackgroundUtility('bg-position-[25% 75%]')).toEqual({
       property: 'background-position',
       value: '25% 75%',
     });

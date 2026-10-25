@@ -1,5 +1,6 @@
 import { resolveThemeValue } from '../theme/theme';
 import type { CssxTheme } from '../theme/theme';
+import { resolveArbitraryCssValue } from '../utilities/values/utility-resolvers';
 import type { VariantRenderState } from './variant-render-state';
 
 /**
@@ -13,10 +14,11 @@ import type { VariantRenderState } from './variant-render-state';
  */
 export function applyResponsiveConditionVariant(variant: string, theme: CssxTheme, state: VariantRenderState): boolean {
   if ((variant.startsWith('min-[') || variant.startsWith('max-[')) && variant.endsWith(']')) {
-    const value = variant.slice(5, -1);
-    if (!value || /[;{}]/.test(value)) {
+    const rawValue = variant.slice(5, -1);
+    if (!rawValue || /[;{}]/.test(rawValue)) {
       throw new Error(`Invalid CSSX responsive variant "${variant}".`);
     }
+    const value = resolveArbitraryCssValue(`[${rawValue}]`);
     state.atRules.push(variant.startsWith('min-') ? `@media (width >= ${value})` : `@media (width < ${value})`);
     return true;
   }

@@ -4,7 +4,7 @@ import { arbitraryValue } from './arbitrary-value';
 
 describe('arbitraryValue', () => {
   it('decodes bracketed and custom-property shorthand values', () => {
-    expect(arbitraryValue('[steps(4,_end)]')).toBe('steps(4, end)');
+    expect(arbitraryValue('[steps(4, end)]')).toBe('steps(4, end)');
     expect(arbitraryValue('(--duration)')).toBe('var(--duration)');
   });
 

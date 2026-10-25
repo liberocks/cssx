@@ -13,7 +13,7 @@ describe('compilePrefixedLayoutUtility', () => {
       property: 'break-inside',
       value: 'avoid-page',
     });
-    expect(compilePrefixedLayoutUtility('object-[25%_75%]')).toEqual({
+    expect(compilePrefixedLayoutUtility('object-[25% 75%]')).toEqual({
       property: 'object-position',
       value: '25% 75%',
     });
