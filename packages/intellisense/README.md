@@ -21,6 +21,11 @@ attributes. Palette colors include completion swatches, source decorations,
 and color-picker support. Disable source swatches with
 `cssxIntelliSense.colorDecorators`.
 
+Arbitrary values can contain literal spaces. For example, use
+`grid-cols-[13rem minmax(0,1fr)]` or `w-[calc(100vw - 2rem)]` directly; the
+extension keeps each full value together while you type, including before its
+closing bracket or quote is complete.
+
 Regenerate and check the catalog from the repository root with
 `pnpm generate:intellisense-catalog` and
 `node scripts/generate-intellisense-catalog.mjs --check`.

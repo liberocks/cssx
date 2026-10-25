@@ -104,6 +104,51 @@ describe('CSSX color providers', () => {
     );
   });
 
+  it('uses decoded candidates and preserves escaped selector source in color edits', () => {
+    const editor = createEditor();
+    const source = String.raw`sx("[&[data-label=\"[\"] h1]:bg-red-500")`;
+    const document = createDocument(source);
+    const color = provideDocumentColors(editor, document)[0]!;
+    const presentations = provideColorPresentations(
+      editor,
+      { red: 0, green: 1, blue: 0, alpha: 1 },
+      {
+        document,
+        range: color.range,
+      },
+    );
+
+    expect(presentations[0]).toEqual(
+      expect.objectContaining({
+        label: String.raw`[&[data-label=\"[\"] h1]:bg-[#00ff00]`,
+        textEdit: expect.objectContaining({ newText: String.raw`[&[data-label=\"[\"] h1]:bg-[#00ff00]` }),
+      }),
+    );
+    const sourceStart = document.offsetAt(color.range.start);
+    const sourceEnd = document.offsetAt(color.range.end);
+    const textEdit = presentations[0]!.textEdit as { newText: string };
+    expect(source.slice(0, sourceStart) + textEdit.newText + source.slice(sourceEnd)).toBe(
+      String.raw`sx("[&[data-label=\"[\"] h1]:bg-[#00ff00]")`,
+    );
+  });
+
+  it('keeps color presentation support when the source range has no CSSX token mapping', () => {
+    const editor = createEditor();
+    const source = 'bg-red-500';
+    const document = createDocument(source);
+    const context = {
+      document,
+      range: new editor.Range(document.positionAt(0), document.positionAt(source.length)),
+    };
+
+    expect(provideColorPresentations(editor, { red: 0, green: 1, blue: 0, alpha: 1 }, context)[0]).toEqual(
+      expect.objectContaining({
+        label: 'bg-[#00ff00]',
+        textEdit: expect.objectContaining({ newText: 'bg-[#00ff00]' }),
+      }),
+    );
+  });
+
   it('returns no colors or edits when disabled or given a non-color candidate', () => {
     const disabledEditor = createEditor(false);
     const source = "sx('text-sm')";

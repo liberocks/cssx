@@ -6,6 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const vitest = path.join(root, 'node_modules/vitest/vitest.mjs');
 const modules = [
   ['catalog-documentation', 'catalog-documentation'],
+  ['candidate-syntax', 'candidate-syntax'],
   ['catalog-entries', 'catalog-entries'],
   ['color-utils', 'color-utils'],
   ['create-completion-item', 'create-completion-item'],

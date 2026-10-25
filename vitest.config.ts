@@ -9,6 +9,7 @@ const intellisenseCoverageExclusions =
         // V8 coverage does not merge counters for CJS modules loaded by both require and ESM workers.
         // These IntelliSense modules receive separate strict coverage runs from the package's test files.
         'packages/intellisense/src/catalog-documentation.js',
+        'packages/intellisense/src/candidate-syntax.js',
         'packages/intellisense/src/catalog-entries.js',
         'packages/intellisense/src/color-utils.js',
         'packages/intellisense/src/create-completion-item.js',
