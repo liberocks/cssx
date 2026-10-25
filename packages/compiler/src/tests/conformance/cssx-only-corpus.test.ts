@@ -27,7 +27,7 @@ const CSSX_ONLY_CANDIDATES = [
   'view-transition-name-[coverage-card]',
   'view-transition-class-[shared]',
   'content-visibility-auto',
-  'contain-intrinsic-size-[auto_800px]',
+  'contain-intrinsic-size-[auto 800px]',
   'scrollbar-thumb-red-500',
 ] as const;
 

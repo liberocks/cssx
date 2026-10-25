@@ -17,6 +17,9 @@ const components = Array.from({ length: 2_000 }, (_, index) => {
     candidates: base.candidates.map((candidate) =>
       candidate.startsWith('[width:') ? `[width:${width}px]` : candidate,
     ),
+    tailwindCandidates: base.tailwindCandidates.map((candidate) =>
+      candidate.startsWith('[width:') ? `[width:${width}px]` : candidate,
+    ),
     stylex: { ...base.stylex, width: `${width}px` },
   };
 });
@@ -47,7 +50,7 @@ ${components.map((component) => `  ${component.name}: ${JSON.stringify(component
 ${cards((index) => `cssx.props(styles.component${index}).className`)}
 `;
 } else if (target === 'tailwind') {
-  source = `${cards((index) => JSON.stringify(components[index].candidates.join(' ')))}
+  source = `${cards((index) => JSON.stringify(components[index].tailwindCandidates.join(' ')))}
 `;
 } else if (target === 'styled-components') {
   source = `import styled from 'styled-components';

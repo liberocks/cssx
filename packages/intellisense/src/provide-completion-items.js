@@ -7,6 +7,8 @@ const { entries } = require('./catalog');
 const { createCompletionItem } = require('./create-completion-item');
 /** CSSX string detector. */
 const { cssxTokenAt } = require('./is-cssx-string');
+/** Shared bracket, parenthesis, quote, and escape aware candidate scanner. */
+const { lastTopLevelSeparator } = require('./candidate-syntax');
 
 /**
  * Produces utility completions at the current editor position.
@@ -25,26 +27,15 @@ function provideCompletionItems(editor, document, position) {
     return undefined;
   }
 
-  const separatorIndex = lastVariantSeparator(current.token);
+  const separatorIndex = lastTopLevelSeparator(current.token, ':');
   const variantPrefix = separatorIndex === -1 ? '' : current.token.slice(0, separatorIndex + 1);
   const utilityPrefix = current.token.slice(variantPrefix.length);
-  return entries(utilityPrefix).map(createCompletionItem.bind(null, editor, current.range, variantPrefix));
-}
-
-/** Finds the final variant separator outside arbitrary bracket syntax. */
-function lastVariantSeparator(candidate) {
-  let depth = 0;
-  let separator = -1;
-  for (let index = 0; index < candidate.length; index += 1) {
-    if (candidate[index] === '[') {
-      depth += 1;
-    } else if (candidate[index] === ']') {
-      depth = Math.max(0, depth - 1);
-    } else if (candidate[index] === ':' && depth === 0) {
-      separator = index;
-    }
-  }
-  return separator;
+  const sourcePrefixEnd =
+    separatorIndex === -1 ? current.start : current.sourceOffsets[current.logicalStart + separatorIndex + 1];
+  const rawVariantPrefix = current.rawToken.slice(0, sourcePrefixEnd - current.start);
+  return entries(utilityPrefix).map((entry) =>
+    createCompletionItem(editor, current.range, variantPrefix, entry, rawVariantPrefix),
+  );
 }
 
 module.exports = { provideCompletionItems };

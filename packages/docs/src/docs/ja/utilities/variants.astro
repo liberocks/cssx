@@ -1,0 +1,73 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/variants"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<p>Variants stack before a candidate, for example <code>tablet:hover:bg-brand</code>. CSSX supports custom breakpoints from <code>--breakpoint-*</code>; defaults are <code>sm</code>, <code>md</code>, <code>lg</code>, <code>xl</code>, and <code>2xl</code>.</p>
+<table>
+<thead><tr>
+<th scope="col">Variant</th>
+<th scope="col">Selector or condition</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>hover:</code></td>
+<td><code>:hover</code> within <code>@media (hover: hover)</code>.</td>
+</tr>
+<tr>
+<td><code>focus:</code>, <code>focus-visible:</code>, <code>focus-within:</code>, <code>active:</code>, <code>disabled:</code>, <code>enabled:</code>, <code>visited:</code>, <code>checked:</code>, <code>indeterminate:</code>, <code>default:</code>, <code>valid:</code>, <code>invalid:</code>, <code>in-range:</code>, <code>out-of-range:</code>, <code>placeholder-shown:</code>, <code>autofill:</code>, <code>read-only:</code>, <code>required:</code>, <code>optional:</code>, <code>open:</code>, <code>target:</code>, <code>empty:</code></td>
+<td>Corresponding state pseudo-class.</td>
+</tr>
+<tr>
+<td><code>first:</code>, <code>last:</code>, <code>only:</code>, <code>odd:</code>, <code>even:</code>, <code>first-of-type:</code>, <code>last-of-type:</code>, <code>only-of-type:</code></td>
+<td>Structural pseudo-class.</td>
+</tr>
+<tr>
+<td><code>before:</code>, <code>after:</code>, <code>selection:</code>, <code>marker:</code>, <code>file:</code>, <code>first-letter:</code>, <code>first-line:</code>, <code>placeholder:</code></td>
+<td>Pseudo-element. <code>before</code> and <code>after</code> receive default empty content.</td>
+</tr>
+<tr>
+<td><code>group-&lt;state&gt;:</code>, <code>peer-&lt;state&gt;:</code></td>
+<td>Stateful group or sibling relationship.</td>
+</tr>
+<tr>
+<td><code>state-[name]:</code>, <code>group-state-[name]:</code>, <code>peer-state-[name]:</code></td>
+<td>Custom-element <code>:state(name)</code> condition, directly or through a group or peer.</td>
+</tr>
+<tr>
+<td><code>has-&lt;state&gt;:</code>, <code>has-[selector]:</code>, <code>in-&lt;state&gt;:</code>, <code>not-&lt;state&gt;:</code></td>
+<td>Relationship condition.</td>
+</tr>
+<tr>
+<td><code>*:</code>, <code>**:</code></td>
+<td>Direct-child or descendant scope.</td>
+</tr>
+<tr>
+<td><code>data-name:</code>, <code>data-[name=value]:</code>, <code>aria-name:</code>, <code>aria-[name=value]:</code></td>
+<td>Attribute condition.</td>
+</tr>
+<tr>
+<td><code>dark:</code>, <code>print:</code>, <code>supports-[property:value]:</code>, <code>not-supports-[property:value]:</code></td>
+<td>Media or support condition.</td>
+</tr>
+<tr>
+<td><code>&lt;breakpoint&gt;:</code>, <code>max-&lt;breakpoint&gt;:</code>, <code>min-[value]:</code>, <code>max-[value]:</code></td>
+<td>Responsive condition.</td>
+</tr>
+<tr>
+<td><code>[&amp;&gt;svg]:</code>, <code>[&amp;.is-active]:</code>, <code>[@supports(...)]:</code>, <code>[@media ...]:</code></td>
+<td>Safe arbitrary selector or at-rule condition.</td>
+</tr>
+</tbody>
+</table>
+<p>Arbitrary selector variants must contain <code>&amp;</code>; only static selectors and supported at-rules are accepted.</p>
+<p>Custom state names must be identifiers, for example <code>state-[open]:block</code> or <code>group-state-[expanded]:text-white</code>.</p>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

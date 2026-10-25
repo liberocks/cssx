@@ -8,7 +8,7 @@ describe('compileModernUtility', () => {
 
   it('compiles fixed platform declarations and arbitrary containment', () => {
     expect(compileModernUtility('contain-layout', theme)).toEqual({ property: 'contain', value: 'layout' });
-    expect(compileModernUtility('contain-[layout_paint]', theme)).toEqual({
+    expect(compileModernUtility('contain-[layout paint]', theme)).toEqual({
       property: 'contain',
       value: 'layout paint',
     });
@@ -27,7 +27,7 @@ describe('compileModernUtility', () => {
       property: 'contain-intrinsic-inline-size',
       value: 'calc(0.25rem * 2)',
     });
-    expect(compileModernUtility('stroke-dasharray-[4_8]', theme)).toEqual({
+    expect(compileModernUtility('stroke-dasharray-[4 8]', theme)).toEqual({
       property: 'stroke-dasharray',
       value: '4 8',
     });

@@ -1,0 +1,66 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/general-layout"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>columns-&#123;auto,n,[value],(--property)&#125;</code></td>
+<td><code>columns</code>.</td>
+</tr>
+<tr>
+<td><code>break-&#123;before,after&#125;-&#123;auto,avoid,all,avoid-page,page,left,right,column&#125;</code></td>
+<td><code>break-before</code> or <code>break-after</code>.</td>
+</tr>
+<tr>
+<td><code>break-inside-&#123;auto,avoid,avoid-page,avoid-column&#125;</code></td>
+<td><code>break-inside</code>.</td>
+</tr>
+<tr>
+<td><code>box-&#123;border,content&#125;</code></td>
+<td><code>box-sizing</code>.</td>
+</tr>
+<tr>
+<td><code>box-decoration-&#123;slice,clone&#125;</code></td>
+<td><code>box-decoration-break</code>, including the WebKit fallback.</td>
+</tr>
+<tr>
+<td><code>float-&#123;start,end,left,right,none&#125;</code>, <code>clear-&#123;start,end,left,right,both,none&#125;</code></td>
+<td><code>float</code> or <code>clear</code>.</td>
+</tr>
+<tr>
+<td><code>overflow[-x/-y]-&#123;auto,hidden,clip,visible,scroll&#125;</code></td>
+<td><code>overflow</code>, <code>overflow-x</code>, or <code>overflow-y</code>.</td>
+</tr>
+<tr>
+<td><code>overscroll[-x/-y]-&#123;auto,contain,none&#125;</code></td>
+<td><code>overscroll-behavior</code> channels.</td>
+</tr>
+<tr>
+<td><code>isolate</code>, <code>isolation-auto</code></td>
+<td><code>isolation: isolate</code> or <code>auto</code>.</td>
+</tr>
+<tr>
+<td><code>object-&#123;contain,cover,fill,none,scale-down&#125;</code></td>
+<td><code>object-fit</code>.</td>
+</tr>
+<tr>
+<td><code>object-&#123;top-left,top,top-right,left,center,right,bottom-left,bottom,bottom-right&#125;</code>, <code>object-[value]</code>, <code>object-(--property)</code></td>
+<td><code>object-position</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

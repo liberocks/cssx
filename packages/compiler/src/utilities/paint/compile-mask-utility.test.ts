@@ -16,7 +16,7 @@ describe('compileMaskUtility', () => {
       property: 'mask-position',
       value: 'center',
     });
-    expect(compileMaskUtility('mask-size-[auto_100%]', theme)).toEqual({
+    expect(compileMaskUtility('mask-size-[auto 100%]', theme)).toEqual({
       property: 'mask-size',
       value: 'auto 100%',
     });

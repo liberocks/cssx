@@ -1,3 +1,5 @@
+import { resolveArbitraryCssValue } from './resolve-arbitrary-css-value';
+
 /**
  * Converts a duration utility value to milliseconds when needed.
  *
@@ -5,5 +7,5 @@
  * @returns CSS duration value.
  */
 export function millisecondsValue(value: string): string {
-  return value.startsWith('[') ? value.slice(1, -1) : `${value}ms`;
+  return value.startsWith('[') ? resolveArbitraryCssValue(value) : `${value}ms`;
 }

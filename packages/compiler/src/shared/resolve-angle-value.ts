@@ -1,3 +1,5 @@
+import { resolveArbitraryCssValue } from './resolve-arbitrary-css-value';
+
 /**
  * Resolves a degree or arbitrary angle value.
  *
@@ -7,7 +9,7 @@
  */
 export function resolveAngleValue(value: string, negative: boolean): string | null {
   if (value.startsWith('[') && value.endsWith(']')) {
-    return `${negative ? '-' : ''}${value.slice(1, -1)}`;
+    return `${negative ? '-' : ''}${resolveArbitraryCssValue(value)}`;
   }
   if (!/^\d+$/.test(value)) {
     return null;

@@ -13,9 +13,9 @@ it('resolves default, named, none, and arbitrary drop-shadow channels', () => {
     'drop-shadow(0 0 #0000)',
   );
   expect(
-    compileDropShadowFilterFamily('drop-shadow-[0_1px_2px_black]', 'filter', '--fx-', '', 'var(--channel,)')?.[0]
+    compileDropShadowFilterFamily('drop-shadow-[0 1px 2px black]', 'filter', '--fx-', '', 'var(--channel,)')?.[0]
       ?.value,
-  ).toBe('drop-shadow(0_1px_2px_black)');
+  ).toBe('drop-shadow(0 1px 2px black)');
 });
 
 it('rejects unsupported drop-shadow properties and names', () => {

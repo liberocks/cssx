@@ -5,7 +5,7 @@ import { compileUtilities } from '../../compiler/compile-utilities';
 describe('CSSX utility compiler', () => {
   it('compiles arbitrary and custom-property shadows through the shared shadow sink', async () => {
     const result = await compileUtilities(
-      ['shadow-[inset_0_0_0_1px_#36c]', 'shadow-(--focus-shadow)'],
+      ['shadow-[inset 0 0 0 1px #36c]', 'shadow-(--focus-shadow)'],
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
     );
 
@@ -69,7 +69,7 @@ describe('CSSX utility compiler', () => {
         'animation-duration-fast',
         'animation-delay-[150ms]',
         'animation-ease-out',
-        'animation-ease-[steps(4,_end)]',
+        'animation-ease-[steps(4, end)]',
         'animation-iterations-2',
         'animation-direction-alternate',
         'animation-fill-both',
@@ -150,7 +150,7 @@ describe('CSSX utility compiler', () => {
         'bg-fixed',
         'bg-clip-text',
         'bg-origin-content',
-        'bg-position-[25%_75%]',
+        'bg-position-[25% 75%]',
         'bg-size-(--hero-size)',
       ],
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
@@ -175,7 +175,7 @@ describe('CSSX utility compiler', () => {
         'mask-repeat-x',
         'mask-clip-content',
         'mask-origin-padding',
-        'mask-position-[25%_75%]',
+        'mask-position-[25% 75%]',
         'mask-size-(--mask-size)',
       ],
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,

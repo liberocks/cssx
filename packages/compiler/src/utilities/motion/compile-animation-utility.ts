@@ -1,6 +1,7 @@
 import { resolveThemeToken } from '../../theme/theme';
 import type { CssxTheme } from '../../theme/theme';
 import type { UtilityDeclaration } from '../registry/utility-types';
+import { resolveArbitraryCssValue } from '../values/utility-resolvers';
 
 /**
  * Compiles a named, arbitrary, or theme-backed animation utility.
@@ -19,7 +20,7 @@ export function compileAnimationUtility(utility: string, theme: CssxTheme): Util
     return { property: 'animation', value: 'none' };
   }
   if (name.startsWith('[') && name.endsWith(']')) {
-    return { property: 'animation', value: name.slice(1, -1) };
+    return { property: 'animation', value: resolveArbitraryCssValue(name) };
   }
   const value = resolveThemeToken(theme, `--animate-${name}`);
   return value ? { property: 'animation', value } : null;

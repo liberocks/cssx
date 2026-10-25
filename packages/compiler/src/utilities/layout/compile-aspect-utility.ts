@@ -1,6 +1,7 @@
 import { resolveDimensionValue } from '../../shared/resolve-dimension-value';
 import type { CssxTheme } from '../../theme/theme';
 import type { UtilityDeclaration } from '../registry/utility-types';
+import { resolveArbitraryCssValue } from '../values/utility-resolvers';
 
 /**
  * Resolves arbitrary aspect ratios and shared size utilities.
@@ -17,7 +18,7 @@ export function compileAspectUtility(
 ): UtilityDeclaration | UtilityDeclaration[] | null {
   const aspect = /^aspect-(\[[^\]]+\])$/.exec(utility);
   if (aspect) {
-    return { property: 'aspect-ratio', value: aspect[1]!.slice(1, -1) };
+    return { property: 'aspect-ratio', value: resolveArbitraryCssValue(aspect[1]!) };
   }
   const size = /^size-(.+)$/.exec(utility);
   if (!size) {

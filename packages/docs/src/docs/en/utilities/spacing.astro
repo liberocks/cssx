@@ -1,0 +1,43 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/spacing"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>p/px/py/pt/pr/pb/pl/ps/pe-&lt;spacing&gt;</code></td>
+<td>Physical or logical padding.</td>
+</tr>
+<tr>
+<td><code>m/mx/my/mt/mr/mb/ml/ms/me-&lt;spacing&gt;</code></td>
+<td>Physical or logical margin. Margins also accept <code>auto</code>.</td>
+</tr>
+<tr>
+<td><code>gap-&lt;spacing&gt;</code>, <code>gap-x-&lt;spacing&gt;</code>, <code>gap-y-&lt;spacing&gt;</code></td>
+<td><code>gap</code>, <code>column-gap</code>, or <code>row-gap</code>.</td>
+</tr>
+<tr>
+<td><code>space-x-&lt;spacing&gt;</code>, <code>space-y-&lt;spacing&gt;</code></td>
+<td>Child margins on every child except the last.</td>
+</tr>
+<tr>
+<td><code>space-&#123;x,y&#125;-reverse</code></td>
+<td>Reverses the matching child-spacing direction.</td>
+</tr>
+</tbody>
+</table>
+<p><code>&lt;spacing&gt;</code> accepts <code>px</code>, <code>full</code>, numeric values resolved through <code>--spacing</code>, and supported arbitrary values. Negative forms are supported where CSS accepts them.</p>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

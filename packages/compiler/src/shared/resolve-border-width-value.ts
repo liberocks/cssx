@@ -1,3 +1,5 @@
+import { resolveArbitraryCssValue } from './resolve-arbitrary-css-value';
+
 /**
  * Resolves a supported border-width value.
  *
@@ -6,7 +8,7 @@
  */
 export function resolveBorderWidthValue(raw: string): string | null {
   if (raw.startsWith('[') && raw.endsWith(']')) {
-    return raw.slice(1, -1);
+    return resolveArbitraryCssValue(raw);
   }
   return /^(0|2|4|8)$/.test(raw) ? `${raw}px`.replace('0px', '0') : null;
 }

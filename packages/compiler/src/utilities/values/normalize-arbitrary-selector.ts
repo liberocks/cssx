@@ -1,3 +1,5 @@
+import { resolveArbitraryCssValue } from '../../shared/resolve-arbitrary-css-value';
+
 /**
  * Treats unescaped underscores as spaces in arbitrary selector variants.
  *
@@ -5,5 +7,5 @@
  * @returns Selector text with underscores normalized.
  */
 export function normalizeArbitrarySelector(value: string): string {
-  return value.replace(/\\_/g, '\u0000').replaceAll('_', ' ').replaceAll('\u0000', '_');
+  return resolveArbitraryCssValue(`[${value}]`);
 }

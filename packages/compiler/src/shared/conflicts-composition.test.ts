@@ -95,7 +95,7 @@ describe('CSSX semantic conflict classifier', () => {
       text: 'text-sm',
       background: '[background:red]',
       color: 'bg-blue-500',
-      transition: '[transition:all_1s]',
+      transition: '[transition:all 1s]',
       duration: 'duration-200',
     });
     const font = result.styles.font;
@@ -115,9 +115,9 @@ describe('CSSX semantic conflict classifier', () => {
     );
     expect(mergeCompiledStyles([color, background])).toBe(result.classes['[background:red]']);
     expect(mergeCompiledStyles([transition, duration])).toBe(
-      `${result.classes['[transition:all_1s]']} ${result.classes['duration-200']}`,
+      `${result.classes['[transition:all 1s]']} ${result.classes['duration-200']}`,
     );
-    expect(mergeCompiledStyles([duration, transition])).toBe(result.classes['[transition:all_1s]']);
+    expect(mergeCompiledStyles([duration, transition])).toBe(result.classes['[transition:all 1s]']);
   });
 
   it('lets animation shorthand and independent animation longhands reset each other', () => {
@@ -139,7 +139,7 @@ describe('CSSX semantic conflict classifier', () => {
     ['[animation:none]', '[animation-duration:1s]'],
     ['[animation:none]', 'animation-timeline-view-block'],
     ['[animation:none]', 'animation-range-entry'],
-    ['[animation-range:entry_0%_exit_100%]', 'animation-range-start-entry'],
+    ['[animation-range:entry 0% exit 100%]', 'animation-range-start-entry'],
     ['[grid:none]', 'grid-cols-3'],
     ['[mask:none]', 'mask-repeat-x'],
     ['[container:layout]', '[container-type:inline-size]'],

@@ -1,3 +1,5 @@
+import { resolveArbitraryCssValue } from '../../shared/resolve-arbitrary-css-value';
+
 /**
  * Resolves a supported line-height name.
  *
@@ -13,5 +15,5 @@ export function leadingValue(value: string): string {
     relaxed: '1.625',
     loose: '2',
   };
-  return value.startsWith('[') ? value.slice(1, -1) : (values[value] ?? value);
+  return value.startsWith('[') ? resolveArbitraryCssValue(value) : (values[value] ?? value);
 }

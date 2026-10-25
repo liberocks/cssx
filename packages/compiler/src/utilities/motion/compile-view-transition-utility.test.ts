@@ -8,7 +8,7 @@ describe('compileViewTransitionUtility', () => {
     expect(compileViewTransitionUtility('view-transition-name-match')?.value).toBe('match-element');
     expect(compileViewTransitionUtility('view-transition-name-[hero]')?.value).toBe('hero');
     expect(compileViewTransitionUtility('view-transition-class-none')?.value).toBe('none');
-    expect(compileViewTransitionUtility('view-transition-class-[hero_card]')?.value).toBe('hero card');
+    expect(compileViewTransitionUtility('view-transition-class-[hero card]')?.value).toBe('hero card');
   });
 
   it('rejects reserved, unsafe, and unknown names', () => {

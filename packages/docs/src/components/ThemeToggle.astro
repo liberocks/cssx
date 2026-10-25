@@ -9,60 +9,19 @@ interface Props {
 
 ---
 
-<div class="theme-toggle" class={Astro.props.class}>
-  <button data-theme-toggle type="button" aria-label="Switch color theme between light, dark, and system" class={sx('pt-1.2')}>
-    <span data-theme-label class="theme-toggle-sun">
-      <Icon name="sun" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
+<div class={sx('grid place-items-center', Astro.props.class)}>
+  <button class={sx('grid h-6 w-6 place-items-center border-0 bg-transparent p-0 cursor-pointer')} data-theme-toggle type="button" aria-label="Switch color theme between light, dark, and system">
+    <span data-theme-label class={sx('hidden [html[data-theme-mode=light]_&]:block')}>
+      <Icon name="sun" class={sx('h-5 w-5 text-gray-600 dark:text-gray-300')} />
     </span>
-    <span data-theme-label class="theme-toggle-moon">
-      <Icon name="moon" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
+    <span data-theme-label class={sx('hidden [html[data-theme-mode=dark]_&]:block')}>
+      <Icon name="moon" class={sx('h-5 w-5 text-gray-600 dark:text-gray-300')} />
     </span>
-    <span data-theme-label class="theme-toggle-system">
-      <Icon name="device-desktop" class={sx('h-6 w-6 text-gray-600 dark:text-gray-300')} />
+    <span data-theme-label class={sx('hidden [html[data-theme-mode=system]_&]:block')}>
+      <Icon name="device-desktop" class={sx('h-5 w-5 text-gray-600 dark:text-gray-300')} />
     </span>
   </button>
 </div>
-
-<style>
-  .theme-toggle-sun,
-  .theme-toggle-system {
-    display: none;
-  }
-  .theme-toggle-moon {
-    display: block;
-  }
-  :where([data-theme-mode='light']) .theme-toggle-sun,
-  :where([data-theme-mode='light'] *) .theme-toggle-sun {
-    display: block;
-  }
-  :where([data-theme-mode='light']) .theme-toggle-moon,
-  :where([data-theme-mode='light'] *) .theme-toggle-moon,
-  :where([data-theme-mode='light']) .theme-toggle-system,
-  :where([data-theme-mode='light'] *) .theme-toggle-system {
-    display: none;
-  }
-  :where([data-theme-mode='system']) .theme-toggle-system,
-  :where([data-theme-mode='system'] *) .theme-toggle-system {
-    display: block;
-  }
-  :where([data-theme-mode='system']) .theme-toggle-sun,
-  :where([data-theme-mode='system'] *) .theme-toggle-sun,
-  :where([data-theme-mode='system']) .theme-toggle-moon,
-  :where([data-theme-mode='system'] *) .theme-toggle-moon {
-    display: none;
-  }
-  .theme-toggle-caption {
-    display: none;
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: 0.025em;
-  }
-  @media (min-width: 640px) {
-    .theme-toggle-caption {
-      display: inline;
-    }
-  }
-</style>
 
 <script>
   const buttons = document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]');
@@ -79,7 +38,6 @@ interface Props {
     const isDark = mode === 'dark' || (mode === 'system' && prefersDark.matches);
     document.documentElement.dataset.themeMode = mode;
     document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
   }
 
   function updateLabels() {

@@ -26,7 +26,7 @@ describe('applyVariants', () => {
     expect(applyVariants('.x', declarations, ['group-state-[expanded]'], theme)).toBe(
       '.group:state(expanded) .x{color:red;}',
     );
-    expect(applyVariants('.x', declarations, ['[&:is(.card_item)]'], theme)).toBe('.x:is(.card item){color:red;}');
+    expect(applyVariants('.x', declarations, ['[&:is(.card item)]'], theme)).toBe('.x:is(.card item){color:red;}');
   });
 
   it('nests responsive, environment, and declaration at-rules in source order', () => {

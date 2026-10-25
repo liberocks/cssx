@@ -55,18 +55,21 @@ export function createWorkload(variant = 'large') {
     throw new Error(`Unknown benchmark variant "${variant}". Choose: ${WORKLOAD_VARIANT_NAMES.join(', ')}.`);
   }
   const components = Array.from({ length: componentCount }, (_, index) => createComponent(index));
+  const cssxCandidates = components.flatMap((component) => component.candidates);
+  const tailwindCandidates = components.flatMap((component) => component.tailwindCandidates);
 
   return {
     variant,
     componentCount,
-    utilityOccurrences: components.reduce((total, component) => total + component.candidates.length, 0),
+    utilityOccurrences: cssxCandidates.length,
     components,
     cssxStyleMap: Object.fromEntries(components.map((component) => [component.name, component.candidates.join(' ')])),
-    tailwindCandidates: components.flatMap((component) => component.candidates),
+    cssxCandidates,
+    tailwindCandidates,
     tailwindSource: [
       'export const props = {',
       ...components.map(
-        (component) => `  ${component.name}: { className: ${JSON.stringify(component.candidates.join(' '))} },`,
+        (component) => `  ${component.name}: { className: ${JSON.stringify(component.tailwindCandidates.join(' '))} },`,
       ),
       '};',
     ].join('\n'),
@@ -115,27 +118,30 @@ function createComponent(index) {
   const radius = RADIUS[index % RADIUS.length];
   const disabled = index % 5 === 0;
   const width = 160 + index;
+  const boxShadow = '0 1px 2px rgb(0 0 0 / 0.1)';
+  const commonCandidates = [
+    '[display:inline-flex]',
+    '[align-items:center]',
+    '[justify-content:center]',
+    `[gap:${gap[1]}]`,
+    `[border-radius:${radius[1]}]`,
+    `[background-color:${background[2]}]`,
+    `[padding-left:${paddingX[1]}]`,
+    `[padding-right:${paddingX[1]}]`,
+    `[padding-top:${paddingY[1]}]`,
+    `[padding-bottom:${paddingY[1]}]`,
+    '[font-size:0.875rem]',
+    '[line-height:1.25rem]',
+    '[font-weight:600]',
+    '[color:#fff]',
+    `[width:${width}px]`,
+    ...(disabled ? ['[opacity:0.5]'] : []),
+  ];
 
   return {
     name: `component${index}`,
-    candidates: [
-      '[display:inline-flex]',
-      '[align-items:center]',
-      '[justify-content:center]',
-      `[gap:${gap[1]}]`,
-      `[border-radius:${radius[1]}]`,
-      `[background-color:${background[2]}]`,
-      `[padding-left:${paddingX[1]}]`,
-      `[padding-right:${paddingX[1]}]`,
-      `[padding-top:${paddingY[1]}]`,
-      `[padding-bottom:${paddingY[1]}]`,
-      '[font-size:0.875rem]',
-      '[line-height:1.25rem]',
-      '[font-weight:600]',
-      '[color:#fff]',
-      `[width:${width}px]`,
-      ...(disabled ? ['[opacity:0.5]'] : []),
-    ],
+    candidates: [...commonCandidates, `[box-shadow:${boxShadow}]`],
+    tailwindCandidates: [...commonCandidates, `[box-shadow:${boxShadow.replaceAll(' ', '_')}]`],
     stylex: {
       display: 'inline-flex',
       alignItems: 'center',
@@ -152,6 +158,7 @@ function createComponent(index) {
       fontWeight: 600,
       color: '#fff',
       width: `${width}px`,
+      boxShadow,
       ...(disabled ? { opacity: 0.5 } : {}),
     },
   };

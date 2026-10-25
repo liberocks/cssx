@@ -1,5 +1,6 @@
 import type { CssxTheme } from '../theme/theme';
 import { normalizeArbitraryAtRule } from '../utilities/values/normalize-arbitrary-at-rule';
+import { resolveArbitraryCssValue } from '../utilities/values/utility-resolvers';
 import { applyResponsiveConditionVariant } from './apply-responsive-condition-variant';
 import type { VariantOptions } from './apply-variants';
 import { resolveViewTransitionVariant } from './resolve-view-transition-variant';
@@ -47,9 +48,11 @@ export function applyConditionVariant(
   } else if (variant === 'print') {
     state.atRules.push('@media print');
   } else if (variant.startsWith('supports-[') && variant.endsWith(']')) {
-    state.atRules.push(`@supports (${variant.slice(10, -1).replace(':', ': ')})`);
+    const condition = resolveArbitraryCssValue(`[${variant.slice(10, -1)}]`);
+    state.atRules.push(`@supports (${condition.replace(/:\s*/, ': ')})`);
   } else if (variant.startsWith('not-supports-[') && variant.endsWith(']')) {
-    state.atRules.push(`@supports not (${variant.slice(14, -1).replace(':', ': ')})`);
+    const condition = resolveArbitraryCssValue(`[${variant.slice(14, -1)}]`);
+    state.atRules.push(`@supports not (${condition.replace(/:\s*/, ': ')})`);
   } else {
     return applyResponsiveConditionVariant(variant, theme, state);
   }

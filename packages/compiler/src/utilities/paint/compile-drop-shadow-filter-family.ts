@@ -1,5 +1,6 @@
 import { filterDeclarations } from '../registry/filter-declarations';
 import type { UtilityDeclaration } from '../registry/utility-types';
+import { resolveArbitraryCssValue } from '../values/utility-resolvers';
 
 /** Named drop-shadow values used by filter utilities. */
 const DROP_SHADOW_VALUES: Readonly<Record<string, string>> = {
@@ -35,7 +36,7 @@ export function compileDropShadowFilterFamily(
     return null;
   }
   const raw = dropShadow[1] ?? 'DEFAULT';
-  const value = raw.startsWith('[') && raw.endsWith(']') ? raw.slice(1, -1) : DROP_SHADOW_VALUES[raw];
+  const value = raw.startsWith('[') && raw.endsWith(']') ? resolveArbitraryCssValue(raw) : DROP_SHADOW_VALUES[raw];
   return value
     ? filterDeclarations(property, variablePrefix, semanticPrefix, sink, 'drop-shadow', `drop-shadow(${value})`)
     : null;

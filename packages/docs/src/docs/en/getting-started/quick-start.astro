@@ -1,0 +1,21 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["getting-started/quick-start"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<p>CSSX turns static utility strings into generated CSS during your build. Start with the runtime package and the plugin for your bundler.</p>
+<h2 id="install">Install</h2>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />
+<h2 id="enable-the-vite-plugin">Enable the Vite plugin</h2>
+<Code code={codeBlocks[1].code} lang={codeBlocks[1].lang} />
+<p>The plugin finds static CSSX strings, compiles the utilities, and emits the stylesheet as part of the build.</p>
+<h2 id="add-utilities-to-a-component">Add utilities to a component</h2>
+<Code code={codeBlocks[2].code} lang={codeBlocks[2].lang} />
+<p>Use <code>sx</code> to join static utility strings and runtime conditions. CSSX compiles the static strings; runtime values are joined as class names. See <a href={`${docsPath}/utilities/syntax-and-values`}>Utility syntax</a> and <a href={`${docsPath}/utilities/variants`}>Variants</a> for the full reference.</p>

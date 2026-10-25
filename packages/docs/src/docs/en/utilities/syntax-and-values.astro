@@ -1,0 +1,44 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/syntax-and-values"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<p>CSSX checks every utility while building. A bracketed value must be static and safe. An unsupported utility stops the build. The examples below use <code>@cssxio/cssx</code>.</p>
+<p>Write spaces directly in bracketed values and arbitrary selectors: <code>grid-cols-[13rem minmax(0,1fr)]</code>, <code>animate-[fade 1s ease-in]</code>, and <code>[&amp; h1]:text-lg</code>. Unescaped underscores remain a whitespace alias for compatibility; use <code>\_</code> for a literal underscore. Underscores in <code>url()</code> payloads and <code>var()</code> or <code>env()</code> names stay literal.</p>
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>-&lt;utility&gt;</code></td>
+<td>Negates supported spacing, dimensions, order, angles, hue rotation, and scale values.</td>
+</tr>
+<tr>
+<td><code>!&lt;utility&gt;</code> or <code>&lt;utility&gt;!</code></td>
+<td>Marks every declaration emitted by the utility as <code>!important</code>.</td>
+</tr>
+<tr>
+<td><code>&lt;family&gt;-[value]</code></td>
+<td>Provides a validated static arbitrary value for that family.</td>
+</tr>
+<tr>
+<td><code>&lt;supported-family&gt;-(--property)</code></td>
+<td>Uses <code>var(--property)</code> where that family accepts custom properties.</td>
+</tr>
+<tr>
+<td><code>[property:value]</code></td>
+<td>Emits one validated static declaration.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

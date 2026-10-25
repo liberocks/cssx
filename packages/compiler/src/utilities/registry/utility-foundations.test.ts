@@ -99,7 +99,7 @@ describe('CSSX utility compiler', () => {
         'box-border',
         'box-decoration-clone',
         'object-top-right',
-        'object-[25%_75%]',
+        'object-[25% 75%]',
       ],
       (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
     );

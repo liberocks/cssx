@@ -1,3 +1,4 @@
+import { normalizeArbitrarySelector } from '../utilities/values/normalize-arbitrary-selector';
 import { groupStateVariantName } from './group-state-variant-name';
 import { isGroupStateVariant } from './is-group-state-variant';
 import { isPeerStateVariant } from './is-peer-state-variant';
@@ -32,7 +33,9 @@ export function applyRelationshipSelectorVariant(variant: string, state: Variant
       const pseudoClass = PSEUDO_CLASS_VARIANTS[variant.slice('peer-'.length)]!;
       state.selectors = state.selectors.map((selector) => `.peer:${pseudoClass} ~ ${selector}`);
     } else if (variant.startsWith('has-[') && variant.endsWith(']')) {
-      state.selectors = state.selectors.map((selector) => `${selector}:has(${variant.slice(5, -1)})`);
+      state.selectors = state.selectors.map(
+        (selector) => `${selector}:has(${normalizeArbitrarySelector(variant.slice(5, -1))})`,
+      );
     } else if (variant.startsWith('has-') && isStateVariant(variant.slice(4))) {
       const pseudoClass = PSEUDO_CLASS_VARIANTS[variant.slice(4)]!;
       state.selectors = state.selectors.map((selector) => `${selector}:has(*:${pseudoClass})`);

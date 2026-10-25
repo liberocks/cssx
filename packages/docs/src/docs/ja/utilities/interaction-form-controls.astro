@@ -1,0 +1,58 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/interaction-form-controls"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>cursor-&#123;auto,default,pointer,wait,text,move,help,not-allowed,none,context-menu,progress,cell,crosshair,vertical-text,alias,copy,no-drop,grab,grabbing,all-scroll,col-resize,row-resize,n-resize,e-resize,s-resize,w-resize,ne-resize,nw-resize,se-resize,sw-resize,ew-resize,ns-resize,nesw-resize,nwse-resize,zoom-in,zoom-out&#125;</code></td>
+<td><code>cursor</code>.</td>
+</tr>
+<tr>
+<td><code>touch-&#123;auto,none,manipulation,pan-x,pan-y,pinch-zoom&#125;</code></td>
+<td><code>touch-action</code>.</td>
+</tr>
+<tr>
+<td><code>will-change-&#123;auto,scroll,contents,transform&#125;</code></td>
+<td><code>will-change</code>.</td>
+</tr>
+<tr>
+<td><code>pointer-events-&#123;none,auto&#125;</code>, <code>select-&#123;none,text,all,auto&#125;</code></td>
+<td>Pointer event or text-selection behavior.</td>
+</tr>
+<tr>
+<td><code>accent-auto</code>, <code>accent-&lt;color&gt;</code>, <code>caret-auto</code>, <code>caret-&lt;color&gt;</code></td>
+<td>Accent or caret color.</td>
+</tr>
+<tr>
+<td><code>appearance-&#123;auto,none&#125;</code></td>
+<td><code>appearance</code>.</td>
+</tr>
+<tr>
+<td><code>scheme-&#123;normal,dark,light,light-dark,only-dark,only-light&#125;</code></td>
+<td><code>color-scheme</code>.</td>
+</tr>
+<tr>
+<td><code>field-sizing-content</code></td>
+<td><code>field-sizing: content</code>.</td>
+</tr>
+<tr>
+<td><code>resize</code>, <code>resize-&#123;x,y,none&#125;</code></td>
+<td>Resize behavior.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

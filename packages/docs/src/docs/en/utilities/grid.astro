@@ -1,0 +1,46 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/grid"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>grid-cols-&lt;n&gt;</code>, <code>grid-rows-&lt;n&gt;</code></td>
+<td>Repeating <code>grid-template-columns</code> or <code>grid-template-rows</code>.</td>
+</tr>
+<tr>
+<td><code>grid-&#123;cols,rows&#125;-subgrid</code></td>
+<td>A <code>subgrid</code> template.</td>
+</tr>
+<tr>
+<td><code>&#123;col,row&#125;-span-&lt;n&gt;</code>, <code>&#123;col,row&#125;-span-full</code></td>
+<td><code>grid-column</code> or <code>grid-row</code> span.</td>
+</tr>
+<tr>
+<td><code>&#123;col,row&#125;-&#123;start,end&#125;-&#123;n,auto&#125;</code></td>
+<td>Grid line placement.</td>
+</tr>
+<tr>
+<td><code>grid-flow-&#123;row,col,row-dense,col-dense&#125;</code></td>
+<td><code>grid-auto-flow</code>.</td>
+</tr>
+<tr>
+<td><code>auto-&#123;cols,rows&#125;-&#123;auto,min,max,fr&#125;</code></td>
+<td><code>grid-auto-columns</code> or <code>grid-auto-rows</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

@@ -1,6 +1,6 @@
 ---
-import type { CollectionEntry } from 'astro:content';
-import type { Locale } from '../../localization/index.ts';
+import { sx } from '@cssxio/cssx';
+import type { DocHeading, DocLocale, DocPage } from '../../docs/catalog.ts';
 import { defaultLocale } from '../../localization/index.ts';
 import DocsNavigation from '../../components/DocsNavigation.astro';
 import DocsSearch from '../../components/DocsSearch.astro';
@@ -8,46 +8,67 @@ import LanguageToggle from '../../components/LanguageToggle.astro';
 import ThemeToggle from '../../components/ThemeToggle.astro';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 
-interface Heading {
-  depth: number;
-  slug: string;
-  text: string;
-}
-
 interface Props {
   title: string;
-  lang: Locale;
-  pages: CollectionEntry<'docs'>[];
+  lang: DocLocale;
+  pages: DocPage[];
   currentId?: string;
-  headings?: Heading[];
+  headings?: readonly DocHeading[];
 }
 
 const { title, lang, pages, currentId, headings = [] } = Astro.props;
 const homePath = lang === defaultLocale ? '/' : `/${lang}`;
+const tocHeadings = headings.filter((heading) => heading.depth >= 2 && heading.depth <= 4);
 ---
 
 <DocsLayout title={`${title} | CSSX`} lang={lang}>
-  <div class="docs-shell">
-    <header class="docs-header">
-      <a class="docs-header-logo" href={homePath}>
-        <img src="/images/logo.png" alt="CSSX home" />
+  <div id="top" class={sx('box-border px-6 pt-22 pb-4 max-md:px-4 max-md:pt-19')}>
+    <header
+      class={sx(
+        'fixed inset-x-6 top-4 z-50 mx-auto grid h-12 max-w-7xl',
+        'grid-cols-(--docs-grid-columns) items-center gap-x-8 bg-white dark:bg-neutral-950',
+        'max-docs:flex max-docs:justify-between max-docs:gap-6',
+        'max-md:inset-x-4 max-md:top-3',
+      )}
+    >
+      <a class={sx('col-start-1 inline-flex items-center')} href={homePath}>
+        <img src="/images/logo.png" alt="CSSX home" class={sx('h-6 w-auto max-md:h-5')} />
       </a>
-      <DocsNavigation variant="mobile" pages={pages} lang={lang} homePath={homePath} currentId={currentId} />
-      <div class="docs-header-tools">
+      <DocsNavigation variant="mobile" pages={pages} lang={lang} currentId={currentId} />
+      <div class={sx('col-start-3 flex items-center gap-4 justify-self-start pl-2 max-docs:ml-auto max-docs:pl-0 max-md:gap-2')}>
         <DocsSearch pages={pages} lang={lang} />
         <LanguageToggle />
         <ThemeToggle />
       </div>
     </header>
-    <div class="docs-frame">
-      <DocsNavigation variant="desktop" pages={pages} lang={lang} homePath={homePath} currentId={currentId} />
-      <main class="docs-main"><slot /></main>
-      {headings.length > 0 && (
-        <aside class="docs-toc" aria-label="On this page">
-          <h2>On this page</h2>
-          <nav>
-            {headings.filter((heading) => heading.depth === 2 || heading.depth === 3).map((heading) => (
-              <a href={`#${heading.slug}`} data-depth={heading.depth}>{heading.text}</a>
+    <div
+      class={sx(
+        'relative z-0 grid w-full max-w-7xl grid-cols-(--docs-grid-columns) gap-8 mx-auto',
+        'max-docs:grid-cols-[13rem minmax(0,1fr)] max-md:block',
+      )}
+    >
+      <DocsNavigation variant="desktop" pages={pages} lang={lang} currentId={currentId} />
+      <main class={sx('col-start-2 min-w-0 pb-16')}><slot /></main>
+      {tocHeadings.length > 0 && (
+        <aside
+          class={sx(
+            'fixed top-22 bottom-4 [right:max(1.5rem,calc((100vw - var(--container-7xl))/2))] z-10',
+            'box-border w-48 pl-2',
+            'max-docs:hidden',
+          )}
+          aria-label="On this page"
+        >
+          <h2 class={sx('m-0 mb-3 text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-50')}>On this page</h2>
+          <nav class={sx('flex flex-col gap-2 border-l border-gray-200 pl-3 dark:border-gray-800')}>
+            <a class={sx('text-sm leading-normal text-gray-500 no-underline hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50')} href="#top">(Top)</a>
+            {tocHeadings.map((heading) => (
+              <a
+                class={sx('text-sm leading-normal text-gray-500 no-underline hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50', 'data-[depth=3]:pl-2')}
+                href={`#${heading.slug}`}
+                data-depth={heading.depth}
+              >
+                {heading.text}
+              </a>
             ))}
           </nav>
         </aside>
@@ -55,298 +76,3 @@ const homePath = lang === defaultLocale ? '/' : `/${lang}`;
     </div>
   </div>
 </DocsLayout>
-
-<style is:global>
-  .docs-shell {
-    min-height: 100vh;
-    padding: 1rem 1.5rem 2rem;
-  }
-
-  .docs-header {
-    display: flex;
-    min-height: 3rem;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1.5rem;
-    margin: 0 auto 1.5rem;
-    max-width: 88rem;
-  }
-
-  .docs-header-logo {
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .docs-header-logo img {
-    width: auto;
-    height: 1.5rem;
-  }
-
-  .docs-header-tools {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-left: auto;
-  }
-
-  .docs-frame {
-    display: grid;
-    grid-template-columns: 14rem minmax(0, 1fr) 12rem;
-    gap: 2rem;
-    max-width: 88rem;
-    margin: 0 auto;
-  }
-
-  .docs-main {
-    min-width: 0;
-    padding: 0 0 4rem;
-  }
-
-  .docs-toc {
-    position: sticky;
-    top: 1.5rem;
-    align-self: start;
-    max-height: calc(100dvh - 3rem);
-    overflow: auto;
-    padding-left: 0.5rem;
-  }
-
-  .docs-toc h2 {
-    margin: 0 0 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .docs-toc nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-    border-left: 1px solid #e5e5e5;
-    padding-left: 0.75rem;
-  }
-
-  .docs-toc a {
-    color: #737373;
-    font-size: 0.8rem;
-    line-height: 1.4;
-    text-decoration: none;
-  }
-
-  .docs-toc a[data-depth='3'] {
-    padding-left: 0.6rem;
-  }
-
-  .docs-toc a:hover {
-    color: #171717;
-  }
-
-  .docs-prose {
-    max-width: 52rem;
-    color: #404040;
-    font-size: 1rem;
-    line-height: 1.75;
-  }
-
-  .docs-prose h1,
-  .docs-prose h2,
-  .docs-prose h3 {
-    color: #171717;
-    line-height: 1.25;
-    scroll-margin-top: 1.5rem;
-  }
-
-  .docs-prose h1 {
-    margin: 0 0 0.8rem;
-    font-size: clamp(2rem, 4vw, 2.6rem);
-    letter-spacing: -0.035em;
-  }
-
-  .docs-prose h2 {
-    margin: 2.6rem 0 0.8rem;
-    font-size: 1.45rem;
-    letter-spacing: -0.02em;
-  }
-
-  .docs-prose h3 {
-    margin: 1.8rem 0 0.6rem;
-    font-size: 1.1rem;
-  }
-
-  .docs-prose p,
-  .docs-prose ul,
-  .docs-prose ol {
-    margin: 0.8rem 0 1.1rem;
-  }
-
-  .docs-prose a {
-    color: #3448e8;
-    text-decoration: underline;
-    text-underline-offset: 0.18em;
-  }
-
-  .docs-prose :not(pre) > code {
-    border: 1px solid #e5e5e5;
-    border-radius: 0.25rem;
-    background: #fafafa;
-    padding: 0.08rem 0.3rem;
-    font-size: 0.88em;
-  }
-
-  .docs-prose pre {
-    max-width: 100%;
-    overflow: auto;
-    border: 1px solid #e5e5e5;
-    border-radius: 0.75rem;
-    background: #fafafa;
-    padding: 1rem 1.2rem;
-    font-size: 0.875rem;
-    line-height: 1.6;
-  }
-
-  .docs-prose table {
-    display: block;
-    max-width: 100%;
-    overflow: auto;
-    border-collapse: collapse;
-    margin: 1.2rem 0 1.5rem;
-    font-size: 0.875rem;
-    line-height: 1.55;
-  }
-
-  .docs-prose th,
-  .docs-prose td {
-    border-bottom: 1px solid #e5e5e5;
-    padding: 0.65rem 0.8rem;
-    text-align: left;
-    vertical-align: top;
-  }
-
-  .docs-prose th {
-    color: #171717;
-    font-weight: 600;
-  }
-
-  .docs-prose blockquote {
-    border-left: 3px solid #d4d4d4;
-    margin: 1.2rem 0;
-    padding-left: 1rem;
-    color: #525252;
-  }
-
-  .docs-home-links {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-  }
-
-  .docs-home-links a {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    border: 1px solid #e5e5e5;
-    border-radius: 0.75rem;
-    padding: 1rem;
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .docs-home-links a:hover {
-    border-color: #a3a3a3;
-    background: #fafafa;
-  }
-
-  .docs-home-links strong {
-    color: #171717;
-    font-size: 0.95rem;
-  }
-
-  .docs-home-links span {
-    color: #737373;
-    font-size: 0.85rem;
-    line-height: 1.5;
-  }
-
-  :root[data-theme='dark'] .docs-prose,
-  :root[data-theme='dark'] .docs-prose blockquote {
-    color: #d4d4d4;
-  }
-
-  :root[data-theme='dark'] .docs-prose h1,
-  :root[data-theme='dark'] .docs-prose h2,
-  :root[data-theme='dark'] .docs-prose h3,
-  :root[data-theme='dark'] .docs-prose th,
-  :root[data-theme='dark'] .docs-home-links strong {
-    color: #fafafa;
-  }
-
-  :root[data-theme='dark'] .docs-prose :not(pre) > code,
-  :root[data-theme='dark'] .docs-prose pre {
-    border-color: #404040;
-    background: #171717;
-  }
-
-  :root[data-theme='dark'] .docs-prose th,
-  :root[data-theme='dark'] .docs-prose td,
-  :root[data-theme='dark'] .docs-toc nav,
-  :root[data-theme='dark'] .docs-home-links a {
-    border-color: #404040;
-  }
-
-  :root[data-theme='dark'] .docs-home-links a:hover {
-    background: #171717;
-  }
-
-  :root[data-theme='dark'] .docs-toc a:hover {
-    color: #fafafa;
-  }
-
-  @media (max-width: 74rem) {
-    .docs-frame {
-      grid-template-columns: 13rem minmax(0, 1fr);
-    }
-
-    .docs-toc {
-      display: none;
-    }
-  }
-
-  @media (max-width: 48rem) {
-    .docs-shell {
-      padding: 0.75rem 1rem 2rem;
-    }
-
-    .docs-header {
-      margin-bottom: 1rem;
-    }
-
-    .docs-frame {
-      display: block;
-    }
-
-    .docs-header-logo img {
-      height: 1.25rem;
-    }
-
-    .docs-header-tools {
-      gap: 0.5rem;
-    }
-
-    .docs-header-tools .docs-search > button {
-      width: 2.5rem;
-      overflow: hidden;
-      color: transparent;
-      white-space: nowrap;
-    }
-
-    .docs-header-tools .docs-search kbd {
-      display: none;
-    }
-
-    .docs-prose {
-      font-size: 0.95rem;
-    }
-  }
-</style>

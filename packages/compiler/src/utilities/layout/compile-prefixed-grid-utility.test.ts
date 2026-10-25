@@ -8,7 +8,7 @@ describe('compilePrefixedGridUtility', () => {
       property: 'grid-template-columns',
       value: 'repeat(3, minmax(0, 1fr))',
     });
-    expect(compilePrefixedGridUtility('grid-rows-[18rem_1fr]', false)).toEqual({
+    expect(compilePrefixedGridUtility('grid-rows-[18rem 1fr]', false)).toEqual({
       property: 'grid-template-rows',
       value: '18rem 1fr',
     });

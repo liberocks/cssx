@@ -1,9 +1,7 @@
-import { sx } from '@cssxio/cssx';
-
+import { richTextClasses } from '../styles/rich-text.ts';
 import type { Lang } from './type.ts';
 
-const mono = sx('font-mono');
-const link = sx('text-brand underline underline-offset-2');
+const { mono, link } = richTextClasses;
 
 const lang: Lang = {
   index: {

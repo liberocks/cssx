@@ -132,7 +132,7 @@ it('handles escapes, nested template expressions, open strings, and token gaps',
     'text-lg',
   ]);
 
-  const quotedToken = 'utility(\'[content:"a\\" b"]\')';
+  const quotedToken = String.raw`utility('[content:"a\\" b"]')`;
   const quotedDocument = createDocument(quotedToken);
   expect(cssxTokens(quotedDocument, createEditor(['utility'])).map(({ token }: { token: string }) => token)).toEqual([
     '[content:"a\\" b"]',
@@ -152,4 +152,114 @@ it('handles escapes, nested template expressions, open strings, and token gaps',
   expect(
     isCssxString(malformedDocument, malformedDocument.positionAt(malformed.indexOf('text-') + 4), createEditor()),
   ).toBe(false);
+});
+
+it('decodes JavaScript host escapes while retaining exact source ranges', () => {
+  const text = String.raw`cssx.create({ root: "content-[\"hello world\"] text-red-500" })`;
+  const document = createDocument(text);
+  const tokens = cssxTokens(document, createEditor());
+  const secondToken = tokens[1]!;
+  const cursor = document.positionAt(text.indexOf('text-red-500') + 'text-red-500'.length);
+
+  expect(tokens.map(({ token }: { token: string }) => token)).toEqual(['content-["hello world"]', 'text-red-500']);
+  expect(text.slice(secondToken.start, secondToken.end)).toBe('text-red-500');
+  expect(cssxTokenAt(document, cursor, createEditor())).toMatchObject({
+    token: 'text-red-500',
+    completeToken: 'text-red-500',
+    rawToken: 'text-red-500',
+    start: text.indexOf('text-red-500'),
+    end: text.indexOf('text-red-500') + 'text-red-500'.length,
+  });
+});
+
+it('retains unfinished bracket, quote, and parenthesis candidates', () => {
+  for (const candidate of ['w-[calc(100vw - 2rem', 'content-["hello world', 'animation-duration-(--duration, 1s']) {
+    const text = `sx('${candidate}`;
+    const document = createDocument(text);
+    const current = cssxTokenAt(document, document.positionAt(text.length), createEditor());
+    expect(current).toMatchObject({ token: candidate, completeToken: candidate, rawToken: candidate });
+    expect(text.slice(current!.start, current!.end)).toBe(candidate);
+  }
+});
+
+it('uses source offsets for unicode, legacy underscores, and explicit CSSX backslash escapes', () => {
+  const text = String.raw`sx("content-[\u0022é😀 world\u0022] w-[foo_bar] w-[foo\\_bar]")`;
+  const document = createDocument(text);
+  const tokens = cssxTokens(document, createEditor());
+
+  expect(tokens.map(({ token }: { token: string }) => token)).toEqual([
+    'content-["é😀 world"]',
+    'w-[foo_bar]',
+    'w-[foo\\_bar]',
+  ]);
+  expect(text.slice(tokens[0]!.start, tokens[0]!.end)).toBe(String.raw`content-[\u0022é😀 world\u0022]`);
+  expect(text.slice(tokens[1]!.start, tokens[1]!.end)).toBe('w-[foo_bar]');
+  expect(text.slice(tokens[2]!.start, tokens[2]!.end)).toBe(String.raw`w-[foo\\_bar]`);
+});
+
+it('keeps direct class attributes literal and decodes class expression strings', () => {
+  const text = String.raw`<div class="content-[\"hello world\"]" className={"text-\u0073m"} />`;
+  const document = createDocument(text);
+
+  expect(cssxTokens(document, createEditor()).map(({ token }: { token: string }) => token)).toEqual([
+    String.raw`content-[\"hello world\"]`,
+    'text-sm',
+  ]);
+});
+
+it('decodes JavaScript escape forms and handles line continuations', () => {
+  const escaped = String.raw`sx('a\nb\x41\u0042\u{1f600}\z\0\07')`;
+  const escapedDocument = createDocument(escaped);
+  expect(cssxTokens(escapedDocument, createEditor()).map(({ token }: { token: string }) => token)).toEqual([
+    'a',
+    'bAB😀z\u000007',
+  ]);
+
+  const lineFeed = "sx('text-\\\nsm')";
+  const lineFeedDocument = createDocument(lineFeed);
+  expect(cssxTokens(lineFeedDocument, createEditor()).map(({ token }: { token: string }) => token)).toEqual([
+    'text-sm',
+  ]);
+  expect(
+    cssxTokens(lineFeedDocument, createEditor()).map(({ start, end }: { start: number; end: number }) =>
+      lineFeed.slice(start, end),
+    ),
+  ).toEqual(['text-\\\nsm']);
+
+  const crlf = "sx('text-\\\r\nsm')";
+  expect(cssxTokens(createDocument(crlf), createEditor()).map(({ token }: { token: string }) => token)).toEqual([
+    'text-sm',
+  ]);
+  const standaloneCarriageReturn = "sx('text-\\\rsm')";
+  expect(
+    cssxTokens(createDocument(standaloneCarriageReturn), createEditor()).map(({ token }: { token: string }) => token),
+  ).toEqual(['text-sm']);
+
+  const templateCrlf = 'sx(`text-\\\r\nsm`)';
+  expect(cssxTokens(createDocument(templateCrlf), createEditor()).map(({ token }: { token: string }) => token)).toEqual(
+    ['text-sm'],
+  );
+
+  const invalidEscapes = String.raw`sx('a\x4z\u{110000}\u12')`;
+  expect(
+    cssxTokens(createDocument(invalidEscapes), createEditor()).map(({ token }: { token: string }) => token),
+  ).toEqual(['ax4zu{110000}u12']);
+
+  const danglingNullEscape = String.raw`sx('x\0`;
+  expect(
+    cssxTokens(createDocument(danglingNullEscape), createEditor()).map(({ token }: { token: string }) => token),
+  ).toEqual(['x\u0000']);
+
+  expect(
+    cssxTokens(createDocument("sx('a\\\\b')"), createEditor()).map(({ token }: { token: string }) => token),
+  ).toEqual(['a\\b']);
+});
+
+it('preserves a dangling source backslash in an unfinished string', () => {
+  const text = "sx('text-" + '\\';
+  const document = createDocument(text);
+  expect(cssxTokenAt(document, document.positionAt(text.length), createEditor())).toMatchObject({
+    token: 'text-\\',
+    completeToken: 'text-\\',
+  });
 });

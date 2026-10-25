@@ -1,0 +1,19 @@
+---
+import { getDocs } from '../../../docs/catalog.ts';
+import DocsPage from '../../../screens/docs/DocsPage.astro';
+
+const pages = getDocs('ja');
+
+export function getStaticPaths() {
+  return getDocs('ja').map((page) => ({ params: { slug: page.id } }));
+}
+
+const { slug } = Astro.params;
+const page = pages.find((candidate) => candidate.id === slug);
+
+if (!page) {
+  throw new Error(`Documentation page not found: ${slug}`);
+}
+---
+
+<DocsPage page={page} pages={pages} lang="ja" />
