@@ -7,7 +7,11 @@ import { parseTheme, splitCandidateList, validateUtilityCandidate } from '@cssxi
  * @param themeSource Theme source used to validate candidates.
  * @returns Unique valid CSSX utility candidates.
  */
-export function collectUtilityCandidates(document: Document, themeSource: string): ReadonlySet<string> {
+export function collectUtilityCandidates(
+  document: Document,
+  themeSource: string,
+  sourceByAlias: ReadonlyMap<string, string> = new Map(),
+): ReadonlySet<string> {
   const theme = parseTheme(themeSource);
   const candidates = new Set<string>();
   for (const element of document.querySelectorAll('[class]')) {
@@ -17,9 +21,10 @@ export function collectUtilityCandidates(document: Document, themeSource: string
     }
     try {
       for (const candidate of splitCandidateList(className)) {
+        const sourceCandidate = sourceByAlias.get(candidate) ?? candidate;
         try {
-          validateUtilityCandidate(candidate, theme);
-          candidates.add(candidate);
+          validateUtilityCandidate(sourceCandidate, theme);
+          candidates.add(sourceCandidate);
         } catch {
           // Normal HTML may include application and third-party classes.
         }

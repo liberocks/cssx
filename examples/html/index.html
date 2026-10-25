@@ -7,11 +7,13 @@
     <script defer src="../../packages/html/dist/cssx.global.js"></script>
   </head>
   <body class="min-h-screen bg-slate-950 p-6 text-white">
-    <main class="mx-auto flex max-w-xl flex-col gap-4 rounded-xl bg-white p-8 text-slate-950 shadow-xl">
+    <main
+      class="mx-auto flex max-w-xl flex-col gap-4 rounded-xl bg-white p-8 text-slate-950 shadow-xl shadow-[0 4px 6px rgb(0 0 0 / 0.1)]"
+    >
       <p class="text-sm font-semibold text-blue-600">CSSX + raw HTML</p>
       <h1 class="text-3xl font-bold tracking-tight">No build step required.</h1>
       <p class="leading-7 text-slate-600">
-        The CDN runtime keeps these classes in the HTML and generates their CSS in the browser.
+        The CDN runtime compiles these classes in the browser and aliases bracketed values that contain spaces.
       </p>
       <a
         class="inline-flex w-fit rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
