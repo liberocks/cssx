@@ -9,7 +9,7 @@ on:
         type: choice
         options: [deploy-production, deploy-preview, cleanup-preview]
       preview_name:
-        description: Required for preview actions; lowercase letters, digits, and hyphens only
+        description: Lowercase letters, digits, and hyphens only
         required: false
         type: string
 

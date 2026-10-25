@@ -27,7 +27,7 @@ on:
           - minor
           - major
       retry_existing_version:
-        description: Retry current versions for the selected package, or all changed packages when package is auto
+        description: Retry current versions
         required: false
         default: false
         type: boolean
