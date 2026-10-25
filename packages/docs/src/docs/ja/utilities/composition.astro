@@ -1,0 +1,48 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/composition"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<p>CSSX stores the style groups that each compiled style changes. The browser can then merge compiled styles without reading utility syntax.</p>
+<table>
+<thead><tr>
+<th scope="col">Composition</th>
+<th scope="col">Result</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Broad directional utility followed by a narrower one</td>
+<td>Only the overlapping declaration atom is replaced.</td>
+</tr>
+<tr>
+<td>Same semantic write group</td>
+<td>The later compiled style wins.</td>
+</tr>
+<tr>
+<td>Logical and physical writes</td>
+<td>Remain independently composable.</td>
+</tr>
+<tr>
+<td>Filters, backdrop filters, transforms, gradients, and rings</td>
+<td>Their channels compose independently.</td>
+</tr>
+<tr>
+<td><code>normal-nums</code>, <code>filter-none</code>, <code>backdrop-filter-none</code></td>
+<td>Reset all related channels.</td>
+</tr>
+<tr>
+<td><code>space-*</code> and <code>divide-*</code></td>
+<td>Remain a child-selector-scoped atom.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />
+<p><code>create</code> input is intentionally static. Dynamic utility strings should remain raw class strings or be modeled as explicit static style choices.</p>

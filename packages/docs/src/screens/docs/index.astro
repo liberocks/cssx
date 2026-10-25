@@ -1,23 +1,23 @@
 ---
-import { getCollection } from 'astro:content';
-import type { Locale } from '../../localization/index.ts';
-import { defaultLocale } from '../../localization/index.ts';
+import type { DocLocale } from '../../docs/catalog.ts';
+import { getDocs } from '../../docs/catalog.ts';
 import DocsShell from './DocsShell.astro';
+import { docsStyleProps } from '../../styles/docs.ts';
 
 interface Props {
-  lang: Locale;
+  lang: DocLocale;
 }
 
 const { lang } = Astro.props;
-const pages = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
-const docsPath = lang === defaultLocale ? '/docs' : `/${lang}/docs`;
+const pages = getDocs(lang);
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
 const startPage = pages.find((page) => page.id === 'getting-started/quick-start');
 const utilityPages = pages.filter((page) => page.data.section === 'Utilities' || page.data.section === 'Utility syntax');
 const advancedPages = pages.filter((page) => page.data.section === 'Advanced');
 ---
 
 <DocsShell title="Documentation" lang={lang} pages={pages}>
-  <article class="docs-prose">
+  <article class={docsStyleProps.prose.className}>
     <p>Documentation</p>
     <h1>CSSX utility reference</h1>
     <p>Learn how to set up CSSX, then browse the utility families, supported values, variants, and composition rules documented by the compiler.</p>
@@ -25,7 +25,7 @@ const advancedPages = pages.filter((page) => page.data.section === 'Advanced');
     {startPage && (
       <section>
         <h2>Start here</h2>
-        <div class="docs-home-links">
+        <div class={docsStyleProps.homeLinks.className}>
           <a href={`${docsPath}/${startPage.id}`}>
             <strong>{startPage.data.title}</strong>
             <span>{startPage.data.description}</span>
@@ -37,7 +37,7 @@ const advancedPages = pages.filter((page) => page.data.section === 'Advanced');
     <section>
       <h2>Utility reference</h2>
       <p>Each reference page lists supported class patterns, the CSS behavior they produce, and a CSSX example.</p>
-      <div class="docs-home-links">
+      <div class={docsStyleProps.homeLinks.className}>
         {utilityPages.map((page) => (
           <a href={`${docsPath}/${page.id}`}>
             <strong>{page.data.title}</strong>
@@ -49,7 +49,7 @@ const advancedPages = pages.filter((page) => page.data.section === 'Advanced');
 
     <section>
       <h2>Advanced concepts</h2>
-      <div class="docs-home-links">
+      <div class={docsStyleProps.homeLinks.className}>
         {advancedPages.map((page) => (
           <a href={`${docsPath}/${page.id}`}>
             <strong>{page.data.title}</strong>

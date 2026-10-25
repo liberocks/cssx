@@ -15,9 +15,9 @@ interface Props {
   aria-label="Switch language"
   data-locales={localeCodes.join(',')}
   data-default={defaultLocale}
-  class={Astro.props.class}
+  class={sx('grid h-6 w-6 place-items-center border-0 bg-transparent p-0 cursor-pointer', Astro.props.class)}
 >
-  <Icon name="language" class={sx('w-6 h-6 text-gray-600 dark:text-gray-300')} />
+  <Icon name="language" class={sx('w-5 h-5 text-gray-600 dark:text-gray-300')} />
 </button>
 
 <script>

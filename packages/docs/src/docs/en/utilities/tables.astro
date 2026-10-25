@@ -1,0 +1,42 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/tables"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>border-&#123;collapse,separate&#125;</code></td>
+<td><code>border-collapse</code>.</td>
+</tr>
+<tr>
+<td><code>border-spacing-&lt;spacing&gt;</code></td>
+<td><code>border-spacing</code>.</td>
+</tr>
+<tr>
+<td><code>border-spacing-x-&lt;spacing&gt;</code>, <code>border-spacing-y-&lt;spacing&gt;</code></td>
+<td>Composed horizontal or vertical <code>border-spacing</code>.</td>
+</tr>
+<tr>
+<td><code>table-&#123;auto,fixed&#125;</code></td>
+<td><code>table-layout</code>.</td>
+</tr>
+<tr>
+<td><code>caption-&#123;top,bottom&#125;</code></td>
+<td><code>caption-side</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

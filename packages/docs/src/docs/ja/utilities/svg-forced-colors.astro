@@ -1,0 +1,54 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/svg-forced-colors"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>fill-none</code>, <code>fill-&lt;color&gt;</code></td>
+<td>SVG <code>fill</code>.</td>
+</tr>
+<tr>
+<td><code>stroke-none</code>, <code>stroke-&lt;color&gt;</code></td>
+<td>SVG <code>stroke</code> color.</td>
+</tr>
+<tr>
+<td><code>stroke-&lt;n&gt;</code>, <code>stroke-[value]</code></td>
+<td>SVG <code>stroke-width</code>.</td>
+</tr>
+<tr>
+<td><code>stroke-cap-&#123;butt,round,square&#125;</code>, <code>stroke-join-&#123;miter,round,bevel&#125;</code>, <code>stroke-miterlimit-&#123;n,[value],(--property)&#125;</code></td>
+<td>SVG stroke geometry.</td>
+</tr>
+<tr>
+<td><code>stroke-dasharray-&#123;n,[value],(--property)&#125;</code>, <code>stroke-dashoffset-&#123;n,[value],(--property)&#125;</code></td>
+<td>SVG dash pattern or offset.</td>
+</tr>
+<tr>
+<td><code>fill-rule-&#123;nonzero,evenodd&#125;</code>, <code>clip-rule-&#123;nonzero,evenodd&#125;</code></td>
+<td>SVG fill and clip rules.</td>
+</tr>
+<tr>
+<td><code>vector-effect-&#123;none,non-scaling-stroke&#125;</code>, <code>paint-order-&#123;normal,fill,stroke,markers&#125;</code>, <code>shape-rendering-&#123;auto,optimize-speed,crisp-edges,geometric-precision&#125;</code></td>
+<td>SVG presentation and rendering.</td>
+</tr>
+<tr>
+<td><code>forced-color-adjust-&#123;auto,none&#125;</code></td>
+<td><code>forced-color-adjust</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

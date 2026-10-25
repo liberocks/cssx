@@ -1,15 +1,15 @@
 ---
-import type { CollectionEntry } from 'astro:content';
-import type { Locale } from '../localization/index.ts';
-import { defaultLocale } from '../localization/index.ts';
+import { sx } from '@cssxio/cssx';
+import type { DocLocale, DocPage } from '../docs/catalog.ts';
+import Icon from './Icon.astro';
 
 interface Props {
-  pages: CollectionEntry<'docs'>[];
-  lang: Locale;
+  pages: DocPage[];
+  lang: DocLocale;
 }
 
 const { pages, lang } = Astro.props;
-const docsPath = lang === defaultLocale ? '/docs' : `/${lang}/docs`;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
 const items = pages
   .slice()
   .sort((a, b) => a.data.order - b.data.order)
@@ -17,27 +17,54 @@ const items = pages
     title: page.data.title,
     section: page.data.section,
     href: `${docsPath}/${page.id}`,
-    search: `${page.data.title} ${page.data.description} ${page.data.keywords.join(' ')} ${page.body ?? ''}`.toLowerCase(),
+    search: `${page.data.title} ${page.data.description} ${page.data.keywords.join(' ')} ${page.data.searchText}`.toLowerCase(),
   }));
 ---
 
-<div class="docs-search" data-docs-search>
-  <button type="button" aria-haspopup="dialog" aria-controls="docs-search-dialog" data-search-open>
-    Search <kbd>⌘ K</kbd>
+<div class={sx('flex items-center')} data-docs-search>
+  <button
+    class={sx('grid h-6 w-6 shrink-0 place-items-center border-0 bg-transparent p-0 text-inherit cursor-pointer')}
+    type="button"
+    aria-label="Search documentation"
+    aria-haspopup="dialog"
+    aria-controls="docs-search-dialog"
+    data-search-open
+  >
+    <Icon name="search" class={sx('w-5 h-5 text-gray-600 dark:text-gray-300')} />
   </button>
-  <dialog id="docs-search-dialog" aria-label="Search documentation" data-search-dialog>
-    <div class="docs-search-panel">
-      <label class="visually-hidden" for="docs-search-input">Search documentation</label>
-      <input id="docs-search-input" type="search" placeholder="Search documentation and utilities" autocomplete="off" data-search-input />
-      <button type="button" aria-label="Close search" data-search-close>Close</button>
-      <nav aria-label="Search results" data-search-results>
+  <dialog
+    class={sx(
+      'm-auto w-11/12 max-w-2xl max-h-[80dvh] rounded-2xl border border-gray-200 bg-white p-0 text-gray-900 shadow-xl',
+      '[&::backdrop]:bg-black/45 dark:border-gray-700 dark:bg-neutral-900 dark:text-gray-50',
+    )}
+    id="docs-search-dialog"
+    aria-label="Search documentation"
+    data-search-dialog
+  >
+    <div class={sx('flex flex-wrap gap-3 p-4')}>
+      <label class={sx('sr-only')} for="docs-search-input">Search documentation</label>
+      <input
+        class={sx('min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-3 font-(--font-sans) text-base dark:border-gray-600 dark:bg-neutral-900 dark:text-gray-50')}
+        id="docs-search-input"
+        type="search"
+        placeholder="Search documentation and utilities"
+        autocomplete="off"
+        data-search-input
+      />
+      <button class={sx('rounded-lg border-0 bg-gray-100 px-3 py-3 text-gray-900 cursor-pointer dark:bg-neutral-800 dark:text-gray-50')} type="button" aria-label="Close search" data-search-close>Close</button>
+      <nav class={sx('flex max-h-[60dvh] basis-full flex-col overflow-auto')} aria-label="Search results" data-search-results>
         {items.map((item) => (
-          <a href={item.href} data-search-item data-search={item.search}>
+          <a
+            class={sx('flex justify-between gap-4 rounded-lg p-3 text-inherit no-underline hover:bg-gray-100 dark:hover:bg-neutral-800')}
+            href={item.href}
+            data-search-item
+            data-search={item.search}
+          >
             <span>{item.title}</span>
-            <small>{item.section}</small>
+            <small class={sx('text-gray-500 dark:text-gray-400')}>{item.section}</small>
           </a>
         ))}
-        <p data-search-empty hidden>No matching documentation.</p>
+        <p class={sx('m-0 p-4 text-center text-gray-500')} data-search-empty hidden>No matching documentation.</p>
       </nav>
     </div>
   </dialog>
@@ -90,128 +117,3 @@ const items = pages
     });
   }
 </script>
-
-<style>
-  .docs-search > button {
-    min-height: 2.5rem;
-    border: 1px solid #e5e5e5;
-    border-radius: 0.5rem;
-    background: transparent;
-    padding: 0.45rem 0.7rem;
-    color: #525252;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .docs-search kbd {
-    margin-left: 0.5rem;
-    border: 1px solid #d4d4d4;
-    border-radius: 0.25rem;
-    padding: 0.1rem 0.3rem;
-    font-size: 0.75rem;
-  }
-
-  .docs-search dialog {
-    width: min(42rem, calc(100vw - 2rem));
-    max-height: min(80dvh, 42rem);
-    margin: auto;
-    border: 1px solid #e5e5e5;
-    border-radius: 0.9rem;
-    background: white;
-    padding: 0;
-    color: #171717;
-    box-shadow: 0 2rem 5rem #0003;
-  }
-
-  .docs-search dialog::backdrop {
-    background: #0007;
-  }
-
-  .docs-search-panel {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-
-  .docs-search input {
-    min-width: 0;
-    border: 1px solid #d4d4d4;
-    border-radius: 0.5rem;
-    padding: 0.7rem;
-    font: inherit;
-  }
-
-  .docs-search-panel > button {
-    border: 0;
-    border-radius: 0.5rem;
-    background: #f5f5f5;
-    padding: 0 0.75rem;
-    cursor: pointer;
-  }
-
-  .docs-search nav {
-    display: flex;
-    max-height: 60dvh;
-    grid-column: 1 / -1;
-    flex-direction: column;
-    overflow: auto;
-  }
-
-  .docs-search nav a {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    border-radius: 0.5rem;
-    padding: 0.7rem;
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .docs-search nav a:hover {
-    background: #f5f5f5;
-  }
-
-  .docs-search nav small,
-  .docs-search nav p {
-    color: #737373;
-  }
-
-  .docs-search nav p {
-    margin: 0;
-    padding: 1rem;
-    text-align: center;
-  }
-
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-  }
-
-  :global([data-theme='dark']) .docs-search > button {
-    border-color: #404040;
-    color: #d4d4d4;
-  }
-
-  :global([data-theme='dark']) .docs-search dialog {
-    border-color: #404040;
-    background: #171717;
-    color: #fafafa;
-  }
-
-  :global([data-theme='dark']) .docs-search-panel > button,
-  :global([data-theme='dark']) .docs-search nav a:hover {
-    background: #262626;
-    color: #fafafa;
-  }
-
-  :global([data-theme='dark']) .docs-search input {
-    border-color: #525252;
-    background: #171717;
-    color: #fafafa;
-  }
-</style>

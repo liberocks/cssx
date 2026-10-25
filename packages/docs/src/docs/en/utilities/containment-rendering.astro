@@ -1,0 +1,38 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/containment-rendering"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>content-visibility-&#123;visible,auto,hidden&#125;</code></td>
+<td><code>content-visibility</code>.</td>
+</tr>
+<tr>
+<td><code>contain-&#123;none,content,strict,size,inline-size,layout,style,paint&#125;</code>, <code>contain-[value]</code></td>
+<td>CSS containment, such as <code>contain-[layout paint]</code>.</td>
+</tr>
+<tr>
+<td><code>contain-intrinsic-&#123;size,inline-size,block-size&#125;-&#123;n,[value],(--property)&#125;</code></td>
+<td>Intrinsic fallback size for contained content.</td>
+</tr>
+<tr>
+<td><code>image-render-&#123;auto,crisp-edges,pixelated&#125;</code></td>
+<td>Image interpolation behavior.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

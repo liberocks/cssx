@@ -1,0 +1,82 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/flexbox-alignment"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>flex-&#123;row,row-reverse,col,col-reverse&#125;</code></td>
+<td><code>flex-direction</code>.</td>
+</tr>
+<tr>
+<td><code>flex-&#123;wrap,wrap-reverse,nowrap&#125;</code></td>
+<td><code>flex-wrap</code>.</td>
+</tr>
+<tr>
+<td><code>flex-&#123;auto,initial,none&#125;</code></td>
+<td><code>flex: 1 1 auto</code>, <code>0 1 auto</code>, or <code>none</code>.</td>
+</tr>
+<tr>
+<td><code>flex-&lt;n&gt;</code>, <code>flex-&lt;fraction&gt;</code>, <code>flex-[value]</code>, <code>flex-(--property)</code></td>
+<td><code>flex</code> shorthand. Fractions become a percentage calculation.</td>
+</tr>
+<tr>
+<td><code>grow</code>, <code>grow-0</code>, <code>shrink</code>, <code>shrink-0</code></td>
+<td><code>flex-grow</code> or <code>flex-shrink</code>.</td>
+</tr>
+<tr>
+<td><code>basis-&lt;value&gt;</code></td>
+<td><code>flex-basis</code>.</td>
+</tr>
+<tr>
+<td><code>order-&#123;first,last,none,n&#125;</code></td>
+<td><code>order</code>. Negative numeric forms are supported.</td>
+</tr>
+<tr>
+<td><code>items-&#123;start,center,end,stretch,baseline&#125;</code></td>
+<td><code>align-items</code>.</td>
+</tr>
+<tr>
+<td><code>self-&#123;auto,start,center,end,stretch,baseline&#125;</code></td>
+<td><code>align-self</code>.</td>
+</tr>
+<tr>
+<td><code>justify-&#123;start,center,end,between,around,evenly&#125;</code></td>
+<td><code>justify-content</code>.</td>
+</tr>
+<tr>
+<td><code>justify-items-&#123;start,center,end,stretch&#125;</code></td>
+<td><code>justify-items</code>.</td>
+</tr>
+<tr>
+<td><code>justify-self-&#123;auto,start,center,end,stretch&#125;</code></td>
+<td><code>justify-self</code>.</td>
+</tr>
+<tr>
+<td><code>place-items-&#123;start,center,end,stretch,baseline&#125;</code></td>
+<td><code>place-items</code>.</td>
+</tr>
+<tr>
+<td><code>place-self-&#123;auto,start,center,end,stretch&#125;</code></td>
+<td><code>place-self</code>.</td>
+</tr>
+<tr>
+<td><code>place-content-&#123;start,center,end,between,around,evenly,stretch&#125;</code></td>
+<td><code>place-content</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

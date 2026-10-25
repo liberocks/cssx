@@ -1,5 +1,5 @@
 import en from './en.ts';
-import jp from './jp.ts';
+import ja from './ja.ts';
 import type { Lang } from './type.ts';
 
 export { plainText, renderRich } from './type.ts';
@@ -9,7 +9,7 @@ export type { Lang, Rich, RichNode } from './type.ts';
 export const defaultLocale = 'en';
 
 /** Ordered list of locales. The language toggle cycles through this list. */
-export const localeCodes = ['en', 'jp'] as const;
+export const localeCodes = ['en', 'ja'] as const;
 
 export type Locale = (typeof localeCodes)[number];
 
@@ -17,4 +17,4 @@ export function isLocale(value: string): value is Locale {
   return (localeCodes as readonly string[]).includes(value);
 }
 
-export const locales: Record<Locale, Lang> = { en, jp };
+export const locales: Record<Locale, Lang> = { en, ja };

@@ -1,0 +1,47 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/colors"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>bg-&lt;color&gt;</code>, <code>text-&lt;color&gt;</code>, <code>border-&lt;color&gt;</code></td>
+<td>Background, foreground, or border color.</td>
+</tr>
+<tr>
+<td><code>outline-&lt;color&gt;</code>, <code>divide-&lt;color&gt;</code>, <code>placeholder-&lt;color&gt;</code></td>
+<td>Outline, child divider, or placeholder color.</td>
+</tr>
+<tr>
+<td><code>accent-&lt;color&gt;</code>, <code>caret-&lt;color&gt;</code></td>
+<td>Accent or caret color.</td>
+</tr>
+<tr>
+<td><code>fill-&lt;color&gt;</code>, <code>stroke-&lt;color&gt;</code></td>
+<td>SVG paint color.</td>
+</tr>
+<tr>
+<td><code>ring-&lt;color&gt;</code>, <code>ring-offset-&lt;color&gt;</code></td>
+<td>Ring or ring-offset color channel.</td>
+</tr>
+<tr>
+<td><code>&lt;color-utility&gt;/&lt;0..100&gt;</code> or <code>&lt;color-utility&gt;/[number]</code></td>
+<td>Applies color opacity with <code>color-mix()</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The default palette has 50-950 shades for <code>red</code>, <code>orange</code>, <code>amber</code>, <code>yellow</code>, <code>lime</code>, <code>green</code>, <code>emerald</code>, <code>teal</code>, <code>cyan</code>, <code>sky</code>, <code>blue</code>, <code>indigo</code>, <code>violet</code>, <code>purple</code>, <code>fuchsia</code>, <code>pink</code>, <code>rose</code>, <code>slate</code>, <code>gray</code>, <code>zinc</code>, <code>neutral</code>, <code>stone</code>, <code>mauve</code>, <code>olive</code>, <code>mist</code>, <code>taupe</code>, <code>steel</code>, <code>brown</code>, <code>vermilion</code>, <code>mint</code>, <code>azure</code>, and <code>amethyst</code>, plus <code>black</code>, <code>white</code>, and <code>transparent</code>. Every family name works in every color utility, such as <code>bg-vermilion-500</code>, <code>text-steel-950</code>, and <code>border-mint-200</code>.</p>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />
