@@ -15,8 +15,8 @@ describe('compileFilterFamily', () => {
       'hue-rotate(.5turn)',
     );
     expect(
-      compileFilterFamily('drop-shadow-[0_1px_2px_black]', false, 'filter', '--fx-', '', sink, false)?.[0]?.value,
-    ).toBe('drop-shadow(0_1px_2px_black)');
+      compileFilterFamily('drop-shadow-[0 1px 2px black]', false, 'filter', '--fx-', '', sink, false)?.[0]?.value,
+    ).toBe('drop-shadow(0 1px 2px black)');
   });
 
   it('applies family restrictions and rejects unknown values', () => {

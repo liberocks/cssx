@@ -1,4 +1,5 @@
 import type { UtilityDeclaration } from '../registry/utility-types';
+import { resolveArbitraryCssValue } from '../values/utility-resolvers';
 
 /**
  * Resolves SVG stroke width utilities.
@@ -12,5 +13,5 @@ export function compileSvgStrokeWidthUtility(utility: string): UtilityDeclaratio
     return null;
   }
   const raw = strokeWidth[1]!;
-  return { property: 'stroke-width', value: raw.startsWith('[') ? raw.slice(1, -1) : raw };
+  return { property: 'stroke-width', value: raw.startsWith('[') ? resolveArbitraryCssValue(raw) : raw };
 }

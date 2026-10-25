@@ -14,7 +14,7 @@ describe('CSSX motion utilities', () => {
         'stagger-tight',
         'animate-fade-in',
         'animation-name-shimmer',
-        '[animation:scale-in_200ms_both]',
+        '[animation:scale-in 200ms both]',
       ],
       className,
     );
@@ -35,7 +35,7 @@ describe('CSSX motion utilities', () => {
         'transition-transform-opacity',
         'transition-filter',
         'transition-size',
-        'transition-[opacity,_display]',
+        'transition-[opacity, display]',
         'duration-snappy',
         'duration-(--motion-duration)',
         '-delay-75',
@@ -136,10 +136,10 @@ describe('CSSX motion utilities', () => {
         'animation-timeline-[--reading]',
         'scroll-timeline-name-[--reading]',
         'scroll-timeline-axis-y',
-        'view-timeline-inset-[10%_20%]',
+        'view-timeline-inset-[10% 20%]',
         'timeline-scope-[--reading]',
         'animation-range-entry',
-        'animation-range-start-[entry_20%]',
+        'animation-range-start-[entry 20%]',
       ],
       className,
     );
@@ -167,7 +167,7 @@ describe('CSSX motion utilities', () => {
         'view-transition-name-match',
         'view-transition-name-[hero-card]',
         'view-transition-class-none',
-        'view-transition-class-[card_shared]',
+        'view-transition-class-[card shared]',
       ],
       className,
     );
@@ -218,7 +218,7 @@ describe('CSSX motion utilities', () => {
       'animation-name-missing',
       'animation-timeline-[reading]',
       'view-transition-name-[inherit]',
-      'view-transition-class-[none_shared]',
+      'view-transition-class-[none shared]',
     ]) {
       expect(() => compileStyleRecords({ root: candidate }), candidate).toThrow();
     }

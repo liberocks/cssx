@@ -1,4 +1,5 @@
 import type { UtilityDeclaration } from '../registry/utility-types';
+import { resolveArbitraryCssValue } from '../values/utility-resolvers';
 import { cloneDeclarations } from '../values/utility-values';
 
 /** Fixed outline styles resolved without theme values. */
@@ -35,6 +36,9 @@ export function compileOutlineStyleUtility(utility: string): UtilityDeclaration[
   }
   const raw = width[1]!;
   return [
-    { property: 'outline-width', value: raw.startsWith('[') ? raw.slice(1, -1) : `${raw}px`.replace('0px', '0') },
+    {
+      property: 'outline-width',
+      value: raw.startsWith('[') ? resolveArbitraryCssValue(raw) : `${raw}px`.replace('0px', '0'),
+    },
   ];
 }

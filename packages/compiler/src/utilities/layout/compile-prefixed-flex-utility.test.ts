@@ -19,7 +19,7 @@ describe('compilePrefixedFlexUtility', () => {
       property: 'flex',
       value: 'calc(1 / 2 * 100%)',
     });
-    expect(compilePrefixedFlexUtility('flex-[1_0_auto]', false, theme)).toEqual({
+    expect(compilePrefixedFlexUtility('flex-[1 0 auto]', false, theme)).toEqual({
       property: 'flex',
       value: '1 0 auto',
     });

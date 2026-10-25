@@ -121,6 +121,39 @@ it('preserves bracketed arbitrary-variant colons when filtering utilities', () =
   );
 });
 
+it('does not offer unrelated utilities inside unfinished arbitrary values or fallbacks', () => {
+  const editor = createEditor();
+  for (const source of ["sx('w-[calc(100vw - 2rem", "sx('animation-duration-(--duration, 1s"] as const) {
+    const document = createDocument(source);
+    const items = provideCompletionItems(editor, document, document.positionAt(source.length));
+    expect(items).toEqual([]);
+  }
+});
+
+it('matches decoded selectors and inserts their exact escaped source prefix', () => {
+  const source = String.raw`sx("[&[data-label=\"[\"] h1]:text-`;
+  const document = createDocument(source);
+  const items = provideCompletionItems(createEditor(), document, document.positionAt(source.length));
+
+  expect(items).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        label: '[&[data-label="["] h1]:text-sm',
+        insertText: String.raw`[&[data-label=\"[\"] h1]:text-sm`,
+        range: expect.objectContaining({
+          start: { line: 0, character: source.indexOf('[&') },
+          end: { line: 0, character: source.length },
+        }),
+      }),
+    ]),
+  );
+  const item = items?.find((candidate: { label: string }) => candidate.label === '[&[data-label="["] h1]:text-sm');
+  const range = item?.range as { start: { character: number }; end: { character: number } };
+  expect(source.slice(0, range.start.character) + item?.insertText + source.slice(range.end.character)).toBe(
+    String.raw`sx("[&[data-label=\"[\"] h1]:text-sm`,
+  );
+});
+
 it('skips suggestions when disabled or outside CSSX utility strings', () => {
   const text = "sx('text-";
   const position = createDocument(text).positionAt(text.length);

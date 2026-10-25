@@ -17,5 +17,7 @@ describe('catalog documentation', () => {
     expect(stripVariants('[&:hover]:text-[length:var(--font-size)]')).toBe('text-[length:var(--font-size)]');
     expect(stripVariants('hover:focus:flex')).toBe('flex');
     expect(stripVariants('text-]')).toBe('text-]');
+    expect(stripVariants('[&[data-label="["] h1]:text-red-500')).toBe('text-red-500');
+    expect(stripVariants('animation-duration-(--duration, 1s):text-red-500')).toBe('text-red-500');
   });
 });

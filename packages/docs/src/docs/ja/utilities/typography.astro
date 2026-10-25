@@ -1,0 +1,118 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/typography"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>font-&#123;sans,serif,mono&#125;</code>, <code>font-[value]</code>, <code>font-(--property)</code></td>
+<td>Built-in or custom <code>font-family</code>.</td>
+</tr>
+<tr>
+<td><code>font-&#123;thin,extralight,light,normal,medium,semibold,bold,extrabold,black&#125;</code></td>
+<td><code>font-weight</code> from 100 through 900.</td>
+</tr>
+<tr>
+<td><code>antialiased</code>, <code>subpixel-antialiased</code></td>
+<td>Font smoothing declarations.</td>
+</tr>
+<tr>
+<td><code>italic</code>, <code>not-italic</code></td>
+<td><code>font-style</code>.</td>
+</tr>
+<tr>
+<td><code>text-&#123;xs,sm,base,lg,xl,2xl&#125;</code>, <code>text-[length]</code></td>
+<td>Font size; named sizes include a default line height.</td>
+</tr>
+<tr>
+<td><code>leading-&#123;none,tight,snug,normal,relaxed,loose,[value]&#125;</code></td>
+<td><code>line-height</code>.</td>
+</tr>
+<tr>
+<td><code>tracking-&#123;tighter,tight,normal,wide,wider,widest&#125;</code></td>
+<td><code>letter-spacing</code>.</td>
+</tr>
+<tr>
+<td><code>text-&#123;left,center,right,justify&#125;</code></td>
+<td><code>text-align</code>.</td>
+</tr>
+<tr>
+<td><code>uppercase</code>, <code>lowercase</code>, <code>capitalize</code>, <code>normal-case</code></td>
+<td><code>text-transform</code>.</td>
+</tr>
+<tr>
+<td><code>ordinal</code>, <code>slashed-zero</code>, <code>lining-nums</code>, <code>oldstyle-nums</code>, <code>proportional-nums</code>, <code>tabular-nums</code>, <code>diagonal-fractions</code>, <code>stacked-fractions</code>, <code>normal-nums</code></td>
+<td>Composable <code>font-variant-numeric</code> controls; <code>normal-nums</code> resets them.</td>
+</tr>
+<tr>
+<td><code>underline</code>, <code>overline</code>, <code>line-through</code>, <code>no-underline</code></td>
+<td><code>text-decoration-line</code>.</td>
+</tr>
+<tr>
+<td><code>decoration-&#123;solid,double,dotted,dashed,wavy&#125;</code></td>
+<td><code>text-decoration-style</code>.</td>
+</tr>
+<tr>
+<td><code>decoration-&#123;auto,from-font,n,[value],(--property)&#125;</code></td>
+<td><code>text-decoration-thickness</code>.</td>
+</tr>
+<tr>
+<td><code>underline-offset-&#123;auto,n,[value],(--property)&#125;</code></td>
+<td><code>text-underline-offset</code>.</td>
+</tr>
+<tr>
+<td><code>truncate</code>, <code>text-&#123;ellipsis,clip&#125;</code></td>
+<td>Text overflow behavior.</td>
+</tr>
+<tr>
+<td><code>text-&#123;wrap,nowrap,balance,pretty&#125;</code>, <code>wrap-&#123;anywhere,break-word,normal&#125;</code></td>
+<td>Text wrapping behavior.</td>
+</tr>
+<tr>
+<td><code>hyphens-&#123;none,manual,auto&#125;</code>, <code>whitespace-&#123;normal,nowrap,pre,pre-line,pre-wrap,break-spaces&#125;</code></td>
+<td>Hyphenation or whitespace.</td>
+</tr>
+<tr>
+<td><code>tab-&#123;n,[value],(--property)&#125;</code></td>
+<td><code>tab-size</code>.</td>
+</tr>
+<tr>
+<td><code>list-&#123;inside,outside&#125;</code>, <code>list-&#123;none,disc,decimal&#125;</code>, <code>list-image-&#123;none,[value],(--property)&#125;</code></td>
+<td>List styling.</td>
+</tr>
+<tr>
+<td><code>line-clamp-&#123;n,none&#125;</code></td>
+<td>WebKit line-clamp declaration bundle.</td>
+</tr>
+<tr>
+<td><code>content-none</code>, <code>content-[value]</code>, <code>content-(--property)</code></td>
+<td><code>content</code>, typically with <code>before:</code> or <code>after:</code>.</td>
+</tr>
+<tr>
+<td><code>writing-&#123;horizontal-tb,vertical-rl,vertical-lr&#125;</code>, <code>text-orientation-&#123;mixed,upright,sideways&#125;</code>, <code>text-combine-upright-&#123;none,all&#125;</code></td>
+<td>Writing mode and vertical text controls.</td>
+</tr>
+<tr>
+<td><code>unicode-bidi-&#123;normal,embed,isolate,bidi-override,isolate-override,plaintext&#125;</code></td>
+<td>Bidirectional-text handling.</td>
+</tr>
+<tr>
+<td><code>font-optical-&#123;auto,none&#125;</code>, <code>font-kerning-&#123;auto,normal,none&#125;</code>, <code>font-synthesis-&#123;none,weight,style,small-caps,position&#125;</code></td>
+<td>Advanced font rendering controls.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

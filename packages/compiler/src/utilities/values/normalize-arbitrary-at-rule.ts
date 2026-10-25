@@ -1,3 +1,5 @@
+import { resolveArbitraryCssValue } from '../../shared/resolve-arbitrary-css-value';
+
 /**
  * Validates and normalizes a supported arbitrary media or supports rule.
  *
@@ -12,5 +14,5 @@ export function normalizeArbitraryAtRule(value: string): string {
   if (!kind || !condition) {
     throw new Error(`Invalid CSSX arbitrary at-rule variant "[${value}]".`);
   }
-  return `@${kind} ${condition}`;
+  return `@${kind} ${resolveArbitraryCssValue(`[${condition}]`)}`;
 }

@@ -1,0 +1,71 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/position-sizing"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>static</code>, <code>fixed</code>, <code>absolute</code>, <code>relative</code>, <code>sticky</code></td>
+<td><code>position</code>.</td>
+</tr>
+<tr>
+<td><code>top/right/bottom/left-&lt;value&gt;</code></td>
+<td>Corresponding physical inset.</td>
+</tr>
+<tr>
+<td><code>inset[-x/-y]-&lt;value&gt;</code></td>
+<td><code>inset</code>, both horizontal sides, or both vertical sides.</td>
+</tr>
+<tr>
+<td><code>inset-s-*</code>, <code>start-*</code>, <code>inset-e-*</code>, <code>end-*</code></td>
+<td>Logical inline insets.</td>
+</tr>
+<tr>
+<td><code>z-&#123;n,auto&#125;</code></td>
+<td><code>z-index</code>.</td>
+</tr>
+<tr>
+<td><code>w/h/min-w/max-w/min-h/max-h-&lt;value&gt;</code></td>
+<td>Physical dimensions.</td>
+</tr>
+<tr>
+<td><code>inline/min-inline/max-inline-&lt;value&gt;</code></td>
+<td>Logical inline dimensions.</td>
+</tr>
+<tr>
+<td><code>block/min-block/max-block-&lt;value&gt;</code></td>
+<td>Logical block dimensions.</td>
+</tr>
+<tr>
+<td><code>size-&lt;value&gt;</code></td>
+<td>Sets both width and height.</td>
+</tr>
+<tr>
+<td><code>max-&#123;w,inline&#125;-&#123;xs,sm,md,lg,xl,2xl,3xl,4xl,5xl,6xl,7xl&#125;</code></td>
+<td>Named maximum inline or physical width.</td>
+</tr>
+<tr>
+<td><code>aspect-&#123;auto,square,video,[ratio]&#125;</code></td>
+<td><code>aspect-ratio</code>.</td>
+</tr>
+<tr>
+<td><code>container</code></td>
+<td><code>width: 100%</code> and active <code>sm</code> through <code>2xl</code> maximum widths.</td>
+</tr>
+</tbody>
+</table>
+<p><code>&lt;value&gt;</code> accepts supported spacing values, <code>auto</code>, <code>full</code>, <code>screen</code>, fractions, and family-specific arbitrary values. Logical and physical writes remain independently composable.</p>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

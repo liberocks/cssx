@@ -39,7 +39,12 @@ function provideColorPresentations(editor, color, context) {
   if (!editor.workspace.getConfiguration('cssxIntelliSense').get('colorDecorators', true)) {
     return [];
   }
-  const candidate = context.document.getText(context.range);
+  const sourceStart = context.document.offsetAt(context.range.start);
+  const sourceEnd = context.document.offsetAt(context.range.end);
+  const sourceToken = cssxTokens(context.document, editor).find(
+    (token) => token.start === sourceStart && token.end === sourceEnd,
+  );
+  const candidate = sourceToken?.token ?? context.document.getText(context.range);
   const parsed = parseColorCandidate(candidate);
   if (!parsed) {
     return [];
@@ -50,7 +55,15 @@ function provideColorPresentations(editor, color, context) {
       .padStart(2, '0');
   const alpha = Math.round(color.alpha * 255);
   const hex = `#${channel(color.red)}${channel(color.green)}${channel(color.blue)}${alpha < 255 ? channel(color.alpha) : ''}`;
-  const label = `${parsed.prefix}[${hex}]`;
+  const sourceVariantPrefix = sourceToken
+    ? context.document.getText(
+        new editor.Range(
+          context.document.positionAt(sourceStart),
+          context.document.positionAt(sourceToken.sourceOffsets[sourceToken.logicalStart + parsed.variant.length]),
+        ),
+      )
+    : parsed.variant;
+  const label = `${sourceVariantPrefix}${parsed.prefix.slice(parsed.variant.length)}[${hex}]`;
   const presentation = new editor.ColorPresentation(label);
   presentation.textEdit = editor.TextEdit.replace(context.range, label);
   return [presentation];

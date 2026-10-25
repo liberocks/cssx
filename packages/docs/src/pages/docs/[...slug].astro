@@ -1,19 +1,19 @@
 ---
-import { getCollection } from 'astro:content';
-import type { CollectionEntry } from 'astro:content';
+import { getDocs } from '../../docs/catalog.ts';
 import DocsPage from '../../screens/docs/DocsPage.astro';
 
-export async function getStaticPaths() {
-  const pages = await getCollection('docs');
-  return pages.map((page) => ({ params: { slug: page.id }, props: { page } }));
+const pages = getDocs('en');
+
+export function getStaticPaths() {
+  return getDocs('en').map((page) => ({ params: { slug: page.id } }));
 }
 
-interface Props {
-  page: CollectionEntry<'docs'>;
-}
+const { slug } = Astro.params;
+const page = pages.find((candidate) => candidate.id === slug);
 
-const { page } = Astro.props;
-const pages = await getCollection('docs');
+if (!page) {
+  throw new Error(`Documentation page not found: ${slug}`);
+}
 ---
 
 <DocsPage page={page} pages={pages} lang="en" />

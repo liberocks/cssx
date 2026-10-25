@@ -1,5 +1,5 @@
 import type { UtilityDeclaration } from '../registry/utility-types';
-import { isBackgroundImageValue, isLengthArbitraryValue } from '../values/utility-resolvers';
+import { isBackgroundImageValue, isLengthArbitraryValue, resolveArbitraryCssValue } from '../values/utility-resolvers';
 
 /**
  * Resolves arbitrary font-size and background-image forms in color utilities.
@@ -10,13 +10,13 @@ import { isBackgroundImageValue, isLengthArbitraryValue } from '../values/utilit
  */
 export function compileArbitraryColorUtility(family: string, value: string): UtilityDeclaration | null {
   if (family === 'text' && value.startsWith('[') && value.endsWith(']')) {
-    const arbitrary = value.slice(1, -1);
+    const arbitrary = resolveArbitraryCssValue(value);
     if (isLengthArbitraryValue(arbitrary)) {
       return { property: 'font-size', value: arbitrary.replace(/^(?:length|size):/, '') };
     }
   }
   if (family === 'bg' && value.startsWith('[') && value.endsWith(']')) {
-    const arbitrary = value.slice(1, -1);
+    const arbitrary = resolveArbitraryCssValue(value);
     if (isBackgroundImageValue(arbitrary)) {
       return { property: 'background-image', value: arbitrary.replace(/^image:/, '') };
     }

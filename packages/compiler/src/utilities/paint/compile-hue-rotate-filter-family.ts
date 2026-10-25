@@ -1,5 +1,6 @@
 import { filterDeclarations } from '../registry/filter-declarations';
 import type { UtilityDeclaration } from '../registry/utility-types';
+import { resolveArbitraryCssValue } from '../values/utility-resolvers';
 
 /**
  * Resolves numeric and arbitrary hue-rotate filter channels.
@@ -27,7 +28,7 @@ export function compileHueRotateFilterFamily(
   const raw = hue[1]!;
   const value =
     raw.startsWith('[') && raw.endsWith(']')
-      ? raw.slice(1, -1)
+      ? resolveArbitraryCssValue(raw)
       : /^\d+$/.test(raw)
         ? `${negative ? '-' : ''}${raw}deg`
         : null;

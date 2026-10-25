@@ -1,4 +1,5 @@
 import { normalizeArbitrarySelector } from '../utilities/values/normalize-arbitrary-selector';
+import { resolveArbitraryCssValue } from '../utilities/values/utility-resolvers';
 import { replaceNestingSelectors } from './selector';
 import type { VariantRenderState } from './variant-render-state';
 
@@ -25,11 +26,13 @@ export function applyArbitrarySelectorVariant(variant: string, state: VariantRen
     state.selectors = rewrittenSelectors.filter((selector): selector is string => selector !== null);
     state.selectorSuffix = '';
   } else if (variant.startsWith('data-[') && variant.endsWith(']')) {
-    state.selectors = state.selectors.map((selector) => `${selector}[data-${variant.slice(6, -1)}]`);
+    const attribute = resolveArbitraryCssValue(`[${variant.slice(6, -1)}]`);
+    state.selectors = state.selectors.map((selector) => `${selector}[data-${attribute}]`);
   } else if (/^data-[a-z][a-z0-9_-]*$/i.test(variant)) {
     state.selectors = state.selectors.map((selector) => `${selector}[${variant}]`);
   } else if (variant.startsWith('aria-[') && variant.endsWith(']')) {
-    state.selectors = state.selectors.map((selector) => `${selector}[aria-${variant.slice(6, -1)}]`);
+    const attribute = resolveArbitraryCssValue(`[${variant.slice(6, -1)}]`);
+    state.selectors = state.selectors.map((selector) => `${selector}[aria-${attribute}]`);
   } else if (variant.startsWith('aria-')) {
     state.selectors = state.selectors.map((selector) => `${selector}[aria-${variant.slice(5)}="true"]`);
   } else {

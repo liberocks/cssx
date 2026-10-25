@@ -1,0 +1,58 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/scrolling-scrollbars"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>scroll-&#123;m,mx,my,mt,mr,mb,ml&#125;-&lt;spacing&gt;</code></td>
+<td>Physical scroll margin.</td>
+</tr>
+<tr>
+<td><code>scroll-&#123;p,px,py,pt,pr,pb,pl&#125;-&lt;spacing&gt;</code></td>
+<td>Physical scroll padding.</td>
+</tr>
+<tr>
+<td><code>scroll-&#123;auto,smooth&#125;</code></td>
+<td><code>scroll-behavior</code>.</td>
+</tr>
+<tr>
+<td><code>scrollbar-&#123;auto,thin,none&#125;</code></td>
+<td><code>scrollbar-width</code>.</td>
+</tr>
+<tr>
+<td><code>scrollbar-&#123;thumb,track&#125;-&lt;color&gt;</code></td>
+<td>Composed <code>scrollbar-color</code> channel.</td>
+</tr>
+<tr>
+<td><code>scrollbar-gutter-&#123;auto,stable,both&#125;</code></td>
+<td><code>scrollbar-gutter</code>.</td>
+</tr>
+<tr>
+<td><code>snap-&#123;none,x,y,both&#125;</code>, <code>snap-&#123;mandatory,proximity&#125;</code></td>
+<td>Scroll-snap type and strictness.</td>
+</tr>
+<tr>
+<td><code>snap-&#123;normal,always&#125;</code></td>
+<td><code>scroll-snap-stop</code>.</td>
+</tr>
+<tr>
+<td><code>snap-&#123;start,end,center,align-none&#125;</code></td>
+<td><code>scroll-snap-align</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

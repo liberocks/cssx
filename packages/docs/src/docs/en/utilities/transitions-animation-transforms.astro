@@ -1,0 +1,90 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/transitions-animation-transforms"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>transition</code>, <code>transition-&#123;none,all,colors,opacity,shadow,transform,transform-opacity,filter,size,[value]&#125;</code></td>
+<td>Transition property and default timing.</td>
+</tr>
+<tr>
+<td><code>transition-&#123;normal,discrete&#125;</code></td>
+<td><code>transition-behavior</code>.</td>
+</tr>
+<tr>
+<td><code>duration-&#123;n,theme,[value],(--property)&#125;</code>, <code>delay-&#123;n,theme,[value],(--property)&#125;</code></td>
+<td>Transition duration or delay.</td>
+</tr>
+<tr>
+<td><code>ease-&#123;linear,in,out,in-out,theme,[value],(--property)&#125;</code></td>
+<td>Transition timing function.</td>
+</tr>
+<tr>
+<td><code>motion-safe:*</code>, <code>motion-reduce:*</code>, <code>starting:*</code></td>
+<td>Motion preference or entry-style variant.</td>
+</tr>
+<tr>
+<td><code>animate-none</code>, <code>animate-&#123;spin,ping,pulse,bounce,fade-in,fade-out,slide-in-*,scale-in,scale-out,shimmer&#125;</code>, <code>animate-&lt;theme-name&gt;</code>, <code>animate-[value]</code></td>
+<td>Animation. Only used keyframes are emitted.</td>
+</tr>
+<tr>
+<td><code>animation-name-&#123;none,preset,theme,[value]&#125;</code>, <code>animation-composition-&#123;replace,add,accumulate&#125;</code></td>
+<td>Animation name or composition.</td>
+</tr>
+<tr>
+<td><code>animation-duration-&#123;n,theme,[value],(--property)&#125;</code>, <code>animation-delay-&#123;n,theme,[value],(--property)&#125;</code></td>
+<td>Independent animation duration or delay.</td>
+</tr>
+<tr>
+<td><code>animation-ease-&#123;linear,in,out,in-out,theme,[value],(--property)&#125;</code></td>
+<td>Independent animation timing function.</td>
+</tr>
+<tr>
+<td><code>animation-iterations-&#123;1,2,3,infinite&#125;</code>, <code>animation-direction-&#123;normal,reverse,alternate,alternate-reverse&#125;</code>, <code>animation-fill-&#123;none,forwards,backwards,both&#125;</code>, <code>animation-&#123;running,paused&#125;</code></td>
+<td>Independent animation playback controls.</td>
+</tr>
+<tr>
+<td><code>stagger-*</code>, <code>stagger-index-*</code>, <code>stagger-count-*</code>, <code>stagger-reverse</code>, <code>&#123;animation-,&#125;delay-stagger</code></td>
+<td>Explicit CSS stagger channels.</td>
+</tr>
+<tr>
+<td><code>animation-timeline-*</code>, <code>&#123;scroll,view&#125;-timeline-*</code>, <code>timeline-scope-*</code>, <code>animation-range-*</code></td>
+<td>Progress timelines and attachment ranges.</td>
+</tr>
+<tr>
+<td><code>view-transition-&#123;name,class&#125;-*</code>, <code>vt-&#123;old,new,group,image-pair&#125;-[target]:*</code></td>
+<td>Native snapshot capture and styling.</td>
+</tr>
+<tr>
+<td><code>translate-&#123;x,y&#125;-&lt;spacing&gt;</code></td>
+<td>Composable individual <code>translate</code>.</td>
+</tr>
+<tr>
+<td><code>rotate-&#123;n,[value]&#125;</code></td>
+<td>Individual <code>rotate</code>.</td>
+</tr>
+<tr>
+<td><code>scale[-x/-y]-&#123;n,[value]&#125;</code></td>
+<td>Composable individual <code>scale</code>.</td>
+</tr>
+<tr>
+<td><code>skew-&#123;x,y&#125;-&#123;n,[value]&#125;</code></td>
+<td>Composable <code>transform</code> skew channel.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

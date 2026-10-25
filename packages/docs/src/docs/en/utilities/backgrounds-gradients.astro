@@ -1,0 +1,63 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/backgrounds-gradients"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>bg-none</code>, <code>bg-[image]</code></td>
+<td><code>background-image</code>.</td>
+</tr>
+<tr>
+<td><code>bg-&#123;auto,cover,contain&#125;</code></td>
+<td><code>background-size</code>.</td>
+</tr>
+<tr>
+<td><code>bg-&#123;top-left,top,top-right,left,center,right,bottom-left,bottom,bottom-right&#125;</code></td>
+<td><code>background-position</code>.</td>
+</tr>
+<tr>
+<td><code>bg-&#123;repeat,no-repeat,repeat-x,repeat-y,repeat-round,repeat-space&#125;</code></td>
+<td><code>background-repeat</code>.</td>
+</tr>
+<tr>
+<td><code>bg-&#123;fixed,local,scroll&#125;</code></td>
+<td><code>background-attachment</code>.</td>
+</tr>
+<tr>
+<td><code>bg-clip-&#123;border,padding,content,text&#125;</code>, <code>bg-origin-&#123;border,padding,content&#125;</code></td>
+<td>Background clip or origin.</td>
+</tr>
+<tr>
+<td><code>bg-position-[value]</code>, <code>bg-position-(--property)</code>, <code>bg-size-[value]</code>, <code>bg-size-(--property)</code></td>
+<td>Custom position or size.</td>
+</tr>
+<tr>
+<td><code>bg-linear-to-&#123;t,tr,r,br,b,bl,l,tl&#125;</code></td>
+<td>Directional <code>linear-gradient()</code>.</td>
+</tr>
+<tr>
+<td><code>bg-linear-&#123;angle,[angle]&#125;</code></td>
+<td>Angled <code>linear-gradient()</code>.</td>
+</tr>
+<tr>
+<td><code>from/via/to-&lt;color&gt;</code>, <code>from/via/to-&lt;0..100%&gt;</code></td>
+<td>Composable gradient color and stop-position channels.</td>
+</tr>
+</tbody>
+</table>
+<p>Write spaces directly inside bracketed values, such as <code>bg-[linear-gradient(to right,red,blue)]</code>. Unescaped underscores remain supported as a whitespace alias. Use <code>\_</code> for a literal underscore; underscores in <code>url()</code> payloads and <code>var()</code> or <code>env()</code> names are preserved.</p>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

@@ -1,5 +1,6 @@
 import { resolveThemeToken } from '../theme/theme';
 import type { CssxTheme } from '../theme/theme';
+import { resolveArbitraryCssValue } from './resolve-arbitrary-css-value';
 
 /**
  * Resolves an arbitrary or theme-backed color.
@@ -10,7 +11,7 @@ import type { CssxTheme } from '../theme/theme';
  */
 export function resolveColorValue(raw: string, theme: CssxTheme): string | null {
   if (raw.startsWith('[') && raw.endsWith(']')) {
-    return raw.slice(1, -1);
+    return resolveArbitraryCssValue(raw);
   }
   return resolveThemeToken(theme, `--color-${raw}`) ?? null;
 }

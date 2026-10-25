@@ -549,7 +549,7 @@ const styles = cssx.create({
 | `bg-linear-{angle,[angle]}`                                                                  | Angled `linear-gradient()`.                           |
 | `from/via/to-<color>`, `from/via/to-<0..100%>`                                               | Composable gradient color and stop-position channels. |
 
-Use `_` for spaces in bracketed values and `\_` for a literal underscore.
+Spaces may appear directly inside bracketed utility values and arbitrary selector or condition variants. For example, `grid-cols-[13rem minmax(0,1fr)]`, `animate-[fade 1s ease-in]`, and `[& h1]:text-lg` are valid. Unescaped underscores remain supported as a whitespace alias for compatibility. Use `\_` for a literal underscore. Underscores inside `url(...)` payloads and `var()` or `env()` names are preserved.
 
 #### Example
 
@@ -733,12 +733,12 @@ Semicolons, braces, malformed nesting, and unsafe property names are rejected.
 
 ### Containment and rendering
 
-| Class                                                                                  | Styles                                                                         |
-| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `content-visibility-{visible,auto,hidden}`                                             | `content-visibility`.                                                          |
-| `contain-{none,content,strict,size,inline-size,layout,style,paint}`, `contain-[value]` | CSS containment. Use underscores for spaces, such as `contain-[layout_paint]`. |
-| `contain-intrinsic-{size,inline-size,block-size}-{n,[value],(--property)}`             | Intrinsic fallback size for contained content.                                 |
-| `image-render-{auto,crisp-edges,pixelated}`                                            | Image interpolation behavior.                                                  |
+| Class                                                                                  | Styles                                                  |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `content-visibility-{visible,auto,hidden}`                                             | `content-visibility`.                                   |
+| `contain-{none,content,strict,size,inline-size,layout,style,paint}`, `contain-[value]` | CSS containment. For example, `contain-[layout paint]`. |
+| `contain-intrinsic-{size,inline-size,block-size}-{n,[value],(--property)}`             | Intrinsic fallback size for contained content.          |
+| `image-render-{auto,crisp-edges,pixelated}`                                            | Image interpolation behavior.                           |
 
 #### Example
 

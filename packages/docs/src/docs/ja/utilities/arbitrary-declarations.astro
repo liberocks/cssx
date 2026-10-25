@@ -1,0 +1,41 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/arbitrary-declarations"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>[property:value]</code></td>
+<td>One validated declaration. Custom properties are supported.</td>
+</tr>
+<tr>
+<td><code>text-[length]</code></td>
+<td><code>font-size</code> when the value is recognized as a length.</td>
+</tr>
+<tr>
+<td><code>text-[color]</code></td>
+<td>Text color when the value resolves as a color.</td>
+</tr>
+<tr>
+<td><code>bg-[image]</code></td>
+<td><code>background-image</code> when the value is a supported image function.</td>
+</tr>
+<tr>
+<td><code>bg-[color]</code></td>
+<td>Background color when the value resolves as a color.</td>
+</tr>
+</tbody>
+</table>
+<p>Semicolons, braces, malformed nesting, and unsafe property names are rejected.</p>

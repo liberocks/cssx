@@ -1,0 +1,42 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/display-and-visibility"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>block</code>, <code>inline-block</code>, <code>inline</code>, <code>flex</code>, <code>inline-flex</code>, <code>grid</code>, <code>inline-grid</code></td>
+<td>Corresponding <code>display</code> value.</td>
+</tr>
+<tr>
+<td><code>flow-root</code>, <code>contents</code>, <code>list-item</code>, <code>hidden</code></td>
+<td><code>display: flow-root</code>, <code>contents</code>, <code>list-item</code>, or <code>none</code>.</td>
+</tr>
+<tr>
+<td><code>table</code>, <code>inline-table</code>, <code>table-&#123;caption,cell,column,column-group,footer-group,header-group,row,row-group&#125;</code></td>
+<td>Corresponding table <code>display</code> value.</td>
+</tr>
+<tr>
+<td><code>visible</code>, <code>invisible</code></td>
+<td><code>visibility: visible</code> or <code>hidden</code>.</td>
+</tr>
+<tr>
+<td><code>sr-only</code>, <code>not-sr-only</code></td>
+<td>Applies or resets the screen-reader-only clipping declarations.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

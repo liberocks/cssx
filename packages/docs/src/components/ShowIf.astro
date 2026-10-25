@@ -1,0 +1,17 @@
+---
+export interface ShowIfProps<T> {
+  condition: T;
+  children?: any;
+}
+
+interface Props extends ShowIfProps<unknown> {}
+
+const { condition } = Astro.props;
+let content = '';
+
+if (condition && Astro.slots.has('default')) {
+  content = await Astro.slots.render('default', [condition]);
+}
+---
+
+<Fragment set:html={content} />

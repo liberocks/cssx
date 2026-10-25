@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import { compileSvgNumericUtility } from './compile-svg-numeric-utility';
 
 it('resolves numeric and arbitrary SVG stroke values', () => {
-  expect(compileSvgNumericUtility('stroke-dasharray-[4_8]')).toEqual({
+  expect(compileSvgNumericUtility('stroke-dasharray-[4 8]')).toEqual({
     property: 'stroke-dasharray',
     value: '4 8',
   });

@@ -1,6 +1,7 @@
 import { filterDeclarations } from '../registry/filter-declarations';
 import type { UtilityDeclaration } from '../registry/utility-types';
 import { FILTER_CHANNEL_VALUES } from '../values/filter-channel-values';
+import { resolveArbitraryCssValue } from '../values/utility-resolvers';
 
 /**
  * Resolves standard named and arbitrary filter channels.
@@ -30,7 +31,7 @@ export function compileSimpleFilterFamily(
     return null;
   }
   const raw = simple[2] ?? 'DEFAULT';
-  const arbitrary = raw.startsWith('[') && raw.endsWith(']') ? raw.slice(1, -1) : null;
+  const arbitrary = raw.startsWith('[') && raw.endsWith(']') ? resolveArbitraryCssValue(raw) : null;
   const value = arbitrary ?? FILTER_CHANNEL_VALUES[family]?.[raw];
   if (!value) {
     return null;

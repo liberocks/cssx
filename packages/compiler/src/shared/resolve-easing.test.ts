@@ -7,7 +7,7 @@ describe('resolveEasing', () => {
   it('resolves built-ins, arbitrary easing, and transition tokens', () => {
     const theme = parseTheme('@theme { --ease-smooth: cubic-bezier(.1, .8, .2, 1); }');
     expect(resolveEasing('in', theme)).toBe('cubic-bezier(.4, 0, 1, 1)');
-    expect(resolveEasing('[steps(4,_end)]', theme)).toBe('steps(4, end)');
+    expect(resolveEasing('[steps(4, end)]', theme)).toBe('steps(4, end)');
     expect(resolveEasing('smooth', theme)).toBe('cubic-bezier(.1, .8, .2, 1)');
   });
 

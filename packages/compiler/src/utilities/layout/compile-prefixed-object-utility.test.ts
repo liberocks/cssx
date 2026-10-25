@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import { compilePrefixedObjectUtility } from './compile-prefixed-object-utility';
 
 it('compiles arbitrary and custom-property object positions', () => {
-  expect(compilePrefixedObjectUtility('object-[25%_75%]')).toEqual({
+  expect(compilePrefixedObjectUtility('object-[25% 75%]')).toEqual({
     property: 'object-position',
     value: '25% 75%',
   });

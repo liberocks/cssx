@@ -6,7 +6,7 @@ describe('resolveNumericSvgValue', () => {
   it('accepts numeric and arbitrary SVG values', () => {
     expect(resolveNumericSvgValue('3')).toBe('3');
     expect(resolveNumericSvgValue('4.5')).toBe('4.5');
-    expect(resolveNumericSvgValue('[4_8]')).toBe('4 8');
+    expect(resolveNumericSvgValue('[4 8]')).toBe('4 8');
     expect(resolveNumericSvgValue('(--svg-value)')).toBe('var(--svg-value)');
   });
 

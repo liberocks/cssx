@@ -1,0 +1,66 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/effects-filters-masks"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>shadow</code>, <code>shadow-&#123;sm,md,lg,xl,none&#125;</code></td>
+<td>Composable <code>box-shadow</code> channel.</td>
+</tr>
+<tr>
+<td><code>opacity-&lt;n&gt;</code></td>
+<td><code>opacity: n / 100</code>.</td>
+</tr>
+<tr>
+<td><code>filter-none</code></td>
+<td>Resets filter channels.</td>
+</tr>
+<tr>
+<td><code>blur-&#123;none,xs,sm,md,lg,xl,2xl,3xl,[value]&#125;</code></td>
+<td>Composable <code>blur()</code>.</td>
+</tr>
+<tr>
+<td><code>brightness-*</code>, <code>contrast-*</code>, <code>saturate-*</code>, <code>grayscale[-0]</code>, <code>hue-rotate-&#123;n,[value]&#125;</code>, <code>invert[-0]</code>, <code>sepia[-0]</code>, <code>drop-shadow-*</code></td>
+<td>Composable <code>filter</code> channels.</td>
+</tr>
+<tr>
+<td><code>backdrop-filter-none</code></td>
+<td>Resets backdrop-filter channels.</td>
+</tr>
+<tr>
+<td><code>backdrop-&#123;blur,brightness,contrast,grayscale,hue-rotate,invert,opacity,saturate,sepia&#125;-*</code></td>
+<td>Composable backdrop-filter channels.</td>
+</tr>
+<tr>
+<td><code>mask-none</code>, <code>mask-[image]</code>, <code>mask-(--property)</code></td>
+<td><code>mask-image</code>.</td>
+</tr>
+<tr>
+<td><code>mask-&#123;cover,contain&#125;</code>, <code>mask-&#123;repeat,no-repeat,repeat-x,repeat-y,repeat-round,repeat-space&#125;</code></td>
+<td>Mask size or repeat.</td>
+</tr>
+<tr>
+<td><code>mask-clip-&#123;border,padding,content&#125;</code>, <code>mask-no-clip</code>, <code>mask-origin-&#123;border,padding,content&#125;</code></td>
+<td>Mask clipping or origin.</td>
+</tr>
+<tr>
+<td><code>mask-&#123;position,size&#125;-[value]</code>, <code>mask-&#123;position,size&#125;-(--property)</code></td>
+<td>Custom mask position or size.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

@@ -68,3 +68,16 @@ it('returns no hover outside CSSX strings or for unknown utilities', () => {
     provideHover(editor, createDocument(unknown), createDocument(unknown).positionAt(unknown.length)),
   ).toBeUndefined();
 });
+
+it('matches utility documentation after decoding escaped host string quotes', () => {
+  const editor = createEditor();
+  const source = String.raw`sx("[&[data-label=\"[\"] h1]:text-red-500")`;
+  const document = createDocument(source);
+  const position = document.positionAt(source.indexOf('text-red-500') + 4);
+
+  expect(provideHover(editor, document, position)).toEqual(
+    expect.objectContaining({
+      contents: expect.objectContaining({ value: expect.stringContaining('**text-red-500**') }),
+    }),
+  );
+});

@@ -83,6 +83,68 @@ describe('@cssxio/html', () => {
     expect(stylesheet.textContent).not.toContain('app-card');
   });
 
+  it('aliases utilities containing spaces and keeps the alias stable on repeated starts', async () => {
+    const source = new TestElement('grid-cols-[13rem minmax(0,1fr)] app-card');
+    const document = new TestDocument([source]);
+
+    const first = await start({ document: document as unknown as Document });
+    const firstClassName = source.getAttribute('class');
+    const second = await start({ document: document as unknown as Document });
+
+    expect(firstClassName).toBe('cssx-html-0 app-card');
+    expect(source.getAttribute('class')).toBe(firstClassName);
+    expect(second).toBe(first);
+    expect(first.textContent).toContain('.cssx-html-0{grid-template-columns:13rem minmax(0,1fr);}');
+  });
+
+  it('skips occupied alias names and preserves classes without whitespace utilities', async () => {
+    const source = new TestElement('cssx-html-0 grid-cols-[13rem minmax(0,1fr)] bg-[url(/hero_image.svg)]');
+    const document = new TestDocument([source]);
+
+    const stylesheet = await start({ document: document as unknown as Document });
+
+    expect(source.getAttribute('class')).toBe('cssx-html-0 cssx-html-1 bg-[url(/hero_image.svg)]');
+    expect(stylesheet.textContent).toContain('.cssx-html-1{grid-template-columns:13rem minmax(0,1fr);}');
+    expect(stylesheet.textContent).toContain('.bg-\\[url\\(\\/hero_image\\.svg\\)\\]');
+    expect(stylesheet.textContent).toContain('url(/hero_image.svg)');
+  });
+
+  it('uses a different alias when a new whitespace utility appears on a later start', async () => {
+    const source = new TestElement('grid-cols-[13rem minmax(0,1fr)]');
+    const document = new TestDocument([source]);
+
+    await start({ document: document as unknown as Document });
+    source.setAttribute('class', `${source.getAttribute('class')} flex-[1 0 auto]`);
+    const stylesheet = await start({ document: document as unknown as Document });
+
+    expect(source.getAttribute('class')).toBe('cssx-html-0 cssx-html-1');
+    expect(stylesheet.textContent).toContain('.cssx-html-1{flex:1 0 auto;}');
+  });
+
+  it('removes CSS for whitespace utilities removed before a later start', async () => {
+    const source = new TestElement('grid-cols-[13rem minmax(0,1fr)]');
+    const document = new TestDocument([source]);
+    const stylesheet = await start({ document: document as unknown as Document });
+    source.setAttribute('class', 'app-card');
+
+    await start({ document: document as unknown as Document });
+
+    expect(source.getAttribute('class')).toBe('app-card');
+    expect(stylesheet.textContent).toBe('');
+  });
+
+  it('leaves classes untouched when compilation fails', async () => {
+    const source = new TestElement('grid-cols-[13rem minmax(0,1fr)]');
+    const document = new TestDocument([source]);
+
+    await expect(start({ document: document as unknown as Document, theme: '@theme { invalid }' })).rejects.toThrow(
+      'Invalid CSSX @theme declaration',
+    );
+
+    expect(source.getAttribute('class')).toBe('grid-cols-[13rem minmax(0,1fr)]');
+    expect(document.head.styles).toHaveLength(0);
+  });
+
   it('reuses its stylesheet and accepts a self-hosted theme', async () => {
     const document = new TestDocument([new TestElement('bg-brand')]);
     const theme = '@theme { --color-brand: #123456; }';

@@ -79,7 +79,7 @@ describe('React Native runtime', () => {
     expect(() => create({ value: 'cursor-pointer' })).toThrow('cursor is browser-only');
     expect(() => create({ value: 'before:block' })).toThrow('cannot represent the variant');
     expect(create({ value: 'bg-slate-500' }).value.style).toEqual({ backgroundColor: '#62748e' });
-    expect(create({ value: 'bg-[oklch(0%_0_0)]' }).value.style).toEqual({ backgroundColor: '#000000' });
+    expect(create({ value: 'bg-[oklch(0% 0 0)]' }).value.style).toEqual({ backgroundColor: '#000000' });
   });
 
   it('supports custom native-safe theme values', () => {
@@ -91,11 +91,11 @@ describe('React Native runtime', () => {
   });
 
   it('maps logical arbitrary properties and direct native transforms', () => {
-    expect(create({ value: '[flex:1_1_0%]' }).value.style).toEqual({ flex: 1 });
+    expect(create({ value: '[flex:1 1 0%]' }).value.style).toEqual({ flex: 1 });
     expect(
       create({
         value:
-          '[padding-inline:1rem] [margin-block:2px] [inset-inline:10%] [flex:2] [translate:1rem_2rem] [rotate:10deg] [scale:2]',
+          '[padding-inline:1rem] [margin-block:2px] [inset-inline:10%] [flex:2] [translate:1rem 2rem] [rotate:10deg] [scale:2]',
       }).value.style,
     ).toEqual({
       left: '10%',

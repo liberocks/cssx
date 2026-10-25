@@ -11,7 +11,7 @@ describe('compileTimelineProducer', () => {
     expect(compileTimelineProducer('view-timeline-name-[--hero]')?.property).toBe('view-timeline-name');
     expect(compileTimelineProducer('scroll-timeline-axis-y')?.value).toBe('y');
     expect(compileTimelineProducer('view-timeline-axis-inline')?.value).toBe('inline');
-    expect(compileTimelineProducer('view-timeline-inset-[10%_20%]')?.value).toBe('10% 20%');
+    expect(compileTimelineProducer('view-timeline-inset-[10% 20%]')?.value).toBe('10% 20%');
   });
 
   it('compiles timeline scopes and rejects invalid declarations', () => {

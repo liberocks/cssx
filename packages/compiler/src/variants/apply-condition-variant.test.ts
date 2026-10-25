@@ -46,7 +46,10 @@ describe('applyConditionVariant', () => {
     for (const variant of [
       'supports-[display:grid]',
       'not-supports-[display:flex]',
+      'supports-[font-tech: color-COLRv1]',
+      'not-supports-[font-format: opentype]',
       'min-[600px]',
+      'min-[calc(100vw - 2rem)]',
       'max-[80rem]',
       'tablet',
       'max-tablet',
@@ -56,7 +59,10 @@ describe('applyConditionVariant', () => {
     expect(state.atRules).toEqual([
       '@supports (display: grid)',
       '@supports not (display: flex)',
+      '@supports (font-tech: color-COLRv1)',
+      '@supports not (font-format: opentype)',
       '@media (width >= 600px)',
+      '@media (width >= calc(100vw - 2rem))',
       '@media (width < 80rem)',
       '@media (width >= 50rem)',
       '@media (width < 50rem)',

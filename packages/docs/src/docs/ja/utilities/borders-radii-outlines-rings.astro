@@ -1,0 +1,63 @@
+---
+import { Code } from 'astro:components';
+import { docExamples } from '../../examples.ts';
+
+const codeBlocks = docExamples["utilities/borders-radii-outlines-rings"] ?? [];
+
+
+interface Props { lang: 'en' | 'ja' }
+const { lang = 'en' } = Astro.props;
+const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
+---
+
+<table>
+<thead><tr>
+<th scope="col">Class</th>
+<th scope="col">Styles</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>border</code>, <code>border-&#123;0,2,4,8&#125;</code></td>
+<td>All-side border width.</td>
+</tr>
+<tr>
+<td><code>border-&#123;x,y,t,r,b,l&#125;</code>, <code>border-&#123;x,y,t,r,b,l&#125;-&#123;0,2,4,8&#125;</code></td>
+<td>Selected border width.</td>
+</tr>
+<tr>
+<td><code>rounded</code>, <code>rounded-&#123;none,sm,md,lg,xl,2xl,full&#125;</code></td>
+<td><code>border-radius</code>.</td>
+</tr>
+<tr>
+<td><code>divide-&#123;x,y&#125;[-&#123;0,2,4,8,[value]&#125;]</code></td>
+<td>Child-scoped divider widths.</td>
+</tr>
+<tr>
+<td><code>divide-&#123;x,y&#125;-reverse</code></td>
+<td>Reverses divider direction.</td>
+</tr>
+<tr>
+<td><code>outline</code></td>
+<td>Solid 1px outline.</td>
+</tr>
+<tr>
+<td><code>outline-&#123;none,hidden,solid,dashed,dotted,double&#125;</code></td>
+<td>Outline style or reset.</td>
+</tr>
+<tr>
+<td><code>outline-&#123;0,1,2,4,8,[value]&#125;</code>, <code>outline-offset-&lt;spacing&gt;</code></td>
+<td>Outline width or offset.</td>
+</tr>
+<tr>
+<td><code>ring</code>, <code>ring-&#123;0,2,4,8,[value]&#125;</code></td>
+<td>Composable ring width and shadow.</td>
+</tr>
+<tr>
+<td><code>ring-offset-&#123;0,2,4,8,[value]&#125;</code></td>
+<td>Ring offset width.</td>
+</tr>
+</tbody>
+</table>
+<p>Color forms are documented in <a href={`${docsPath}/utilities/colors`}>Colors</a>. Dividers apply to every child except the last, and rings compose with regular shadows.</p>
+<h4 id="example">Example</h4>
+<Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />
