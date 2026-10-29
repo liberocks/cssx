@@ -48,6 +48,15 @@ pub struct CssxCall {
     pub utilities: Vec<String>,
 }
 
+/// One in-memory source module passed to the bounded project analyzer.
+#[derive(Clone, Copy, Debug)]
+pub struct SourceModule<'a> {
+    /// Source text retained by the caller.
+    pub source: &'a str,
+    /// Path used to select the JS/TS/JSX/TSX parser mode.
+    pub filename: &'a str,
+}
+
 /// Parses a JS/TS module and finds calls through imported CSSX bindings.
 ///
 /// The result is useful for the Rust transform pipeline: import aliases are
@@ -91,6 +100,26 @@ pub fn find_cssx_calls(
         .calls
         .sort_unstable_by_key(|call| (call.start, call.end));
     Ok(visitor.calls)
+}
+
+/// Analyzes source modules in bounded, ordered batches.
+///
+/// Parsing each module uses a fresh Oxc arena which is dropped before the next
+/// module is processed. The fixed batch bound keeps project startup from
+/// creating an unbounded amount of queued per-module work.
+pub fn find_cssx_calls_in_modules<'a>(
+    modules: &[SourceModule<'a>],
+    import_source: &str,
+) -> Vec<Result<Vec<CssxCall>, String>> {
+    let mut results = Vec::with_capacity(modules.len());
+    for batch in lowdash::chunk(modules, 32) {
+        results.extend(
+            batch
+                .iter()
+                .map(|module| find_cssx_calls(module.source, module.filename, import_source)),
+        );
+    }
+    results
 }
 
 struct CssxCallCollector<'a> {
@@ -221,7 +250,7 @@ fn collect_sx_utilities(expression: &Expression<'_>, utilities: &mut Vec<String>
 
 #[cfg(test)]
 mod tests {
-    use super::{EntryPoint, find_cssx_calls};
+    use super::{EntryPoint, SourceModule, find_cssx_calls, find_cssx_calls_in_modules};
 
     #[test]
     fn resolves_named_aliases_and_namespace_imports() {
@@ -291,5 +320,28 @@ mod tests {
     fn returns_parse_errors_and_rejects_unknown_extensions() {
         assert!(find_cssx_calls("import {", "page.tsx", "@cssxio/cssx").is_err());
         assert!(find_cssx_calls("const page = 1", "page.unknown", "@cssxio/cssx").is_err());
+    }
+
+    #[test]
+    fn analyzes_bounded_batches_in_source_order() {
+        let sources = [
+            SourceModule {
+                filename: "first.tsx",
+                source: "import { sx } from '@cssxio/cssx'; sx('p-4')",
+            },
+            SourceModule {
+                filename: "second.tsx",
+                source: "import { sx } from '@cssxio/cssx'; sx('m-2')",
+            },
+            SourceModule {
+                filename: "third.tsx",
+                source: "import { sx } from '@cssxio/cssx'; sx('text-sm')",
+            },
+        ];
+        let results = find_cssx_calls_in_modules(&sources, "@cssxio/cssx");
+        assert_eq!(results.len(), sources.len());
+        assert_eq!(results[0].as_ref().unwrap()[0].utilities, ["p-4"]);
+        assert_eq!(results[1].as_ref().unwrap()[0].utilities, ["m-2"]);
+        assert_eq!(results[2].as_ref().unwrap()[0].utilities, ["text-sm"]);
     }
 }
