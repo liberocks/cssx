@@ -205,7 +205,7 @@ describe('unplugin lifecycle edges', () => {
     expect(nonErrorResponse.body).toBe('Unable to compile CSSX development stylesheet.');
   });
 
-  it('suppresses only CSS-only Vite SSR updates and invalidates evaluated modules', async () => {
+  it('suppresses CSS-only Vite SSR updates without invalidating evaluated modules', async () => {
     const plugin = pluginFor('vite');
     await plugin.transform.handler(staticSource, '/project/styles.ts');
     const module = { id: '/project/styles.ts', url: '/styles.ts' };
@@ -239,8 +239,8 @@ describe('unplugin lifecycle edges', () => {
     const remaining = await handler.call({ environment }, { modules: [module], timestamp: 1 });
 
     expect(remaining).toEqual([]);
-    expect(invalidated).toEqual([module]);
-    expect(evaluated).toEqual([{ id: '/project/styles.ts' }]);
+    expect(invalidated).toEqual([]);
+    expect(evaluated).toEqual([]);
     expect(
       await handler.call(
         {

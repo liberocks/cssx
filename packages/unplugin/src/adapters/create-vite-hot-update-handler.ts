@@ -1,7 +1,11 @@
 import { moduleId } from '../core/options';
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
-import { invalidateViteRunner } from './invalidate-vite-runner';
-import type { ViteHotUpdateModule } from './invalidate-vite-runner';
+
+/** Module identity fields used by Vite's hot-update context. */
+interface ViteHotUpdateModule {
+  readonly id?: string;
+  readonly url?: string;
+}
 
 /**
  * Creates the Vite hot-update hook that eagerly handles safe CSS-only changes.
@@ -51,9 +55,8 @@ export function createViteHotUpdateHandler(
       return undefined;
     }
 
-    if (environment.name !== 'client') {
-      invalidateViteRunner(environment, handled, context.timestamp);
-    }
+    // A matching CSS-only signature guarantees the transformed module's JavaScript is unchanged.
+    // Keeping the SSR module cached avoids framework refreshes that can discard the injected sheet.
     return modules.filter((module) => !handled.includes(module));
   };
 }

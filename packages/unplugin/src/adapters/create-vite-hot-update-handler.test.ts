@@ -29,7 +29,7 @@ it('skips missing environments and non-CSS-only modules', async () => {
   ).resolves.toEqual([{ id: '/project/unknown.ts' }]);
 });
 
-it('retransforms CSS-only modules, invalidates the server runner, and preserves other updates', async () => {
+it('retransforms CSS-only modules without invalidating the server runner and preserves other updates', async () => {
   const handledModule = { id: '/project/style.ts', url: '/src/style.ts' };
   const handledWithoutUrl = { id: '/project/other.ts' };
   const unhandledModule = { id: '/project/script.ts' };
@@ -63,8 +63,8 @@ it('retransforms CSS-only modules, invalidates the server runner, and preserves 
     handler.call({ environment }, { modules: [handledModule, handledWithoutUrl, unhandledModule], timestamp: 42 }),
   ).resolves.toEqual([unhandledModule]);
   expect(transformRequest).toHaveBeenCalledExactlyOnceWith('/src/style.ts');
-  expect(invalidated).toEqual([handledModule, handledWithoutUrl]);
-  expect(evaluated).toEqual([{ id: handledModule.id }, { id: handledWithoutUrl.id }]);
+  expect(invalidated).toEqual([]);
+  expect(evaluated).toEqual([]);
 });
 
 it('leaves the update graph alone when a retransform changes CSSX metadata', async () => {

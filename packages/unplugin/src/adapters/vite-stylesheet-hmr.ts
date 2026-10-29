@@ -19,8 +19,8 @@ export function viteDevelopmentStylesheetHmr(cssFileName: string, baseUrl?: stri
       const style = document.createElement("style");
       style.dataset.cssxDevelopmentStylesheet = "";
       style.textContent = payload.css;
-      if (state.style) state.style.after(style);
-      else if (stylesheetLink) stylesheetLink.after(style);
+      if (state.style?.isConnected) state.style.after(style);
+      else if (stylesheetLink?.isConnected) stylesheetLink.after(style);
       else document.head.append(style);
       state.style?.remove();
       state.style = style;
