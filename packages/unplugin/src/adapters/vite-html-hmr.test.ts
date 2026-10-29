@@ -13,11 +13,18 @@ function createResponse(initialHeaders: Record<string, string> = {}) {
   );
   const chunks: string[] = [];
   const listeners = new Map<string, Array<() => void>>();
+  let headersSent = false;
   const response: ViteHtmlResponseLike = {
     getHeader(name) {
       return headers[name.toLowerCase()];
     },
+    get headersSent() {
+      return headersSent;
+    },
     removeHeader(name) {
+      if (headersSent) {
+        throw new Error('Headers are already sent.');
+      }
       delete headers[name.toLowerCase()];
     },
     once(event, listener) {
@@ -33,6 +40,7 @@ function createResponse(initialHeaders: Record<string, string> = {}) {
       return true;
     },
     end(chunk, encodingOrCallback, callback) {
+      headersSent = true;
       if (chunk !== undefined) {
         chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString());
       }
@@ -42,6 +50,25 @@ function createResponse(initialHeaders: Record<string, string> = {}) {
       const done = typeof encodingOrCallback === 'function' ? encodingOrCallback : callback;
       done?.();
       return response;
+    },
+    writeHead(_statusCode, statusMessageOrHeaders, headersArgument) {
+      const outgoingHeaders = typeof statusMessageOrHeaders === 'string' ? headersArgument : statusMessageOrHeaders;
+      if (Array.isArray(outgoingHeaders)) {
+        for (let index = 0; index + 1 < outgoingHeaders.length; index += 2) {
+          headers[String(outgoingHeaders[index]).toLowerCase()] = String(outgoingHeaders[index + 1]);
+        }
+      } else {
+        for (const [name, value] of Object.entries(outgoingHeaders ?? {})) {
+          if (value !== undefined) {
+            headers[name.toLowerCase()] = String(value);
+          }
+        }
+      }
+      headersSent = true;
+      return response;
+    },
+    flushHeaders() {
+      headersSent = true;
     },
   };
   return {
@@ -114,6 +141,97 @@ it('preserves byte chunks, explicit encodings, and write and end callbacks', () 
   expect(harness.body()).toContain('bytes<script data-cssx-vite-hmr>');
   expect(writeCompleted).toBe(true);
   expect(endCompleted).toBe(true);
+});
+
+it('removes HTML validators before SSR servers commit headers', () => {
+  const objectHeaders = createResponse();
+  request(objectHeaders.response);
+  objectHeaders.response.writeHead!(200, {
+    'Content-Type': 'text/html',
+    'Content-Length': '80',
+    ETag: 'old',
+  });
+  objectHeaders.response.write('<html><body>object headers');
+  objectHeaders.response.end('</body></html>');
+  expect(objectHeaders.body()).toContain('object headers<script data-cssx-vite-hmr>');
+  expect(objectHeaders.headers['content-length']).toBeUndefined();
+  expect(objectHeaders.headers.etag).toBeUndefined();
+
+  const inheritedHeaders = createResponse({ 'content-type': 'text/html', 'content-length': '80', etag: 'old' });
+  request(inheritedHeaders.response);
+  inheritedHeaders.response.writeHead!(200);
+  inheritedHeaders.response.write('<html><body>inherited headers');
+  inheritedHeaders.response.end('</body></html>');
+  expect(inheritedHeaders.body()).toContain('inherited headers<script data-cssx-vite-hmr>');
+  expect(inheritedHeaders.headers['content-length']).toBeUndefined();
+  expect(inheritedHeaders.headers.etag).toBeUndefined();
+
+  const withoutContentType = createResponse();
+  request(withoutContentType.response);
+  withoutContentType.response.writeHead!(200);
+  withoutContentType.response.write('<html><body>untyped');
+  withoutContentType.response.end('</body></html>');
+  expect(withoutContentType.body()).toBe('<html><body>untyped</body></html>');
+
+  const rawHeaders = createResponse();
+  request(rawHeaders.response);
+  rawHeaders.response.writeHead!(200, 'OK', ['Content-Type', 'text/html', 'Content-Length', '80', 'ETag', 'old']);
+  rawHeaders.response.write('<html><body>raw headers');
+  rawHeaders.response.end('</body></html>');
+  expect(rawHeaders.body()).toContain('raw headers<script data-cssx-vite-hmr>');
+  expect(rawHeaders.headers['content-length']).toBeUndefined();
+  expect(rawHeaders.headers.etag).toBeUndefined();
+
+  const flushedHeaders = createResponse({ 'content-type': 'text/html', 'content-length': '80', etag: 'old' });
+  request(flushedHeaders.response);
+  flushedHeaders.response.flushHeaders!();
+  flushedHeaders.response.write('<html><body>flushed headers');
+  flushedHeaders.response.end('</body></html>');
+  expect(flushedHeaders.body()).toContain('flushed headers<script data-cssx-vite-hmr>');
+  expect(flushedHeaders.headers['content-length']).toBeUndefined();
+  expect(flushedHeaders.headers.etag).toBeUndefined();
+
+  const compressed = createResponse();
+  request(compressed.response);
+  compressed.response.writeHead!(200, {
+    'Content-Type': 'text/html',
+    'Content-Encoding': 'gzip',
+    'Content-Length': '80',
+    ETag: 'compressed',
+  });
+  compressed.response.write('<html><body>compressed');
+  compressed.response.end('</body></html>');
+  expect(compressed.body()).toBe('<html><body>compressed</body></html>');
+  expect(compressed.headers['content-length']).toBe('80');
+  expect(compressed.headers.etag).toBe('compressed');
+
+  const compressedFlush = createResponse({
+    'content-type': 'text/html',
+    'content-encoding': 'gzip',
+    'content-length': '80',
+    etag: 'compressed',
+  });
+  request(compressedFlush.response);
+  compressedFlush.response.flushHeaders!();
+  compressedFlush.response.write('<html><body>compressed');
+  compressedFlush.response.end('</body></html>');
+  expect(compressedFlush.body()).toBe('<html><body>compressed</body></html>');
+  expect(compressedFlush.headers['content-length']).toBe('80');
+  expect(compressedFlush.headers.etag).toBe('compressed');
+
+  const flushedWithoutContentType = createResponse();
+  request(flushedWithoutContentType.response);
+  flushedWithoutContentType.response.flushHeaders!();
+  flushedWithoutContentType.response.write('<html><body>untyped flush');
+  flushedWithoutContentType.response.end('</body></html>');
+  expect(flushedWithoutContentType.body()).toBe('<html><body>untyped flush</body></html>');
+
+  const withoutFlushHeaders = createResponse({ 'content-type': 'text/html' });
+  delete withoutFlushHeaders.response.flushHeaders;
+  request(withoutFlushHeaders.response);
+  withoutFlushHeaders.response.write('<html><body>no flush method');
+  withoutFlushHeaders.response.end('</body></html>');
+  expect(withoutFlushHeaders.body()).toContain('no flush method<script data-cssx-vite-hmr>');
 });
 
 it('does not duplicate an entry-page bridge and supports HTML without body tags', () => {

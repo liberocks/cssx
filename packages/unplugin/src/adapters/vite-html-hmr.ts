@@ -15,6 +15,10 @@ const BRIDGE_MARKER = 'data-cssx-vite-hmr';
 type WriteCallback = (error?: Error | null) => void;
 /** Encoding accepted by Node's writable response methods. */
 type WriteEncoding = BufferEncoding | WriteCallback;
+/** Header values accepted by Node's HTTP/1 response methods. */
+type ViteHtmlHeaderValue = number | string | readonly string[];
+/** Header object or alternating name/value list accepted by writeHead. */
+type ViteHtmlHeaders = Record<string, ViteHtmlHeaderValue | undefined> | readonly ViteHtmlHeaderValue[];
 
 /** Minimal request fields used to identify browser document requests. */
 export interface ViteHtmlRequestLike {
@@ -27,9 +31,12 @@ export interface ViteHtmlRequestLike {
 export interface ViteHtmlResponseLike {
   end(chunk?: string | Uint8Array, encodingOrCallback?: WriteEncoding, callback?: WriteCallback): this;
   getHeader(name: string): number | string | readonly string[] | undefined;
+  readonly headersSent?: boolean;
   once(event: 'close' | 'finish', listener: () => void): this;
   removeHeader(name: string): void;
   write(chunk: string | Uint8Array, encodingOrCallback?: WriteEncoding, callback?: WriteCallback): boolean;
+  writeHead?(statusCode: number, statusMessageOrHeaders?: string | ViteHtmlHeaders, headers?: ViteHtmlHeaders): this;
+  flushHeaders?(): void;
 }
 
 /** Middleware signature shared by Vite and Node's HTTP server. */
@@ -38,6 +45,45 @@ export type ViteHtmlMiddleware = (
   response: ViteHtmlResponseLike,
   next: () => void,
 ) => void;
+
+/** Finds a named header in a writeHead header object or alternating list. */
+function headerValue(headers: ViteHtmlHeaders | undefined, name: string): ViteHtmlHeaderValue | undefined {
+  if (!headers) {
+    return undefined;
+  }
+  if (Array.isArray(headers)) {
+    for (let index = 0; index + 1 < headers.length; index += 2) {
+      if (String(headers[index]).toLowerCase() === name) {
+        return headers[index + 1];
+      }
+    }
+    return undefined;
+  }
+  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === name);
+  return entry?.[1];
+}
+
+/** Drops validators whose values become stale when the injected bridge changes the HTML. */
+function withoutHtmlValidators(headers: ViteHtmlHeaders | undefined): ViteHtmlHeaders | undefined {
+  if (!headers) {
+    return headers;
+  }
+  if (Array.isArray(headers)) {
+    const cleaned: ViteHtmlHeaderValue[] = [];
+    for (let index = 0; index + 1 < headers.length; index += 2) {
+      const name = String(headers[index]);
+      if (name.toLowerCase() !== 'content-length' && name.toLowerCase() !== 'etag') {
+        cleaned.push(headers[index]!, headers[index + 1]!);
+      }
+    }
+    return cleaned;
+  }
+  return Object.fromEntries(
+    Object.entries(headers).filter(
+      ([name]) => name.toLowerCase() !== 'content-length' && name.toLowerCase() !== 'etag',
+    ),
+  );
+}
 
 /** Inserts a development stylesheet bridge into framework-rendered HTML. */
 export function injectViteDevelopmentHtmlHmr(html: string, cssFileName: string, baseUrl = '/'): string {
@@ -82,9 +128,68 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
     };
     const writeOriginal = response.write.bind(response);
     const endOriginal = response.end.bind(response);
+    const writeHeadOriginal = response.writeHead?.bind(response);
+    const flushHeadersOriginal = response.flushHeaders?.bind(response);
     const chunks: Buffer[] = [];
     let bufferedBytes = 0;
     let passThrough = false;
+    let responseContentType = response.getHeader('content-type');
+    let responseContentEncoding = response.getHeader('content-encoding');
+    let responseContentLength = response.getHeader('content-length');
+    let responseEtag = response.getHeader('etag');
+
+    const removeHtmlValidators = () => {
+      if (response.headersSent === true) {
+        return;
+      }
+      response.removeHeader('content-length');
+      response.removeHeader('etag');
+      responseContentLength = undefined;
+      responseEtag = undefined;
+    };
+
+    if (writeHeadOriginal) {
+      response.writeHead = ((statusCode, statusMessageOrHeaders, headers) => {
+        const specifiedHeaders = typeof statusMessageOrHeaders === 'string' ? headers : statusMessageOrHeaders;
+        responseContentType = headerValue(specifiedHeaders, 'content-type') ?? response.getHeader('content-type');
+        responseContentEncoding =
+          headerValue(specifiedHeaders, 'content-encoding') ?? response.getHeader('content-encoding');
+        responseContentLength = headerValue(specifiedHeaders, 'content-length') ?? response.getHeader('content-length');
+        responseEtag = headerValue(specifiedHeaders, 'etag') ?? response.getHeader('etag');
+        const isHtml = String(responseContentType ?? '')
+          .toLowerCase()
+          .startsWith('text/html');
+        const shouldInject = isHtml && responseContentEncoding === undefined;
+        const outgoingHeaders = shouldInject ? withoutHtmlValidators(specifiedHeaders) : specifiedHeaders;
+        if (shouldInject) {
+          removeHtmlValidators();
+          responseContentLength = undefined;
+          responseEtag = undefined;
+        }
+        if (typeof statusMessageOrHeaders === 'string') {
+          return writeHeadOriginal(statusCode, statusMessageOrHeaders, outgoingHeaders);
+        }
+        return writeHeadOriginal(statusCode, outgoingHeaders);
+      }) as typeof response.writeHead;
+    }
+
+    if (flushHeadersOriginal) {
+      response.flushHeaders = (() => {
+        responseContentType = response.getHeader('content-type');
+        responseContentEncoding = response.getHeader('content-encoding');
+        responseContentLength = response.getHeader('content-length');
+        responseEtag = response.getHeader('etag');
+        if (
+          String(responseContentType ?? '')
+            .toLowerCase()
+            .startsWith('text/html') &&
+          responseContentEncoding === undefined
+        ) {
+          removeHtmlValidators();
+        }
+        flushHeadersOriginal();
+      }) as typeof response.flushHeaders;
+    }
 
     const forwardBuffered = () => {
       for (const data of chunks) {
@@ -137,17 +242,19 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
         return typeof encoding === 'function' ? endOriginal(chunk, encoding) : endOriginal(chunk, encoding, callback);
       }
 
-      const contentType = String(response.getHeader('content-type') ?? '').toLowerCase();
-      const contentEncoding = response.getHeader('content-encoding');
+      const contentType = String(responseContentType ?? response.getHeader('content-type') ?? '').toLowerCase();
+      const contentEncoding = responseContentEncoding ?? response.getHeader('content-encoding');
       const isHtml = contentType.startsWith('text/html') && contentEncoding === undefined;
       let body = Buffer.concat(chunks, bufferedBytes);
       if (isHtml) {
         const html = body.toString('utf8');
         const injected = injectViteDevelopmentHtmlHmr(html, cssFileName, baseUrl);
-        if (injected !== html) {
+        if (
+          injected !== html &&
+          !(response.headersSent === true && (responseContentLength !== undefined || responseEtag !== undefined))
+        ) {
           body = Buffer.from(injected);
-          response.removeHeader('content-length');
-          response.removeHeader('etag');
+          removeHtmlValidators();
         }
       }
       chunks.length = 0;
