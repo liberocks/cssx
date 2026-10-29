@@ -22,7 +22,9 @@ export function effectiveClassNameOptions(options: CssxPluginOptions): ClassName
 }
 
 /** Selects the unoptimized settings used for warm development transforms. */
-export function developmentPluginOptions(options: CssxPluginOptions): CssxPluginOptions {
+export function developmentPluginOptions(
+  options: CssxPluginOptions,
+): CssxPluginOptions & { readonly sourceMap: boolean } {
   return {
     ...options,
     mode: 'development',

@@ -209,7 +209,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
               dataById: rollupDataById,
               getTheme,
               options: developmentOptions,
-              sourceMap: developmentOptions.sourceMap ?? sourceMap,
+              sourceMap: developmentOptions.sourceMap,
               transformSource: (source: string, id: string): Promise<TransformHandlerOutput> =>
                 getTransformHandler().then((transform) =>
                   transform.call({ meta: { watchMode: true }, skipRollupStylesheetPush: true }, source, id),
@@ -254,7 +254,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
           {
             cssFileName,
             root: themeRoot,
-            sourceMap: developmentOptions.sourceMap ?? sourceMap,
+            sourceMap: developmentOptions.sourceMap,
             options: developmentOptions,
             rollupDataById,
             getTheme,
