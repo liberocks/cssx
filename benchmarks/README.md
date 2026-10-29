@@ -58,6 +58,39 @@ value uses literal spaces in CSSX and underscore aliases in Tailwind. Tailwind
 imports its utilities layer without preflight or base CSS, so resets are not
 charged to only one implementation.
 
+`benchmark:cssx-utilities` and `benchmark:tailwind-utilities` measure this same
+CSS-only stage. Both use the small, medium, or large canonical workload and
+report 15 timed samples after a validated warmup. For example:
+
+```sh
+pnpm --dir benchmarks benchmark:cssx-utilities small --json
+pnpm --dir benchmarks benchmark:tailwind-utilities small --json
+```
+
+The Rust-backed development source scan is measured separately by
+`pnpm benchmark:dev-hmr`. It uses 400 source modules and a large generated
+`.open-next` bundle, reports the initial scan and 30 warm edits, and excludes
+save-to-visible browser timing. Set `CSSX_DISABLE_NATIVE_COMPILER=1` to measure
+the Babel fallback in a separate process. The browser HMR gate remains
+`pnpm test:hmr`.
+
+On the reference ARM64 development machine with Node 24.22.1, the pre-extracted
+CSS-only utility medians were:
+
+| Variant |     CSSX | Tailwind | CSSX CSS bytes | Tailwind CSS bytes |
+| ------- | -------: | -------: | -------------: | -----------------: |
+| Small   | 0.487 ms | 1.040 ms |          2,709 |              5,860 |
+| Medium  | 1.334 ms | 1.803 ms |          9,909 |             21,060 |
+| Large   | 2.768 ms | 3.366 ms |         19,069 |             40,380 |
+
+These pre-extracted candidate measurements use CSSX's current TypeScript
+compiler; they do not measure the Rust analyzer. The separate full small
+final-bundle measurement was 9.819 ms for CSSX and 3.180 ms for Tailwind.
+CSSX's utility-only stage is faster in this corpus, while its full final-build
+pipeline is still slower than Tailwind and does not yet meet the production
+build target. These local measurements do not replace the browser
+save-to-visible gate.
+
 ## Measurement protocol
 
 - The suite rebuilds CSSX compiler and Babel artifacts once, then every runner
