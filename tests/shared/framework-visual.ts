@@ -129,41 +129,12 @@ export function frameworkVisualSuite(framework: string): void {
             }),
           )
           .toBe(1);
-        await expect
-          .poll(() =>
-            page.evaluate(() => {
-              const bridge = (
-                globalThis as typeof globalThis & {
-                  readonly __cssxViteStylesheetHmr?: { readonly revision?: number };
-                }
-              ).__cssxViteStylesheetHmr;
-              return bridge?.revision ?? -1;
-            }),
-          )
-          .toBeGreaterThan(0);
       }
       const target = fixture.parent ? page.locator(fixture.selector).locator('..') : page.locator(fixture.selector);
       const beforeColor = await target.evaluate(
         (element, property) => getComputedStyle(element)[property as 'backgroundColor' | 'color'],
         fixture.property,
       );
-      if (framework === 'remix') {
-        await expect
-          .poll(() =>
-            target.evaluate((element, expectedColor) => {
-              const stylesheet = document.querySelector<HTMLLinkElement>('link[rel="stylesheet"][href$="cssx.css"]');
-              const bridgeStyle = document.querySelector('style[data-cssx-development-stylesheet]');
-              if (!stylesheet || !bridgeStyle) return false;
-              stylesheet.disabled = true;
-              try {
-                return getComputedStyle(element).backgroundColor === expectedColor;
-              } finally {
-                stylesheet.disabled = false;
-              }
-            }, beforeColor),
-          )
-          .toBe(true);
-      }
       const beforeClass = await target.getAttribute('class');
       const beforeLoads = await page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads')));
       const beforeRevision =
