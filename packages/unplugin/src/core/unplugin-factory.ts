@@ -30,8 +30,8 @@ export {
 export type { CssxPluginOptions } from './options';
 export { transformCssxModule, type IncomingSourceMap, type TransformResult } from '../transforms/transform';
 
-/** Matches JavaScript, TypeScript, Astro, and Vue module IDs, with an optional query. */
-const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro|vue|md|mdx)(?:\?.*)?$/;
+/** Matches supported source extensions before an optional query without scanning query text. */
+const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro|vue|mdx?)(?=\?|$)/;
 
 /**
  * Creates the CSSX adapter hooks consumed by Unplugin for one build tool.

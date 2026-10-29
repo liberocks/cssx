@@ -30,6 +30,15 @@ it('creates Vite, Rollup, and transform hooks for the selected build tool', () =
   expect(plugin.vite.hotUpdate?.handler).toBeTypeOf('function');
 });
 
+it('matches source extensions before query strings', () => {
+  const plugin = unpluginFactory({ preflight: false }, { framework: 'vite', versions: {} } as never) as unknown as {
+    readonly transform: { readonly filter: { readonly id: RegExp } };
+  };
+
+  expect(plugin.transform.filter.id.test('/src/component.tsx?import')).toBe(true);
+  expect(plugin.transform.filter.id.test('/src/theme.css?import')).toBe(false);
+});
+
 it('injects one development stylesheet bridge into browser HTML and omits it for production builds', async () => {
   const plugin = unpluginFactory({ mode: 'development' }, { framework: 'vite', versions: {} } as never) as unknown as {
     readonly vite: {
