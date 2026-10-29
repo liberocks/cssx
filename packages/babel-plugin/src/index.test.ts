@@ -1,5 +1,6 @@
 import { transformSync } from '@babel/core';
 import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import cssxBabelPlugin from '../src/index';
@@ -69,6 +70,25 @@ describe('CSSX Babel plugin', () => {
 
     expect(className(first!)).toBe(className(second!));
     expect(metadata(first!).cssOnlySignature).toBe(metadata(second!).cssOnlySignature);
+  });
+
+  it('uses project-relative filenames for stable composites across split compiler passes', () => {
+    const source = `import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ root: 'bg-purple-50' }); export const props = cssx.props(styles.root);`;
+    const inferred = transformSync(source, {
+      babelrc: false,
+      configFile: false,
+      filename: resolve('src/pages/index.tsx'),
+      plugins: [[cssxBabelPlugin, { stableClassNames: true }]],
+    });
+    const explicit = transformSync(source, {
+      babelrc: false,
+      configFile: false,
+      filename: resolve('src/pages/index.tsx'),
+      plugins: [[cssxBabelPlugin, { stableClassNames: true, stableClassNameFileName: 'src/pages/index.tsx' }]],
+    });
+    const className = (code: string | null | undefined) => code?.match(/className: "(d[^"]+)"/)?.[1];
+
+    expect(className(inferred?.code)).toBe(className(explicit?.code));
   });
 
   it('keeps sx CSS-only signatures stable across utility literal edits', () => {

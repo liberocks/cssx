@@ -1,5 +1,6 @@
 import type { PluginObj, PluginPass } from '@babel/core';
 import type * as babelTypes from '@babel/types';
+import { relative, resolve, sep } from 'node:path';
 
 import { createPluginFileState } from './state/create-plugin-file-state';
 import { finalizePluginFile } from './state/finalize-plugin-file';
@@ -42,7 +43,12 @@ export default function cssxBabelPlugin(
     visitor: {
       Program: {
         enter(_path, babelState) {
-          fileName = options.stableClassNameFileName ?? babelState.file.opts.filename ?? '';
+          const sourceFileName = babelState.file.opts.filename ?? '';
+          fileName =
+            options.stableClassNameFileName ??
+            (options.stableClassNames && sourceFileName
+              ? relative(process.cwd(), resolve(sourceFileName)).replaceAll(sep, '/')
+              : sourceFileName);
           state = createPluginFileState(options);
           foldedProps = [];
         },
