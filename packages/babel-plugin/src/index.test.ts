@@ -326,6 +326,15 @@ describe('CSSX Babel plugin', () => {
     expect(result?.code).toContain("sx('s0x')");
   });
 
+  it('leaves already generated stable class names unchanged', () => {
+    const className = 'd3h3h3vijbq5okx';
+    const result = transform(`import { sx } from '@cssxio/cssx'; export const className = sx('${className}');`, {
+      stableClassNames: true,
+    });
+
+    expect(result?.code).toContain(`sx('${className}')`);
+  });
+
   it('handles static edge forms while leaving unsupported dynamic calls intact', () => {
     const staticResult = transformSync(
       `import { create, sx } from '@cssxio/cssx'; const styles = create({ 1: 'p-4' }); export const value = sx(false, null, active ? 'bg-red-500' : 'bg-blue-500');`,
