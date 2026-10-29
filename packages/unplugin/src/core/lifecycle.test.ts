@@ -94,7 +94,7 @@ describe('unplugin lifecycle edges', () => {
     let middleware: ((request: any, response: any, next: () => void) => void) | undefined;
     let unlink: ((path: string) => void) | undefined;
     const updates: any[] = [];
-    plugin.vite.configureServer({
+    await plugin.vite.configureServer({
       config: { base: '/app/' },
       watcher: {
         on(_event: string, listener: (path: string) => void) {
@@ -120,7 +120,7 @@ describe('unplugin lifecycle edges', () => {
       continued = true;
     });
     expect(continued).toBe(true);
-    expect(updates).toHaveLength(2);
+    expect(updates).toHaveLength(0);
 
     const response: { headers: Record<string, string>; body?: string } = { headers: {} };
     await new Promise<void>((resolvePromise) =>
@@ -143,7 +143,7 @@ describe('unplugin lifecycle edges', () => {
 
     const failingPlugin = pluginFor('vite', { themeFile: 'does-not-exist.css' });
     let failingMiddleware: typeof middleware;
-    failingPlugin.vite.configureServer({
+    await failingPlugin.vite.configureServer({
       config: {},
       middlewares: {
         use(handler: typeof middleware) {
@@ -179,7 +179,7 @@ describe('unplugin lifecycle edges', () => {
       } as never,
     });
     let nonErrorMiddleware: typeof middleware;
-    nonErrorPlugin.vite.configureServer({
+    await nonErrorPlugin.vite.configureServer({
       config: {},
       middlewares: {
         use(handler: typeof middleware) {
@@ -242,8 +242,18 @@ describe('unplugin lifecycle edges', () => {
     expect(invalidated).toEqual([module]);
     expect(evaluated).toEqual([{ id: '/project/styles.ts' }]);
     expect(
-      await handler.call({ environment: { name: 'client' } }, { modules: [module], timestamp: 1 }),
-    ).toBeUndefined();
+      await handler.call(
+        {
+          environment: {
+            name: 'client',
+            async transformRequest() {
+              await plugin.transform.handler(staticSource, '/project/styles.ts');
+            },
+          },
+        },
+        { modules: [module], timestamp: 1 },
+      ),
+    ).toEqual([]);
     expect(await handler.call({}, { modules: [], timestamp: 1 })).toBeUndefined();
     expect(await handler.call({ environment }, { modules: [{}], timestamp: 1 })).toBeUndefined();
 

@@ -18,6 +18,7 @@ const createContext = () => ({
     composites: new Map(),
     liveComposites: new Set(),
     liveFallbackClasses: new Set(),
+    cssRanges: [],
   } as unknown as FileState,
 });
 

@@ -10,15 +10,21 @@ export async function runCommand(
   command: string,
   args: readonly string[],
   cwd?: string,
+  env?: NodeJS.ProcessEnv,
 ): Promise<{ readonly stdout: string; readonly stderr: string }> {
   const childProcess = await import('node:child_process');
   return new Promise((resolvePromise, reject) => {
-    childProcess.execFile(command, args, { cwd, encoding: 'utf8' }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(`Package contract runner failed: ${stderr || error.message}`));
-      } else {
-        resolvePromise({ stdout, stderr });
-      }
-    });
+    childProcess.execFile(
+      command,
+      args,
+      { cwd, encoding: 'utf8', env: { ...process.env, ...env } },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(`Package contract runner failed: ${stderr || error.message}`));
+        } else {
+          resolvePromise({ stdout, stderr });
+        }
+      },
+    );
   });
 }

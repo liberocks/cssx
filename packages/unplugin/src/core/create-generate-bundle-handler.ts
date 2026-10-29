@@ -4,10 +4,12 @@ import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import { scanProjectCssxSourceModules } from '../transforms/project-scan';
 import { dataFromMetadata } from './data-from-metadata';
 import { moduleId, resolveCssFileName } from './options';
-import type { CssxPluginOptions } from './options';
+import { developmentPluginOptions, isDevelopmentMode, type CssxPluginOptions } from './options';
 
 /** Rollup-compatible context used to read metadata and emit final assets. */
 export interface RollupLikeContext {
+  /** Rollup reports whether output is being generated from watch mode. */
+  readonly meta?: { readonly watchMode?: boolean };
   /**
    * Returns module information, including metadata when it is available.
    *
@@ -63,6 +65,9 @@ export interface GenerateBundleHandlerOptions {
 export function createGenerateBundleHandler(configuration: GenerateBundleHandlerOptions) {
   return async function (this: RollupLikeContext, _outputOptions: unknown, bundle: RollupLikeBundle): Promise<void> {
     const { framework, options, cssFileName, sourceMap, rollupDataById, getTheme } = configuration;
+    const outputOptions = isDevelopmentMode(options, { watchMode: this.meta?.watchMode })
+      ? developmentPluginOptions(options)
+      : options;
     const liveIds = new Set(
       Object.values(bundle)
         .flatMap((output) => (output.type === 'chunk' ? Object.keys(output.modules ?? {}) : []))
@@ -76,8 +81,8 @@ export function createGenerateBundleHandler(configuration: GenerateBundleHandler
       }
     }
     const data: readonly CssxSourceModule[] =
-      options.coordination === 'manifest'
-        ? await scanProjectCssxSourceModules(process.cwd(), options)
+      outputOptions.coordination === 'manifest'
+        ? await scanProjectCssxSourceModules(process.cwd(), outputOptions)
         : framework === 'vite'
           ? [...rollupDataById.values()]
           : [...liveIds].map((id) => {
@@ -87,10 +92,10 @@ export function createGenerateBundleHandler(configuration: GenerateBundleHandler
     const compiled = await compileCssxStylesheet(
       data,
       await getTheme(),
-      options.layer,
+      outputOptions.layer,
       sourceMap,
-      options.darkMode,
-      options.preflight,
+      outputOptions.darkMode,
+      outputOptions.preflight,
     );
     if (!compiled.css) {
       return;

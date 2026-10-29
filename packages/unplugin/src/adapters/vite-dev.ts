@@ -1,39 +1,78 @@
-/** The part of a development server used to notify connected clients. */
-interface ViteStyleNotifier {
-  /** WebSocket transport for native development-server updates. */
-  readonly ws: {
-    /**
-     * Sends one stylesheet update to connected clients.
-     *
-     * @param payload Update details.
-     * @param payload.type Update category.
-     * @param payload.updates Stylesheet updates handled by Vite's browser client.
-     * @returns Nothing after the event is sent.
-     */
-    send(payload: {
-      /** Marks this as a standard Vite update. */
-      readonly type: 'update';
-      /** CSS asset update handled by Vite's built-in client. */
-      readonly updates: readonly {
-        readonly type: 'css-update';
-        readonly path: string;
-        readonly acceptedPath: string;
-        readonly timestamp: number;
-      }[];
-    }): void;
-  };
+/** Writable response used by one connected browser stylesheet stream. */
+export interface ViteStylesheetStream {
+  /** Writes one SSE frame to the connected browser. */
+  write(chunk: string): void;
+  /** Sets response headers before streaming starts. */
+  setHeader(name: string, value: string): void;
+  /** Registers cleanup when the browser disconnects. */
+  on(event: 'close', listener: () => void): void;
 }
 
 /**
- * Requests stylesheet-link refreshes after an extracted CSS change.
  *
- * @param server Development server that broadcasts native updates.
- * @param path Development URL of the extracted stylesheet.
- * @returns Nothing after the refresh event is sent.
  */
-export function sendViteStyles(server: ViteStyleNotifier, path: string, timestamp = Date.now()): void {
-  server.ws.send({
-    type: 'update',
-    updates: [{ type: 'css-update', path, acceptedPath: path, timestamp }],
-  });
+interface StylesheetUpdate {
+  readonly css: string;
+  readonly revision: number;
+}
+
+/**
+ *
+ */
+interface ViteStylesheetState {
+  revision: number;
+  latest?: StylesheetUpdate;
+  readonly clients: Set<ViteStylesheetStream>;
+}
+
+/**
+ *
+ */
+const stateByServer = new WeakMap<object, ViteStylesheetState>();
+
+/**
+ *
+ */
+function stateFor(server: object): ViteStylesheetState {
+  let state = stateByServer.get(server);
+  if (!state) {
+    state = { revision: 0, clients: new Set() };
+    stateByServer.set(server, state);
+  }
+  return state;
+}
+
+/**
+ *
+ */
+function writeStylesheetUpdate(client: ViteStylesheetStream, update: StylesheetUpdate): void {
+  client.write(`data: ${JSON.stringify(update)}\n\n`);
+}
+
+/** Registers a browser on the Vite development stylesheet stream. */
+export function connectViteStylesheetClient(server: object, client: ViteStylesheetStream): void {
+  const state = stateFor(server);
+  client.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  client.setHeader('Cache-Control', 'no-cache, no-transform');
+  client.setHeader('Connection', 'keep-alive');
+  state.clients.add(client);
+  client.write(': connected\n\n');
+  if (state.latest) {
+    writeStylesheetUpdate(client, state.latest);
+  }
+  client.on('close', () => state.clients.delete(client));
+}
+
+/** Pushes a complete stylesheet update to every connected development browser. */
+export function sendViteStyles(server: object, css: string): void {
+  const state = stateFor(server);
+  const update = {
+    css,
+    revision: Math.max(Date.now(), state.revision + 1),
+  };
+  state.revision = update.revision;
+  state.latest = update;
+  for (const client of state.clients) {
+    writeStylesheetUpdate(client, update);
+  }
 }

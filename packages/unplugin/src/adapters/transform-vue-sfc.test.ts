@@ -34,3 +34,18 @@ it('reports Vue compiler parse errors', async () => {
     transformVueSfcModule('<template><div></template>', '/project/Broken.vue', {}, transformCssxModule),
   ).rejects.toThrow('Element is missing end tag');
 });
+
+it('collects Vue metadata without compiling discarded module CSS', async () => {
+  const source = `<script setup>import { sx } from '@cssxio/cssx'; const title = sx('font-bold');</script><template><h1 :class="sx('p-4')" /></template>`;
+  const result = await transformVueSfcModule(
+    source,
+    '/project/App.vue',
+    { stableClassNames: true },
+    transformCssxModule,
+    { compileCss: false },
+  );
+
+  expect(result?.rules).toEqual([]);
+  expect(result?.candidates).toHaveProperty('font-bold');
+  expect(result?.candidates).toHaveProperty('p-4');
+});

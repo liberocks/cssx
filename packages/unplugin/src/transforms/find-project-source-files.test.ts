@@ -3,7 +3,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
 
-import { findProjectSourceFiles } from './find-project-source-files';
+import { findProjectSourceFiles, isIgnoredProjectSourcePath } from './find-project-source-files';
+
+it('recognizes generated paths while allowing explicit source roots inside dependency directories', () => {
+  expect(isIgnoredProjectSourcePath('/project/.open-next/server.mjs')).toBe(true);
+  expect(isIgnoredProjectSourcePath('/project/node_modules/shared/src/button.tsx')).toBe(true);
+  expect(
+    isIgnoredProjectSourcePath('/project/node_modules/shared/src/button.tsx', ['/project/node_modules/shared']),
+  ).toBe(false);
+});
 
 it('returns supported source extensions in sorted order', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-source-files-'));
@@ -42,7 +50,20 @@ it('skips ignored directories, non-source files, and symbolic links', async () =
     await writeFile(join(source, 'notes.txt'), '');
     await symlink(join(source, 'plain.ts'), join(source, 'linked.ts'));
 
-    for (const directory of ['.git', '.next', '.turbo', 'node_modules']) {
+    for (const directory of [
+      '.git',
+      '.next',
+      '.open-next',
+      '.output',
+      '.turbo',
+      '.vercel',
+      'build',
+      'coverage',
+      'dist',
+      'node_modules',
+      'out',
+      'storybook-static',
+    ]) {
       await mkdir(join(root, directory), { recursive: true });
       await writeFile(join(root, directory, 'hidden.ts'), '');
     }

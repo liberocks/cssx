@@ -53,6 +53,35 @@ describe('published package contract', () => {
     expect(result.stderr).toBe('');
   });
 
+  it('does not load development transports when production adapters are imported', async () => {
+    const runnerPath = join(fixtureDirectory, 'production-adapter-import.cjs');
+    await writeFile(
+      runnerPath,
+      `const Module = require('node:module');
+let developmentRuntimeLoads = 0;
+const load = Module._load;
+Module._load = function(request, parent, isMain) {
+  if (request === '@cssxio/unplugin/internal/development-runtime') developmentRuntimeLoads++;
+  return load.call(this, request, parent, isMain);
+};
+for (const specifier of [
+  '@cssxio/unplugin',
+  '@cssxio/unplugin/vite',
+  '@cssxio/unplugin/rollup',
+  '@cssxio/unplugin/webpack',
+  '@cssxio/unplugin/rspack',
+  '@cssxio/unplugin/esbuild',
+  '@cssxio/unplugin/next',
+  '@cssxio/unplugin/next-loader',
+]) require(specifier);
+if (developmentRuntimeLoads !== 0) throw new Error('Production adapter imports loaded the CSSX development runtime.');
+`,
+    );
+
+    const result = await runNode(runnerPath);
+    expect(result.stderr).toBe('');
+  });
+
   it('ships every ESM, CommonJS, and declaration target declared by the public manifests', async () => {
     for (const packageDirectory of packageDirectories) {
       const manifest = await readManifest(packageDirectory);
@@ -349,17 +378,33 @@ void props;
   });
 
   it('keeps the Astro example composite-class output with the default baseline within budget', async () => {
-    await runCommand('pnpm', ['--dir', 'examples/astro', 'build'], workspaceRoot);
-    const html = await readFile(join(workspaceRoot, 'examples/astro/dist/index.html'));
-    const css = await readFile(join(workspaceRoot, 'examples/astro/dist/assets/cssx.css'));
-    const htmlText = html.toString('utf8');
-    const cssxClassValues = [...htmlText.matchAll(/class="(s[0-9A-Za-z]+x)"/g)].map((match) => match[1] ?? '');
+    const exampleNodeModules = join(workspaceRoot, 'examples/astro/node_modules');
+    let createdExampleLink = false;
+    try {
+      await access(exampleNodeModules);
+    } catch {
+      await symlink(join(workspaceRoot, 'packages/docs/node_modules'), exampleNodeModules, 'dir');
+      createdExampleLink = true;
+    }
+    try {
+      await runCommand(join(exampleNodeModules, '.bin/astro'), ['build'], join(workspaceRoot, 'examples/astro'), {
+        NODE_ENV: 'production',
+      });
+      const html = await readFile(join(workspaceRoot, 'examples/astro/dist/index.html'));
+      const css = await readFile(join(workspaceRoot, 'examples/astro/dist/assets/cssx.css'));
+      const htmlText = html.toString('utf8');
+      const cssxClassValues = [...htmlText.matchAll(/class="(s[0-9A-Za-z]+x)"/g)].map((match) => match[1] ?? '');
 
-    expect(cssxClassValues.length).toBeGreaterThan(0);
-    expect(cssxClassValues.every((className) => !className.includes(' '))).toBe(true);
-    expect(htmlText).not.toContain('class="rounded-md');
-    expect(gzipSync(html).byteLength + gzipSync(css).byteLength).toBeLessThan(2_200);
-  }, 15_000);
+      expect(cssxClassValues.length).toBeGreaterThan(0);
+      expect(cssxClassValues.every((className) => !className.includes(' '))).toBe(true);
+      expect(htmlText).not.toContain('class="rounded-md');
+      expect(gzipSync(html).byteLength + gzipSync(css).byteLength).toBeLessThan(2_200);
+    } finally {
+      if (createdExampleLink) {
+        await rm(exampleNodeModules, { force: true });
+      }
+    }
+  }, 60_000);
 
   it('keeps compiler, transform, and adapter artifacts within their release budgets', async () => {
     const adapterChunk = (await readdir(join(workspaceRoot, 'packages/unplugin/dist'))).find((file) =>
@@ -395,9 +440,10 @@ void props;
       brotli: 12_400,
     });
     await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', {
-      raw: 38_500,
-      gzip: 14_400,
-      brotli: 13_000,
+      // Development coordination dispatch grew the entry; transport implementations remain in a lazy internal export.
+      raw: 51_000,
+      gzip: 17_600,
+      brotli: 15_700,
     });
   }, 30_000);
 

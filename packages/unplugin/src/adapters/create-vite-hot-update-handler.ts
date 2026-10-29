@@ -9,7 +9,10 @@ import type { ViteHotUpdateModule } from './invalidate-vite-runner';
  * @param moduleData Transformed module metadata indexed by normalized module ID.
  * @returns A Vite hot-update handler.
  */
-export function createViteHotUpdateHandler(moduleData: Map<string, ModuleCssxData>) {
+export function createViteHotUpdateHandler(
+  moduleData: Map<string, ModuleCssxData>,
+  isPretransformedCssOnly: (id: string, source: string) => boolean = () => false,
+) {
   /**
    * Handles one Vite hot update, returning modules left for the standard pipeline.
    *
@@ -18,33 +21,39 @@ export function createViteHotUpdateHandler(moduleData: Map<string, ModuleCssxDat
    */
   return async function handleViteHotUpdate(this: any, context: any): Promise<any> {
     const environment = this.environment;
-    if (!environment || environment.name === 'client') {
+    if (!environment) {
       return undefined;
     }
     const modules = context.modules as ViteHotUpdateModule[];
     const handled = modules.filter((module) => {
       const data = moduleData.get(moduleId(module.id ?? ''));
-      return Boolean(data && data.cssOnlySignature && data.atomicClasses?.length === 0);
+      return Boolean(data && data.cssOnlySignature);
     });
     if (handled.length === 0) {
       return undefined;
     }
 
+    const source = typeof context.read === 'function' ? await context.read() : undefined;
+    const pretransformed = new Set(
+      source === undefined ? [] : handled.filter((module) => isPretransformedCssOnly(moduleId(module.id!), source)),
+    );
     const previous = new Map(handled.map((module) => [module, moduleData.get(moduleId(module.id!))!.cssOnlySignature]));
     for (const module of handled) {
-      if (module.url) {
+      if (!pretransformed.has(module) && module.url) {
         await environment.transformRequest(module.url);
       }
     }
     const cssOnly = handled.every((module) => {
       const data = moduleData.get(moduleId(module.id!));
-      return Boolean(data && data.atomicClasses!.length === 0 && data.cssOnlySignature === previous.get(module));
+      return Boolean(data && data.cssOnlySignature === previous.get(module));
     });
     if (!cssOnly) {
       return undefined;
     }
 
-    invalidateViteRunner(environment, handled, context.timestamp);
+    if (environment.name !== 'client') {
+      invalidateViteRunner(environment, handled, context.timestamp);
+    }
     return modules.filter((module) => !handled.includes(module));
   };
 }

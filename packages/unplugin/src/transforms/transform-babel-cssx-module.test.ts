@@ -26,3 +26,31 @@ it('returns transformed modules without stylesheet rules when no utilities are c
   expect(result.candidates).toEqual({});
   expect(result.rules).toEqual([]);
 });
+
+it('collects development metadata without compiling per-module CSS and keeps style aliases stable', async () => {
+  const options = {
+    stableClassNames: true,
+    stableClassNameFileName: 'src/styles.ts',
+    className: { variant: 'random' as const },
+  };
+  const before = await transformBabelCssxModule(
+    `import { sx } from '@cssxio/cssx'; export const className = sx('p-4');`,
+    '/project/styles.ts',
+    options,
+    undefined,
+    { compileCss: false },
+  );
+  const after = await transformBabelCssxModule(
+    `import { sx } from '@cssxio/cssx'; export const className = sx('p-8');`,
+    '/project/styles.ts',
+    options,
+    undefined,
+    { compileCss: false },
+  );
+
+  expect(before.rules).toEqual([]);
+  expect(after.rules).toEqual([]);
+  expect(before.candidates).toHaveProperty('p-4');
+  expect(after.candidates).toHaveProperty('p-8');
+  expect(Object.keys(after.composites)).toEqual(Object.keys(before.composites));
+});

@@ -66,6 +66,7 @@ export function transformCssxCall({
       theme: options.theme,
       reusabilityBudget: options.reusabilityBudget,
       stableClassNames: options.stableClassNames,
+      stableClassNameStrategy: options.stableClassNameStrategy,
       fileName,
       state,
     };

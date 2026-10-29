@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import {
+  compileViteDevelopmentStylesheet,
   configureViteDevelopmentServer,
   type ViteDevelopmentServerOptions,
   type ViteServerLike,
@@ -15,12 +16,16 @@ function createServerHarness(base?: string, root?: string) {
   let middleware:
     | ((
         request: { readonly url?: string },
-        response: { setHeader(name: string, value: string): void; end(body?: string): void },
+        response: {
+          setHeader(name: string, value: string): void;
+          write(chunk: string): void;
+          on(event: 'close', listener: () => void): void;
+          end(body?: string): void;
+        },
         next: () => void,
       ) => void)
     | undefined;
   let unlink: ((path: string) => void) | undefined;
-  const updates: unknown[] = [];
   const server: ViteServerLike = {
     config: { base, root },
     watcher: {
@@ -33,11 +38,9 @@ function createServerHarness(base?: string, root?: string) {
         middleware = handler;
       },
     },
-    ws: { send: (update) => updates.push(update) },
   };
   return {
     server,
-    updates,
     unlink: (path: string) => unlink?.(path),
     middleware: () => middleware,
   };
@@ -56,6 +59,8 @@ async function requestMiddleware(
       { url },
       {
         setHeader: (name, value) => (headers[name] = value),
+        write() {},
+        on() {},
         end: (value) => {
           body = value;
           resolve();
@@ -82,7 +87,7 @@ function configuration(overrides: Partial<ViteDevelopmentServerOptions> = {}): V
   };
 }
 
-it('serves CSS and source-map paths, passes other requests through, and notifies on unlink', async () => {
+it('serves CSS and source-map paths, streams stylesheet updates, and handles unlink', async () => {
   const harness = createServerHarness('/app/');
   const oldModule: ModuleCssxData = {
     id: '/project/old.ts',
@@ -110,14 +115,29 @@ it('serves CSS and source-map paths, passes other requests through, and notifies
     'Cache-Control': 'no-store',
   });
 
+  const streamHeaders: Record<string, string> = {};
+  const streamWrites: string[] = [];
+  middleware(
+    { url: '/app/cssx.css.events' },
+    {
+      setHeader: (name, value) => (streamHeaders[name] = value),
+      write: (chunk) => streamWrites.push(chunk),
+      on() {},
+      end() {},
+    },
+    () => {
+      throw new Error('The stylesheet event path should be handled by CSSX.');
+    },
+  );
+  expect(streamHeaders['Content-Type']).toBe('text/event-stream; charset=utf-8');
+
   harness.unlink('/project/old.ts?vue');
   expect(rollupDataById.size).toBe(0);
-  expect(harness.updates).toEqual([
-    {
-      type: 'update',
-      updates: [{ type: 'css-update', path: '/cssx.css', acceptedPath: '/cssx.css', timestamp: expect.any(Number) }],
-    },
-  ]);
+  await expect.poll(() => streamWrites).toHaveLength(2);
+  expect(JSON.parse(streamWrites[1]!.slice('data: '.length))).toMatchObject({
+    css: '',
+    revision: expect.any(Number),
+  });
 });
 
 it('does not claim source-map requests when maps are disabled', async () => {
@@ -196,4 +216,55 @@ it('returns compiler errors as text and handles non-Error rejection values', asy
   );
   const valueResponse = await requestMiddleware(valueHarness.middleware()!, '/cssx.css');
   expect(valueResponse.body).toBe('Unable to compile CSSX development stylesheet.');
+});
+
+it('reports stylesheet compilation failures triggered by Vite file deletion', async () => {
+  const harness = createServerHarness();
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  configureViteDevelopmentServer(
+    harness.server,
+    configuration({ getTheme: () => Promise.reject(new Error('invalid theme after unlink')) }),
+  );
+
+  try {
+    harness.unlink('/project/deleted.ts');
+    await vi.waitFor(() => expect(warning).toHaveBeenCalledWith(expect.stringContaining('invalid theme after unlink')));
+
+    const nonErrorHarness = createServerHarness();
+    configureViteDevelopmentServer(
+      nonErrorHarness.server,
+      configuration({ getTheme: () => Promise.reject('string theme failure') }),
+    );
+    nonErrorHarness.unlink('/project/other.ts');
+    await vi.waitFor(() => expect(warning).toHaveBeenCalledWith(expect.stringContaining('string theme failure')));
+  } finally {
+    warning.mockRestore();
+  }
+});
+
+it('resolves manifest stylesheet scans from the working directory when no root is configured', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-vite-manifest-cwd-'));
+  const previousCwd = process.cwd();
+  try {
+    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(
+      join(root, 'src', 'page.tsx'),
+      "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');",
+    );
+    process.chdir(root);
+    const compiled = await compileViteDevelopmentStylesheet(
+      configuration({
+        options: {
+          naming: 'serial',
+          coordination: 'manifest',
+          manifestPath: join(root, '.cssx', 'classes.json'),
+          preflight: false,
+        },
+      }),
+    );
+    expect(compiled.css).toContain('padding:calc(0.25rem * 4)');
+  } finally {
+    process.chdir(previousCwd);
+    await rm(root, { recursive: true, force: true });
+  }
 });

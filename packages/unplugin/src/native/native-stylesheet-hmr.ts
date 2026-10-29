@@ -1,11 +1,22 @@
+import { nextDevelopmentStylesheetHmr } from '../adapters/next-development-hmr';
+import type { NextDevelopmentHmrConnection } from '../adapters/next-development-server';
+
 /**
  * Creates a browser-only Webpack/Rspack HMR bridge for manually linked CSSX assets.
  *
  * @param cssFileName Generated CSSX asset file name.
  * @returns Browser HMR bridge source.
  */
-export function nativeStylesheetHmr(cssFileName: string): string {
-  return `if (typeof document !== "undefined" && typeof module !== "undefined" && module.hot) {
+export function nativeStylesheetHmr(
+  cssFileName: string,
+  styleRevision: string,
+  connection?: NextDevelopmentHmrConnection,
+): string {
+  if (connection) {
+    return nextDevelopmentStylesheetHmr(connection, cssFileName);
+  }
+  return `/* CSSX development stylesheet revision: ${styleRevision} */
+if (typeof document !== "undefined" && typeof module !== "undefined" && module.hot) {
   const key = "__cssxStylesheetHmr";
   const state = globalThis[key] || (globalThis[key] = { revision: 0, staged: [], replacements: [] });
   const stylesheetLink = [...document.querySelectorAll('link[rel="stylesheet"]')].find((link) =>
@@ -76,21 +87,7 @@ export function nativeStylesheetHmr(cssFileName: string): string {
         return update.apply(this, args);
       };
     }
-    if (stylesheetLink) {
-      state.removeOnLoad = Boolean(nextLink);
-      const refresh = async () => {
-        try {
-          const url = new URL(stylesheetLink.href, document.baseURI);
-          url.searchParams.set("cssx-probe", String(Date.now()));
-          const css = await fetch(url.href, { cache: "no-store" }).then((response) => response.text());
-          if (state.css && state.css !== css) void state.stage();
-          state.css = css;
-        } catch {
-        }
-      };
-      void refresh();
-      state.poll = setInterval(() => void refresh(), 500);
-    }
+    if (stylesheetLink) state.removeOnLoad = Boolean(nextLink);
   }
 }`;
 }

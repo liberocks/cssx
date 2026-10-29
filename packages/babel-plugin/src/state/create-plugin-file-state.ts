@@ -21,5 +21,6 @@ export function createPluginFileState(options: CssxPluginOptions): FileState {
     liveComposites: new Set(),
     liveFallbackClasses: new Set(),
     cssRanges: [],
+    stableClassNameOrdinal: 0,
   };
 }

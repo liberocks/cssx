@@ -3,7 +3,8 @@ import { moduleId, viteCssPath } from '../core/options';
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from '../native/stylesheet';
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import { scanProjectCssxSourceModules } from '../transforms/project-scan';
-import { sendViteStyles } from './vite-dev';
+import { connectViteStylesheetClient, sendViteStyles } from './vite-dev';
+import type { ViteStylesheetStream } from './vite-dev';
 
 /** Development server APIs used to serve and refresh the in-memory stylesheet. */
 export interface ViteServerLike {
@@ -11,8 +12,8 @@ export interface ViteServerLike {
   readonly config: { readonly base?: string; readonly root?: string };
   /** Optional file watcher used to remove deleted modules. */
   readonly watcher?: {
-    /** Registers a listener for a watched file event. */
-    on(event: 'unlink', listener: (path: string) => void): unknown;
+    /** Registers listeners for normalized and backend-level file events. */
+    on(event: string, listener: (...args: any[]) => void): unknown;
   };
   /** Middleware stack that serves the development stylesheet and source map. */
   readonly middlewares: {
@@ -20,32 +21,19 @@ export interface ViteServerLike {
     use(
       handler: (
         request: { readonly url?: string },
-        response: { setHeader(name: string, value: string): void; end(body?: string): void },
+        response: ViteStylesheetStream & { end(body?: string): void },
         next: () => void,
       ) => void,
     ): void;
   };
-  /** WebSocket transport used to request stylesheet-link refreshes. */
-  readonly ws: {
-    /** Sends a native Vite stylesheet update. */
-    send(payload: {
-      /** Marks this as a standard Vite update. */
-      readonly type: 'update';
-      /** CSS asset update handled by Vite's browser client. */
-      readonly updates: readonly {
-        readonly type: 'css-update';
-        readonly path: string;
-        readonly acceptedPath: string;
-        readonly timestamp: number;
-      }[];
-    }): void;
-  };
 }
 
-/** Configuration captured by the Vite development-server middleware. */
+/** Configuration captured by the Vite development server. */
 export interface ViteDevelopmentServerOptions {
   /** Relative stylesheet output path. */
   readonly cssFileName: string;
+  /** Project root used for project-wide scans. */
+  readonly root?: string;
   /** Whether a stylesheet source map is served. */
   readonly sourceMap: boolean;
   /** CSSX compiler options used to generate the development stylesheet. */
@@ -56,36 +44,32 @@ export interface ViteDevelopmentServerOptions {
   readonly getTheme: () => Promise<string | undefined>;
 }
 
-/**
- * Registers the stylesheet-serving middleware and deleted-module watcher.
- *
- * @param server Vite development server receiving the middleware.
- * @param configuration Values captured by one plugin instance.
- */
+/** Registers the stylesheet-serving middleware and deleted-module watcher. */
 export function configureViteDevelopmentServer(
   server: ViteServerLike,
   configuration: ViteDevelopmentServerOptions,
 ): void {
-  const { cssFileName, sourceMap, options, rollupDataById, getTheme } = configuration;
+  const { cssFileName, sourceMap, rollupDataById } = configuration;
   const cssPath = viteCssPath(server.config.base, cssFileName);
-  const hmrPath = viteCssPath('/', cssFileName);
+  const eventsPath = `${cssPath}.events`;
   server.watcher?.on('unlink', (path) => {
     rollupDataById.delete(moduleId(path));
-    sendViteStyles(server, hmrPath);
+    void compileViteDevelopmentStylesheet({ ...configuration, root: server.config.root ?? process.cwd() })
+      .then((stylesheet) => sendViteStyles(server, cssWithSourceMapComment(stylesheet, cssFileName)))
+      .catch((error: unknown) => {
+        console.warn(`CSSX: Vite stylesheet update failed: ${error instanceof Error ? error.message : String(error)}`);
+      });
   });
   server.middlewares.use((request, response, next) => {
     const pathname = request.url?.split('?', 1)[0];
+    if (pathname === eventsPath) {
+      connectViteStylesheetClient(server, response);
+      return;
+    }
     if (pathname !== cssPath && (pathname !== `${cssPath}.map` || !sourceMap)) {
       return next();
     }
-    void getTheme()
-      .then(async (theme) => {
-        const sourceData =
-          options.coordination === 'manifest'
-            ? await scanProjectCssxSourceModules(server.config.root ?? process.cwd(), options)
-            : [...rollupDataById.values()];
-        return compileCssxStylesheet(sourceData, theme, options.layer, sourceMap, options.darkMode, options.preflight);
-      })
+    void compileViteDevelopmentStylesheet({ ...configuration, root: server.config.root ?? process.cwd() })
       .then((compiled) => {
         if (pathname === `${cssPath}.map`) {
           response.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -102,4 +86,24 @@ export function configureViteDevelopmentServer(
         response.end(error instanceof Error ? error.message : 'Unable to compile CSSX development stylesheet.');
       });
   });
+}
+
+/** Compiles the complete stylesheet from cached metadata for a push or stylesheet request. */
+export async function compileViteDevelopmentStylesheet(
+  configuration: ViteDevelopmentServerOptions,
+): Promise<Awaited<ReturnType<typeof compileCssxStylesheet>>> {
+  const { options, rollupDataById, getTheme } = configuration;
+  const theme = await getTheme();
+  const sourceData =
+    options.coordination === 'manifest'
+      ? await scanProjectCssxSourceModules(configuration.root ?? process.cwd(), options)
+      : [...rollupDataById.values()];
+  return compileCssxStylesheet(
+    sourceData,
+    theme,
+    options.layer,
+    configuration.sourceMap,
+    options.darkMode,
+    options.preflight,
+  );
 }

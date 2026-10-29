@@ -3,11 +3,93 @@ import { describe, expect, it } from 'vitest';
 
 import { compileCssxStylesheet, transformCssxModule } from '..';
 import { pluginFor } from '../adapters/plugin-for';
+import { developmentPluginOptions } from '../core/options';
 import { decodeFirstMapping } from '../source-map/decode-first-mapping';
 import { transformRequired } from './transform-required';
 import { source } from './transform-test-source';
 
 describe('CSSX unplugin transform', () => {
+  it('keeps development and production rendering semantics for variants and compositions', async () => {
+    const source = `
+      import * as cssx from '@cssxio/cssx';
+      const styles = cssx.create({ root: 'flex p-4 bg-blue-500 dark:bg-slate-900', accent: 'px-4 hover:bg-red-500' });
+      export const composed = cssx.props(styles.root, active && styles.accent);
+      export const inline = cssx.sx('p-2', active ? 'text-white' : 'text-slate-900');
+    `;
+    const production = await transformCssxModule(source, '/project/styles.ts', { reusabilityBudget: 100 }, undefined, {
+      compileCss: false,
+    });
+    const development = await transformCssxModule(
+      source,
+      '/project/styles.ts',
+      developmentPluginOptions({ reusabilityBudget: 100 }),
+      undefined,
+      { compileCss: false },
+    );
+    const productionCss = await compileCssxStylesheet(
+      [
+        {
+          id: '/project/styles.ts',
+          candidates: production!.candidates,
+          composites: production!.composites,
+          atomicClasses: production!.atomicClasses,
+        },
+      ],
+      undefined,
+      undefined,
+      false,
+      'class',
+      false,
+    );
+    const developmentCss = await compileCssxStylesheet(
+      [
+        {
+          id: '/project/styles.ts',
+          candidates: development!.candidates,
+          composites: development!.composites,
+          atomicClasses: development!.atomicClasses,
+        },
+      ],
+      undefined,
+      undefined,
+      false,
+      'class',
+      false,
+    );
+    const normalizeSelectors = (css: string) =>
+      css.replace(/([^{}]+)\{([^{}]*)\}/g, (_match, selectorText: string, declarations: string) => {
+        const selectors: string[] = [];
+        let selector = '';
+        let nesting = 0;
+        for (const character of selectorText) {
+          if (character === ',' && nesting === 0) {
+            selectors.push(selector.trim());
+            selector = '';
+          } else {
+            selector += character;
+            if (character === '(') {
+              nesting++;
+            }
+            if (character === ')') {
+              nesting--;
+            }
+          }
+        }
+        selectors.push(selector.trim());
+        const normalized = selectors
+          .map((value) => value.replace(/\.(?:s[0-9A-Za-z]+x|d[0-9a-z]+)\b/g, '.generated'))
+          .filter((value, index, values) => values.indexOf(value) === index)
+          .sort();
+        return `${normalized.join(',')}{${declarations}}`;
+      });
+
+    expect(Object.keys(development!.candidates).sort()).toEqual(Object.keys(production!.candidates).sort());
+    expect(Object.keys(development!.composites).length).toBeGreaterThan(0);
+    expect(normalizeSelectors(developmentCss.css)).toBe(normalizeSelectors(productionCss.css));
+    expect(normalizeSelectors(developmentCss.css)).toContain(':where(');
+    expect(normalizeSelectors(developmentCss.css)).toContain(':hover');
+  });
+
   it('returns transformed code and standalone CSS metadata', async () => {
     const result = await transformCssxModule(source, '/project/styles.ts');
 
@@ -369,7 +451,7 @@ describe('CSSX unplugin transform', () => {
     const plugin = pluginFor('vite');
     let middleware: ((request: any, response: any, next: () => void) => void) | undefined;
     const messages: any[] = [];
-    plugin.vite.configureServer({
+    await plugin.vite.configureServer({
       config: { base: '/' },
       middlewares: {
         use(handler: typeof middleware) {
@@ -404,17 +486,12 @@ describe('CSSX unplugin transform', () => {
     expect(response.headers['Content-Type']).toContain('text/css');
     expect(response.headers['Cache-Control']).toBe('no-store');
     expect(response.body).toContain('padding:calc(0.25rem * 5)');
-    expect(messages).toContainEqual(
-      expect.objectContaining({
-        type: 'update',
-        updates: [expect.objectContaining({ type: 'css-update', path: '/cssx.css', acceptedPath: '/cssx.css' })],
-      }),
-    );
+    expect(messages).toEqual([]);
   });
 
-  it('uses default serial names in Vite development', async () => {
+  it('uses stable development selectors in Vite dev-server mode', async () => {
     const plugin = pluginFor('vite');
-    plugin.vite.configureServer({
+    await plugin.vite.configureServer({
       config: { base: '/' },
       middlewares: { use() {} },
       ws: { send() {} },
@@ -425,8 +502,8 @@ describe('CSSX unplugin transform', () => {
       '/project/styles.ts',
     );
 
-    expect(transformed.code).toMatch(/className: "s[0-9A-Za-z]+x"/);
-    expect(transformed.code).not.toContain('className: "d');
+    expect(transformed.code).toMatch(/className: "d[a-z0-9]+"/);
+    expect(transformed.code).not.toMatch(/className: "s[0-9A-Za-z]+x"/);
   });
 
   it('applies allocator options through the Webpack adapter', async () => {

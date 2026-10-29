@@ -4,8 +4,9 @@ import { parse as parseVueSfc } from '@vue/compiler-sfc';
 
 import type { CssxPluginOptions } from '../core/options';
 import { remapVueBlockOrigins } from '../source-map/remap-vue-block-origins';
+import type { IncomingSourceMap } from '../source-map/source-map-from-context';
 import { mergeTransformResults } from '../transforms/merge-transform-results';
-import type { TransformResult } from '../transforms/transform-cssx-module';
+import type { TransformExecutionOptions, TransformResult } from '../transforms/transform-cssx-module';
 import { transformVueTemplateSx } from './transform-vue-template-sx';
 
 /** Options forwarded to script and template transforms for a Vue SFC. */
@@ -16,7 +17,13 @@ type VueSfcOptions = CssxPluginOptions & {
 };
 
 /** Function that compiles one synthetic or extracted source module. */
-type CssxModuleTransformer = (code: string, id: string, options: VueSfcOptions) => Promise<TransformResult | null>;
+type CssxModuleTransformer = (
+  code: string,
+  id: string,
+  options: VueSfcOptions,
+  inputSourceMap?: IncomingSourceMap,
+  transformOptions?: TransformExecutionOptions,
+) => Promise<TransformResult | null>;
 
 /**
  * Transforms CSSX calls inside Vue Single-File Component script and template blocks.
@@ -36,6 +43,7 @@ export async function transformVueSfcModule(
   id: string,
   options: VueSfcOptions,
   transformModule: CssxModuleTransformer,
+  transformOptions: TransformExecutionOptions = {},
 ): Promise<TransformResult | null> {
   const sourceId = id.split('?', 1).join('');
   const parsed = parseVueSfc(code, { filename: sourceId });
@@ -52,10 +60,13 @@ export async function transformVueSfcModule(
       continue;
     }
     const extension = block.lang === 'js' || block.lang === 'jsx' || block.lang === 'tsx' ? block.lang : 'ts';
-    const transformed = (await transformModule(block.content, `${sourceId}.cssx-vue-script.${extension}`, {
-      ...options,
-      classNameAllocator,
-    }))!;
+    const transformed = (await transformModule(
+      block.content,
+      `${sourceId}.cssx-vue-script.${extension}`,
+      { ...options, classNameAllocator },
+      undefined,
+      transformOptions,
+    ))!;
     replacements.push({ start: block.loc.start.offset, end: block.loc.end.offset, code: transformed.code });
     results.push({
       ...transformed,
@@ -71,6 +82,7 @@ export async function transformVueSfcModule(
       options,
       classNameAllocator,
       transformModule,
+      transformOptions,
     );
     if (transformed) {
       replacements.push({ start: template.loc.start.offset, end: template.loc.end.offset, code: transformed.code });

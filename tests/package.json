@@ -5,6 +5,7 @@
   "scripts": {
     "test": "node ./scripts/run-matrix.mjs",
     "test:update": "node ./scripts/run-matrix.mjs --update",
+    "test:hmr": "playwright test hmr/adapters-performance.spec.ts --config playwright.config.ts",
     "test:coverage": "playwright test coverage --config playwright.config.ts",
     "test:motion": "playwright test motion --config playwright.config.ts"
   },

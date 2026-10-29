@@ -28,6 +28,12 @@ export interface TransformResult {
   readonly map?: NonNullable<Awaited<ReturnType<typeof transformAsync>>>['map'];
 }
 
+/** Controls optional per-module work while adapters collect development metadata. */
+export interface TransformExecutionOptions {
+  /** Skips utility CSS emission when a project or bundler compiles the stylesheet later. */
+  readonly compileCss?: boolean;
+}
+
 /** Extensions of JavaScript, TypeScript, Astro, and Vue modules handled by this transform. */
 const SCRIPT_EXTENSIONS = new Set([
   '.js',
@@ -64,6 +70,7 @@ export async function transformCssxModule(
     readonly stableClassNameFileName?: string;
   } = {},
   inputSourceMap?: IncomingSourceMap,
+  transformOptions: TransformExecutionOptions = {},
 ): Promise<TransformResult | null> {
   assertPluginOptions(options);
   const importSource = options.importSource ?? '@cssxio/cssx';
@@ -72,10 +79,10 @@ export async function transformCssxModule(
     return null;
   }
   if (sourceId.endsWith('.astro')) {
-    return transformAstroSxModule(code, id, options, transformCssxModule);
+    return transformAstroSxModule(code, id, options, transformCssxModule, transformOptions);
   }
   if (sourceId.endsWith('.vue')) {
-    return transformVueSfcModule(code, id, options, transformCssxModule);
+    return transformVueSfcModule(code, id, options, transformCssxModule, transformOptions);
   }
-  return transformBabelCssxModule(code, sourceId, options, inputSourceMap);
+  return transformBabelCssxModule(code, sourceId, options, inputSourceMap, transformOptions);
 }

@@ -67,6 +67,18 @@ it('replaces inline create calls with runtime style records', () => {
   expect(result?.code).toContain('$$css: 2');
 });
 
+it('uses stable identities for inline create calls in development', () => {
+  const sourceLocation = transformCreate(`cssx.create({ root: 'p-4' });`, { stableClassNames: true });
+  const moduleOrder = transformCreate(`cssx.create({ root: 'p-4' });`, {
+    stableClassNames: true,
+    stableClassNameStrategy: 'module-order',
+  });
+
+  expect(sourceLocation.result?.code).toMatch(/c: "d[a-z0-9]+"/);
+  expect(moduleOrder.result?.code).toMatch(/c: "d[a-z0-9]+"/);
+  expect(moduleOrder.state.stableClassNameOrdinal).toBe(1);
+});
+
 it('reports invalid create arguments and utility recipes at the call site', () => {
   expect(() => transformCreate(`cssx.create(utilities);`)).toThrow('expects one object literal argument');
   expect(() => transformCreate(`cssx.create({ root: 'invalid-utility' });`)).toThrow('cannot classify utility');

@@ -52,7 +52,11 @@ export interface NativeCompiler {
   /** Root directory of the native compilation. */
   readonly context: string;
   /** Native compiler options when the root directory is nested there. */
-  readonly options?: { readonly context?: string; readonly name?: string };
+  readonly options?: { readonly context?: string; readonly name?: string; readonly mode?: string };
+  /** True when this compiler is serving or rebuilding in watch mode. */
+  readonly watchMode?: boolean;
+  /** Source paths removed since the previous watched compilation. */
+  readonly removedFiles?: ReadonlySet<string>;
   /** Bundler constructors, asset stage constants, and source constructors. */
   readonly webpack: {
     /** Compilation constants used to select a build lifecycle stage. */
@@ -62,6 +66,14 @@ export interface NativeCompiler {
   };
   /** Compiler lifecycle hooks. */
   readonly hooks: {
+    /** Hook run before a watched compilation begins. */
+    readonly watchRun?: {
+      tap(name: string, callback: (compiler: NativeCompiler) => void): void;
+    };
+    /** Hook that runs when a watched native compiler stops. */
+    readonly watchClose?: {
+      tap(name: string, callback: () => void): void;
+    };
     /** Hook that creates each native bundler compilation. */
     readonly thisCompilation: {
       /**

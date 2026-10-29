@@ -71,6 +71,83 @@ describe('CSSX Babel plugin', () => {
     expect(metadata(first!).cssOnlySignature).toBe(metadata(second!).cssOnlySignature);
   });
 
+  it('keeps sx CSS-only signatures stable across utility literal edits', () => {
+    const transform = (utility: string) =>
+      transformSync(
+        `import { sx } from '@cssxio/cssx'; export const className = sx('rounded-md ${utility}', count > 0 && 'scale-105');`,
+        {
+          babelrc: false,
+          configFile: false,
+          filename: '/project/styles.ts',
+          plugins: [[cssxBabelPlugin, { stableClassNames: true, stableClassNameStrategy: 'module-order' }]],
+        },
+      );
+    const first = transform('bg-red-500');
+    const second = transform('bg-blue-500');
+    const signature = (result: NonNullable<typeof first>) =>
+      (result.metadata as unknown as { readonly cssx: { readonly cssOnlySignature: string } }).cssx.cssOnlySignature;
+
+    expect(signature(first!)).toBe(signature(second!));
+  });
+
+  it('keeps module-order selectors stable across literal lengths and distinct on one line', () => {
+    const transform = (first: string) =>
+      transformSync(
+        `import { sx } from '@cssxio/cssx'; export const first = sx('${first}'); export const second = sx('bg-red-500');`,
+        {
+          babelrc: false,
+          configFile: false,
+          filename: '/project/styles.ts',
+          plugins: [[cssxBabelPlugin, { stableClassNames: true, stableClassNameStrategy: 'module-order' }]],
+        },
+      );
+    const first = transform('p-4');
+    const second = transform('px-8 py-3');
+    const className = (result: NonNullable<typeof first>, name: string) =>
+      result.code?.match(new RegExp(`${name} = "(d[^"]+)"`))?.[1];
+
+    expect(className(first!, 'first')).toBe(className(second!, 'first'));
+    expect(className(first!, 'second')).toBe(className(second!, 'second'));
+    expect(className(first!, 'first')).not.toBe(className(first!, 'second'));
+  });
+
+  it('keeps create and props selectors stable when another literal changes length', () => {
+    const transform = (utility: string) =>
+      transformSync(
+        `import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ root: '${utility}' }); export const applied = cssx.props(styles.root); export const following = cssx.sx('bg-red-500');`,
+        {
+          babelrc: false,
+          configFile: false,
+          filename: '/project/styles.ts',
+          plugins: [[cssxBabelPlugin, { stableClassNames: true, stableClassNameStrategy: 'module-order' }]],
+        },
+      );
+    const first = transform('p-4');
+    const second = transform('px-8 py-3');
+    const classNames = (result: NonNullable<typeof first>) => result.code?.match(/d[a-z0-9]+/g) ?? [];
+
+    expect(classNames(first!)).toEqual(classNames(second!));
+  });
+
+  it('keeps dynamic sx segments distinct and stable when an earlier literal changes length', () => {
+    const transform = (utility: string) =>
+      transformSync(
+        `import { sx } from '@cssxio/cssx'; export const value = sx('${utility}', enabled && 'bg-red-500');`,
+        {
+          babelrc: false,
+          configFile: false,
+          filename: '/project/styles.ts',
+          plugins: [[cssxBabelPlugin, { stableClassNames: true, stableClassNameStrategy: 'module-order' }]],
+        },
+      );
+    const first = transform('p-4');
+    const second = transform('px-8 py-3');
+    const classNames = (result: NonNullable<typeof first>) => result.code?.match(/d[a-z0-9]+/g) ?? [];
+
+    expect(classNames(first!)).toHaveLength(2);
+    expect(classNames(second!)).toEqual(classNames(first!));
+  });
+
   it('interns repeated runtime records for dynamic style access', () => {
     const result = transformSync(
       `import { create, props } from '@cssxio/cssx'; const styles = create({ first: 'flex items-center', second: 'flex items-center' }); export const value = props(styles[variant]);`,
