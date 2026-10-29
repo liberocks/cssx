@@ -11,7 +11,7 @@ const MAX_BUFFERED_HTML_RESPONSES = 8;
 /** Marks a bridge script already inserted by Vite's HTML hook. */
 const BRIDGE_MARKER = 'data-cssx-vite-hmr';
 
-/** Callback invoked after one streamed response chunk is written. */
+/** Callback invoked after one streamed response chunk is accepted. */
 type WriteCallback = (error?: Error | null) => void;
 /** Encoding accepted by Node's writable response methods. */
 type WriteEncoding = BufferEncoding | WriteCallback;
@@ -82,18 +82,13 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
     };
     const writeOriginal = response.write.bind(response);
     const endOriginal = response.end.bind(response);
-    const chunks: Array<{ readonly data: Buffer; readonly callback?: WriteCallback }> = [];
+    const chunks: Buffer[] = [];
     let bufferedBytes = 0;
     let passThrough = false;
 
     const forwardBuffered = () => {
-      for (let index = 0; index < chunks.length; index++) {
-        const { data, callback } = chunks[index]!;
-        if (callback) {
-          writeOriginal(data, callback);
-        } else {
-          writeOriginal(data);
-        }
+      for (const data of chunks) {
+        writeOriginal(data);
       }
       chunks.length = 0;
       bufferedBytes = 0;
@@ -108,9 +103,10 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
         release();
         return false;
       }
-      const writeCallback = typeof encoding === 'function' ? encoding : callback;
-      chunks.push({ data, ...(writeCallback ? { callback: writeCallback } : {}) });
+      chunks.push(data);
       bufferedBytes += data.byteLength;
+      const writeCallback = typeof encoding === 'function' ? encoding : callback;
+      writeCallback?.();
       return true;
     };
 
@@ -144,11 +140,7 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
       const contentType = String(response.getHeader('content-type') ?? '').toLowerCase();
       const contentEncoding = response.getHeader('content-encoding');
       const isHtml = contentType.startsWith('text/html') && contentEncoding === undefined;
-      let body = Buffer.concat(
-        chunks.map(({ data }) => data),
-        bufferedBytes,
-      );
-      const writeCallbacks = chunks.flatMap(({ callback: writeCallback }) => (writeCallback ? [writeCallback] : []));
+      let body = Buffer.concat(chunks, bufferedBytes);
       if (isHtml) {
         const html = body.toString('utf8');
         const injected = injectViteDevelopmentHtmlHmr(html, cssFileName, baseUrl);
@@ -161,21 +153,7 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
       chunks.length = 0;
       bufferedBytes = 0;
       if (endCallback) {
-        return endOriginal(body, () => {
-          for (const writeCallback of writeCallbacks) {
-            writeCallback();
-          }
-          writeCallbacks.length = 0;
-          endCallback();
-        });
-      }
-      if (writeCallbacks.length > 0) {
-        response.once('finish', () => {
-          for (const writeCallback of writeCallbacks) {
-            writeCallback();
-          }
-          writeCallbacks.length = 0;
-        });
+        return endOriginal(body, endCallback);
       }
       return endOriginal(body);
     }) as typeof response.end;

@@ -78,6 +78,7 @@ it('injects the Vite bridge into SSR HTML and removes stale response validators'
   harness.response.write('<html><body>SSR content', () => {
     writeCompleted = true;
   });
+  expect(writeCompleted).toBe(true);
   harness.response.end('</body></html>');
 
   expect(harness.body()).toContain('SSR content<script data-cssx-vite-hmr>');
