@@ -16,6 +16,11 @@ import webpack from 'webpack';
 const adapters = ['esbuild', 'rollup', 'webpack', 'rspack'] as const;
 type AdapterName = (typeof adapters)[number];
 
+interface AdapterHandle {
+  readonly close: () => Promise<void>;
+  readonly waitForBuild?: () => Promise<void>;
+}
+
 test.describe.configure({ mode: 'serial' });
 
 for (const adapter of adapters) {
@@ -24,9 +29,12 @@ for (const adapter of adapters) {
     const fixture = await createFixture(adapter);
     const previousCwd = process.cwd();
     let closeBuild: (() => Promise<void>) | undefined;
+    let waitForBuild: (() => Promise<void>) | undefined;
     let server: ReturnType<typeof createServer> | undefined;
     try {
-      closeBuild = await startAdapter(adapter, fixture);
+      const adapterHandle = await startAdapter(adapter, fixture);
+      closeBuild = adapterHandle.close;
+      waitForBuild = adapterHandle.waitForBuild;
       await waitForCoordinatorStylesheet(fixture.coordinatorStylesheet);
       server = createStaticServer(fixture.outputDirectory);
       const url = await listen(server);
@@ -86,6 +94,7 @@ for (const adapter of adapters) {
           });
           observer.observe(document.head, { childList: true, subtree: true });
         }, expected);
+        const buildFinished = waitForBuild?.();
         await writeFile(fixture.styleSource, source);
         const savedAt = performance.timeOrigin + performance.now();
         await page.waitForFunction(
@@ -113,6 +122,7 @@ for (const adapter of adapters) {
         expect(state.inputFocused).toBe(true);
         expect(state.inputIdentityPreserved).toBe(true);
         expect(state.scrollY).toBeGreaterThanOrEqual(850);
+        await buildFinished;
         current = next;
       }
       const sorted = [...measurements].sort((left, right) => left - right);
@@ -136,6 +146,48 @@ for (const adapter of adapters) {
     }
   });
 }
+
+test('rollup publishes the latest stylesheet after rapid saves', async ({ page }) => {
+  test.setTimeout(120_000);
+  const fixture = await createFixture('rollup');
+  const previousCwd = process.cwd();
+  let closeBuild: (() => Promise<void>) | undefined;
+  let server: ReturnType<typeof createServer> | undefined;
+  try {
+    const adapterHandle = await startAdapter('rollup', fixture);
+    closeBuild = adapterHandle.close;
+    await waitForCoordinatorStylesheet(fixture.coordinatorStylesheet);
+    server = createStaticServer(fixture.outputDirectory);
+    const url = await listen(server);
+    await page.goto(url);
+    await expect(page.locator('#target')).toHaveCSS('padding-top', '8px');
+    await page.waitForFunction(() => {
+      const state = (
+        globalThis as typeof globalThis & {
+          __cssxDevelopmentStylesheetHmr?: { events?: EventSource };
+        }
+      ).__cssxDevelopmentStylesheetHmr;
+      return state?.events?.readyState === EventSource.OPEN;
+    });
+
+    let current = 'p-2';
+    let source = await readFile(fixture.styleSource, 'utf8');
+    for (let edit = 0; edit < 5; edit++) {
+      const next = current === 'p-2' ? 'p-4' : 'p-2';
+      source = source.replace("sx('" + current + "')", "sx('" + next + "')");
+      await writeFile(fixture.styleSource, source);
+      current = next;
+    }
+
+    await expect(page.locator('#target')).toHaveCSS('padding-top', '16px');
+  } finally {
+    await closeBuild?.();
+    if (server) await closeServer(server);
+    process.chdir(previousCwd);
+    await rm(fixture.root, { recursive: true, force: true });
+    await rm(fixture.workspaceRoot, { recursive: true, force: true });
+  }
+});
 
 interface Fixture {
   readonly root: string;
@@ -178,7 +230,7 @@ async function createFixture(adapter: AdapterName): Promise<Fixture> {
   };
 }
 
-async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<() => Promise<void>> {
+async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<AdapterHandle> {
   const options = {
     mode: 'development' as const,
     preflight: false,
@@ -196,7 +248,7 @@ async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<() 
     });
     await build.rebuild();
     await build.watch();
-    return async () => build.dispose();
+    return { close: async () => build.dispose() };
   }
   if (adapter === 'rollup') {
     process.chdir(fixture.root);
@@ -207,7 +259,10 @@ async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<() 
       watch: { buildDelay: 0 },
     });
     await waitForRollupBuild(watcher);
-    return async () => watcher.close();
+    return {
+      close: async () => watcher.close(),
+      waitForBuild: () => waitForRollupBuild(watcher),
+    };
   }
   if (adapter === 'webpack') {
     const compiler = webpack({
@@ -228,13 +283,15 @@ async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<() 
           resolveBuild();
         });
       });
-      return async () => {
-        await new Promise<void>((resolveClose, rejectClose) =>
-          watching?.close((error) => (error ? rejectClose(error) : resolveClose())),
-        );
-        await new Promise<void>((resolveClose, rejectClose) =>
-          compiler.close((error) => (error ? rejectClose(error) : resolveClose())),
-        );
+      return {
+        close: async () => {
+          await new Promise<void>((resolveClose, rejectClose) =>
+            watching?.close((error) => (error ? rejectClose(error) : resolveClose())),
+          );
+          await new Promise<void>((resolveClose, rejectClose) =>
+            compiler.close((error) => (error ? rejectClose(error) : resolveClose())),
+          );
+        },
       };
     } catch (error) {
       await new Promise<void>((resolveClose) => compiler.close(() => resolveClose()));
@@ -260,13 +317,15 @@ async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<() 
         resolveBuild();
       });
     });
-    return async () => {
-      await new Promise<void>((resolveClose, rejectClose) =>
-        watching?.close((error) => (error ? rejectClose(error) : resolveClose())),
-      );
-      await new Promise<void>((resolveClose, rejectClose) =>
-        compiler.close((error) => (error ? rejectClose(error) : resolveClose())),
-      );
+    return {
+      close: async () => {
+        await new Promise<void>((resolveClose, rejectClose) =>
+          watching?.close((error) => (error ? rejectClose(error) : resolveClose())),
+        );
+        await new Promise<void>((resolveClose, rejectClose) =>
+          compiler.close((error) => (error ? rejectClose(error) : resolveClose())),
+        );
+      },
     };
   } catch (error) {
     await new Promise<void>((resolveClose) => compiler.close(() => resolveClose()));
@@ -334,8 +393,10 @@ async function waitForCoordinatorStylesheet(fileName: string): Promise<void> {
 async function waitForRollupBuild(watcher: RollupWatcher): Promise<void> {
   await new Promise<void>((resolveBuild, rejectBuild) => {
     const onEvent = (event: RollupWatcherEvent) => {
-      if (event.code === 'ERROR') rejectBuild(event.error);
-      else if (event.code === 'END') {
+      if (event.code === 'ERROR') {
+        watcher.off('event', onEvent);
+        rejectBuild(event.error);
+      } else if (event.code === 'END') {
         watcher.off('event', onEvent);
         resolveBuild();
       }
