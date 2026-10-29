@@ -57,22 +57,25 @@ export function nextDevelopmentStylesheetHmr(
             try { if (removeGeneratedRules(sheet)) state.generatedSheets.push(sheet); } catch {}
           }
           state.stylesheetCount = stylesheetCount;
-        } else {
-          for (const sheet of generatedSheets) {
-            try { removeGeneratedRules(sheet); } catch {}
-          }
         }
-        const stylesheetLink = ${stylesheetSuffix} ? [...document.querySelectorAll('link[rel="stylesheet"]')].find((link) =>
-          new URL(link.href, document.baseURI).pathname.endsWith(${stylesheetSuffix}),
-        ) : undefined;
-        const style = document.createElement("style");
-        style.dataset.cssxDevelopmentStylesheet = "";
-        style.textContent = css;
-        if (state.style?.parentNode) state.style.before(style);
-        else if (stylesheetLink) stylesheetLink.after(style);
-        else document.head.append(style);
-        state.style?.remove();
-        state.style = style;
+        if (state.style?.isConnected) {
+          state.style.textContent = css;
+        } else {
+          const style = document.createElement("style");
+          style.dataset.cssxDevelopmentStylesheet = "";
+          style.textContent = css;
+          const cachedLink = state.stylesheetLink;
+          const stylesheetLink = ${stylesheetSuffix} ? (cachedLink?.isConnected ? cachedLink : [...document.querySelectorAll('link[rel="stylesheet"]')].find((link) =>
+            new URL(link.href, document.baseURI).pathname.endsWith(${stylesheetSuffix}),
+          )) : undefined;
+          if (stylesheetLink) {
+            state.stylesheetLink = stylesheetLink;
+            stylesheetLink.after(style);
+          } else {
+            document.head.append(style);
+          }
+          state.style = style;
+        }
         state.revision = revision;
       } catch {}
       finally {

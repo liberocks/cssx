@@ -21,6 +21,18 @@ test('shows 30 warm Vite style edits within 100 ms and preserves browser state',
       .__cssxViteStylesheetHmr;
     return state?.source?.readyState === EventSource.OPEN && (state.revision ?? 0) > 0;
   });
+  await page.waitForFunction(() => {
+    const state = (window as Window & { __cssxViteStylesheetHmr?: { style?: HTMLStyleElement } })
+      .__cssxViteStylesheetHmr;
+    return state?.style?.isConnected === true;
+  });
+  await page.evaluate(() => {
+    const windowState = window as Window & {
+      __cssxViteStylesheetHmr?: { style?: HTMLStyleElement };
+      __cssxInitialBridgeStyle?: HTMLStyleElement;
+    };
+    windowState.__cssxInitialBridgeStyle = windowState.__cssxViteStylesheetHmr?.style;
+  });
   const initialLoads = await page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads')));
   await page.locator(selector).click();
   await page.locator(selector).click();
@@ -76,6 +88,8 @@ test('shows 30 warm Vite style edits within 100 ms and preserves browser state',
         const state = window as Window & {
           __cssxDocumentLoads?: string;
           __cssxHmrInput?: HTMLInputElement;
+          __cssxViteStylesheetHmr?: { style?: HTMLStyleElement };
+          __cssxInitialBridgeStyle?: HTMLStyleElement;
         };
         return {
           documentLoads: Number(sessionStorage.getItem('__cssxDocumentLoads')),
@@ -84,6 +98,10 @@ test('shows 30 warm Vite style edits within 100 ms and preserves browser state',
           inputIdentityPreserved: state.__cssxHmrInput === document.querySelector('[data-cssx-hmr-state]'),
           scrollY: window.scrollY,
           count: document.querySelector('[data-cssx-probe="sx"]')?.textContent,
+          bridgeStylePreserved:
+            state.__cssxInitialBridgeStyle === state.__cssxViteStylesheetHmr?.style &&
+            state.__cssxInitialBridgeStyle?.isConnected === true,
+          bridgeStyleCount: document.querySelectorAll('style[data-cssx-development-stylesheet]').length,
         };
       });
       expect(result.documentLoads).toBe(initialLoads);
@@ -92,6 +110,8 @@ test('shows 30 warm Vite style edits within 100 ms and preserves browser state',
       expect(result.inputIdentityPreserved).toBe(true);
       expect(result.scrollY).toBeGreaterThanOrEqual(850);
       expect(result.count).toContain('count is 3');
+      expect(result.bridgeStylePreserved).toBe(true);
+      expect(result.bridgeStyleCount).toBe(1);
     }
     const sorted = [...measurements].sort((left, right) => left - right);
     console.info(

@@ -16,6 +16,18 @@ test('shows 30 warm style edits within 100 ms and preserves browser state', asyn
   });
   await page.goto('/');
   await expect(page.locator(selector)).toBeVisible();
+  await page.waitForFunction(() => {
+    const state = (window as Window & { __cssxDevelopmentStylesheetHmr?: { style?: HTMLStyleElement } })
+      .__cssxDevelopmentStylesheetHmr;
+    return state?.style?.isConnected === true;
+  });
+  await page.evaluate(() => {
+    const windowState = window as Window & {
+      __cssxDevelopmentStylesheetHmr?: { style?: HTMLStyleElement };
+      __cssxInitialBridgeStyle?: HTMLStyleElement;
+    };
+    windowState.__cssxInitialBridgeStyle = windowState.__cssxDevelopmentStylesheetHmr?.style;
+  });
   const initialLoads = await page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads')));
   const measurements: number[] = [];
   await page.evaluate(() => {
@@ -66,6 +78,8 @@ test('shows 30 warm style edits within 100 ms and preserves browser state', asyn
           __cssxDocumentLoads?: string;
           __cssxHmrElapsed?: number;
           __cssxHmrInput?: HTMLInputElement;
+          __cssxDevelopmentStylesheetHmr?: { style?: HTMLStyleElement };
+          __cssxInitialBridgeStyle?: HTMLStyleElement;
         };
         return {
           elapsed: state.__cssxHmrElapsed,
@@ -74,6 +88,10 @@ test('shows 30 warm style edits within 100 ms and preserves browser state', asyn
           inputFocused: document.activeElement === state.__cssxHmrInput,
           inputIdentityPreserved: state.__cssxHmrInput === document.querySelector('[data-cssx-hmr-state]'),
           scrollY: window.scrollY,
+          bridgeStylePreserved:
+            state.__cssxInitialBridgeStyle === state.__cssxDevelopmentStylesheetHmr?.style &&
+            state.__cssxInitialBridgeStyle?.isConnected === true,
+          bridgeStyleCount: document.querySelectorAll('style[data-cssx-development-stylesheet]').length,
         };
       });
 
@@ -83,6 +101,8 @@ test('shows 30 warm style edits within 100 ms and preserves browser state', asyn
       expect(result.inputFocused).toBe(true);
       expect(result.inputIdentityPreserved).toBe(true);
       expect(result.scrollY).toBeGreaterThanOrEqual(850);
+      expect(result.bridgeStylePreserved).toBe(true);
+      expect(result.bridgeStyleCount).toBe(1);
     }
     const sorted = [...measurements].sort((left, right) => left - right);
     console.info(
