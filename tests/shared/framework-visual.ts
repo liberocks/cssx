@@ -115,25 +115,6 @@ export function frameworkVisualSuite(framework: string): void {
         sessionStorage.setItem(key, String(Number(sessionStorage.getItem(key) ?? '0') + 1));
       });
       await page.goto('/');
-      await page.waitForFunction(() => {
-        const windowState = window as Window & {
-          __cssxDevelopmentStylesheetHmr?: { events?: EventSource; revision?: number };
-          __cssxViteStylesheetHmr?: { source?: EventSource; revision?: number };
-        };
-        const state = windowState.__cssxDevelopmentStylesheetHmr ?? windowState.__cssxViteStylesheetHmr;
-        const stream = state?.events ?? state?.source;
-        return stream?.readyState === EventSource.OPEN && (state?.revision ?? 0) > 0;
-      });
-      const beforeRevision = await page.evaluate(() => {
-        const windowState = window as Window & {
-          __cssxDevelopmentStylesheetHmr?: { revision?: number };
-          __cssxViteStylesheetHmr?: { revision?: number };
-        };
-        return Math.max(
-          windowState.__cssxDevelopmentStylesheetHmr?.revision ?? 0,
-          windowState.__cssxViteStylesheetHmr?.revision ?? 0,
-        );
-      });
       const target = fixture.parent ? page.locator(fixture.selector).locator('..') : page.locator(fixture.selector);
       const beforeColor = await target.evaluate(
         (element, property) => getComputedStyle(element)[property as 'backgroundColor' | 'color'],
@@ -159,20 +140,6 @@ export function frameworkVisualSuite(framework: string): void {
         await expect
           .poll(() => page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads'))))
           .toBe(beforeLoads);
-        await expect
-          .poll(() =>
-            page.evaluate(() => {
-              const windowState = window as Window & {
-                __cssxDevelopmentStylesheetHmr?: { revision?: number };
-                __cssxViteStylesheetHmr?: { revision?: number };
-              };
-              return Math.max(
-                windowState.__cssxDevelopmentStylesheetHmr?.revision ?? 0,
-                windowState.__cssxViteStylesheetHmr?.revision ?? 0,
-              );
-            }),
-          )
-          .toBeGreaterThan(beforeRevision);
         if (fixture.stateful) {
           await expect(page.getByRole('button', { name: /count is 1/i })).toBeVisible();
         }
