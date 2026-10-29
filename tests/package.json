@@ -10,6 +10,7 @@
     "test:motion": "playwright test motion --config playwright.config.ts"
   },
   "devDependencies": {
+    "@cssxio/unplugin": "workspace:*",
     "@playwright/test": "^1.58.2"
   }
 }

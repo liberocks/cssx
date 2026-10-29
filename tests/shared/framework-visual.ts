@@ -116,7 +116,6 @@ export function frameworkVisualSuite(framework: string): void {
       });
       await page.goto('/');
       const target = fixture.parent ? page.locator(fixture.selector).locator('..') : page.locator(fixture.selector);
-      const stylesheet = page.locator('link[rel="stylesheet"][href*="cssx"]');
       const beforeColor = await target.evaluate(
         (element, property) => getComputedStyle(element)[property as 'backgroundColor' | 'color'],
         fixture.property,
@@ -141,9 +140,7 @@ export function frameworkVisualSuite(framework: string): void {
         await expect
           .poll(() => page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads'))))
           .toBe(beforeLoads);
-        await expect
-          .poll(() => stylesheet.evaluateAll((links) => links.some((link) => /[?&](?:t|cssx)=/.test(link.href))))
-          .toBe(true);
+        await expect(page.locator('style[data-cssx-development-stylesheet]')).toHaveCount(1);
         if (fixture.stateful) {
           await expect(page.getByRole('button', { name: /count is 1/i })).toBeVisible();
         }
