@@ -11,6 +11,10 @@ import { createViteNativeSourceWatcher } from './vite-native-source-watcher';
 
 /** Maximum source digests retained to recognize eager Vite stylesheet updates. */
 const MAX_PREPARED_VITE_UPDATES = 64;
+/** Maximum distinct source updates transformed at once by one Vite plugin instance. */
+const MAX_IN_FLIGHT_VITE_UPDATES = 256;
+/** Maximum source modules transformed concurrently by one Vite plugin instance. */
+const MAX_CONCURRENT_VITE_TRANSFORMS = 4;
 
 /** Creates and owns one Vite development transport and its bounded source watcher. */
 export function createViteDevelopmentRuntime(
@@ -20,29 +24,74 @@ export function createViteDevelopmentRuntime(
   transformSource: (source: string, id: string) => Promise<unknown>,
 ) {
   const preparedUpdates = new Map<string, string>();
+  const inFlightUpdates = new Map<string, { promise: Promise<void>; rerun: boolean; sourceId?: string }>();
+  const transformWaiters: Array<() => void> = [];
   let active = true;
-  const notifyStyles = async () => {
-    if (!active) {
-      return;
+  let activeTransforms = 0;
+  let stylesheetRevision = 0;
+  let notifyPromise: Promise<void> | undefined;
+  let latestCss: string | undefined;
+  let inFlightLimitWarned = false;
+  const withTransformSlot = async <T>(callback: () => Promise<T>): Promise<T> => {
+    if (activeTransforms >= MAX_CONCURRENT_VITE_TRANSFORMS) {
+      await new Promise<void>((resume) => transformWaiters.push(resume));
+    } else {
+      activeTransforms++;
     }
     try {
-      const stylesheet = await compileViteDevelopmentStylesheet(configuration);
-      sendViteStyles(server, cssWithSourceMapComment(stylesheet, configuration.cssFileName));
-    } catch (error) {
-      console.warn(`CSSX: Vite stylesheet update failed: ${error instanceof Error ? error.message : String(error)}`);
+      return await callback();
+    } finally {
+      const resume = transformWaiters.shift();
+      if (resume) {
+        resume();
+      } else {
+        activeTransforms--;
+      }
     }
   };
-  const updateCssOnlySource = async (id: string) => {
-    const normalizedId = moduleId(id);
+  const notifyStyles = () => {
+    if (!active) {
+      return Promise.resolve();
+    }
+    stylesheetRevision++;
+    if (!notifyPromise) {
+      notifyPromise = (async () => {
+        let publishedRevision = -1;
+        do {
+          publishedRevision = stylesheetRevision;
+          try {
+            const stylesheet = await compileViteDevelopmentStylesheet(configuration);
+            const css = cssWithSourceMapComment(stylesheet, configuration.cssFileName);
+            if (css !== latestCss) {
+              sendViteStyles(server, css);
+              latestCss = css;
+            }
+          } catch (error) {
+            console.warn(
+              `CSSX: Vite stylesheet update failed: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+        } while (active && publishedRevision !== stylesheetRevision);
+      })().finally(() => {
+        notifyPromise = undefined;
+      });
+    }
+    return notifyPromise!;
+  };
+  const updateCssOnlySourceNow = async (
+    id: string,
+    normalizedId: string,
+    previousSourceId?: string,
+  ): Promise<string | undefined> => {
     const previousSignature = dataById.get(normalizedId)?.cssOnlySignature;
     if (!active || !previousSignature) {
-      return;
+      return undefined;
     }
     try {
       const source = await readFile(normalizedId, 'utf8');
       const sourceId = sourceSignature(source);
-      if (preparedUpdates.get(normalizedId) === sourceId) {
-        return;
+      if (previousSourceId === sourceId || preparedUpdates.get(normalizedId) === sourceId) {
+        return sourceId;
       }
       const previous = dataById.get(normalizedId);
       await transformSource(source, id);
@@ -52,7 +101,7 @@ export function createViteDevelopmentRuntime(
         if (previous) {
           dataById.set(normalizedId, previous);
         }
-        return;
+        return sourceId;
       }
       if (preparedUpdates.size >= MAX_PREPARED_VITE_UPDATES && !preparedUpdates.has(normalizedId)) {
         const oldestId = preparedUpdates.keys().next().value;
@@ -63,10 +112,47 @@ export function createViteDevelopmentRuntime(
       }
       preparedUpdates.set(normalizedId, sourceId);
       await notifyStyles();
+      return sourceId;
     } catch (error) {
       preparedUpdates.delete(normalizedId);
       console.warn(`CSSX: Vite stylesheet update failed: ${error instanceof Error ? error.message : String(error)}`);
+      return undefined;
     }
+  };
+  const updateCssOnlySource = (id: string) => {
+    const normalizedId = moduleId(id);
+    const existing = inFlightUpdates.get(normalizedId);
+    if (existing) {
+      existing.rerun = true;
+      return existing.promise;
+    }
+    if (inFlightUpdates.size >= MAX_IN_FLIGHT_VITE_UPDATES) {
+      if (!inFlightLimitWarned) {
+        inFlightLimitWarned = true;
+        console.warn(`CSSX: Vite stylesheet update queue reached the ${MAX_IN_FLIGHT_VITE_UPDATES}-path limit.`);
+      }
+      return Promise.resolve();
+    }
+    const update: { promise: Promise<void>; rerun: boolean; sourceId?: string } = {
+      promise: Promise.resolve(),
+      rerun: false,
+    };
+    update.promise = (async () => {
+      do {
+        update.rerun = false;
+        if (!active) {
+          return;
+        }
+        const sourceId = await withTransformSlot(() => updateCssOnlySourceNow(id, normalizedId, update.sourceId));
+        if (sourceId !== undefined) {
+          update.sourceId = sourceId;
+        }
+      } while (active && update.rerun);
+    })().finally(() => {
+      inFlightUpdates.delete(normalizedId);
+    });
+    inFlightUpdates.set(normalizedId, update);
+    return update.promise;
   };
   const nativeSourceWatcher = server.watcher
     ? createViteNativeSourceWatcher((path) => {
@@ -83,6 +169,7 @@ export function createViteDevelopmentRuntime(
     active = false;
     nativeSourceWatcher?.close();
     preparedUpdates.clear();
+    inFlightUpdates.clear();
   };
   server.watcher?.on('close', close);
   configureViteDevelopmentServer(server, configuration);
