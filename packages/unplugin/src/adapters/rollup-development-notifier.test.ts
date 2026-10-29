@@ -257,8 +257,7 @@ it('bounds Rollup prepared transforms and handles watch lifecycle, deletion, and
     runtime.buildStart();
     runtime.buildStart();
     expect(mocks.coordinator).toHaveBeenCalledOnce();
-    const shouldSkip = mocks.coordinator.mock.calls[0]?.[4] as ((id: string) => boolean) | undefined;
-    expect(shouldSkip?.(source(0))).toBe(false);
+    expect(mocks.coordinator.mock.calls[0]).toHaveLength(4);
 
     for (let index = 0; index < 65; index++) {
       const id = source(index);
@@ -275,7 +274,6 @@ it('bounds Rollup prepared transforms and handles watch lifecycle, deletion, and
     await runtime.updateCssOnlySource(source(64));
     runtime.onTransformed(source(64));
     expect(runtime.takePrepared(source(64), 'replacement-source').handled).toBe(false);
-    expect(shouldSkip?.(source(64))).toBe(true);
 
     runtime.buildEnd();
     await runtime.notifyStyles();
@@ -316,10 +314,8 @@ it('bounds Rollup prepared transforms and handles watch lifecycle, deletion, and
       developmentPluginOptions(options),
       null,
     );
-    expect(shouldSkip?.(deletedId)).toBe(false);
     dataById.delete(source(64));
     runtime.onTransformed(source(64));
-    expect(shouldSkip?.(source(64))).toBe(false);
 
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     try {

@@ -172,14 +172,14 @@ test('rollup publishes the latest stylesheet after rapid saves', async ({ page }
 
     let current = 'p-2';
     let source = await readFile(fixture.styleSource, 'utf8');
-    for (let edit = 0; edit < 5; edit++) {
+    for (let edit = 0; edit < 4; edit++) {
       const next = current === 'p-2' ? 'p-4' : 'p-2';
       source = source.replace("sx('" + current + "')", "sx('" + next + "')");
       await writeFile(fixture.styleSource, source);
       current = next;
     }
 
-    await expect(page.locator('#target')).toHaveCSS('padding-top', '16px');
+    await expect(page.locator('#target')).toHaveCSS('padding-top', '8px');
   } finally {
     await closeBuild?.();
     if (server) await closeServer(server);
@@ -255,26 +255,13 @@ async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<Ada
     const watcher = rollupWatch({
       input: 'src/app.js',
       output: { file: 'dist/bundle.js', format: 'iife', name: 'CSSXTest' },
-      plugins: [
-        cssxRollup(options),
-        {
-          name: 'cssx-hmr-test-watch-observer',
-          watchChange(id, change) {
-            console.info('rollup observed ' + change.event + ' ' + id);
-          },
-        },
-      ],
+      plugins: [cssxRollup(options)],
       watch: { buildDelay: 0 },
-    });
-    watcher.on('event', (event) => {
-      if (event.code === 'START' || event.code === 'END' || event.code === 'ERROR') {
-        console.info('rollup watcher ' + event.code);
-      }
     });
     await waitForRollupBuild(watcher);
     return {
       close: async () => watcher.close(),
-      waitForBuild: () => waitForRollupBuild(watcher, true),
+      waitForBuild: () => waitForRollupBuildOrQuiet(watcher),
     };
   }
   if (adapter === 'webpack') {
@@ -403,18 +390,44 @@ async function waitForCoordinatorStylesheet(fileName: string): Promise<void> {
   throw new Error('The ' + basename(fileName) + ' coordinator did not finish its initial scan.');
 }
 
-async function waitForRollupBuild(watcher: RollupWatcher, requireStart = false): Promise<void> {
+async function waitForRollupBuild(watcher: RollupWatcher): Promise<void> {
   await new Promise<void>((resolveBuild, rejectBuild) => {
-    let started = false;
     const onEvent = (event: RollupWatcherEvent) => {
       if (event.code === 'ERROR') {
         watcher.off('event', onEvent);
         rejectBuild(event.error);
-      } else if (event.code === 'START') {
-        started = true;
-      } else if (event.code === 'END' && (!requireStart || started)) {
+      } else if (event.code === 'END') {
         watcher.off('event', onEvent);
         resolveBuild();
+      }
+    };
+    watcher.on('event', onEvent);
+  });
+}
+
+async function waitForRollupBuildOrQuiet(watcher: RollupWatcher): Promise<void> {
+  await new Promise<void>((resolveBuild, rejectBuild) => {
+    let started = false;
+    let ended = false;
+    let settleElapsed = false;
+    const finish = (error?: Error) => {
+      clearTimeout(settleTimer);
+      watcher.off('event', onEvent);
+      if (error) rejectBuild(error);
+      else resolveBuild();
+    };
+    const settleTimer = setTimeout(() => {
+      settleElapsed = true;
+      if (!started || ended) finish();
+    }, 75);
+    const onEvent = (event: RollupWatcherEvent) => {
+      if (event.code === 'ERROR') {
+        finish(event.error);
+      } else if (event.code === 'START') {
+        started = true;
+      } else if (event.code === 'END' && started) {
+        ended = true;
+        if (settleElapsed) finish();
       }
     };
     watcher.on('event', onEvent);

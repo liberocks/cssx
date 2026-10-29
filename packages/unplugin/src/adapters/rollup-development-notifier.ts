@@ -6,7 +6,7 @@ import type { CssxPluginOptions } from '../core/options';
 import { developmentPluginOptions } from '../core/options';
 import { sourceSignature } from '../core/source-signature';
 import { compileCssxStylesheet, cssWithSourceMapComment } from '../native/stylesheet';
-import { hasCssxStyleData, type ModuleCssxData } from '../transforms/module-cssx-data';
+import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import { updateProjectScanModule } from '../transforms/project-scan';
 import { startDevelopmentCoordinator } from './development-coordinator';
 import { publishNextDevelopmentStylesheet } from './next-development-server';
@@ -106,7 +106,6 @@ export function createRollupDevelopmentRuntime<TTransformResult>(
     { readonly sourceSignature: string; readonly result: TTransformResult; readonly size: number }
   >();
   let preparedBytes = 0;
-  const rollupManagedSourceIds = new Set<string>();
   const pendingUpdates = new Map<string, string>();
   let updateQueue: Promise<void> | undefined;
   const removePrepared = (id: string) => {
@@ -220,7 +219,6 @@ export function createRollupDevelopmentRuntime<TTransformResult>(
         stylesheetFile,
         developmentPluginOptions(configuration.options),
         connection,
-        (path) => rollupManagedSourceIds.has(moduleId(path)),
       );
       void coordinatorStartup.catch((error: unknown) => {
         console.warn(`CSSX: Rollup development coordinator failed: ${String(error)}`);
@@ -238,7 +236,6 @@ export function createRollupDevelopmentRuntime<TTransformResult>(
       pendingUpdates.clear();
       prepared.clear();
       preparedBytes = 0;
-      rollupManagedSourceIds.clear();
       if (connection) {
         stopNextDevelopmentServer(configuration.root);
       }
@@ -258,20 +255,11 @@ export function createRollupDevelopmentRuntime<TTransformResult>(
       return { handled: true, result: value.result };
     },
     onTransformed(id: string): void {
-      const normalizedId = moduleId(id);
-      removePrepared(normalizedId);
-      const data = configuration.dataById.get(normalizedId);
-      if (data && hasCssxStyleData(data)) {
-        rollupManagedSourceIds.add(normalizedId);
-      } else {
-        rollupManagedSourceIds.delete(normalizedId);
-        removePrepared(normalizedId);
-      }
+      removePrepared(moduleId(id));
     },
     async delete(id: string): Promise<void> {
       const normalizedId = moduleId(id);
       removePrepared(normalizedId);
-      rollupManagedSourceIds.delete(normalizedId);
       await updateProjectScanModule(
         configuration.root,
         normalizedId,

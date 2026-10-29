@@ -100,6 +100,7 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
       viteDevServer: framework === 'vite' && isViteDevServerActive?.(),
     });
     const root = nativeBuildRoot(this);
+    const projectRoot = root ?? (framework === 'rollup' && this.meta?.watchMode ? process.cwd() : undefined);
     const sharedNativeState = root ? nativeBuildState(root, options) : undefined;
     const developmentHmr =
       development && (framework === 'rollup' || framework === 'esbuild')
@@ -121,7 +122,7 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
         ? (sharedNativeState?.developmentClassNameAllocator ?? developmentClassNameAllocator ?? classNameAllocator)
         : (sharedNativeState?.classNameAllocator ?? classNameAllocator),
       ...(development || options.stableClassNames || options.naming === 'source'
-        ? { stableClassNameFileName: stableModuleFileName(root ?? process.cwd(), moduleId(id), development) }
+        ? { stableClassNameFileName: stableModuleFileName(projectRoot ?? process.cwd(), moduleId(id), development) }
         : {}),
     };
     const compilerOptions = { ...transformOptions };
@@ -165,15 +166,18 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
       sharedNativeState?.transformedDataById.set(normalizedId, data);
     }
 
+    const previousDevelopmentData = framework === 'rollup' ? previousRollupData : previousNativeData;
     if (
       development &&
-      (framework === 'webpack' || framework === 'rspack') &&
-      (transformed || (previousNativeData !== undefined && hasCssxStyleData(previousNativeData)))
+      (framework === 'webpack' || framework === 'rspack' || (framework === 'rollup' && this.meta?.watchMode)) &&
+      (transformed || (previousDevelopmentData !== undefined && hasCssxStyleData(previousDevelopmentData)))
     ) {
-      if (root) {
-        await updateProjectScanModule(root, normalizedId, developmentPluginOptions(options), transformed, code);
+      if (projectRoot) {
+        await updateProjectScanModule(projectRoot, normalizedId, developmentPluginOptions(options), transformed, code);
       }
-      await sharedNativeState?.notifyDevelopmentStylesheet?.();
+      if (framework !== 'rollup') {
+        await sharedNativeState?.notifyDevelopmentStylesheet?.();
+      }
     }
     if (
       development &&

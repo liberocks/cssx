@@ -6,6 +6,7 @@ import { expect, it, vi } from 'vitest';
 
 import { nativeBuildState } from '../native/native-build-state';
 import { RULES_METADATA_KEY, type ModuleCssxData } from '../transforms/module-cssx-data';
+import * as projectScan from '../transforms/project-scan';
 import { createTransformHandler } from './create-transform-handler';
 
 it('transforms utilities and records module data for CSS extraction', async () => {
@@ -87,6 +88,43 @@ it('shares development atomic allocations across modules and repeated utilities'
 
   expect(metadata(first!).candidates['p-4']).not.toBe(metadata(second!).candidates['bg-red-500']);
   expect(metadata(first!).candidates['p-4']).toBe(metadata(third!).candidates['p-4']);
+});
+
+it('synchronizes Rollup watch transforms with the stylesheet coordinator cache', async () => {
+  const updateProjectScanModule = vi.spyOn(projectScan, 'updateProjectScanModule').mockResolvedValue(true);
+  const notifyDevelopmentStyles = vi.fn();
+  const handler = createTransformHandler({
+    framework: 'rollup',
+    options: { mode: 'development' },
+    classNameAllocator: createClassNameAllocator(),
+    rollupDataById: new Map(),
+    esbuildDataById: new Map(),
+    cssFileName: 'cssx.css',
+    getEsbuildWorkingDirectory: () => process.cwd(),
+    notifyViteStyles: vi.fn(),
+    notifyDevelopmentStyles,
+    getDevelopmentHmrConnection: () => ({ port: 4444, token: 'rollup-test' }),
+  });
+
+  try {
+    const result = await handler.call(
+      { meta: { watchMode: true }, skipRollupStylesheetPush: true },
+      `import { sx } from '@cssxio/cssx'; export const className = sx('p-4');`,
+      '/project/style.ts',
+    );
+
+    expect(updateProjectScanModule).toHaveBeenCalledWith(
+      process.cwd(),
+      '/project/style.ts',
+      expect.objectContaining({ mode: 'development' }),
+      expect.objectContaining({ candidates: { 'p-4': expect.any(String) } }),
+      expect.stringContaining("sx('p-4')"),
+    );
+    expect(notifyDevelopmentStyles).not.toHaveBeenCalled();
+    expect(result!.code).toContain('__cssxDevelopmentStylesheetHmr');
+  } finally {
+    updateProjectScanModule.mockRestore();
+  }
 });
 
 it('watches the configured theme file even when the source has no CSSX import', async () => {
