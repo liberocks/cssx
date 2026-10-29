@@ -53,6 +53,7 @@ export function configureNativeCompiler({
     bundlerMode: compiler.options?.mode,
   });
   const compilationOptions = development ? developmentPluginOptions(options) : options;
+  const compilationSourceMap = compilationOptions.sourceMap ?? sourceMap;
   let coordinatorStartup: Promise<() => void> | undefined;
   if (development) {
     let compilationRuns = 0;
@@ -91,7 +92,7 @@ export function configureNativeCompiler({
                   sourceData ?? [...sharedNativeState.transformedDataById.values()],
                   await getTheme(),
                   compilationOptions.layer,
-                  sourceMap,
+                  compilationSourceMap,
                   compilationOptions.darkMode,
                   compilationOptions.preflight,
                 );
@@ -144,7 +145,7 @@ export function configureNativeCompiler({
     cssFileName,
     getTheme,
     compilationOptions.layer,
-    sourceMap,
+    compilationSourceMap,
     RULES_METADATA_KEY,
     sharedNativeState.transformedDataById,
     compilationOptions.darkMode,

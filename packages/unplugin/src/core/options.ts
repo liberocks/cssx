@@ -26,6 +26,7 @@ export function developmentPluginOptions(options: CssxPluginOptions): CssxPlugin
   return {
     ...options,
     mode: 'development',
+    sourceMap: options.sourceMap ?? false,
     naming: 'source',
     stableClassNames: true,
     stableClassNameStrategy: 'module-order',

@@ -440,10 +440,10 @@ void props;
       brotli: 12_400,
     });
     await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', {
-      // Development dispatch and normalized cross-platform module IDs add fixed adapter overhead; transports remain lazy.
-      raw: 51_100,
-      gzip: 17_600,
-      brotli: 15_700,
+      // Development dispatch, source-map defaults, and normalized module IDs add fixed overhead; transports remain lazy.
+      raw: 51_250,
+      gzip: 17_700,
+      brotli: 15_800,
     });
   }, 30_000);
 

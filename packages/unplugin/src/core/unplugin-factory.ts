@@ -201,14 +201,15 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
       buildStart() {
         const watchMode = this.meta.watchMode;
         if (isDevelopmentMode(options, { watchMode }) && watchMode && !rollupRuntimeStartup) {
+          const developmentOptions = developmentPluginOptions(options);
           rollupRuntimeStartup = import('@cssxio/unplugin/internal/development-runtime').then((runtime) => {
             return runtime.createRollupDevelopmentRuntime({
               cssFileName,
               root: process.cwd(),
               dataById: rollupDataById,
               getTheme,
-              options,
-              sourceMap,
+              options: developmentOptions,
+              sourceMap: developmentOptions.sourceMap ?? sourceMap,
               transformSource: (source: string, id: string): Promise<TransformHandlerOutput> =>
                 getTransformHandler().then((transform) =>
                   transform.call({ meta: { watchMode: true }, skipRollupStylesheetPush: true }, source, id),
@@ -245,6 +246,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         if (viteCommand === 'build' || options.mode === 'production' || process.env.NODE_ENV === 'production') {
           return;
         }
+        const developmentOptions = developmentPluginOptions(options);
         const { createViteDevelopmentRuntime } = await import('@cssxio/unplugin/internal/development-runtime');
         themeRoot = server.config.root ?? process.cwd();
         viteDevelopmentRuntime = createViteDevelopmentRuntime(
@@ -252,8 +254,8 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
           {
             cssFileName,
             root: themeRoot,
-            sourceMap,
-            options: developmentPluginOptions(options),
+            sourceMap: developmentOptions.sourceMap ?? sourceMap,
+            options: developmentOptions,
             rollupDataById,
             getTheme,
           },

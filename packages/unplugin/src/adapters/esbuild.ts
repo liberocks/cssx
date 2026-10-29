@@ -165,7 +165,7 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
                   [...dataById.values()],
                   theme,
                   developmentCompilationOptions.layer,
-                  options.sourceMap ?? true,
+                  developmentCompilationOptions.sourceMap ?? options.sourceMap ?? true,
                   options.darkMode,
                   options.preflight,
                 );
@@ -327,7 +327,7 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
                 [...dataById.values()],
                 theme,
                 developmentCompilationOptions.layer,
-                options.sourceMap ?? true,
+                developmentCompilationOptions.sourceMap ?? options.sourceMap ?? true,
                 options.darkMode,
                 options.preflight,
               );

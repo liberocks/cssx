@@ -85,6 +85,7 @@ describe('unplugin options', () => {
       }),
     ).toMatchObject({
       mode: 'development',
+      sourceMap: false,
       naming: 'source',
       stableClassNames: true,
       stableClassNameStrategy: 'module-order',
@@ -93,6 +94,7 @@ describe('unplugin options', () => {
       className: { variant: 'random' },
       reusabilityBudget: 0,
     });
+    expect(developmentPluginOptions({ sourceMap: true }).sourceMap).toBe(true);
     expect(isDevelopmentMode({ mode: 'production' }, { watchMode: true, bundlerMode: 'development' })).toBe(false);
     expect(isDevelopmentMode({ mode: 'development' }, { bundlerMode: 'production' })).toBe(true);
     expect(isDevelopmentMode({}, { watchMode: true })).toBe(true);
