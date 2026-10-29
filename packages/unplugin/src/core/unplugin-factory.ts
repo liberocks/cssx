@@ -279,7 +279,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
           return [
             {
               tag: 'script',
-              attrs: { type: 'module' },
+              attrs: { type: 'module', 'data-cssx-vite-hmr': true },
               children: viteDevelopmentStylesheetHmr(cssFileName),
               injectTo: 'body',
             },

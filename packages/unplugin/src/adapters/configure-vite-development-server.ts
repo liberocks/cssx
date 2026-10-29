@@ -4,7 +4,14 @@ import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from '..
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import { scanProjectCssxSourceModules } from '../transforms/project-scan';
 import { connectViteStylesheetClient, sendViteStyles } from './vite-dev';
-import type { ViteStylesheetStream } from './vite-dev';
+import { createViteDevelopmentHtmlHmrMiddleware } from './vite-html-hmr';
+import type { ViteHtmlRequestLike, ViteHtmlResponseLike } from './vite-html-hmr';
+
+/** HTTP response surface shared by Vite's event and SSR bridge middlewares. */
+interface ViteDevelopmentServerResponse extends ViteHtmlResponseLike {
+  on(event: 'close', listener: () => void): unknown;
+  setHeader(name: string, value: string): void;
+}
 
 /** Development server APIs used to serve and refresh the in-memory stylesheet. */
 export interface ViteServerLike {
@@ -19,11 +26,7 @@ export interface ViteServerLike {
   readonly middlewares: {
     /** Adds one development server middleware handler. */
     use(
-      handler: (
-        request: { readonly url?: string },
-        response: ViteStylesheetStream & { end(body?: string): void },
-        next: () => void,
-      ) => void,
+      handler: (request: ViteHtmlRequestLike, response: ViteDevelopmentServerResponse, next: () => void) => void,
     ): void;
   };
 }
@@ -86,6 +89,7 @@ export function configureViteDevelopmentServer(
         response.end(error instanceof Error ? error.message : 'Unable to compile CSSX development stylesheet.');
       });
   });
+  server.middlewares.use(createViteDevelopmentHtmlHmrMiddleware(cssFileName, server.config.base ?? '/'));
 }
 
 /** Compiles the complete stylesheet from cached metadata for a push or stylesheet request. */

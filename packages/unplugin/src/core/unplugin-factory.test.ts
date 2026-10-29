@@ -63,7 +63,7 @@ it('injects one development stylesheet bridge into browser HTML and omits it for
   expect(tags).toMatchObject([
     {
       tag: 'script',
-      attrs: { type: 'module' },
+      attrs: { type: 'module', 'data-cssx-vite-hmr': true },
       children: expect.stringContaining('new EventSource(import.meta.env.BASE_URL + "cssx.css.events")'),
     },
   ]);

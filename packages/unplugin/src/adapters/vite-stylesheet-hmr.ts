@@ -1,13 +1,14 @@
 /** Creates the browser bridge that atomically replaces the Vite development stylesheet. */
-export function viteDevelopmentStylesheetHmr(cssFileName: string): string {
+export function viteDevelopmentStylesheetHmr(cssFileName: string, baseUrl?: string): string {
   const suffix = JSON.stringify(`/${cssFileName.replaceAll('\\', '/')}`);
   const eventsFile = JSON.stringify(`${cssFileName.replaceAll('\\', '/')}.events`);
+  const baseUrlExpression = baseUrl === undefined ? 'import.meta.env.BASE_URL' : JSON.stringify(baseUrl);
   return `if (typeof document !== "undefined" && typeof EventSource !== "undefined") {
   const key = "__cssxViteStylesheetHmr";
   const state = globalThis[key] || (globalThis[key] = { installed: false, revision: 0, style: undefined, source: undefined });
   if (!state.installed) {
     state.installed = true;
-    const source = new EventSource(import.meta.env.BASE_URL + ${eventsFile});
+    const source = new EventSource(${baseUrlExpression} + ${eventsFile});
     state.source = source;
     source.onmessage = (event) => {
       const payload = JSON.parse(event.data);
