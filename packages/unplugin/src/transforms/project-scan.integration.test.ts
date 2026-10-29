@@ -272,7 +272,9 @@ describe('project source scanning', () => {
         `import { sx } from '@cssxio/cssx';\n${'export const className = sx("p-1");\n'.repeat(300_000)}`,
       );
 
+      const initialStarted = performance.now();
       const initial = await scanProjectCssxSourceModules(root, developmentOptions);
+      const initialElapsed = performance.now() - initialStarted;
       expect(initial).toHaveLength(400);
       const samples: number[] = [];
       for (let edit = 0; edit < 30; edit++) {
@@ -301,8 +303,11 @@ describe('project source scanning', () => {
         }
       }
       samples.sort((left, right) => left - right);
+      const memory = process.memoryUsage();
       console.info(
-        `CSSX warm cached edit benchmark: p50 ${samples[14]!.toFixed(1)} ms, p95 ${samples[28]!.toFixed(1)} ms, max ${samples[29]!.toFixed(1)} ms.`,
+        `CSSX 400-module benchmark: initial scan ${initialElapsed.toFixed(1)} ms; warm cached edit p50 ${samples[14]!.toFixed(1)} ms, p95 ${samples[28]!.toFixed(1)} ms, max ${samples[29]!.toFixed(1)} ms; heap ${(
+          memory.heapUsed / 1048576
+        ).toFixed(1)} MB, RSS ${(memory.rss / 1048576).toFixed(1)} MB.`,
       );
     } finally {
       await rm(temporaryRoot, { recursive: true, force: true });

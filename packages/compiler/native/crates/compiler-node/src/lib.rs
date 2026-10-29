@@ -16,6 +16,16 @@ pub struct JsCssxCall {
     pub start: u32,
     /// UTF-8 byte offset where the call ends.
     pub end: u32,
+    /// UTF-16 code-unit offset where the call starts.
+    pub start_utf16: u32,
+    /// UTF-16 code-unit offset where the call ends.
+    pub end_utf16: u32,
+    /// One-based source line at the start of the call.
+    pub line: u32,
+    /// Zero-based UTF-16 column at the start of the call.
+    pub column: u32,
+    /// Whether every argument can be folded without runtime expressions.
+    pub static_sx: bool,
     /// Static utility strings found by the `sx()` grammar.
     pub utilities: Vec<String>,
 }
@@ -40,6 +50,11 @@ impl From<CssxCall> for JsCssxCall {
             entry_point: entry_point.to_owned(),
             start: call.start,
             end: call.end,
+            start_utf16: call.start_utf16,
+            end_utf16: call.end_utf16,
+            line: call.line,
+            column: call.column,
+            static_sx: call.static_sx,
             utilities: call.utilities,
         }
     }

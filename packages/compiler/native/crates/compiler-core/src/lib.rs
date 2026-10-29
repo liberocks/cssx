@@ -44,6 +44,16 @@ pub struct CssxCall {
     pub start: u32,
     /// UTF-8 byte offset of the complete call expression's end.
     pub end: u32,
+    /// UTF-16 code-unit offset of the complete call expression's start.
+    pub start_utf16: u32,
+    /// UTF-16 code-unit offset of the complete call expression's end.
+    pub end_utf16: u32,
+    /// One-based source line at the start of the call.
+    pub line: u32,
+    /// Zero-based UTF-16 column at the start of the call.
+    pub column: u32,
+    /// Whether every `sx()` argument can be folded without runtime expressions.
+    pub static_sx: bool,
     /// Static utility strings accepted by the `sx()` argument grammar.
     pub utilities: Vec<String>,
 }
@@ -88,8 +98,11 @@ pub fn find_cssx_calls(
     }
 
     let scoping = semantic.semantic.into_scoping();
+    let source_offsets = source_line_offsets(source);
     let mut visitor = CssxCallCollector {
         import_source,
+        source,
+        source_offsets,
         scoping: &scoping,
         named_bindings: HashMap::new(),
         namespace_bindings: HashMap::new(),
@@ -124,6 +137,8 @@ pub fn find_cssx_calls_in_modules<'a>(
 
 struct CssxCallCollector<'a> {
     import_source: &'a str,
+    source: &'a str,
+    source_offsets: Vec<(usize, u32)>,
     scoping: &'a Scoping,
     named_bindings: HashMap<SymbolId, EntryPoint>,
     namespace_bindings: HashMap<SymbolId, ()>,
@@ -157,6 +172,29 @@ impl<'a> CssxCallCollector<'a> {
             _ => None,
         }
     }
+
+    fn source_location(&self, offset: u32) -> (u32, u32, u32) {
+        let byte_offset = offset as usize;
+        let line_index = self
+            .source_offsets
+            .partition_point(|(line_start, _)| *line_start <= byte_offset)
+            .saturating_sub(1);
+        let (line_start, utf16_start) = self.source_offsets[line_index];
+        let column = self.source[line_start..byte_offset].encode_utf16().count() as u32;
+        (line_index as u32 + 1, column, utf16_start + column)
+    }
+}
+
+fn source_line_offsets(source: &str) -> Vec<(usize, u32)> {
+    let mut offsets = vec![(0, 0)];
+    let mut utf16_offset = 0;
+    for (byte_offset, character) in source.char_indices() {
+        utf16_offset += character.len_utf16() as u32;
+        if character == '\n' {
+            offsets.push((byte_offset + 1, utf16_offset));
+        }
+    }
+    offsets
 }
 
 impl<'a> Visit<'a> for CssxCallCollector<'_> {
@@ -200,6 +238,11 @@ impl<'a> Visit<'a> for CssxCallCollector<'_> {
     fn visit_call_expression(&mut self, call: &CallExpression<'a>) {
         if let Some(entry_point) = self.entry_point(call) {
             let mut utilities = Vec::new();
+            let static_sx = entry_point == EntryPoint::Sx
+                && call.arguments.iter().all(|argument| match argument {
+                    Argument::SpreadElement(_) => false,
+                    _ => is_static_sx(argument.to_expression()),
+                });
             if entry_point == EntryPoint::Sx
                 && !call.arguments.iter().all(|argument| match argument {
                     Argument::SpreadElement(_) => false,
@@ -208,14 +251,35 @@ impl<'a> Visit<'a> for CssxCallCollector<'_> {
             {
                 utilities.clear();
             }
+            let (line, column, start_utf16) = self.source_location(call.span.start);
+            let end_utf16 = self.source_location(call.span.end).2;
             self.calls.push(CssxCall {
                 entry_point,
                 start: call.span.start,
                 end: call.span.end,
+                start_utf16,
+                end_utf16,
+                line,
+                column,
+                static_sx,
                 utilities,
             });
         }
         walk::walk_call_expression(self, call);
+    }
+}
+
+fn is_static_sx(expression: &Expression<'_>) -> bool {
+    match expression {
+        Expression::StringLiteral(_)
+        | Expression::NullLiteral(_)
+        | Expression::BooleanLiteral(_) => true,
+        Expression::ArrayExpression(array) => array.elements.iter().all(|element| match element {
+            oxc_ast::ast::ArrayExpressionElement::SpreadElement(_)
+            | oxc_ast::ast::ArrayExpressionElement::Elision(_) => false,
+            _ => is_static_sx(element.to_expression()),
+        }),
+        _ => false,
     }
 }
 
@@ -292,6 +356,27 @@ mod tests {
             &source[calls[0].start as usize..calls[0].end as usize],
             "sx(['p-4', flag && 'm-2', flag ? 'text-sm' : 'text-lg'])"
         );
+        assert!(!calls[0].static_sx);
+    }
+
+    #[test]
+    fn reports_utf16_offsets_and_static_sx_forms() {
+        let source =
+            "import { sx } from '@cssxio/cssx';\nconst emoji = '🙂';\n  sx(['p-4', false, null])";
+        let calls = find_cssx_calls(source, "page.tsx", "@cssxio/cssx").unwrap();
+        let call = &calls[0];
+        assert!(call.static_sx);
+        assert_eq!(call.line, 3);
+        assert_eq!(call.column, 2);
+        assert_eq!(
+            call.start_utf16 as usize,
+            source[..call.start as usize].encode_utf16().count()
+        );
+        assert_eq!(
+            call.end_utf16 as usize,
+            source[..call.end as usize].encode_utf16().count()
+        );
+        assert_eq!(call.utilities, ["p-4"]);
     }
 
     #[test]

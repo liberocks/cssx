@@ -45,6 +45,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
+  rust-compiler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt
+      - run: cargo +1.99.1 fmt --manifest-path packages/compiler/native/Cargo.toml --all -- --check
+      - run: cargo +1.99.1 test --locked --manifest-path packages/compiler/native/Cargo.toml --workspace --jobs 2
+      - run: cargo +1.99.1 clippy --locked --manifest-path packages/compiler/native/Cargo.toml --workspace --all-targets --jobs 2 -- -D warnings
+
   coverage:
     runs-on: ubuntu-latest
     steps:

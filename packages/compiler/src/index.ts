@@ -2,6 +2,8 @@ export { splitCandidateList } from './candidates/candidate';
 export type { ClassNameAllocator, ClassNameOptions } from './atoms/class-name';
 export type { ClassNameAllocatorSnapshot } from './atoms/class-name';
 export { createClassNameAllocator } from './atoms/class-name-allocator';
+export { nextStableCompositeOrdinal } from './atoms/next-stable-composite-ordinal';
+export { stableCompositeName } from './atoms/stable-composite-name';
 export { restoreClassNameAllocator } from './atoms/restore-class-name-allocator';
 export { snapshotClassNameAllocator } from './atoms/snapshot-class-name-allocator';
 export { classifyUtility } from './utilities/registry/classify-utility';

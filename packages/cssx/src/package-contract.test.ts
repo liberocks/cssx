@@ -440,10 +440,10 @@ void props;
       brotli: 12_400,
     });
     await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', {
-      // Development dispatch, source-map defaults, and normalized module IDs add fixed overhead; transports remain lazy.
-      raw: 51_250,
-      gzip: 17_700,
-      brotli: 15_800,
+      // The optional Oxc static-sx scan adds development-only metadata handling; transports remain lazy.
+      raw: 56_000,
+      gzip: 19_000,
+      brotli: 17_000,
     });
   }, 30_000);
 

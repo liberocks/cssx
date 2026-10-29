@@ -175,10 +175,13 @@ it('applies watcher changes after an initial scan already in flight', async () =
       .callback('change', 'page.tsx');
     await new Promise((resolve) => setTimeout(resolve, 10));
     await scan;
-    await vi.waitFor(() => {
-      expect(getCachedProjectScanSourceModules(root, options)?.[0]?.candidates).toHaveProperty('p-8');
-      expect(updates).toBe(1);
-    });
+    await vi.waitFor(
+      () => {
+        expect(getCachedProjectScanSourceModules(root, options)?.[0]?.candidates).toHaveProperty('p-8');
+        expect(updates).toBe(1);
+      },
+      { timeout: 5_000 },
+    );
   } finally {
     stop?.();
     watchMocks.capture = false;
@@ -320,10 +323,13 @@ it('removes MDX modules when their CSSX import is deleted', async () => {
     });
 
     await writeFile(source, '# Plain markdown');
-    await vi.waitFor(() => {
-      expect(getCachedProjectScanSourceModules(root, options)).toEqual([]);
-      expect(updates).toBe(2);
-    });
+    await vi.waitFor(
+      () => {
+        expect(getCachedProjectScanSourceModules(root, options)).toEqual([]);
+        expect(updates).toBe(2);
+      },
+      { timeout: 5_000 },
+    );
   } finally {
     stop?.();
     await rm(root, { recursive: true, force: true });

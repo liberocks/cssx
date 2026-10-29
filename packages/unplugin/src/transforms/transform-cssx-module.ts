@@ -7,6 +7,7 @@ import { assertPluginOptions, type CssxPluginOptions } from '../core/options';
 import type { CssxCandidateOrigin } from '../native/stylesheet';
 import type { IncomingSourceMap } from '../source-map/source-map-from-context';
 import { transformBabelCssxModule } from './transform-babel-cssx-module';
+import { tryTransformNativeStaticSxModule } from './try-transform-native-static-sx';
 
 /** The result of transforming one source module. */
 export interface TransformResult {
@@ -83,6 +84,17 @@ export async function transformCssxModule(
   }
   if (sourceId.endsWith('.vue')) {
     return transformVueSfcModule(code, id, options, transformCssxModule, transformOptions);
+  }
+  const nativeTransform = await tryTransformNativeStaticSxModule(
+    code,
+    id,
+    sourceId,
+    options,
+    inputSourceMap,
+    transformOptions,
+  );
+  if (nativeTransform) {
+    return nativeTransform;
   }
   return transformBabelCssxModule(code, sourceId, options, inputSourceMap, transformOptions);
 }
