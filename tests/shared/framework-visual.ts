@@ -129,6 +129,18 @@ export function frameworkVisualSuite(framework: string): void {
             }),
           )
           .toBe(1);
+        await expect
+          .poll(() =>
+            page.evaluate(() => {
+              const bridge = (
+                globalThis as typeof globalThis & {
+                  readonly __cssxViteStylesheetHmr?: { readonly revision?: number };
+                }
+              ).__cssxViteStylesheetHmr;
+              return bridge?.revision ?? -1;
+            }),
+          )
+          .toBeGreaterThan(0);
       }
       const target = fixture.parent ? page.locator(fixture.selector).locator('..') : page.locator(fixture.selector);
       const beforeColor = await target.evaluate(
@@ -168,6 +180,25 @@ export function frameworkVisualSuite(framework: string): void {
               }),
             )
             .toBeGreaterThan(beforeRevision);
+          const debug = await page.evaluate((selector) => {
+            const target = document.querySelector(selector);
+            const bridge = (
+              globalThis as typeof globalThis & {
+                readonly __cssxViteStylesheetHmr?: { readonly revision?: number; readonly style?: HTMLStyleElement };
+              }
+            ).__cssxViteStylesheetHmr;
+            const css = bridge?.style?.textContent ?? '';
+            return {
+              revision: bridge?.revision,
+              classNames: target?.className.split(/\s+/),
+              styleLength: css.length,
+              rules: target?.className.split(/\s+/).map((className) => {
+                const index = css.indexOf(`.${className}`);
+                return index < 0 ? null : css.slice(index, index + 220);
+              }),
+            };
+          }, fixture.selector);
+          console.info(`Remix CSSX HMR stylesheet: ${JSON.stringify(debug)}`);
         }
         await expect
           .poll(() =>
