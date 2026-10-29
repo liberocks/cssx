@@ -147,6 +147,23 @@ export function frameworkVisualSuite(framework: string): void {
         (element, property) => getComputedStyle(element)[property as 'backgroundColor' | 'color'],
         fixture.property,
       );
+      if (framework === 'remix') {
+        await expect
+          .poll(() =>
+            target.evaluate((element, expectedColor) => {
+              const stylesheet = document.querySelector<HTMLLinkElement>('link[rel="stylesheet"][href$="cssx.css"]');
+              const bridgeStyle = document.querySelector('style[data-cssx-development-stylesheet]');
+              if (!stylesheet || !bridgeStyle) return false;
+              stylesheet.disabled = true;
+              try {
+                return getComputedStyle(element).backgroundColor === expectedColor;
+              } finally {
+                stylesheet.disabled = false;
+              }
+            }, beforeColor),
+          )
+          .toBe(true);
+      }
       const beforeClass = await target.getAttribute('class');
       const beforeLoads = await page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads')));
       const beforeRevision =
@@ -180,25 +197,6 @@ export function frameworkVisualSuite(framework: string): void {
               }),
             )
             .toBeGreaterThan(beforeRevision);
-          const debug = await page.evaluate((selector) => {
-            const target = document.querySelector(selector);
-            const bridge = (
-              globalThis as typeof globalThis & {
-                readonly __cssxViteStylesheetHmr?: { readonly revision?: number; readonly style?: HTMLStyleElement };
-              }
-            ).__cssxViteStylesheetHmr;
-            const css = bridge?.style?.textContent ?? '';
-            return {
-              revision: bridge?.revision,
-              classNames: target?.className.split(/\s+/),
-              styleLength: css.length,
-              rules: target?.className.split(/\s+/).map((className) => {
-                const index = css.indexOf(`.${className}`);
-                return index < 0 ? null : css.slice(index, index + 220);
-              }),
-            };
-          }, fixture.selector);
-          console.info(`Remix CSSX HMR stylesheet: ${JSON.stringify(debug)}`);
         }
         await expect
           .poll(() =>
