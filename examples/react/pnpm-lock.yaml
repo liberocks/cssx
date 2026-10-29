@@ -5,6 +5,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  '@cssxio/cssx': link:../../packages/cssx
+  '@cssxio/unplugin': link:../../packages/unplugin
   brace-expansion@1: ^1.1.21
   brace-expansion@2: ^2.1.7
   brace-expansion@5: ^5.0.12
@@ -42,8 +44,8 @@ importers:
   .:
     dependencies:
       '@cssxio/cssx':
-        specifier: ^0.8.0
-        version: 0.8.0
+        specifier: link:../../packages/cssx
+        version: link:../../packages/cssx
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -55,8 +57,8 @@ importers:
         version: 5.0.1(patch_hash=0bb1d6e63dbfe931caffa009c873207c2a1cc73f9e1ca57d69c5e05da24a1097)(@babel/plugin-syntax-flow@7.29.7(@babel/core@7.29.7(supports-color@8.1.1)))(@babel/plugin-transform-react-jsx@7.29.7(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/babel__core@7.20.5)(clean-css@5.3.3)(cssnano@5.1.15(postcss@8.5.31))(csso@4.2.0)(debug@4.4.3(supports-color@8.1.1))(eslint@8.57.1(supports-color@8.1.1))(html-minifier-terser@6.1.0)(react@18.3.1)(supports-color@8.1.1)(svgo@2.8.4)(type-fest@0.21.3)(typescript@7.0.2)
     devDependencies:
       '@cssxio/unplugin':
-        specifier: ^0.8.0
-        version: 0.8.0(rollup@2.80.0)(supports-color@8.1.1)(webpack@5.112.1(clean-css@5.3.3)(cssnano@5.1.15(postcss@8.5.31))(csso@4.2.0)(html-minifier-terser@6.1.0)(postcss@8.5.31)(svgo@2.8.4))
+        specifier: link:../../packages/unplugin
+        version: link:../../packages/unplugin
       react-app-rewired:
         specifier: ^2.2.1
         version: 2.2.1(react-scripts@5.0.1(patch_hash=0bb1d6e63dbfe931caffa009c873207c2a1cc73f9e1ca57d69c5e05da24a1097)(@babel/plugin-syntax-flow@7.29.7(@babel/core@7.29.7(supports-color@8.1.1)))(@babel/plugin-transform-react-jsx@7.29.7(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/babel__core@7.20.5)(clean-css@5.3.3)(cssnano@5.1.15(postcss@8.5.31))(csso@4.2.0)(debug@4.4.3(supports-color@8.1.1))(eslint@8.57.1(supports-color@8.1.1))(html-minifier-terser@6.1.0)(react@18.3.1)(supports-color@8.1.1)(svgo@2.8.4)(type-fest@0.21.3)(typescript@7.0.2))
