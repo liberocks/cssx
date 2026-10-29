@@ -55,6 +55,7 @@ export function configureViteDevelopmentServer(
   const { cssFileName, sourceMap, rollupDataById } = configuration;
   const cssPath = viteCssPath(server.config.base, cssFileName);
   const eventsPath = `${cssPath}.events`;
+  const htmlHmrMiddleware = createViteDevelopmentHtmlHmrMiddleware(cssFileName, server.config.base ?? '/');
   server.watcher?.on('unlink', (path) => {
     rollupDataById.delete(moduleId(path));
     void compileViteDevelopmentStylesheet({ ...configuration, root: server.config.root ?? process.cwd() })
@@ -70,7 +71,7 @@ export function configureViteDevelopmentServer(
       return;
     }
     if (pathname !== cssPath && (pathname !== `${cssPath}.map` || !sourceMap)) {
-      return next();
+      return htmlHmrMiddleware(request, response, next);
     }
     void compileViteDevelopmentStylesheet({ ...configuration, root: server.config.root ?? process.cwd() })
       .then((compiled) => {
@@ -89,7 +90,6 @@ export function configureViteDevelopmentServer(
         response.end(error instanceof Error ? error.message : 'Unable to compile CSSX development stylesheet.');
       });
   });
-  server.middlewares.use(createViteDevelopmentHtmlHmrMiddleware(cssFileName, server.config.base ?? '/'));
 }
 
 /** Compiles the complete stylesheet from cached metadata for a push or stylesheet request. */
