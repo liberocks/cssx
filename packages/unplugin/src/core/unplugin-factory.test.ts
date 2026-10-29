@@ -10,6 +10,7 @@ interface FactoryPluginShape {
   readonly vite: {
     readonly generateBundle: unknown;
     readonly configureServer: unknown;
+    readonly transformIndexHtml?: { readonly handler: unknown };
     readonly hotUpdate?: { readonly handler: unknown };
   };
 }
@@ -25,7 +26,41 @@ it('creates Vite, Rollup, and transform hooks for the selected build tool', () =
   expect(plugin.rollup.generateBundle).toBeTypeOf('function');
   expect(plugin.vite.generateBundle).toBeTypeOf('function');
   expect(plugin.vite.configureServer).toBeTypeOf('function');
+  expect(plugin.vite.transformIndexHtml?.handler).toBeTypeOf('function');
   expect(plugin.vite.hotUpdate?.handler).toBeTypeOf('function');
+});
+
+it('injects one development stylesheet bridge into browser HTML and omits it for production builds', async () => {
+  const plugin = unpluginFactory({ mode: 'development' }, { framework: 'vite', versions: {} } as never) as unknown as {
+    readonly vite: {
+      readonly configResolved: (config: { command: 'build' | 'serve' }) => void;
+      readonly transformIndexHtml: {
+        readonly handler: (
+          html: string,
+          context: { readonly server?: object },
+        ) => Promise<
+          | readonly {
+              readonly tag: string;
+              readonly attrs?: Record<string, string | boolean>;
+              readonly children?: string;
+            }[]
+          | undefined
+        >;
+      };
+    };
+  };
+
+  const tags = await plugin.vite.transformIndexHtml.handler('<html></html>', { server: {} });
+  expect(tags).toMatchObject([
+    {
+      tag: 'script',
+      attrs: { type: 'module' },
+      children: expect.stringContaining('new EventSource(import.meta.env.BASE_URL + "cssx.css.events")'),
+    },
+  ]);
+
+  plugin.vite.configResolved({ command: 'build' });
+  await expect(plugin.vite.transformIndexHtml.handler('<html></html>', { server: {} })).resolves.toBeUndefined();
 });
 
 it('rejects invalid options before installing bundler hooks', () => {

@@ -1,4 +1,4 @@
-import { createClassNameAllocator } from '@cssxio/compiler';
+import { createClassNameAllocator, serializeCss } from '@cssxio/compiler';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,6 +40,29 @@ it('transforms utilities and records module data for CSS extraction', async () =
   expect(esbuildDataById.get('/project/app.ts')?.candidates).toHaveProperty('p-4');
   expect(notifyViteStyles).toHaveBeenCalledExactlyOnceWith();
   expect(result!.code).toContain('new EventSource(import.meta.env.BASE_URL + "cssx.css.events")');
+});
+
+it('keeps production per-module CSS compilation enabled', async () => {
+  const handler = createTransformHandler({
+    framework: 'webpack',
+    options: { mode: 'production' },
+    classNameAllocator: createClassNameAllocator(),
+    rollupDataById: new Map(),
+    esbuildDataById: new Map(),
+    cssFileName: 'cssx.css',
+    getEsbuildWorkingDirectory: () => '/project',
+    notifyViteStyles: vi.fn(),
+  });
+
+  const result = await handler.call(
+    {},
+    `import { sx } from '@cssxio/cssx'; export const className = sx('p-4');`,
+    '/project/app.ts',
+  );
+
+  expect(serializeCss((result!.meta[RULES_METADATA_KEY] as ModuleCssxData).rules)).toContain(
+    'padding:calc(0.25rem * 4)',
+  );
 });
 
 it('shares development atomic allocations across modules and repeated utilities', async () => {

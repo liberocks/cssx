@@ -264,6 +264,28 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
             ),
         );
       },
+      transformIndexHtml: {
+        order: 'pre',
+        async handler(_html, context) {
+          if (
+            !context.server ||
+            viteCommand === 'build' ||
+            options.mode === 'production' ||
+            process.env.NODE_ENV === 'production'
+          ) {
+            return;
+          }
+          const { viteDevelopmentStylesheetHmr } = await import('@cssxio/unplugin/internal/development-runtime');
+          return [
+            {
+              tag: 'script',
+              attrs: { type: 'module' },
+              children: viteDevelopmentStylesheetHmr(cssFileName),
+              injectTo: 'body',
+            },
+          ];
+        },
+      },
       hotUpdate: {
         order: 'pre',
         handler: createViteHotUpdateHandler(

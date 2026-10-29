@@ -137,7 +137,13 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
               sourceMapFromContext(this, id),
             ),
           )
-        : await transformCssxModule(code, id, transformOptions, sourceMapFromContext(this, id), { compileCss: false });
+        : await transformCssxModule(
+            code,
+            id,
+            transformOptions,
+            sourceMapFromContext(this, id),
+            development ? { compileCss: false } : {},
+          );
     const data: ModuleCssxData = {
       id: moduleId(id),
       rules: transformed?.rules ?? [],
