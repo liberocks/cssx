@@ -255,8 +255,23 @@ async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<Ada
     const watcher = rollupWatch({
       input: 'src/app.js',
       output: { file: 'dist/bundle.js', format: 'iife', name: 'CSSXTest' },
-      plugins: [cssxRollup(options)],
+      plugins: [
+        cssxRollup(options),
+        {
+          name: 'cssx-hmr-test-watch-observer',
+          watchChange(id, change) {
+            if (resolve(id) === resolve(fixture.styleSource)) {
+              console.info('rollup observed style ' + change.event);
+            }
+          },
+        },
+      ],
       watch: { buildDelay: 0 },
+    });
+    watcher.on('event', (event) => {
+      if (event.code === 'START' || event.code === 'END' || event.code === 'ERROR') {
+        console.info('rollup watcher ' + event.code);
+      }
     });
     await waitForRollupBuild(watcher);
     return {
