@@ -228,6 +228,7 @@ it('bounds concurrent SSR response buffering and releases slots on completion or
   for (const harness of responses) {
     middleware({ method: 'GET', headers: { accept: 'text/html' } }, harness.response, () => undefined);
   }
+  responses[0]!.response.write('buffered before disconnect');
   const extra = createResponse({ 'content-type': 'text/html' });
   let nextCalled = false;
   middleware({ method: 'GET', headers: { accept: 'text/html' } }, extra.response, () => {

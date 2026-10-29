@@ -105,6 +105,7 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
       if (bufferedBytes + data.byteLength > MAX_BUFFERED_HTML_BYTES || chunks.length >= MAX_BUFFERED_HTML_CHUNKS) {
         passThrough = true;
         forwardBuffered();
+        release();
         return false;
       }
       const writeCallback = typeof encoding === 'function' ? encoding : callback;
@@ -113,7 +114,12 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
       return true;
     };
 
-    response.once('close', release);
+    response.once('close', () => {
+      chunks.length = 0;
+      bufferedBytes = 0;
+      release();
+    });
+    response.once('finish', release);
     response.write = ((chunk: string | Uint8Array, encoding?: WriteEncoding, callback?: WriteCallback) => {
       if (passThrough) {
         return typeof encoding === 'function'
@@ -129,11 +135,9 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
     response.end = ((chunk?: string | Uint8Array, encoding?: WriteEncoding, callback?: WriteCallback) => {
       const endCallback = typeof encoding === 'function' ? encoding : callback;
       if (passThrough) {
-        release();
         return typeof encoding === 'function' ? endOriginal(chunk, encoding) : endOriginal(chunk, encoding, callback);
       }
       if (chunk !== undefined && !bufferChunk(chunk, typeof encoding === 'string' ? encoding : undefined)) {
-        release();
         return typeof encoding === 'function' ? endOriginal(chunk, encoding) : endOriginal(chunk, encoding, callback);
       }
 
@@ -156,7 +160,6 @@ export function createViteDevelopmentHtmlHmrMiddleware(cssFileName: string, base
       }
       chunks.length = 0;
       bufferedBytes = 0;
-      release();
       if (endCallback) {
         return endOriginal(body, () => {
           for (const writeCallback of writeCallbacks) {
