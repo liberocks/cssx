@@ -105,15 +105,19 @@ it('does not repeat a CSS-only transform already completed by the file-change ho
 
 it('shares the incremental CSS-only update with the active Vite watcher', async () => {
   const module = { id: '/project/style.ts', url: '/src/style.ts' };
+  const source = "import { sx } from '@cssxio/cssx'; export const style = sx('bg-red-500');";
   const moduleDataById = new Map([[module.id, moduleData(module.id, 'same-signature', ['atomic'])]]);
   const transformRequest = vi.fn(async () => undefined);
   const updateCssOnlySource = vi.fn(async () => true);
   const handler = createViteHotUpdateHandler(moduleDataById, () => false, updateCssOnlySource);
 
   await expect(
-    handler.call({ environment: { name: 'client', transformRequest } }, { modules: [module], timestamp: 3 }),
+    handler.call(
+      { environment: { name: 'client', transformRequest } },
+      { modules: [module], timestamp: 3, read: async () => source },
+    ),
   ).resolves.toEqual([]);
-  expect(updateCssOnlySource).toHaveBeenCalledExactlyOnceWith(module.id);
+  expect(updateCssOnlySource).toHaveBeenCalledExactlyOnceWith(module.id, source);
   expect(transformRequest).not.toHaveBeenCalled();
 });
 
@@ -131,6 +135,20 @@ it('leaves structural changes for Vite’s JavaScript transform pipeline', async
   ).resolves.toBeUndefined();
   expect(updateCssOnlySource).toHaveBeenCalledExactlyOnceWith(module.id);
   expect(transformRequest).toHaveBeenCalledExactlyOnceWith(module.url);
+});
+
+it('does not request a standard transform when a module has no browser URL', async () => {
+  const module = { id: '/project/style.ts' };
+  const moduleDataById = new Map([[module.id, moduleData(module.id, 'before')]]);
+  const transformRequest = vi.fn(async () => undefined);
+  const updateCssOnlySource = vi.fn(async () => false);
+  const handler = createViteHotUpdateHandler(moduleDataById, undefined, updateCssOnlySource);
+
+  await expect(
+    handler.call({ environment: { name: 'client', transformRequest } }, { modules: [module], timestamp: 3 }),
+  ).resolves.toEqual([]);
+  expect(updateCssOnlySource).toHaveBeenCalledExactlyOnceWith(module.id);
+  expect(transformRequest).not.toHaveBeenCalled();
 });
 
 it('checks CSS-only metadata after reading the current source when no pretransform hook is supplied', async () => {

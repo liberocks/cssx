@@ -24,7 +24,10 @@ export function createViteDevelopmentRuntime(
   transformSource: (source: string, id: string) => Promise<unknown>,
 ) {
   const preparedUpdates = new Map<string, string>();
-  const inFlightUpdates = new Map<string, { promise: Promise<boolean>; rerun: boolean; sourceId?: string }>();
+  const inFlightUpdates = new Map<
+    string,
+    { promise: Promise<boolean>; rerun: boolean; sourceId?: string; source?: string }
+  >();
   const transformWaiters: Array<() => void> = [];
   let active = true;
   let activeTransforms = 0;
@@ -97,13 +100,14 @@ export function createViteDevelopmentRuntime(
     id: string,
     normalizedId: string,
     previousSourceId?: string,
+    preparedSource?: string,
   ): Promise<{ sourceId: string; handled: boolean } | undefined> => {
     const previousSignature = dataById.get(normalizedId)?.cssOnlySignature;
     if (!active || !previousSignature) {
       return undefined;
     }
     try {
-      const source = await readFile(normalizedId, 'utf8');
+      const source = preparedSource ?? (await readFile(normalizedId, 'utf8'));
       const sourceId = sourceSignature(source);
       if (!active) {
         return undefined;
@@ -130,11 +134,14 @@ export function createViteDevelopmentRuntime(
       return undefined;
     }
   };
-  const updateCssOnlySource = (id: string): Promise<boolean> => {
+  const updateCssOnlySource = (id: string, source?: string): Promise<boolean> => {
     const normalizedId = moduleId(id);
     const existing = inFlightUpdates.get(normalizedId);
     if (existing) {
       existing.rerun = true;
+      if (source !== undefined) {
+        existing.source = source;
+      }
       return existing.promise;
     }
     if (inFlightUpdates.size >= MAX_IN_FLIGHT_VITE_UPDATES) {
@@ -144,9 +151,10 @@ export function createViteDevelopmentRuntime(
       }
       return Promise.resolve(false);
     }
-    const update: { promise: Promise<boolean>; rerun: boolean; sourceId?: string } = {
+    const update: { promise: Promise<boolean>; rerun: boolean; sourceId?: string; source?: string } = {
       promise: Promise.resolve(false),
       rerun: false,
+      source,
     };
     update.promise = (async () => {
       let handled = false;
@@ -155,7 +163,9 @@ export function createViteDevelopmentRuntime(
         if (!active) {
           return handled;
         }
-        const result = await withTransformSlot(() => updateCssOnlySourceNow(id, normalizedId, update.sourceId));
+        const source = update.source;
+        update.source = undefined;
+        const result = await withTransformSlot(() => updateCssOnlySourceNow(id, normalizedId, update.sourceId, source));
         if (result !== undefined) {
           update.sourceId = result.sourceId;
           handled = result.handled;

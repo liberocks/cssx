@@ -67,7 +67,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         isPrepared: (id: string, source: string) => boolean;
         notifyStyles: () => Promise<void>;
         onTransformed: (id: string, source: string) => void;
-        updateCssOnlySource: (id: string) => Promise<boolean>;
+        updateCssOnlySource: (id: string, source?: string) => Promise<boolean>;
       }
     | undefined;
   /** Transform hook signature, imported as a type to keep its implementation lazy. */
@@ -297,7 +297,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         handler: createViteHotUpdateHandler(
           rollupDataById,
           undefined,
-          (id) => viteDevelopmentRuntime?.updateCssOnlySource(id) ?? Promise.resolve(false),
+          (id, source) => viteDevelopmentRuntime?.updateCssOnlySource(id, source) ?? Promise.resolve(false),
         ),
       },
     },

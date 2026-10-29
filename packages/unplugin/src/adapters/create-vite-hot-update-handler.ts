@@ -16,7 +16,7 @@ interface ViteHotUpdateModule {
 export function createViteHotUpdateHandler(
   moduleData: Map<string, ModuleCssxData>,
   isPretransformedCssOnly: (id: string, source: string) => boolean = () => false,
-  updateCssOnlySource?: (id: string) => Promise<boolean>,
+  updateCssOnlySource?: (id: string, source?: string) => Promise<boolean>,
 ) {
   /**
    * Handles one Vite hot update, returning modules left for the standard pipeline.
@@ -38,17 +38,21 @@ export function createViteHotUpdateHandler(
       return undefined;
     }
 
-    const source =
-      updateCssOnlySource === undefined && typeof context.read === 'function' ? await context.read() : undefined;
+    const source = typeof context.read === 'function' ? await context.read() : undefined;
     const pretransformed = new Set(
       source === undefined ? [] : handled.filter((module) => isPretransformedCssOnly(moduleId(module.id!), source)),
     );
     const previous = new Map(handled.map((module) => [module, moduleData.get(moduleId(module.id!))!.cssOnlySignature]));
     if (updateCssOnlySource) {
       for (const module of handled) {
-        const handledByRuntime = await updateCssOnlySource(module.id!);
-        if (!handledByRuntime && module.url) {
+        const handledByRuntime =
+          source === undefined ? await updateCssOnlySource(module.id!) : await updateCssOnlySource(module.id!, source);
+        if (handledByRuntime) {
+          continue;
+        } else if (module.url) {
           await environment.transformRequest(module.url);
+        } else {
+          continue;
         }
       }
     } else {
