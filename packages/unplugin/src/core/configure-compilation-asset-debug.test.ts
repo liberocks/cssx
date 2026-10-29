@@ -104,6 +104,47 @@ it('includes allocation conflicts in the debug summary', async () => {
   }
 });
 
+it('publishes the complete development stylesheet after compilation and clears it when empty', async () => {
+  const harness = createCompilerHarness();
+  const onDevelopmentStylesheet = vi.fn();
+  configureCompilationAsset(
+    harness.compiler,
+    'cssx.css',
+    async () => undefined,
+    undefined,
+    false,
+    'cssx',
+    undefined,
+    undefined,
+    false,
+    async () => [moduleData],
+    undefined,
+    onDevelopmentStylesheet,
+  );
+  await harness.emit();
+  expect(onDevelopmentStylesheet).toHaveBeenCalledWith(expect.stringContaining('padding:'));
+
+  const emptyHarness = createCompilerHarness();
+  const onEmptyStylesheet = vi.fn();
+  configureCompilationAsset(
+    emptyHarness.compiler,
+    'cssx.css',
+    async () => undefined,
+    undefined,
+    false,
+    'cssx',
+    undefined,
+    undefined,
+    false,
+    async () => [],
+    undefined,
+    onEmptyStylesheet,
+  );
+  await emptyHarness.emit();
+  expect(onEmptyStylesheet).toHaveBeenCalledWith('');
+  expect(emptyHarness.assets).toHaveLength(0);
+});
+
 function createCompilerHarness(root = '/project') {
   let processAssets: (() => Promise<void>) | undefined;
   const assets: Array<{ readonly fileName: string; readonly source: unknown }> = [];

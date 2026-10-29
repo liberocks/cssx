@@ -42,6 +42,8 @@ run([
 
 run(['exec', 'playwright', 'test', 'motion', '--config', 'playwright.config.ts']);
 
+run(['exec', 'playwright', 'test', 'hmr/adapters-performance.spec.ts', '--config', 'playwright.config.ts']);
+
 for (const framework of frameworks) {
   for (const mode of ['development', 'production']) {
     const bundlers = framework === 'next' ? ['webpack', 'turbopack'] : [undefined];

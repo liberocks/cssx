@@ -26,6 +26,8 @@ export default defineConfig({
       '@cssxio/html': fromRoot('./packages/html/src/index.ts'),
       '@cssxio/compiler': fromRoot('./packages/compiler/src/index.ts'),
       '@cssxio/babel-plugin': fromRoot('./packages/babel-plugin/src/index.ts'),
+      '@cssxio/unplugin/internal/development-runtime': fromRoot('./packages/unplugin/src/development-runtime.ts'),
+      '@cssxio/unplugin/internal/transform-runtime': fromRoot('./packages/unplugin/src/transform-runtime.ts'),
     },
   },
   test: {

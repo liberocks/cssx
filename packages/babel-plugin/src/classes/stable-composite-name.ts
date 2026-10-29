@@ -10,5 +10,12 @@ export function stableCompositeName(
     hash ^= BigInt(anchor.charCodeAt(index));
     hash = BigInt.asUintN(64, hash * 0x100000001b3n);
   }
-  return `d${hash.toString(36)}`;
+  return `d${hash.toString(36)}x`;
+}
+
+/** Returns the next module-local selector identity without depending on source columns. */
+export function nextStableCompositeOrdinal(state: { stableClassNameOrdinal?: number }): number {
+  const ordinal = state.stableClassNameOrdinal ?? 0;
+  state.stableClassNameOrdinal = ordinal + 1;
+  return ordinal;
 }

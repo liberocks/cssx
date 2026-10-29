@@ -17,3 +17,10 @@ export interface ModuleCssxData extends CssxSourceModule {
 export function emptyModuleCssxData(): ModuleCssxData {
   return { id: '', rules: [], candidates: {}, composites: {}, origins: {}, cssOnlySignature: '' };
 }
+
+/** Returns whether transformed module metadata contributes rules or runtime selectors. */
+export function hasCssxStyleData(data: Pick<ModuleCssxData, 'rules' | 'candidates' | 'composites'>): boolean {
+  return (
+    data.rules.length > 0 || Object.keys(data.candidates).length > 0 || Object.keys(data.composites ?? {}).length > 0
+  );
+}

@@ -20,6 +20,8 @@ export interface CssxPluginOptions {
   readonly reusabilityBudget?: ReusabilityBudget;
   /** Uses source-addressed composite names across independently transformed modules. */
   readonly stableClassNames?: boolean;
+  /** Chooses source locations or CSSX call order as the stable composite identity. */
+  readonly stableClassNameStrategy?: 'source-location' | 'module-order';
   /** Canonical source identifier used when deriving stable composite class names. */
   readonly stableClassNameFileName?: string;
   /** Controls how the `dark` variant is activated. */
@@ -50,4 +52,6 @@ export interface FileState {
   readonly liveFallbackClasses: Set<string>;
   /** Ranges containing CSSX utility strings, used to identify CSS-only edits. */
   readonly cssRanges: { readonly start: number; readonly end: number }[];
+  /** Next stable source-module call-site identity used by development transforms. */
+  stableClassNameOrdinal?: number;
 }

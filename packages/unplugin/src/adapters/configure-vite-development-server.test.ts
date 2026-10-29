@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import {
+  compileViteDevelopmentStylesheet,
   configureViteDevelopmentServer,
   type ViteDevelopmentServerOptions,
   type ViteServerLike,
@@ -12,15 +13,9 @@ import {
 
 /** Captures middleware and watcher callbacks registered by Vite configuration. */
 function createServerHarness(base?: string, root?: string) {
-  let middleware:
-    | ((
-        request: { readonly url?: string },
-        response: { setHeader(name: string, value: string): void; end(body?: string): void },
-        next: () => void,
-      ) => void)
-    | undefined;
+  type Middleware = Parameters<ViteServerLike['middlewares']['use']>[0];
+  const registeredMiddlewares: Middleware[] = [];
   let unlink: ((path: string) => void) | undefined;
-  const updates: unknown[] = [];
   const server: ViteServerLike = {
     config: { base, root },
     watcher: {
@@ -30,16 +25,26 @@ function createServerHarness(base?: string, root?: string) {
     },
     middlewares: {
       use(handler) {
-        middleware = handler;
+        registeredMiddlewares.push(handler);
       },
     },
-    ws: { send: (update) => updates.push(update) },
   };
   return {
     server,
-    updates,
     unlink: (path: string) => unlink?.(path),
-    middleware: () => middleware,
+    middleware: () =>
+      ((request, response, next) => {
+        let index = 0;
+        const run = () => {
+          const middleware = registeredMiddlewares[index++];
+          if (middleware) {
+            middleware(request, response, run);
+          } else {
+            next();
+          }
+        };
+        run();
+      }) as Middleware,
   };
 }
 
@@ -47,27 +52,60 @@ function createServerHarness(base?: string, root?: string) {
 async function requestMiddleware(
   middleware: NonNullable<ReturnType<ReturnType<typeof createServerHarness>['middleware']>>,
   url: string,
+  options: {
+    readonly headers?: Record<string, string>;
+    readonly request?: { readonly method?: string; readonly headers?: { readonly accept?: string } };
+  } = {},
 ) {
-  const headers: Record<string, string> = {};
-  let body: string | undefined;
-  let continued = false;
-  await new Promise<void>((resolve) =>
-    middleware(
-      { url },
-      {
-        setHeader: (name, value) => (headers[name] = value),
-        end: (value) => {
-          body = value;
-          resolve();
-        },
-      },
-      () => {
-        continued = true;
-        resolve();
-      },
-    ),
+  const headers: Record<string, string> = Object.fromEntries(
+    Object.entries(options.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value]),
   );
-  return { headers, body, continued };
+  const chunks: string[] = [];
+  let finish: (() => void) | undefined;
+  let complete!: (value: {
+    readonly headers: Record<string, string>;
+    readonly body: string;
+    readonly continued: boolean;
+  }) => void;
+  const response = {
+    setHeader: (name: string, value: string) => (headers[name.toLowerCase()] = value),
+    getHeader: (name: string) => headers[name.toLowerCase()],
+    removeHeader: (name: string) => delete headers[name.toLowerCase()],
+    write: (chunk: string | Uint8Array) => {
+      chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString());
+      return true;
+    },
+    on: () => undefined,
+    once: (event: 'close' | 'finish', listener: () => void) => {
+      if (event === 'finish') {
+        finish = listener;
+      }
+      return response;
+    },
+    end: (chunk?: string | Uint8Array, _encoding?: unknown, callback?: () => void) => {
+      if (chunk !== undefined) {
+        chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString());
+      }
+      finish?.();
+      if (typeof _encoding === 'function') {
+        _encoding();
+      } else {
+        callback?.();
+      }
+      complete({ headers, body: chunks.join(''), continued: false });
+      return response;
+    },
+  };
+  return await new Promise<{
+    readonly headers: Record<string, string>;
+    readonly body: string;
+    readonly continued: boolean;
+  }>((resolve) => {
+    complete = resolve;
+    middleware({ url, ...options.request }, response as unknown as Parameters<typeof middleware>[1], () => {
+      complete({ headers, body: chunks.join(''), continued: true });
+    });
+  });
 }
 
 /** Creates minimal settings for direct middleware tests. */
@@ -82,7 +120,7 @@ function configuration(overrides: Partial<ViteDevelopmentServerOptions> = {}): V
   };
 }
 
-it('serves CSS and source-map paths, passes other requests through, and notifies on unlink', async () => {
+it('serves CSS and source-map paths, streams stylesheet updates, and handles unlink', async () => {
   const harness = createServerHarness('/app/');
   const oldModule: ModuleCssxData = {
     id: '/project/old.ts',
@@ -100,24 +138,44 @@ it('serves CSS and source-map paths, passes other requests through, and notifies
   expect(await requestMiddleware(middleware, '/other.css')).toMatchObject({ continued: true });
   const mapResponse = await requestMiddleware(middleware, '/app/cssx.css.map');
   expect(mapResponse.headers).toMatchObject({
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
   });
   expect(mapResponse.body).toBe('');
   const cssResponse = await requestMiddleware(middleware, '/app/cssx.css?v=1');
   expect(cssResponse.headers).toMatchObject({
-    'Content-Type': 'text/css; charset=utf-8',
-    'Cache-Control': 'no-store',
+    'content-type': 'text/css; charset=utf-8',
+    'cache-control': 'no-store',
   });
+
+  const streamHeaders: Record<string, string> = {};
+  const streamWrites: string[] = [];
+  middleware(
+    { url: '/app/cssx.css.events' },
+    {
+      setHeader: (name: string, value: string) => (streamHeaders[name] = value),
+      write: (chunk: string | Uint8Array) => {
+        streamWrites.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString());
+        return true;
+      },
+      on() {},
+      end() {
+        return this;
+      },
+    } as unknown as Parameters<typeof middleware>[1],
+    () => {
+      throw new Error('The stylesheet event path should be handled by CSSX.');
+    },
+  );
+  expect(streamHeaders['Content-Type']).toBe('text/event-stream; charset=utf-8');
 
   harness.unlink('/project/old.ts?vue');
   expect(rollupDataById.size).toBe(0);
-  expect(harness.updates).toEqual([
-    {
-      type: 'update',
-      updates: [{ type: 'css-update', path: '/cssx.css', acceptedPath: '/cssx.css', timestamp: expect.any(Number) }],
-    },
-  ]);
+  await expect.poll(() => streamWrites).toHaveLength(2);
+  expect(JSON.parse(streamWrites[1]!.slice('data: '.length))).toMatchObject({
+    css: '',
+    revision: expect.any(Number),
+  });
 });
 
 it('does not claim source-map requests when maps are disabled', async () => {
@@ -186,7 +244,7 @@ it('returns compiler errors as text and handles non-Error rejection values', asy
     configuration({ getTheme: async () => Promise.reject(new Error('theme unavailable')) }),
   );
   const errorResponse = await requestMiddleware(errorHarness.middleware()!, '/cssx.css');
-  expect(errorResponse.headers['Content-Type']).toBe('text/plain; charset=utf-8');
+  expect(errorResponse.headers['content-type']).toBe('text/plain; charset=utf-8');
   expect(errorResponse.body).toBe('theme unavailable');
 
   const valueHarness = createServerHarness();
@@ -196,4 +254,55 @@ it('returns compiler errors as text and handles non-Error rejection values', asy
   );
   const valueResponse = await requestMiddleware(valueHarness.middleware()!, '/cssx.css');
   expect(valueResponse.body).toBe('Unable to compile CSSX development stylesheet.');
+});
+
+it('reports stylesheet compilation failures triggered by Vite file deletion', async () => {
+  const harness = createServerHarness();
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  configureViteDevelopmentServer(
+    harness.server,
+    configuration({ getTheme: () => Promise.reject(new Error('invalid theme after unlink')) }),
+  );
+
+  try {
+    harness.unlink('/project/deleted.ts');
+    await vi.waitFor(() => expect(warning).toHaveBeenCalledWith(expect.stringContaining('invalid theme after unlink')));
+
+    const nonErrorHarness = createServerHarness();
+    configureViteDevelopmentServer(
+      nonErrorHarness.server,
+      configuration({ getTheme: () => Promise.reject('string theme failure') }),
+    );
+    nonErrorHarness.unlink('/project/other.ts');
+    await vi.waitFor(() => expect(warning).toHaveBeenCalledWith(expect.stringContaining('string theme failure')));
+  } finally {
+    warning.mockRestore();
+  }
+});
+
+it('resolves manifest stylesheet scans from the working directory when no root is configured', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-vite-manifest-cwd-'));
+  const previousCwd = process.cwd();
+  try {
+    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(
+      join(root, 'src', 'page.tsx'),
+      "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');",
+    );
+    process.chdir(root);
+    const compiled = await compileViteDevelopmentStylesheet(
+      configuration({
+        options: {
+          naming: 'serial',
+          coordination: 'manifest',
+          manifestPath: join(root, '.cssx', 'classes.json'),
+          preflight: false,
+        },
+      }),
+    );
+    expect(compiled.css).toContain('padding:calc(0.25rem * 4)');
+  } finally {
+    process.chdir(previousCwd);
+    await rm(root, { recursive: true, force: true });
+  }
 });

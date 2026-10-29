@@ -1,13 +1,33 @@
-import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, it, vi } from 'vitest';
 
 import { installFakeMdxCompiler } from '../../test-support/install-fake-mdx';
+import { canonicalPathSync } from '../core/canonical-path';
+import { developmentPluginOptions } from '../core/options';
+import { getCachedProjectScanSourceModules } from '../transforms/project-scan';
+import {
+  publishNextDevelopmentStylesheet,
+  startNextDevelopmentServer,
+  stopNextDevelopmentServer,
+} from './next-development-server';
 import cssxNextLoader, { type CssxNextLoaderOptions } from './next-loader';
 
 const nextExampleRoot = resolve(import.meta.dirname, '../../../../examples/next');
 const importSource = '@cssxio/cssx';
+const fsMocks = vi.hoisted(() => ({ failRename: false, failUnlink: false }));
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return {
+    ...actual,
+    rename: (...args: Parameters<typeof actual.rename>) =>
+      fsMocks.failRename ? Promise.reject(new Error('atomic replace failed')) : actual.rename(...args),
+    unlink: (...args: Parameters<typeof actual.unlink>) =>
+      fsMocks.failUnlink ? Promise.reject(new Error('temporary cleanup failed')) : actual.unlink(...args),
+  };
+});
 
 it('prepares a root layout stylesheet, dependencies, maps, themes, and diagnostics', async () => {
   const temporaryRoot = await mkdtemp(join(tmpdir(), 'cssx-next-loader-'));
@@ -44,13 +64,18 @@ it('prepares a root layout stylesheet, dependencies, maps, themes, and diagnosti
     expect(first.map).toBeUndefined();
     expect(await readFile(styleSheetFile, 'utf8')).toContain('--color-brand:#171717');
     await expect(stat(`${styleSheetFile}.map`)).resolves.toBeDefined();
-    expect(first.dependencies).toContain(linkedFile);
+    expect(first.dependencies).not.toContain(linkedFile);
     expect(first.dependencies).toContain(themeFile);
     expect(first.contextDependencies).toContain(join(root, 'app'));
     expect(first.contextDependencies).toContain(linkedRoot);
-    expect(consoleInfo).toHaveBeenCalledWith(expect.stringContaining('serial naming'));
+    expect(consoleInfo).toHaveBeenCalledWith(expect.stringContaining('source naming'));
+    await expect(stat(manifestPath)).rejects.toMatchObject({ code: 'ENOENT' });
 
     const second = await runLoader(layoutFile, layout, {
+      ...settings,
+      cssx: { ...settings.cssx, debug: { reportFile: '.cssx/debug/report.json' } },
+    });
+    await runLoader(layoutFile, layout, {
       ...settings,
       cssx: { ...settings.cssx, debug: { reportFile: '.cssx/debug/report.json' } },
     });
@@ -63,6 +88,142 @@ it('prepares a root layout stylesheet, dependencies, maps, themes, and diagnosti
   }
 });
 
+it('returns ignored generated files before transforming them', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-ignored-'));
+  const source = 'export const generated = true;';
+  const inputMap = { version: 3 as const, sources: ['generated.ts'], names: [], mappings: '' };
+  try {
+    const result = await runLoader(
+      join(root, '.next', 'cache.ts'),
+      source,
+      {
+        projectRoot: root,
+        styleSheetFile: join(root, '.cssx', 'next.css'),
+        importSource,
+        manifestPath: join(root, '.cssx', 'classes.json'),
+        development: true,
+        cssx: {},
+      },
+      inputMap,
+    );
+
+    expect(result.code).toBe(source);
+    expect(result.map).toBe(inputMap);
+    const noMap = await runLoader(join(root, '.next', 'cache.ts'), source, {
+      projectRoot: root,
+      styleSheetFile: join(root, '.cssx', 'next.css'),
+      importSource,
+      manifestPath: join(root, '.cssx', 'classes.json'),
+      development: true,
+      cssx: {},
+    });
+    expect(noMap.map).toBeUndefined();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('writes styles for a transformed non-root module when the cache is cold', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-cold-cache-'));
+  const pageFile = join(root, 'app', 'page.tsx');
+  const source = `import { sx } from '${importSource}'; export const className = sx('p-4');`;
+  const styleSheetFile = join(root, '.cssx', 'next.css');
+  try {
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(pageFile, source);
+
+    await runLoader(pageFile, source, {
+      projectRoot: root,
+      styleSheetFile,
+      importSource,
+      manifestPath: join(root, '.cssx', 'classes.json'),
+      development: true,
+      cssx: { sourceMap: false, preflight: false },
+    });
+
+    await expect(readFile(styleSheetFile, 'utf8')).resolves.toContain('padding:calc(0.25rem * 4)');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('removes the temporary stylesheet when atomic replacement fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-atomic-error-'));
+  const layoutFile = join(root, 'app', 'layout.tsx');
+  const styleSheetFile = join(root, '.cssx', 'next.css');
+  const source = `import { sx } from '${importSource}'; export default function Layout() { return <html className={sx('p-4')} />; }`;
+  try {
+    fsMocks.failRename = true;
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(layoutFile, source);
+    await expect(
+      runLoader(layoutFile, source, {
+        projectRoot: root,
+        styleSheetFile,
+        importSource,
+        manifestPath: join(root, '.cssx', 'classes.json'),
+        development: true,
+        cssx: { preflight: false },
+      }),
+    ).rejects.toThrow('atomic replace failed');
+    await expect(readdir(join(root, '.cssx'))).resolves.toEqual([]);
+  } finally {
+    fsMocks.failRename = false;
+    fsMocks.failUnlink = false;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('preserves the stylesheet replacement error when temporary cleanup fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-cleanup-error-'));
+  const layoutFile = join(root, 'app', 'layout.tsx');
+  const source = `import { sx } from '${importSource}'; export default function Layout() { return <html className={sx('p-4')} />; }`;
+  try {
+    fsMocks.failRename = true;
+    fsMocks.failUnlink = true;
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(layoutFile, source);
+    await expect(
+      runLoader(layoutFile, source, {
+        projectRoot: root,
+        styleSheetFile: join(root, '.cssx', 'next.css'),
+        importSource,
+        manifestPath: join(root, '.cssx', 'classes.json'),
+        development: true,
+        cssx: { preflight: false },
+      }),
+    ).rejects.toThrow('atomic replace failed');
+  } finally {
+    fsMocks.failRename = false;
+    fsMocks.failUnlink = false;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('surfaces filesystem errors when an existing debug report cannot be read', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-debug-read-error-'));
+  const layoutFile = join(root, 'app', 'layout.tsx');
+  const reportPath = join(root, '.cssx', 'report.json');
+  const source = 'export default function Layout() { return <html />; }';
+  try {
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(layoutFile, source);
+    await mkdir(reportPath, { recursive: true });
+    await expect(
+      runLoader(layoutFile, source, {
+        projectRoot: root,
+        styleSheetFile: join(root, '.cssx', 'next.css'),
+        importSource,
+        manifestPath: join(root, '.cssx', 'classes.json'),
+        development: false,
+        cssx: { debug: { reportFile: '.cssx/report.json' }, preflight: false },
+      }),
+    ).rejects.toMatchObject({ code: 'EISDIR' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it('refreshes development styles from the root layout and honors inline themes', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-next-dev-'));
   const app = join(root, 'app');
@@ -70,7 +231,7 @@ it('refreshes development styles from the root layout and honors inline themes',
   const pageFile = join(app, 'page.tsx');
   const styleSheetFile = join(root, '.cssx', 'next.css');
   const layoutSource = 'export default function Layout({ children }) { return <html><body>{children}</body></html>; }';
-  const pageSource = `import { sx } from '${importSource}'; export const className = sx('p-4 bg-brand');`;
+  const pageSource = `import { sx } from '${importSource}'; export const className = sx('p-4 bg-brand text-white');`;
   const settings: CssxNextLoaderOptions = {
     projectRoot: root,
     styleSheetFile,
@@ -87,19 +248,96 @@ it('refreshes development styles from the root layout and honors inline themes',
 
     const firstLayout = await runLoader(layoutFile, layoutSource, settings);
     const firstStyles = await readFile(styleSheetFile, 'utf8');
-    expect(firstLayout.dependencies).toContain(pageFile);
+    expect(firstLayout.dependencies).not.toContain(pageFile);
     expect(firstStyles).toContain('--color-brand:#171717');
+    const firstPage = await runLoader(pageFile, pageSource, settings);
+    const firstPageData = getCachedProjectScanSourceModules(root, developmentPluginOptions(settings.cssx))?.find(
+      (module) => module.id === canonicalPathSync(pageFile),
+    );
+    expect(firstPageData?.candidates['p-4']).not.toBe(firstPageData?.candidates['text-white']);
 
-    const changedPage = pageSource.replace("sx('p-4 bg-brand')", "sx('p-8 bg-brand')");
+    const changedPage = pageSource.replace("sx('p-4 bg-brand text-white')", "sx('p-8 bg-brand text-white')");
     await writeFile(pageFile, changedPage);
     const changedModule = await runLoader(pageFile, changedPage, settings);
     expect(changedModule.code).not.toBe(changedPage);
-    expect(await readFile(styleSheetFile, 'utf8')).toBe(firstStyles);
+    expect(changedModule.code.match(/d[a-z0-9]+/)?.[0]).toBe(firstPage.code.match(/d[a-z0-9]+/)?.[0]);
+    expect(await readFile(styleSheetFile, 'utf8')).not.toBe(firstStyles);
 
     await runLoader(layoutFile, layoutSource, settings);
     expect(await readFile(styleSheetFile, 'utf8')).not.toBe(firstStyles);
     await expect(stat(`${styleSheetFile}.map`)).rejects.toMatchObject({ code: 'ENOENT' });
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('injects the development stylesheet bridge only into transformed development modules', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-dev-bridge-'));
+  const sourceFile = join(root, 'app', 'page.tsx');
+  const source = `import { sx } from '${importSource}'; export const className = sx('p-4');`;
+  const settings: CssxNextLoaderOptions = {
+    projectRoot: root,
+    styleSheetFile: join(root, '.cssx', 'next.css'),
+    importSource,
+    manifestPath: join(root, '.cssx', 'classnames.json'),
+    development: true,
+    developmentHmr: { port: 45678, token: 'bridge-test' },
+    cssx: { sourceMap: false, preflight: false },
+  };
+  try {
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(join(root, 'package.json'), '{}');
+    await writeFile(sourceFile, source);
+
+    const development = await runLoader(sourceFile, source, settings);
+    const production = await runLoader(sourceFile, source, { ...settings, development: false });
+
+    expect(development.code).toContain('EventSource');
+    expect(development.code).toContain('http://127.0.0.1:45678/bridge-test');
+    expect(production.code).not.toContain('EventSource');
+    expect(production.code).not.toContain('__cssxDevelopmentStylesheetHmr');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('uses the ready coordinator stylesheet without scanning or watching project roots in the development layout loader', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-coordinated-'));
+  const layoutFile = join(root, 'app', 'layout.tsx');
+  const pageFile = join(root, 'app', 'page.tsx');
+  const styleSheetFile = join(root, '.cssx', 'next.css');
+  const layoutSource = 'export default function Layout({ children }) { return <html><body>{children}</body></html>; }';
+  const pageSource = `import { sx } from '${importSource}'; export const className = sx('p-4');`;
+  let connection: ReturnType<typeof startNextDevelopmentServer> | undefined;
+
+  try {
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(layoutFile, layoutSource);
+    await writeFile(pageFile, pageSource);
+    await mkdir(join(root, '.cssx'), { recursive: true });
+    await writeFile(styleSheetFile, '.dready{padding:1px;}');
+    connection = startNextDevelopmentServer(root, styleSheetFile);
+    await publishNextDevelopmentStylesheet(connection);
+
+    const result = await runLoader(layoutFile, layoutSource, {
+      projectRoot: root,
+      styleSheetFile,
+      importSource,
+      manifestPath: join(root, '.cssx', 'classnames.json'),
+      development: true,
+      developmentHmr: connection,
+      cssx: { sourceMap: false, preflight: false },
+    });
+
+    expect(result.code).toContain("import '../.cssx/next.css'");
+    expect(result.contextDependencies).toEqual([]);
+    expect(
+      getCachedProjectScanSourceModules(root, developmentPluginOptions({ sourceMap: false, preflight: false })),
+    ).toEqual([]);
+  } finally {
+    if (connection) {
+      stopNextDevelopmentServer(root);
+    }
     await rm(root, { recursive: true, force: true });
   }
 });

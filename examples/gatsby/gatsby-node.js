@@ -7,15 +7,18 @@ const theme = `
   --font-display: ui-rounded, "Avenir Next", "Segoe UI", sans-serif;
 }
 `;
-
 exports.onCreateBabelConfig = ({ actions, stage }) => {
   if (!stage.endsWith('-html')) return;
-  actions.setBabelPlugin({ name: '@cssxio/babel-plugin', options: { theme }, stage });
+  actions.setBabelPlugin({
+    name: '@cssxio/babel-plugin',
+    options: { theme, stableClassNames: stage === 'build-html' },
+    stage,
+  });
 };
 
 exports.onCreateWebpackConfig = ({ actions, stage }) => {
   if (stage.endsWith('-html')) return;
   actions.setWebpackConfig({
-    plugins: [cssx({ cssFileName: 'cssx.css', theme })],
+    plugins: [cssx({ cssFileName: 'cssx.css', theme, stableClassNames: stage !== 'develop' })],
   });
 };

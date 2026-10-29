@@ -38,6 +38,7 @@ export function configureCompilationAsset(
   preflight = true,
   projectSourceData?: (() => Promise<readonly CssxSourceModule[]>) | undefined,
   pluginOptions?: CssxPluginOptions,
+  onDevelopmentStylesheet?: (css: string) => Promise<void> | void,
 ): void {
   // Next writes server compiler assets beneath `.next/server`, where browsers
   // cannot load them. Its client compiler emits the public stylesheet, using
@@ -82,16 +83,16 @@ export function configureCompilationAsset(
           }
         }
         if (!compiled.css) {
+          await onDevelopmentStylesheet?.(cssWithSourceMapComment(compiled, cssFileName));
           return;
         }
         const finalCssFileName = resolveCssFileName(cssFileName, compiled.css);
+        const completeCss = cssWithSourceMapComment(compiled, finalCssFileName);
         if (compilation.getAsset?.(finalCssFileName)) {
           throw new Error(`CSSX CSS asset collision at "${finalCssFileName}".`);
         }
-        compilation.emitAsset(
-          finalCssFileName,
-          new compiler.webpack.sources.RawSource(cssWithSourceMapComment(compiled, finalCssFileName)),
-        );
+        await onDevelopmentStylesheet?.(completeCss);
+        compilation.emitAsset(finalCssFileName, new compiler.webpack.sources.RawSource(completeCss));
         if (compiled.map) {
           const mapFileName = `${finalCssFileName}.map`;
           if (compilation.getAsset?.(mapFileName)) {

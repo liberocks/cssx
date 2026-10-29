@@ -80,6 +80,18 @@ export const publicExports = [
     exportPath: './next-loader',
     exports: ['default'],
   },
+  {
+    specifier: '@cssxio/unplugin/internal/development-runtime',
+    packageDirectory: 'packages/unplugin',
+    exportPath: './internal/development-runtime',
+    exports: [],
+  },
+  {
+    specifier: '@cssxio/unplugin/internal/transform-runtime',
+    packageDirectory: 'packages/unplugin',
+    exportPath: './internal/transform-runtime',
+    exports: ['createTransformHandler'],
+  },
 ] as const;
 
 /** Unique package directories represented by the public export table. */

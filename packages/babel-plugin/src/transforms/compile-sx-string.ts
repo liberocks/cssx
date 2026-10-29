@@ -15,8 +15,14 @@ export interface CompileSxStringContext {
   readonly reusabilityBudget?: ReusabilityBudget;
   /** Whether composite class names should be based on source identity. */
   readonly stableClassNames?: boolean;
+  /** Selects stable identities independent of utility literal lengths. */
+  readonly stableClassNameStrategy?: 'source-location' | 'module-order';
   /** Stable file identity used for development composite names. */
   readonly fileName: string;
+  /** Stable identity for this `sx()` call when development uses module-order naming. */
+  readonly stableClassNameIdentity?: string;
+  /** Stable identity sequence for static segments in a dynamic `sx()` call. */
+  readonly stableClassNameSegment?: { value: number };
   /** Per-module CSSX metadata being accumulated. */
   readonly state: FileState;
 }
@@ -54,7 +60,13 @@ export function compileSxString(
     throw new Error(message);
   }
   const className = context.stableClassNames
-    ? stableCompositeName(context.fileName, location, 'sx')
+    ? context.stableClassNameIdentity
+      ? stableCompositeName(
+          context.fileName,
+          undefined,
+          `${context.stableClassNameIdentity}:segment:${context.stableClassNameSegment!.value++}`,
+        )
+      : stableCompositeName(context.fileName, location, 'sx')
     : result.classNames.inline!;
   for (const [candidate, candidateClassName] of Object.entries(result.classes)) {
     context.state.classes.set(candidate, candidateClassName);

@@ -42,6 +42,7 @@ export async function transformBabelCssxModule(
     readonly stableClassNameFileName?: string;
   },
   inputSourceMap?: IncomingSourceMap,
+  transformOptions: { readonly compileCss?: boolean } = {},
 ): Promise<TransformResult> {
   const importSource = options.importSource ?? '@cssxio/cssx';
   const theme = await loadTheme(options);
@@ -59,6 +60,7 @@ export async function transformBabelCssxModule(
           theme,
           reusabilityBudget: options.reusabilityBudget,
           stableClassNames: options.stableClassNames,
+          stableClassNameStrategy: options.stableClassNameStrategy,
           stableClassNameFileName: options.stableClassNameFileName,
           darkMode: options.darkMode,
         },
@@ -71,7 +73,7 @@ export async function transformBabelCssxModule(
   const { candidates, origins, composites, atomicClasses, cssOnlySignature } = metadata.cssx;
   const candidateNames = Object.keys(candidates);
   const utilityCss =
-    candidateNames.length === 0
+    transformOptions.compileCss === false || candidateNames.length === 0
       ? ''
       : (
           await compileUtilities(

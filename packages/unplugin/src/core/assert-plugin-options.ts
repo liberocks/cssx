@@ -8,6 +8,16 @@ import { validateCssFileName } from './validate-css-file-name';
  * @returns Nothing.
  */
 export function assertPluginOptions(options: CssxPluginOptions): void {
+  if (options.mode !== undefined && options.mode !== 'development' && options.mode !== 'production') {
+    throw new Error('CSSX mode must be "development" or "production".');
+  }
+  if (
+    options.stableClassNameStrategy !== undefined &&
+    options.stableClassNameStrategy !== 'source-location' &&
+    options.stableClassNameStrategy !== 'module-order'
+  ) {
+    throw new Error('CSSX stableClassNameStrategy must be "source-location" or "module-order".');
+  }
   if (options.sourceRoots && options.sourceRoots.some((root) => typeof root !== 'string' || !root.trim())) {
     throw new Error('CSSX sourceRoots must contain non-empty file-system paths.');
   }

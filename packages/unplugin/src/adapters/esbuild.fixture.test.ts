@@ -87,6 +87,43 @@ describe('CSSX esbuild fixture', () => {
     }
   });
 
+  it('uses explicit development mode for stable selectors and skips manifest writes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cssx-esbuild-development-'));
+    const entry = join(root, 'main.ts');
+    const buildContext = await context({
+      absWorkingDir: root,
+      bundle: true,
+      entryPoints: [entry],
+      format: 'esm',
+      outdir: 'dist',
+      plugins: [
+        cssxEsbuild({ mode: 'development', coordination: 'manifest', manifestPath: join(root, 'classes.json') }),
+      ],
+      write: false,
+    });
+    try {
+      await writeFile(entry, "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');");
+      const first = await buildContext.rebuild();
+      const firstJs = first.outputFiles?.find((file) => file.path.endsWith('.js'))?.text ?? '';
+      expect(firstJs).toMatch(/d[a-z0-9]+/);
+      expect(first.outputFiles?.find((file) => file.path.endsWith('cssx.css'))?.text).toContain(
+        'padding:calc(0.25rem * 4)',
+      );
+
+      await writeFile(entry, "import { sx } from '@cssxio/cssx'; export const className = sx('p-8');");
+      const second = await buildContext.rebuild();
+      const secondJs = second.outputFiles?.find((file) => file.path.endsWith('.js'))?.text ?? '';
+      expect(secondJs.match(/d[a-z0-9]+/)?.[0]).toBe(firstJs.match(/d[a-z0-9]+/)?.[0]);
+      expect(second.outputFiles?.find((file) => file.path.endsWith('cssx.css'))?.text).toContain(
+        'padding:calc(0.25rem * 8)',
+      );
+      await expect(readFile(join(root, 'classes.json'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      await buildContext.dispose();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('updates extracted CSS through native esbuild watch mode', async () => {
     const root = await mkdtemp(join(tmpdir(), 'cssx-esbuild-watch-'));
     const entry = join(root, 'main.ts');

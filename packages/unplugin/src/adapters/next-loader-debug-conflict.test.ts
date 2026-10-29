@@ -13,6 +13,7 @@ const conflictingModules = vi.hoisted(() => [
 
 vi.mock('../transforms/project-scan', () => ({
   scanProjectCssxSourceModules: async () => conflictingModules,
+  getProjectScanClassNameAllocator: () => undefined,
 }));
 
 it('prints compiler mapping conflicts in the Next loader debug summary', async () => {

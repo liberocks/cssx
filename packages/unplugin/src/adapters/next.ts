@@ -2,7 +2,8 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { assertPluginOptions } from '../core/assert-plugin-options';
-import type { CssxPluginOptions } from '../core/options';
+import { developmentPluginOptions, type CssxPluginOptions } from '../core/options';
+import { nextDevelopmentHmrConnection } from './next-development-connection';
 import { resolveNextLoaderPath } from './next-loader-path';
 
 /** CommonJS output directory, or undefined for ESM and source module builds. */
@@ -61,6 +62,29 @@ export function withCSSX(
 
   const configure = (config: NextConfig): NextConfig => {
     const styleSheetFile = resolve(projectRoot, '.cssx/next.css');
+    const development =
+      effectiveOptions.mode === undefined
+        ? process.env.NODE_ENV !== 'production'
+        : effectiveOptions.mode === 'development';
+    const developmentHmr =
+      development && process.env.NODE_ENV !== 'test'
+        ? nextDevelopmentHmrConnection(projectRoot, styleSheetFile)
+        : undefined;
+    if (developmentHmr) {
+      void import('@cssxio/unplugin/internal/development-runtime')
+        .then((runtime) => {
+          runtime.startNextDevelopmentServer(projectRoot, styleSheetFile);
+          return runtime.startDevelopmentCoordinator(
+            projectRoot,
+            styleSheetFile,
+            developmentPluginOptions(effectiveOptions),
+            developmentHmr,
+          );
+        })
+        .catch((error: unknown) => {
+          console.warn(`CSSX: Next development coordinator could not start: ${String(error)}`);
+        });
+    }
     const loaderCssx = { ...effectiveOptions };
     delete loaderCssx.classNameAllocator;
     delete loaderCssx.coordination;
@@ -70,8 +94,9 @@ export function withCSSX(
       styleSheetFile,
       importSource: effectiveOptions.importSource ?? '@cssxio/cssx',
       manifestPath,
-      development: process.env.NODE_ENV !== 'production',
+      development,
       cssx: loaderCssx,
+      ...(developmentHmr ? { developmentHmr } : {}),
       ...(effectiveOptions.mdx ? { mdx: effectiveOptions.mdx } : {}),
     };
 

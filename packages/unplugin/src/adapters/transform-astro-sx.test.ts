@@ -19,3 +19,16 @@ it('returns null when an Astro component has no CSSX calls', async () => {
     transformAstroSxModule('<div class="p-4"></div>', '/project/page.astro', {}, transformCssxModule),
   ).resolves.toBeNull();
 });
+
+it('collects Astro metadata without compiling discarded module CSS', async () => {
+  const result = await transformAstroSxModule(
+    '<div class={sx("p-4")}></div>',
+    '/project/page.astro',
+    { stableClassNames: true },
+    transformCssxModule,
+    { compileCss: false },
+  );
+
+  expect(result?.rules).toEqual([]);
+  expect(result?.candidates).toHaveProperty('p-4');
+});

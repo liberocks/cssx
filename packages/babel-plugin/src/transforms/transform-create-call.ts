@@ -3,6 +3,7 @@ import type * as babelTypes from '@babel/types';
 import { compileStyleRecords } from '@cssxio/compiler';
 
 import { readStyleMap } from '../analysis/read-style-map';
+import { nextStableCompositeOrdinal } from '../classes/stable-composite-name';
 import { withStableCompositeNames } from '../classes/with-stable-composite-names';
 import { diagnosticError } from '../state/diagnostic-error';
 import type { CssxPluginOptions, FileState } from '../state/plugin-types';
@@ -59,7 +60,9 @@ export function transformCreateCall({ path, types, state, options, fileName }: T
     const anchor =
       parent.isVariableDeclarator() && types.isIdentifier(parent.node.id)
         ? `map:${parent.node.id.name}`
-        : `create:${path.node.loc!.start.line}:${path.node.loc!.start.column}`;
+        : options.stableClassNameStrategy === 'module-order'
+          ? `create:${nextStableCompositeOrdinal(state)}`
+          : `create:${path.node.loc!.start.line}:${path.node.loc!.start.column}`;
     result = withStableCompositeNames(result, fileName, anchor);
   }
   for (const [candidate, className] of Object.entries(result.classes)) {

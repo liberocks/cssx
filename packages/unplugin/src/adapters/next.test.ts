@@ -1,15 +1,28 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
 import { resolve } from 'node:path';
-import { afterEach, beforeEach, expect, it } from 'vitest';
-import { vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { withCSSX } from './next';
+import { nextDevelopmentHmrConnection } from './next-development-connection';
+
+const mocks = vi.hoisted(() => ({
+  startDevelopmentCoordinator: vi.fn(),
+  startNextDevelopmentServer: vi.fn(() => ({ port: 45678, token: 'next-test' })),
+}));
+
+vi.mock('./development-coordinator', () => ({ startDevelopmentCoordinator: mocks.startDevelopmentCoordinator }));
+vi.mock('./next-development-server', () => ({ startNextDevelopmentServer: mocks.startNextDevelopmentServer }));
 
 const originalCwd = process.cwd();
 const nextExample = resolve(import.meta.dirname, '../../../../examples/next');
 
 beforeEach(() => process.chdir(nextExample));
 afterEach(() => process.chdir(originalCwd));
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.clearAllMocks();
+});
 
 it('preserves Next config and wires Webpack and Turbopack with manifest defaults', async () => {
   const existingWebpack = vi.fn((config: Record<string, unknown>) => ({ ...config, existing: true }));
@@ -51,6 +64,47 @@ it('wraps asynchronous Next config factories', async () => {
     poweredByHeader: false,
     turbopack: { rules: expect.any(Object) },
   });
+});
+
+it('starts the automatic stylesheet transport for a development Next app', async () => {
+  vi.stubEnv('NODE_ENV', 'development');
+  mocks.startDevelopmentCoordinator.mockResolvedValue(() => undefined);
+
+  const config = withCSSX({}) as unknown as {
+    turbopack?: { rules?: Record<string, { loaders: Array<{ options: any }> }> };
+  };
+  const loaderOptions = config.turbopack?.rules?.['*.tsx']?.loaders[0]?.options;
+
+  expect(loaderOptions).toMatchObject({
+    development: true,
+    developmentHmr: nextDevelopmentHmrConnection(nextExample, resolve(nextExample, '.cssx/next.css')),
+  });
+  await vi.waitFor(() => {
+    expect(mocks.startNextDevelopmentServer).toHaveBeenCalledOnce();
+    expect(mocks.startDevelopmentCoordinator).toHaveBeenCalledOnce();
+  });
+});
+
+it('reports development transport startup failures without breaking Next config', async () => {
+  vi.stubEnv('NODE_ENV', 'development');
+  mocks.startNextDevelopmentServer.mockImplementationOnce(() => {
+    throw new Error('transport failed');
+  });
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+  expect(withCSSX({})).toMatchObject({ turbopack: { rules: expect.any(Object) } });
+  await vi.waitFor(() => expect(warning).toHaveBeenCalledWith(expect.stringContaining('transport failed')));
+  warning.mockRestore();
+});
+
+it('keeps explicitly configured production mode out of the development transport', () => {
+  vi.stubEnv('NODE_ENV', 'development');
+  const config = withCSSX({}, { mode: 'production' }) as unknown as {
+    turbopack?: { rules?: Record<string, { loaders: Array<{ options: any }> }> };
+  };
+
+  expect(config.turbopack?.rules?.['*.tsx']?.loaders[0]?.options).toMatchObject({ development: false });
+  expect(mocks.startNextDevelopmentServer).not.toHaveBeenCalled();
 });
 
 it('fails clearly when composing an asynchronous Webpack hook', () => {

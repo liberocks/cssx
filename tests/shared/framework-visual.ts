@@ -115,14 +115,39 @@ export function frameworkVisualSuite(framework: string): void {
         sessionStorage.setItem(key, String(Number(sessionStorage.getItem(key) ?? '0') + 1));
       });
       await page.goto('/');
+      if (framework === 'remix') {
+        await expect(page.locator('script[data-cssx-vite-hmr]')).toHaveCount(1);
+        await expect
+          .poll(() =>
+            page.evaluate(() => {
+              const bridge = (
+                globalThis as typeof globalThis & {
+                  readonly __cssxViteStylesheetHmr?: { readonly source?: EventSource };
+                }
+              ).__cssxViteStylesheetHmr;
+              return bridge?.source?.readyState ?? -1;
+            }),
+          )
+          .toBe(1);
+      }
       const target = fixture.parent ? page.locator(fixture.selector).locator('..') : page.locator(fixture.selector);
-      const stylesheet = page.locator('link[rel="stylesheet"][href*="cssx"]');
       const beforeColor = await target.evaluate(
         (element, property) => getComputedStyle(element)[property as 'backgroundColor' | 'color'],
         fixture.property,
       );
       const beforeClass = await target.getAttribute('class');
       const beforeLoads = await page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads')));
+      const beforeRevision =
+        framework === 'remix'
+          ? await page.evaluate(() => {
+              const bridge = (
+                globalThis as typeof globalThis & {
+                  readonly __cssxViteStylesheetHmr?: { readonly revision?: number };
+                }
+              ).__cssxViteStylesheetHmr;
+              return bridge?.revision ?? -1;
+            })
+          : undefined;
       if (fixture.stateful) {
         await page.getByRole('button', { name: /count is 0/i }).click();
         await expect(page.getByRole('button', { name: /count is 1/i })).toBeVisible();
@@ -130,6 +155,20 @@ export function frameworkVisualSuite(framework: string): void {
 
       await writeFile(sourcePath, source.replace(from, to));
       try {
+        if (beforeRevision !== undefined) {
+          await expect
+            .poll(() =>
+              page.evaluate(() => {
+                const bridge = (
+                  globalThis as typeof globalThis & {
+                    readonly __cssxViteStylesheetHmr?: { readonly revision?: number };
+                  }
+                ).__cssxViteStylesheetHmr;
+                return bridge?.revision ?? -1;
+              }),
+            )
+            .toBeGreaterThan(beforeRevision);
+        }
         await expect
           .poll(() =>
             target.evaluate(
@@ -141,9 +180,6 @@ export function frameworkVisualSuite(framework: string): void {
         await expect
           .poll(() => page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads'))))
           .toBe(beforeLoads);
-        await expect
-          .poll(() => stylesheet.evaluateAll((links) => links.some((link) => /[?&](?:t|cssx)=/.test(link.href))))
-          .toBe(true);
         if (fixture.stateful) {
           await expect(page.getByRole('button', { name: /count is 1/i })).toBeVisible();
         }

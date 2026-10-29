@@ -1,7 +1,8 @@
 import { createClassNameAllocator, type ClassNameAllocator } from '@cssxio/compiler';
 
+import type { NextDevelopmentHmrConnection } from '../adapters/next-development-server';
 import type { CssxPluginOptions } from '../core/options';
-import { effectiveClassNameOptions } from '../core/options';
+import { developmentPluginOptions, effectiveClassNameOptions } from '../core/options';
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import { nativeBuildStateKey } from './native-build-state-key';
 
@@ -9,8 +10,16 @@ import { nativeBuildStateKey } from './native-build-state-key';
 export interface NativeBuildState {
   /** Serial allocator shared so server and client transforms cannot collide. */
   readonly classNameAllocator: ClassNameAllocator;
+  /** Deterministic content-hash allocator shared by development compiler workers. */
+  readonly developmentClassNameAllocator: ClassNameAllocator;
   /** Module records merged into the public client stylesheet. */
   readonly transformedDataById: Map<string, ModuleCssxData>;
+  /** Development-only CSS push connection shared by native compiler transforms. */
+  developmentHmr?: NextDevelopmentHmrConnection;
+  /** Last full development stylesheet published for this compiler instance. */
+  developmentStylesheet?: string;
+  /** Publishes the current metadata without waiting for final JavaScript assets. */
+  notifyDevelopmentStylesheet?: () => Promise<void>;
 }
 
 /** Native state indexed by project root and equivalent plugin options. */
@@ -29,6 +38,9 @@ export function nativeBuildState(root: string, options: CssxPluginOptions): Nati
   if (!state) {
     state = {
       classNameAllocator: options.classNameAllocator ?? createClassNameAllocator(effectiveClassNameOptions(options)),
+      developmentClassNameAllocator:
+        options.classNameAllocator ??
+        createClassNameAllocator(effectiveClassNameOptions(developmentPluginOptions(options))),
       transformedDataById: new Map(),
     };
     nativeBuildStates.set(key, state);

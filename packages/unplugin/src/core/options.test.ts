@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   assertPluginOptions,
+  developmentPluginOptions,
   effectiveClassNameOptions,
+  isDevelopmentMode,
   loadTheme,
   moduleId,
   resolveCssFileName,
@@ -19,6 +21,13 @@ describe('unplugin options', () => {
   });
 
   it('validates mutually exclusive and safe output settings', () => {
+    expect(() => assertPluginOptions({ mode: 'test' as never })).toThrow('mode must be');
+    expect(() => assertPluginOptions({ mode: 'development' })).not.toThrow();
+    expect(() => assertPluginOptions({ mode: 'production' })).not.toThrow();
+    expect(() => assertPluginOptions({ stableClassNameStrategy: 'module-order' })).not.toThrow();
+    expect(() => assertPluginOptions({ stableClassNameStrategy: 'invalid' as never })).toThrow(
+      'stableClassNameStrategy must be',
+    );
     expect(() => assertPluginOptions({ theme: '', themeFile: 'theme.css' })).toThrow('either theme or themeFile');
     expect(() => assertPluginOptions({ layer: 'not valid' })).toThrow('valid CSS layer');
     expect(() => assertPluginOptions({ cssFileName: '' })).toThrow('non-empty relative');
@@ -63,5 +72,33 @@ describe('unplugin options', () => {
     expect(() => effectiveClassNameOptions({ naming: 'serial', className: { variant: 'random' } })).toThrow(
       'conflicts',
     );
+  });
+
+  it('normalizes development settings and honors explicit mode before build inference', () => {
+    expect(
+      developmentPluginOptions({
+        naming: 'serial',
+        coordination: 'manifest',
+        manifestPath: 'classes.json',
+        className: { variant: 'serial' },
+        reusabilityBudget: 100,
+      }),
+    ).toMatchObject({
+      mode: 'development',
+      sourceMap: false,
+      naming: 'source',
+      stableClassNames: true,
+      stableClassNameStrategy: 'module-order',
+      coordination: 'memory',
+      manifestPath: undefined,
+      className: { variant: 'random' },
+      reusabilityBudget: 0,
+    });
+    expect(developmentPluginOptions({ sourceMap: true }).sourceMap).toBe(true);
+    expect(isDevelopmentMode({ mode: 'production' }, { watchMode: true, bundlerMode: 'development' })).toBe(false);
+    expect(isDevelopmentMode({ mode: 'development' }, { bundlerMode: 'production' })).toBe(true);
+    expect(isDevelopmentMode({}, { watchMode: true })).toBe(true);
+    expect(isDevelopmentMode({}, { bundlerMode: 'development' })).toBe(true);
+    expect(isDevelopmentMode({}, { viteDevServer: true })).toBe(true);
   });
 });

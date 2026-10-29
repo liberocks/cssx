@@ -21,8 +21,45 @@ export function effectiveClassNameOptions(options: CssxPluginOptions): ClassName
   return { ...options.className, ...(variant ? { variant } : {}) };
 }
 
+/** Selects the unoptimized settings used for warm development transforms. */
+export function developmentPluginOptions(
+  options: CssxPluginOptions,
+): CssxPluginOptions & { readonly sourceMap: boolean } {
+  return {
+    ...options,
+    mode: 'development',
+    sourceMap: options.sourceMap ?? false,
+    naming: 'source',
+    stableClassNames: true,
+    stableClassNameStrategy: 'module-order',
+    reusabilityBudget: 0,
+    className: { ...options.className, variant: 'random' },
+    classNameAllocator: undefined,
+    coordination: 'memory',
+    manifestPath: undefined,
+  };
+}
+
+/** Resolves an explicit mode before inferring development from the active build. */
+export function isDevelopmentMode(
+  options: CssxPluginOptions,
+  signals: { readonly watchMode?: boolean; readonly bundlerMode?: string; readonly viteDevServer?: boolean } = {},
+): boolean {
+  if (options.mode !== undefined) {
+    return options.mode === 'development';
+  }
+  return (
+    process.env.NODE_ENV === 'development' ||
+    signals.watchMode === true ||
+    signals.bundlerMode === 'development' ||
+    signals.viteDevServer === true
+  );
+}
+
 /** Options for a CSSX bundler adapter. */
 export interface CssxPluginOptions {
+  /** Selects development HMR output or optimized production output explicitly. */
+  readonly mode?: 'development' | 'production';
   /** Module specifier that identifies source files using the CSSX runtime. */
   readonly importSource?: string;
   /** Relative output path for extracted CSS. The default is `cssx.css`. */
@@ -55,6 +92,8 @@ export interface CssxPluginOptions {
   readonly debug?: boolean | { readonly reportFile: string };
   /** Uses source-addressed composite class names across independent compiler processes. */
   readonly stableClassNames?: boolean;
+  /** Selects development composite identities independent of utility literal lengths. */
+  readonly stableClassNameStrategy?: 'source-location' | 'module-order';
   /** Activates `dark` variants with a media query, `[data-theme=dark]`, or a `.dark` class. */
   readonly darkMode?: DarkMode;
   /** Adds browser baseline rules before generated utilities. Defaults to `true`. */
