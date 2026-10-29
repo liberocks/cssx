@@ -95,8 +95,8 @@ for (const adapter of adapters) {
           observer.observe(document.head, { childList: true, subtree: true });
         }, expected);
         const buildFinished = waitForBuild?.();
-        await writeFile(fixture.styleSource, source);
         const savedAt = performance.timeOrigin + performance.now();
+        await writeFile(fixture.styleSource, source);
         await page.waitForFunction(
           () => typeof (window as Window & { __cssxHmrVisibleAt?: number }).__cssxHmrVisibleAt === 'number',
           undefined,
@@ -260,9 +260,7 @@ async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<Ada
         {
           name: 'cssx-hmr-test-watch-observer',
           watchChange(id, change) {
-            if (resolve(id) === resolve(fixture.styleSource)) {
-              console.info('rollup observed style ' + change.event);
-            }
+            console.info('rollup observed ' + change.event + ' ' + id);
           },
         },
       ],
