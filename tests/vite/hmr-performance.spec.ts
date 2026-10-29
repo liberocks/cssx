@@ -65,16 +65,24 @@ test('shows 30 warm Vite style edits within 100 ms and preserves browser state',
               () => reject(new Error('The Vite stylesheet update did not arrive.')),
               5_000,
             );
+            const style = document.querySelector('style[data-cssx-development-stylesheet]');
+            if (style === null) {
+              window.clearTimeout(timeout);
+              reject(new Error('The Vite development stylesheet is missing.'));
+              return;
+            }
+            const observer = new MutationObserver(() => check());
+            observer.observe(style, { characterData: true, childList: true, subtree: true });
             const check = () => {
               const element = document.querySelector('[data-cssx-probe="sx"]');
               if (element !== null && getComputedStyle(element).backgroundColor === color) {
+                observer.disconnect();
                 requestAnimationFrame(() => {
                   window.clearTimeout(timeout);
                   resolve();
                 });
                 return;
               }
-              requestAnimationFrame(check);
             };
             check();
           }),
