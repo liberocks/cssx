@@ -10,7 +10,7 @@
     "build": "pnpm --recursive run build",
     "benchmark": "pnpm --dir benchmarks benchmark",
     "benchmark:vite": "pnpm --dir benchmarks benchmark:vite",
-    "benchmark:dev-hmr": "vitest run packages/unplugin/src/transforms/project-scan.integration.test.ts -t 'measures 30 warm cached edits' --reporter=verbose",
+    "benchmark:dev-hmr": "vitest run --maxWorkers=1 packages/unplugin/src/transforms/project-scan.integration.test.ts -t 'measures 30 warm cached edits' --reporter=verbose",
     "build:packages": "node scripts/build-packages.mjs",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
@@ -26,7 +26,7 @@
     "test:visual:update": "pnpm --dir tests test:update",
     "test:release": "pnpm format:check && pnpm lint && pnpm test:coverage && pnpm test:package-contract && pnpm typecheck",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --maxWorkers=2 --exclude packages/cssx/src/package-contract.test.ts && node scripts/test-intellisense-coverage.mjs",
+    "test:coverage": "vitest run --coverage --maxWorkers=1 --exclude packages/cssx/src/package-contract.test.ts && node scripts/test-intellisense-coverage.mjs",
     "typecheck": "tsc --noEmit",
     "generate:intellisense-catalog": "node scripts/generate-intellisense-catalog.mjs"
   },

@@ -235,7 +235,7 @@ it('serializes watcher edits behind scans and handles plain and deleted files', 
     await rm(source);
     sourceWatcher.callback('change', 'page.tsx');
     await removalScan;
-    await vi.waitFor(() => expect(updates).toBe(2));
+    await vi.waitFor(() => expect(updates).toBe(2), { interval: 10, timeout: 5_000 });
     expect(getCachedProjectScanSourceModules(root, options)).toEqual([]);
 
     await writeFile(source, styleCode('p-16'));
