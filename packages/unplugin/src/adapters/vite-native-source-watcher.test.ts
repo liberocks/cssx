@@ -108,6 +108,37 @@ it('clears pending directory-wide changes when Vite closes', () => {
   }
 });
 
+it('does not postpone a source update when the filesystem emits a burst', () => {
+  vi.useFakeTimers();
+  const changes: string[] = [];
+  let eventListener: ((eventType: 'change' | 'rename', fileName: string | Buffer | null) => void) | undefined;
+  const nativeWatch = vi.fn(
+    (
+      _directory: string,
+      _options: { readonly persistent: false },
+      listener: (eventType: 'change' | 'rename', fileName: string | Buffer | null) => void,
+    ) => {
+      eventListener = listener;
+      return createWatcher().watcher;
+    },
+  );
+  const watcher = createViteNativeSourceWatcher((id) => {
+    changes.push(id);
+  }, nativeWatch);
+  try {
+    watcher.watch(join('/workspace/src', 'style.ts'));
+    eventListener?.('change', 'style.ts');
+    vi.advanceTimersByTime(1);
+    eventListener?.('change', 'style.ts');
+    vi.advanceTimersByTime(1);
+
+    expect(changes).toEqual([join('/workspace/src', 'style.ts')]);
+  } finally {
+    watcher.close();
+    vi.useRealTimers();
+  }
+});
+
 it('disables native watching when Node throws a non-Error failure', () => {
   const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   const nativeWatch = vi.fn(() => {

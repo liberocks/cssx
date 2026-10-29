@@ -56,10 +56,9 @@ export function createViteNativeSourceWatcher(
   };
 
   const scheduleChange = (id: string) => {
-    if (!changeTimers.has(id) && changeTimers.size >= MAX_PENDING_SOURCE_CHANGES) {
+    if (changeTimers.has(id) || changeTimers.size >= MAX_PENDING_SOURCE_CHANGES) {
       return;
     }
-    clearChangeTimer(id);
     changeTimers.set(
       id,
       setTimeout(() => {
