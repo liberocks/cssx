@@ -31,18 +31,36 @@ export function nextDevelopmentStylesheetHmr(
         }
         if (revision < state.revision) return;
         const removeGeneratedRules = (owner) => {
+          let removed = false;
           const rules = owner.cssRules;
           for (let index = rules.length - 1; index >= 0; index--) {
             const rule = rules[index];
             if (rule.selectorText && /\\.(?:d[a-z0-9]+|s[a-z0-9]+x)\\b/.test(rule.selectorText)) {
               owner.deleteRule(index);
+              removed = true;
             } else if (rule.cssRules) {
-              removeGeneratedRules(rule);
+              removed = removeGeneratedRules(rule) || removed;
             }
           }
+          return removed;
         };
-        for (const sheet of document.styleSheets) {
-          try { removeGeneratedRules(sheet); } catch {}
+        const generatedSheets = state.generatedSheets;
+        const stylesheetCount = document.styleSheets.length - (state.style?.isConnected ? 1 : 0);
+        const sheetsChanged = generatedSheets !== undefined && (
+          stylesheetCount !== state.stylesheetCount ||
+          generatedSheets.some((sheet) => sheet.ownerNode && !sheet.ownerNode.isConnected)
+        );
+        if (generatedSheets === undefined || sheetsChanged) {
+          state.generatedSheets = [];
+          for (const sheet of document.styleSheets) {
+            if (sheet.ownerNode?.dataset?.cssxDevelopmentStylesheet !== undefined) continue;
+            try { if (removeGeneratedRules(sheet)) state.generatedSheets.push(sheet); } catch {}
+          }
+          state.stylesheetCount = stylesheetCount;
+        } else {
+          for (const sheet of generatedSheets) {
+            try { removeGeneratedRules(sheet); } catch {}
+          }
         }
         const stylesheetLink = ${stylesheetSuffix} ? [...document.querySelectorAll('link[rel="stylesheet"]')].find((link) =>
           new URL(link.href, document.baseURI).pathname.endsWith(${stylesheetSuffix}),

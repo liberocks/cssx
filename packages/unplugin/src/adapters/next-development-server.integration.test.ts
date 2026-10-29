@@ -73,6 +73,8 @@ it('serves the latest sheet and pushes atomic file replacements over an event st
 
     const generatedBridge = nextDevelopmentStylesheetHmr(connection);
     expect(generatedBridge).toContain('new EventSource');
+    expect(generatedBridge).toContain('state.generatedSheets');
+    expect(generatedBridge).toContain('ownerNode?.dataset?.cssxDevelopmentStylesheet');
     expect(generatedBridge).toContain('owner.deleteRule(index)');
     expect(generatedBridge).not.toMatch(/setInterval|location\.reload/);
   } finally {
