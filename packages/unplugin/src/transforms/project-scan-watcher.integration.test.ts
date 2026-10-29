@@ -162,6 +162,7 @@ it('coalesces directory events, transforms named changes, and closes watchers an
     await waitFor(
       () => !getCachedProjectScanSourceModules(root, options)?.some(({ id }) => id === canonicalPathSync(nestedFile)),
     );
+    await waitFor(() => nestedWatcher.closed);
     expect(nestedWatcher.closed).toBe(true);
 
     const beforeUnknownName = updates;

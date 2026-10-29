@@ -261,7 +261,7 @@ async function startAdapter(adapter: AdapterName, fixture: Fixture): Promise<Ada
     await waitForRollupBuild(watcher);
     return {
       close: async () => watcher.close(),
-      waitForBuild: () => waitForRollupBuild(watcher),
+      waitForBuild: () => waitForRollupBuild(watcher, true),
     };
   }
   if (adapter === 'webpack') {
@@ -390,13 +390,16 @@ async function waitForCoordinatorStylesheet(fileName: string): Promise<void> {
   throw new Error('The ' + basename(fileName) + ' coordinator did not finish its initial scan.');
 }
 
-async function waitForRollupBuild(watcher: RollupWatcher): Promise<void> {
+async function waitForRollupBuild(watcher: RollupWatcher, requireStart = false): Promise<void> {
   await new Promise<void>((resolveBuild, rejectBuild) => {
+    let started = false;
     const onEvent = (event: RollupWatcherEvent) => {
       if (event.code === 'ERROR') {
         watcher.off('event', onEvent);
         rejectBuild(event.error);
-      } else if (event.code === 'END') {
+      } else if (event.code === 'START') {
+        started = true;
+      } else if (event.code === 'END' && (!requireStart || started)) {
         watcher.off('event', onEvent);
         resolveBuild();
       }
