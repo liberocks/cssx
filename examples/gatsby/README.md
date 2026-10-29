@@ -7,5 +7,5 @@ example adds the CSSX webpack adapter there and its Babel transform through
 `/cssx.css`.
 
 The Babel transform and Webpack extraction run in separate Gatsby build stages,
-so both enable `stableClassNames` to keep server-rendered selectors aligned
-with the extracted stylesheet.
+so production enables `stableClassNames` in both to keep server-rendered selectors
+aligned with the extracted stylesheet.
