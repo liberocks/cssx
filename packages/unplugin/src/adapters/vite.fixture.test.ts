@@ -136,7 +136,7 @@ const kind = 'x';
     const server = await createServer({
       root,
       logLevel: 'silent',
-      plugins: [cssxVite({ theme: '@theme reference { --color-brand: #123456; }' })],
+      plugins: [cssxVite({ theme: '@theme reference { --color-brand: #123456; }', sourceMap: true })],
     });
     try {
       await mkdir(join(root, 'src'));

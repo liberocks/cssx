@@ -90,7 +90,7 @@ describe('unplugin lifecycle edges', () => {
   });
 
   it('serves Vite map, pass-through, and compilation-error responses and cleans deleted files', async () => {
-    const plugin = pluginFor('vite');
+    const plugin = pluginFor('vite', { sourceMap: true });
     let middleware: ((request: any, response: any, next: () => void) => void) | undefined;
     let unlink: ((path: string) => void) | undefined;
     const updates: any[] = [];
