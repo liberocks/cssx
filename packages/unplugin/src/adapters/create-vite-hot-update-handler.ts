@@ -16,6 +16,7 @@ interface ViteHotUpdateModule {
 export function createViteHotUpdateHandler(
   moduleData: Map<string, ModuleCssxData>,
   isPretransformedCssOnly: (id: string, source: string) => boolean = () => false,
+  updateCssOnlySource?: (id: string) => Promise<boolean>,
 ) {
   /**
    * Handles one Vite hot update, returning modules left for the standard pipeline.
@@ -37,14 +38,24 @@ export function createViteHotUpdateHandler(
       return undefined;
     }
 
-    const source = typeof context.read === 'function' ? await context.read() : undefined;
+    const source =
+      updateCssOnlySource === undefined && typeof context.read === 'function' ? await context.read() : undefined;
     const pretransformed = new Set(
       source === undefined ? [] : handled.filter((module) => isPretransformedCssOnly(moduleId(module.id!), source)),
     );
     const previous = new Map(handled.map((module) => [module, moduleData.get(moduleId(module.id!))!.cssOnlySignature]));
-    for (const module of handled) {
-      if (!pretransformed.has(module) && module.url) {
-        await environment.transformRequest(module.url);
+    if (updateCssOnlySource) {
+      for (const module of handled) {
+        const handledByRuntime = await updateCssOnlySource(module.id!);
+        if (!handledByRuntime && module.url) {
+          await environment.transformRequest(module.url);
+        }
+      }
+    } else {
+      for (const module of handled) {
+        if (!pretransformed.has(module) && module.url) {
+          await environment.transformRequest(module.url);
+        }
       }
     }
     const cssOnly = handled.every((module) => {

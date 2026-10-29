@@ -158,10 +158,54 @@ it('coalesces duplicate file notifications while keeping one transform and style
   try {
     mocks.compileStylesheet.mockClear();
     await writeFile(id, source);
-    await Promise.all([runtime.updateCssOnlySource(id), runtime.updateCssOnlySource(id)]);
+    await expect(Promise.all([runtime.updateCssOnlySource(id), runtime.updateCssOnlySource(id)])).resolves.toEqual([
+      true,
+      true,
+    ]);
 
     expect(transformSource).toHaveBeenCalledExactlyOnceWith(source, id);
     expect(mocks.compileStylesheet).toHaveBeenCalledOnce();
+  } finally {
+    runtime.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('reports composition changes for Vite to pass through its normal transform pipeline', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-vite-structural-update-'));
+  const id = join(root, 'source.tsx');
+  const source = `import { sx } from '@cssxio/cssx'; export const value = sx('p-8');`;
+  const previous: ModuleCssxData = {
+    id,
+    candidates: { 'p-4': 'class-p4' },
+    composites: {},
+    origins: {},
+    rules: [],
+    cssOnlySignature: 'stable-css',
+  };
+  const dataById = new Map([[id, previous]]);
+  const transformSource = vi.fn(async () => {
+    dataById.set(id, { ...previous, candidates: { 'p-8': 'class-p8' }, cssOnlySignature: 'changed-structure' });
+  });
+  const server = {
+    config: { root },
+    middlewares: { use: vi.fn() },
+  } as unknown as ViteServerLike;
+  const configuration: ViteDevelopmentServerOptions = {
+    cssFileName: 'cssx.css',
+    options: { mode: 'development' } as CssxPluginOptions,
+    rollupDataById: dataById,
+    sourceMap: false,
+    getTheme: async () => undefined,
+  };
+  const runtime = createViteDevelopmentRuntime(server, configuration, dataById, transformSource);
+
+  try {
+    mocks.compileStylesheet.mockClear();
+    await writeFile(id, source);
+    await expect(runtime.updateCssOnlySource(id)).resolves.toBe(false);
+    expect(dataById.get(id)).toBe(previous);
+    expect(mocks.compileStylesheet).not.toHaveBeenCalled();
   } finally {
     runtime.close();
     await rm(root, { recursive: true, force: true });

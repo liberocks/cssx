@@ -24,7 +24,7 @@ export function createViteDevelopmentRuntime(
   transformSource: (source: string, id: string) => Promise<unknown>,
 ) {
   const preparedUpdates = new Map<string, string>();
-  const inFlightUpdates = new Map<string, { promise: Promise<void>; rerun: boolean; sourceId?: string }>();
+  const inFlightUpdates = new Map<string, { promise: Promise<boolean>; rerun: boolean; sourceId?: string }>();
   const transformWaiters: Array<() => void> = [];
   let active = true;
   let activeTransforms = 0;
@@ -97,7 +97,7 @@ export function createViteDevelopmentRuntime(
     id: string,
     normalizedId: string,
     previousSourceId?: string,
-  ): Promise<string | undefined> => {
+  ): Promise<{ sourceId: string; handled: boolean } | undefined> => {
     const previousSignature = dataById.get(normalizedId)?.cssOnlySignature;
     if (!active || !previousSignature) {
       return undefined;
@@ -106,10 +106,10 @@ export function createViteDevelopmentRuntime(
       const source = await readFile(normalizedId, 'utf8');
       const sourceId = sourceSignature(source);
       if (!active) {
-        return sourceId;
+        return undefined;
       }
       if (previousSourceId === sourceId || preparedUpdates.get(normalizedId) === sourceId) {
-        return sourceId;
+        return { sourceId, handled: true };
       }
       const previous = dataById.get(normalizedId);
       await transformSource(source, id);
@@ -119,18 +119,18 @@ export function createViteDevelopmentRuntime(
         if (previous) {
           dataById.set(normalizedId, previous);
         }
-        return sourceId;
+        return { sourceId, handled: false };
       }
       rememberPreparedUpdate(normalizedId, sourceId);
       await notifyStyles();
-      return sourceId;
+      return { sourceId, handled: true };
     } catch (error) {
       preparedUpdates.delete(normalizedId);
       console.warn(`CSSX: Vite stylesheet update failed: ${error instanceof Error ? error.message : String(error)}`);
       return undefined;
     }
   };
-  const updateCssOnlySource = (id: string) => {
+  const updateCssOnlySource = (id: string): Promise<boolean> => {
     const normalizedId = moduleId(id);
     const existing = inFlightUpdates.get(normalizedId);
     if (existing) {
@@ -142,23 +142,28 @@ export function createViteDevelopmentRuntime(
         inFlightLimitWarned = true;
         console.warn(`CSSX: Vite stylesheet update queue reached the ${MAX_IN_FLIGHT_VITE_UPDATES}-path limit.`);
       }
-      return Promise.resolve();
+      return Promise.resolve(false);
     }
-    const update: { promise: Promise<void>; rerun: boolean; sourceId?: string } = {
-      promise: Promise.resolve(),
+    const update: { promise: Promise<boolean>; rerun: boolean; sourceId?: string } = {
+      promise: Promise.resolve(false),
       rerun: false,
     };
     update.promise = (async () => {
+      let handled = false;
       do {
         update.rerun = false;
         if (!active) {
-          return;
+          return handled;
         }
-        const sourceId = await withTransformSlot(() => updateCssOnlySourceNow(id, normalizedId, update.sourceId));
-        if (sourceId !== undefined) {
-          update.sourceId = sourceId;
+        const result = await withTransformSlot(() => updateCssOnlySourceNow(id, normalizedId, update.sourceId));
+        if (result !== undefined) {
+          update.sourceId = result.sourceId;
+          handled = result.handled;
+        } else {
+          handled = false;
         }
       } while (active && update.rerun);
+      return handled;
     })().finally(() => {
       inFlightUpdates.delete(normalizedId);
     });
