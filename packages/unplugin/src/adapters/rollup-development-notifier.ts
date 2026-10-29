@@ -200,6 +200,10 @@ export function createRollupDevelopmentRuntime<TTransformResult>(
         }
       })().finally(() => {
         updateQueue = undefined;
+        const pending = pendingUpdates.values().next().value as string | undefined;
+        if (active && pending !== undefined) {
+          void updateCssOnlySource(pending);
+        }
       });
     }
     return updateQueue;

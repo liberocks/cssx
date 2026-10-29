@@ -136,6 +136,86 @@ it('recompiles when another Rollup change arrives during a stylesheet compilatio
   expect(mocks.publish).toHaveBeenCalledTimes(2);
 });
 
+it('restarts Rollup updates queued as the source queue finishes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-rollup-queued-update-'));
+  const id = join(root, 'source.tsx');
+  const latestId = join(root, 'latest.tsx');
+  await writeFile(id, 'first-source');
+  await writeFile(latestId, 'latest-source');
+  const dataById = new Map<string, ModuleCssxData>();
+  let markLatestPublished!: () => void;
+  const latestPublished = new Promise<void>((resolve) => (markLatestPublished = resolve));
+  const transformedSources: string[] = [];
+  let requestedFollowup = false;
+  mocks.compile.mockImplementation(async (modules) => ({
+    css: modules.flatMap((module) => Object.keys((module as ModuleCssxData).candidates)).join(','),
+    map: undefined,
+  }));
+  const runtime = createRollupDevelopmentRuntime<string>({
+    cssFileName: 'rollup.css',
+    getTheme: async () => undefined,
+    options: { mode: 'development' } as CssxPluginOptions,
+    root,
+    sourceMap: false,
+    dataById,
+    transformSource: async (source, transformedId) => {
+      transformedSources.push(source);
+      dataById.set(transformedId, {
+        id: transformedId,
+        candidates: { [source]: `class-${source}` },
+        composites: {},
+        origins: {},
+        rules: [],
+        cssOnlySignature: 'same-structure',
+      });
+      return source;
+    },
+  });
+  mocks.publish.mockImplementation(async (_connection, css) => {
+    if (!requestedFollowup) {
+      requestedFollowup = true;
+      void runtime.notifyStyles().then(() => {
+        queueMicrotask(() => {
+          void runtime.updateCssOnlySource(latestId);
+        });
+      });
+    }
+    if (css.includes('latest-source')) {
+      markLatestPublished();
+    }
+  });
+  dataById.set(id, {
+    id,
+    candidates: { initial: 'class-initial' },
+    composites: {},
+    origins: {},
+    rules: [],
+    cssOnlySignature: 'same-structure',
+  });
+  dataById.set(latestId, {
+    id: latestId,
+    candidates: { 'latest-before-update': 'class-latest-before-update' },
+    composites: {},
+    origins: {},
+    rules: [],
+    cssOnlySignature: 'same-structure',
+  });
+
+  try {
+    runtime.buildStart();
+    runtime.buildEnd();
+    await runtime.updateCssOnlySource(id);
+    await latestPublished;
+
+    expect(transformedSources).toEqual(['first-source', 'latest-source']);
+    expect(mocks.publish).toHaveBeenCalledTimes(2);
+    expect(runtime.takePrepared(latestId, 'latest-source')).toEqual({ handled: true, result: 'latest-source' });
+  } finally {
+    await runtime.closeWatcher();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it('bounds Rollup prepared transforms and handles watch lifecycle, deletion, and failures', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-rollup-runtime-'));
   const dataById = new Map<string, ModuleCssxData>();
