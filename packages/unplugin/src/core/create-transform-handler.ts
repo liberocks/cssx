@@ -168,7 +168,7 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
     if (
       development &&
       (framework === 'webpack' || framework === 'rspack') &&
-      (transformed || previousNativeData?.rules.length || Object.keys(previousNativeData?.candidates ?? {}).length)
+      (transformed || (previousNativeData !== undefined && hasCssxStyleData(previousNativeData)))
     ) {
       if (root) {
         await updateProjectScanModule(root, normalizedId, developmentPluginOptions(options), transformed, code);

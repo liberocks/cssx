@@ -5,5 +5,5 @@
  * @returns The module ID without its query value.
  */
 export function moduleId(id: string): string {
-  return id.split('?', 1).join('');
+  return id.replaceAll('\\', '/').split('?', 1).join('');
 }

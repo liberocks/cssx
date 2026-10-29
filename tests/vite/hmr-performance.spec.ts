@@ -16,6 +16,11 @@ test('shows 30 warm Vite style edits within 100 ms and preserves browser state',
   });
   await page.goto('/');
   await expect(page.locator(selector)).toBeVisible();
+  await page.waitForFunction(() => {
+    const state = (window as Window & { __cssxViteStylesheetHmr?: { source?: EventSource; revision?: number } })
+      .__cssxViteStylesheetHmr;
+    return state?.source?.readyState === EventSource.OPEN && (state.revision ?? 0) > 0;
+  });
   const initialLoads = await page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads')));
   await page.locator(selector).click();
   await page.locator(selector).click();

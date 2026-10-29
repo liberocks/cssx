@@ -440,8 +440,8 @@ void props;
       brotli: 12_400,
     });
     await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', {
-      // Development coordination dispatch grew the entry; transport implementations remain in a lazy internal export.
-      raw: 51_000,
+      // Development dispatch and normalized cross-platform module IDs add fixed adapter overhead; transports remain lazy.
+      raw: 51_100,
       gzip: 17_600,
       brotli: 15_700,
     });
