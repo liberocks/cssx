@@ -11,6 +11,9 @@ import { createViteDevelopmentRuntime } from './vite-development-runtime';
 const mocks = vi.hoisted(() => ({
   compileStylesheet: vi.fn(async () => ({ css: '.test{padding:1px;}', map: undefined })),
   sendStyles: vi.fn(),
+  watchSource: vi.fn(),
+  unwatchSource: vi.fn(),
+  closeSourceWatcher: vi.fn(),
 }));
 
 vi.mock('./configure-vite-development-server', () => ({
@@ -22,8 +25,48 @@ vi.mock('./vite-dev', () => ({
   sendViteStyles: mocks.sendStyles,
 }));
 vi.mock('./vite-native-source-watcher', () => ({
-  createViteNativeSourceWatcher: vi.fn(() => ({ close: vi.fn(), unwatch: vi.fn(), watch: vi.fn() })),
+  createViteNativeSourceWatcher: vi.fn(() => ({
+    close: mocks.closeSourceWatcher,
+    unwatch: mocks.unwatchSource,
+    watch: mocks.watchSource,
+  })),
 }));
+
+it('tracks transformed CSSX sources as prepared and unwatches modules without style data', () => {
+  const id = '/workspace/src/source.tsx';
+  const source = `import { sx } from '@cssxio/cssx'; export const value = sx('p-4');`;
+  const dataById = new Map<string, ModuleCssxData>([
+    [id, { id, candidates: { 'p-4': 'class-p4' }, composites: {}, origins: {}, rules: [], cssOnlySignature: 'stable' }],
+  ]);
+  const server = {
+    config: { root: '/workspace' },
+    middlewares: { use: vi.fn() },
+    watcher: { on: vi.fn() },
+  } as unknown as ViteServerLike;
+  const configuration: ViteDevelopmentServerOptions = {
+    cssFileName: 'cssx.css',
+    options: { mode: 'development' } as CssxPluginOptions,
+    rollupDataById: dataById,
+    sourceMap: false,
+    getTheme: async () => undefined,
+  };
+  const runtime = createViteDevelopmentRuntime(server, configuration, dataById, async () => undefined);
+
+  try {
+    runtime.onTransformed(id, source);
+
+    expect(runtime.isPrepared(id, source)).toBe(true);
+    expect(mocks.watchSource).toHaveBeenCalledWith(id);
+
+    dataById.set(id, { id, candidates: {}, composites: {}, origins: {}, rules: [], cssOnlySignature: '' });
+    runtime.onTransformed(id, source);
+
+    expect(runtime.isPrepared(id, source)).toBe(false);
+    expect(mocks.unwatchSource).toHaveBeenCalledWith(id);
+  } finally {
+    runtime.close();
+  }
+});
 
 it('bounds prepared Vite updates and refreshes an existing prepared source', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-vite-prepared-updates-'));

@@ -66,7 +66,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         isActive: () => boolean;
         isPrepared: (id: string, source: string) => boolean;
         notifyStyles: () => Promise<void>;
-        onTransformed: (id: string) => void;
+        onTransformed: (id: string, source: string) => void;
         updateCssOnlySource: (id: string) => Promise<void>;
       }
     | undefined;
@@ -165,7 +165,7 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         const prepared = viteDevelopmentRuntime?.isPrepared(id, code) ?? false;
         const result = await transform.call({ ...this, skipViteStylesheetPush: prepared }, code, id);
         if (meta.framework === 'vite') {
-          viteDevelopmentRuntime?.onTransformed(id);
+          viteDevelopmentRuntime?.onTransformed(id, code);
         } else if (meta.framework === 'rollup' && watchMode && rollupRuntimeStartup) {
           const runtime = await rollupRuntimeStartup;
           runtime.onTransformed(id);
@@ -179,7 +179,11 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
         rollupDataById.delete(normalizedId);
         viteDevelopmentRuntime?.delete(normalizedId);
         await rollupRuntimeStartup?.then((runtime) => runtime.delete(normalizedId));
-        await notifyRollupStyles();
+        if (meta.framework === 'vite') {
+          await notifyViteStyles();
+        } else {
+          await notifyRollupStyles();
+        }
         return;
       }
       if (meta.framework === 'rollup' && rollupRuntimeStartup && change.event === 'update' && SCRIPT_ID.test(id)) {

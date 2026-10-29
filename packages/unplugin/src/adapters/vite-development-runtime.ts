@@ -32,6 +32,21 @@ export function createViteDevelopmentRuntime(
   let notifyPromise: Promise<void> | undefined;
   let latestCss: string | undefined;
   let inFlightLimitWarned = false;
+  const rememberPreparedUpdate = (id: string, sourceId: string) => {
+    if (preparedUpdates.size >= MAX_PREPARED_VITE_UPDATES && !preparedUpdates.has(id)) {
+      const oldestId = preparedUpdates.keys().next().value;
+      /* v8 ignore next -- A non-empty prepared map is required to reach this branch. */
+      if (oldestId !== undefined) {
+        preparedUpdates.delete(oldestId);
+      }
+    }
+    preparedUpdates.set(id, sourceId);
+  };
+  const nativeSourceWatcher = server.watcher
+    ? createViteNativeSourceWatcher((path) => {
+        void updateCssOnlySource(path);
+      })
+    : undefined;
   const withTransformSlot = async <T>(callback: () => Promise<T>): Promise<T> => {
     if (activeTransforms >= MAX_CONCURRENT_VITE_TRANSFORMS) {
       await new Promise<void>((resume) => transformWaiters.push(resume));
@@ -90,6 +105,9 @@ export function createViteDevelopmentRuntime(
     try {
       const source = await readFile(normalizedId, 'utf8');
       const sourceId = sourceSignature(source);
+      if (!active) {
+        return sourceId;
+      }
       if (previousSourceId === sourceId || preparedUpdates.get(normalizedId) === sourceId) {
         return sourceId;
       }
@@ -103,14 +121,7 @@ export function createViteDevelopmentRuntime(
         }
         return sourceId;
       }
-      if (preparedUpdates.size >= MAX_PREPARED_VITE_UPDATES && !preparedUpdates.has(normalizedId)) {
-        const oldestId = preparedUpdates.keys().next().value;
-        /* v8 ignore next -- A non-empty prepared map is required to reach this branch. */
-        if (oldestId !== undefined) {
-          preparedUpdates.delete(oldestId);
-        }
-      }
-      preparedUpdates.set(normalizedId, sourceId);
+      rememberPreparedUpdate(normalizedId, sourceId);
       await notifyStyles();
       return sourceId;
     } catch (error) {
@@ -154,17 +165,6 @@ export function createViteDevelopmentRuntime(
     inFlightUpdates.set(normalizedId, update);
     return update.promise;
   };
-  const nativeSourceWatcher = server.watcher
-    ? createViteNativeSourceWatcher((path) => {
-        void updateCssOnlySource(path);
-      })
-    : undefined;
-  server.watcher?.on('change', (path: string) => {
-    void updateCssOnlySource(path);
-  });
-  server.watcher?.on('unlink', (path: string) => {
-    preparedUpdates.delete(moduleId(path));
-  });
   const close = () => {
     active = false;
     nativeSourceWatcher?.close();
@@ -183,11 +183,13 @@ export function createViteDevelopmentRuntime(
     isActive: () => active,
     isPrepared: (id: string, source: string) => preparedUpdates.get(moduleId(id)) === sourceSignature(source),
     notifyStyles,
-    onTransformed(id: string) {
+    onTransformed(id: string, source: string) {
       const data = dataById.get(moduleId(id));
       if (data && hasCssxStyleData(data)) {
+        rememberPreparedUpdate(moduleId(id), sourceSignature(source));
         nativeSourceWatcher?.watch(id);
       } else {
+        preparedUpdates.delete(moduleId(id));
         nativeSourceWatcher?.unwatch(id);
       }
     },

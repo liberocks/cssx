@@ -15,6 +15,9 @@ const mocks = vi.hoisted(() => ({
   rollupRuntimeCreationError: undefined as Error | undefined,
   readFileGate: undefined as Promise<void> | undefined,
   readStarted: undefined as (() => void) | undefined,
+  nativeWatchClose: vi.fn(),
+  nativeUnwatch: vi.fn(),
+  nativeWatch: vi.fn(),
 }));
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -35,6 +38,13 @@ vi.mock('../adapters/configure-vite-development-server', async (importOriginal) 
   const actual = await importOriginal<typeof import('../adapters/configure-vite-development-server')>();
   return { ...actual, compileViteDevelopmentStylesheet: mocks.compileViteStylesheet };
 });
+vi.mock('../adapters/vite-native-source-watcher', () => ({
+  createViteNativeSourceWatcher: vi.fn(() => ({
+    close: mocks.nativeWatchClose,
+    unwatch: mocks.nativeUnwatch,
+    watch: mocks.nativeWatch,
+  })),
+}));
 
 vi.mock('../adapters/development-coordinator', () => ({ startDevelopmentCoordinator: mocks.coordinator }));
 vi.mock('../adapters/rollup-development-notifier', async (importOriginal) => {
@@ -63,6 +73,9 @@ afterEach(() => {
   vi.unstubAllEnvs();
   mocks.readFileGate = undefined;
   mocks.readStarted = undefined;
+  mocks.nativeWatchClose.mockReset();
+  mocks.nativeUnwatch.mockReset();
+  mocks.nativeWatch.mockReset();
   mocks.rollupRuntimeCreationError = undefined;
 });
 
@@ -70,8 +83,6 @@ it('pushes CSS only Vite updates and handles stale, deleted, and failed source u
   const root = await mkdtemp(join(tmpdir(), 'cssx-unplugin-vite-hmr-'));
   const id = join(root, 'styles.ts');
   let watcherClose: (() => void) | undefined;
-  let watcherChange: ((path: string) => void) | undefined;
-  let watcherUnlink: ((path: string) => void) | undefined;
   const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   const makePlugin = (options = {}) => unpluginFactory(options, { framework: 'vite', versions: {} } as never) as any;
   try {
@@ -95,18 +106,8 @@ it('pushes CSS only Vite updates and handles stale, deleted, and failed source u
           if (event === 'close') {
             watcherClose = listener as () => void;
           }
-          if (event === 'change') {
-            watcherChange = listener as (path: string) => void;
-          }
-          if (event === 'unlink') {
-            watcherUnlink = listener as (path: string) => void;
-          }
         },
       },
-      middlewares: { use() {} },
-    });
-    await plugin.vite.configureServer({
-      config: { root, base: '/' },
       middlewares: { use() {} },
     });
     await plugin.transform.handler('export const plain = true;', join(root, 'plain.ts'));
@@ -127,14 +128,12 @@ it('pushes CSS only Vite updates and handles stale, deleted, and failed source u
     await plugin.watchChange(join(root, 'plain.ts'), { event: 'update' });
 
     await writeFile(id, css('p-8'));
-    watcherChange?.(id);
-    await vi.waitFor(() => expect(mocks.compileViteStylesheet).toHaveBeenCalled());
+    await plugin.watchChange(id, { event: 'update' });
     const prepared = await plugin.vite.hotUpdate.handler.call(
       { environment: { name: 'client', transformRequest: vi.fn() } },
       { modules: [{ id, url: '/styles.ts' }], read: async () => css('p-8') },
     );
     expect(prepared).toEqual([]);
-    await plugin.watchChange(id, { event: 'update' });
 
     const structuralSource = `${css('p-8')}\nexport const changed = sx('m-4');`;
     await writeFile(id, structuralSource);
@@ -206,16 +205,17 @@ it('pushes CSS only Vite updates and handles stale, deleted, and failed source u
       releaseDelayedRead = resolve;
     });
     mocks.readStarted = markDelayedReadStarted;
-    watcherChange?.(delayedId);
+    const delayedUpdate = plugin.watchChange(delayedId, { event: 'update' });
     await delayedReadStarted;
     watcherClose?.();
     releaseDelayedRead();
+    await delayedUpdate;
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(mocks.compileViteStylesheet).toHaveBeenCalledTimes(compileCallsBeforeClose);
     mocks.readFileGate = undefined;
     mocks.readStarted = undefined;
 
-    watcherUnlink?.(id);
+    await plugin.watchChange(id, { event: 'delete' });
     watcherClose?.();
 
     const production = makePlugin({ mode: 'production' });
