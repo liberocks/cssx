@@ -76,6 +76,9 @@ for (const adapter of adapters) {
         const next = current === 'p-2' ? 'p-4' : 'p-2';
         source = source.replace("sx('" + current + "')", "sx('" + next + "')");
         const expected = next === 'p-2' ? '8px' : '16px';
+        expect(await page.locator('#target').evaluate((element) => getComputedStyle(element).paddingTop)).not.toBe(
+          expected,
+        );
         await page.evaluate((expectedPadding) => {
           const state = window as Window & {
             __cssxHmrExpectedPadding?: string;
@@ -408,26 +411,27 @@ async function waitForRollupBuild(watcher: RollupWatcher): Promise<void> {
 async function waitForRollupBuildOrQuiet(watcher: RollupWatcher): Promise<void> {
   await new Promise<void>((resolveBuild, rejectBuild) => {
     let started = false;
-    let ended = false;
-    let settleElapsed = false;
+    let quietTimer: ReturnType<typeof setTimeout> | undefined;
     const finish = (error?: Error) => {
-      clearTimeout(settleTimer);
+      clearTimeout(buildTimeout);
+      if (quietTimer) clearTimeout(quietTimer);
       watcher.off('event', onEvent);
       if (error) rejectBuild(error);
       else resolveBuild();
     };
-    const settleTimer = setTimeout(() => {
-      settleElapsed = true;
-      if (!started || ended) finish();
-    }, 75);
+    const buildTimeout = setTimeout(
+      () => finish(new Error('The Rollup watch rebuild did not complete within 5 seconds.')),
+      5_000,
+    );
     const onEvent = (event: RollupWatcherEvent) => {
       if (event.code === 'ERROR') {
         finish(event.error);
       } else if (event.code === 'START') {
         started = true;
+        if (quietTimer) clearTimeout(quietTimer);
       } else if (event.code === 'END' && started) {
-        ended = true;
-        if (settleElapsed) finish();
+        if (quietTimer) clearTimeout(quietTimer);
+        quietTimer = setTimeout(() => finish(), 75);
       }
     };
     watcher.on('event', onEvent);
