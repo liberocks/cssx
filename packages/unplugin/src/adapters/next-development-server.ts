@@ -21,7 +21,7 @@ interface DevelopmentServerState {
   readonly stylesheetFile: string;
   server?: import('node:http').Server;
   readonly clients: Set<import('node:http').ServerResponse>;
-  readonly blockedClients: Set<import('node:http').ServerResponse>;
+  readonly blockedClients: Map<import('node:http').ServerResponse, number>;
   references: number;
   revision: number;
   ready: boolean;
@@ -54,7 +54,7 @@ export function startNextDevelopmentServer(root: string, styleSheetFile: string)
     revision: 0,
     ready: false,
     clients,
-    blockedClients: new Set(),
+    blockedClients: new Map(),
     references: 1,
   };
   const server = createServer((request, response) => {
@@ -270,10 +270,11 @@ export function writeNextDevelopmentEvent(
   if (client.write(event)) {
     return;
   }
-  state.blockedClients.add(client);
+  const blockedRevision = state.revision;
+  state.blockedClients.set(client, blockedRevision);
   client.once('drain', () => {
     state.blockedClients.delete(client);
-    if (state.clients.has(client)) {
+    if (state.clients.has(client) && state.revision > blockedRevision) {
       writeLatestEvent(state, client);
     }
   });
