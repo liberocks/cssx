@@ -132,6 +132,7 @@ jobs:
         env:
           RELEASE_SHA: ${{ needs.validate.outputs.release-sha }}
         run: git checkout --detach "$RELEASE_SHA"
+        shell: bash
       - name: Install Rust 1.99.1
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Build the native compiler
