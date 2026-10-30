@@ -18,6 +18,8 @@ export interface CssxSourceModule {
   readonly atomicClasses?: readonly string[];
   /** Maps utility strings to source locations when they are available. */
   readonly origins?: Readonly<Record<string, CssxCandidateOrigin>>;
+  /** Complete utility CSS when a proven atomic transform compiled the module directly. */
+  readonly precompiledCss?: string;
 }
 
 /** A source map for generated CSS. */

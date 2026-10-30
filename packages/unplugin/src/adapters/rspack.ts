@@ -1,4 +1,4 @@
-import { rspack } from '..';
+import { rspack } from '../core/unplugin-factory';
 
 /**
  * Creates the CSSX adapter for Rspack.

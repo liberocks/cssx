@@ -1,13 +1,13 @@
-import { createClassNameAllocator } from '@cssxio/compiler';
 import { createUnplugin } from 'unplugin';
 import type { UnpluginFactory } from 'unplugin';
 
 import type { ViteServerLike } from '../adapters/configure-vite-development-server';
-import { createUniversalEsbuildHooks } from '../adapters/create-universal-esbuild-hooks';
+import type { UniversalEsbuildHooks } from '../adapters/create-universal-esbuild-hooks';
 import { createViteHotUpdateHandler } from '../adapters/create-vite-hot-update-handler';
 import type { NextDevelopmentHmrConnection } from '../adapters/next-development-server';
 import { configureNativeCompiler } from '../native/configure-native-compiler';
 import type { NativeCompiler } from '../native/native';
+import { createClassNameAllocator } from '../transforms/class-name-allocator';
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import { createGenerateBundleHandler } from './create-generate-bundle-handler';
 import {
@@ -28,7 +28,6 @@ export {
   type CssxStylesheet,
 } from '../native/stylesheet';
 export type { CssxPluginOptions } from './options';
-export { transformCssxModule, type IncomingSourceMap, type TransformResult } from '../transforms/transform';
 
 /** Matches supported source extensions before an optional query without scanning query text. */
 const SCRIPT_ID = /\.(?:[cm]?[jt]sx?|astro|vue|mdx?)(?=\?|$)/;
@@ -106,13 +105,23 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
    * @returns A promise for the configured theme source, or undefined.
    */
   const getTheme = (): Promise<string | undefined> => loadTheme(options, themeRoot);
-  const esbuildHooks = createUniversalEsbuildHooks({
-    options,
-    cssFileName,
-    sourceMap,
-    dataById: esbuildDataById,
-    getTheme,
-  });
+  let esbuildHooks: UniversalEsbuildHooks | undefined;
+  let esbuildHooksStartup: Promise<UniversalEsbuildHooks> | undefined;
+  const getEsbuildHooks = () => {
+    esbuildHooksStartup ??= import('../adapters/create-universal-esbuild-hooks').then(
+      ({ createUniversalEsbuildHooks }) => {
+        esbuildHooks = createUniversalEsbuildHooks({
+          options,
+          cssFileName,
+          sourceMap,
+          dataById: esbuildDataById,
+          getTheme,
+        });
+        return esbuildHooks;
+      },
+    );
+    return esbuildHooksStartup;
+  };
   const generateBundle = createGenerateBundleHandler({
     framework: meta.framework,
     options,
@@ -135,12 +144,12 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
           rollupDataById,
           esbuildDataById,
           cssFileName,
-          getEsbuildWorkingDirectory: esbuildHooks.getWorkingDirectory,
+          getEsbuildWorkingDirectory: () => esbuildHooks?.getWorkingDirectory() ?? process.cwd(),
           notifyViteStyles,
           notifyDevelopmentStyles: notifyRollupStyles,
           getDevelopmentHmrConnection:
             meta.framework === 'esbuild'
-              ? esbuildHooks.getDevelopmentHmrConnection
+              ? async () => (await getEsbuildHooks()).getDevelopmentHmrConnection()
               : () => rollupRuntimeStartup?.then((runtime) => runtime.getConnection()),
         }),
     );
@@ -329,7 +338,14 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
       : {}),
     ...(meta.framework === 'esbuild'
       ? {
-          esbuild: { config: esbuildHooks.config, setup: esbuildHooks.setup },
+          esbuild: {
+            config(buildOptions) {
+              buildOptions.metafile = true;
+            },
+            setup(build) {
+              return getEsbuildHooks().then((hooks) => hooks.setup(build));
+            },
+          },
         }
       : {}),
   };
@@ -366,7 +382,4 @@ export const webpack = unplugin.webpack;
  * @returns The Rspack plugin.
  */
 export const rspack = unplugin.rspack;
-/** Callable factory that creates the CSSX adapter for esbuild. */
-export { default as esbuild } from '../adapters/esbuild';
-
 export default unplugin;

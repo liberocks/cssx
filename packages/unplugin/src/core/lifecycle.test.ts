@@ -278,7 +278,7 @@ describe('unplugin lifecycle edges', () => {
         },
       };
       plugin.esbuild.config(build.initialOptions);
-      plugin.esbuild.setup(build);
+      await plugin.esbuild.setup(build);
       await onEnd?.({});
       await plugin.transform.handler(source, join(root, 'entry.ts'));
       await onEnd?.({ metafile: { inputs: { 'entry.ts': {} } } });
@@ -301,6 +301,14 @@ describe('unplugin lifecycle edges', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  it('uses the esbuild-specific development connection accessor', async () => {
+    const plugin = pluginFor('esbuild', { mode: 'development' });
+    const transformed = await plugin.transform.handler(source, '/project/entry.ts');
+
+    expect(transformed).toBeDefined();
+    expect(transformed.code).toContain('$$css');
   });
 
   it('covers direct esbuild loader variants and removes stale disk CSS maps', async () => {

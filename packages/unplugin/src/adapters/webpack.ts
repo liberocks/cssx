@@ -1,4 +1,4 @@
-import { webpack } from '..';
+import { webpack } from '../core/unplugin-factory';
 
 /**
  * Creates the CSSX adapter for webpack.

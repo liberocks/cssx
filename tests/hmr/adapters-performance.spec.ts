@@ -5,10 +5,11 @@ import cssxWebpack from '@cssxio/unplugin/webpack';
 import { expect, test } from '@playwright/test';
 import { rspack } from '@rspack/core';
 import { context as esbuildContext } from 'esbuild';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
-import { basename, join, relative } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { watch as rollupWatch } from 'rollup';
 import type { RollupWatcher, RollupWatcherEvent } from 'rollup';
 import webpack from 'webpack';
@@ -207,7 +208,10 @@ async function createFixture(adapter: AdapterName): Promise<Fixture> {
   const outputDirectory = join(root, 'dist');
   const sourceDirectory = join(root, 'src');
   const styleSource = join(workspaceRoot, 'style.js');
-  await Promise.all([mkdir(sourceDirectory, { recursive: true }), mkdir(workspaceRoot, { recursive: true })]);
+  const packageScope = join(workspaceRoot, 'node_modules', '@cssxio');
+  const cssxPackageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../../packages/cssx');
+  await Promise.all([mkdir(sourceDirectory, { recursive: true }), mkdir(packageScope, { recursive: true })]);
+  await symlink(cssxPackageDirectory, join(packageScope, 'cssx'), 'dir');
   const importPath = relative(sourceDirectory, styleSource).replaceAll('\\', '/');
   await writeFile(
     join(sourceDirectory, 'app.js'),

@@ -1,8 +1,9 @@
-import { createClassNameAllocator, type ClassNameAllocator } from '@cssxio/compiler';
+import type { ClassNameAllocator } from '@cssxio/compiler';
 
 import type { NextDevelopmentHmrConnection } from '../adapters/next-development-server';
 import type { CssxPluginOptions } from '../core/options';
 import { developmentPluginOptions, effectiveClassNameOptions } from '../core/options';
+import { createClassNameAllocator } from '../transforms/class-name-allocator';
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import { nativeBuildStateKey } from './native-build-state-key';
 

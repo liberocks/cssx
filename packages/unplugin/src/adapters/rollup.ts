@@ -1,4 +1,4 @@
-import { rollup } from '..';
+import { rollup } from '../core/unplugin-factory';
 
 /**
  * Creates the CSSX adapter for Rollup.
