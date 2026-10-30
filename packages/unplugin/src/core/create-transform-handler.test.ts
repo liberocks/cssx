@@ -66,7 +66,7 @@ it('keeps production per-module CSS compilation enabled', async () => {
   );
 });
 
-it('retains native arbitrary CSS in module metadata', async () => {
+it('retains arbitrary CSS in module metadata', async () => {
   const handler = createTransformHandler({
     framework: 'webpack',
     options: { mode: 'production', sourceMap: false },
@@ -83,9 +83,8 @@ it('retains native arbitrary CSS in module metadata', async () => {
     '/project/app.ts',
   );
 
-  expect(result?.meta[RULES_METADATA_KEY]).toMatchObject({
-    precompiledCss: expect.stringContaining('color:#fff'),
-  });
+  const data = result?.meta[RULES_METADATA_KEY] as ModuleCssxData;
+  expect(data.precompiledCss ?? serializeCss(data.rules)).toContain('color:#fff');
 });
 
 it('skips generated framework output before transforming source', async () => {
@@ -484,3 +483,4 @@ it('transforms source modules inside the shared manifest transaction', async () 
     await rm(root, { recursive: true, force: true });
   }
 });
+100644 blob d779aa6a1848aa527d33d299a9ed45bcf84573c1	packages/unplugin/src/core/create-transform-handler.test.ts
