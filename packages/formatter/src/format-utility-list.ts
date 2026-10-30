@@ -6,6 +6,9 @@ interface Candidate {
   readonly metadata: UtilityFormattingMetadata;
 }
 
+const metadataCache = new Map<string, UtilityFormattingMetadata | null>();
+const maxMetadataCacheEntries = 2048;
+
 /** Formats CSSX utility candidates into canonical semantic groups. */
 export function formatUtilityList(value: string): string {
   const tokens = splitCandidateList(value);
@@ -17,7 +20,7 @@ export function formatUtilityList(value: string): string {
   };
 
   for (const source of tokens) {
-    const metadata = describeUtilityFormatting(source);
+    const metadata = getMetadata(source);
     if (!metadata) {
       flush();
       output.push(source);
@@ -27,6 +30,23 @@ export function formatUtilityList(value: string): string {
   }
   flush();
   return output.join(' ');
+}
+
+function getMetadata(source: string): UtilityFormattingMetadata | null {
+  if (metadataCache.has(source)) {
+    const cached = metadataCache.get(source)!;
+    metadataCache.delete(source);
+    metadataCache.set(source, cached);
+    return cached;
+  }
+
+  const metadata = describeUtilityFormatting(source);
+  metadataCache.set(source, metadata);
+  if (metadataCache.size > maxMetadataCacheEntries) {
+    const oldest = metadataCache.keys().next().value;
+    metadataCache.delete(oldest!);
+  }
+  return metadata;
 }
 
 function sortSegment(candidates: readonly Candidate[]): string[] {

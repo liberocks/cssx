@@ -433,6 +433,10 @@ importers:
       tinyglobby:
         specifier: ^0.2.17
         version: 0.2.17
+    optionalDependencies:
+      '@cssxio/compiler-native':
+        specifier: ^0.2.0
+        version: link:../compiler-native
 
   packages/html:
     dependencies:

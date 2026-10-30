@@ -46,4 +46,10 @@ describe('formatUtilityList', () => {
     expect(formatUtilityList('   \t\n')).toBe('');
     expect(formatUtilityList('  p-2   ')).toBe('p-2');
   });
+
+  it('bounds metadata caching for large lists of distinct candidates', () => {
+    const candidates = Array.from({ length: 2049 }, (_, index) => `u${index.toString(36)}`);
+    const value = candidates.join(' ');
+    expect(formatUtilityList(value)).toBe(value);
+  });
 });

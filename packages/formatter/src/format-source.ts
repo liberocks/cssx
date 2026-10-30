@@ -1,6 +1,11 @@
 import { parseSync } from 'oxc-parser';
 
 import { formatUtilityList } from './format-utility-list';
+import {
+  loadNativeFormatter,
+  type NativeCssxFormatter,
+  type NativeCssxFormattingLiteral,
+} from './load-native-formatter';
 
 export interface FormatSourceOptions {
   readonly filename: string;
@@ -43,7 +48,41 @@ const extensions = new Set([
 
 /** Formats CSSX utility literals in recognized imported calls. */
 export function formatSource(source: string, options: FormatSourceOptions): FormatSourceResult {
+  const { filename, importSource = '@cssxio/cssx' } = options;
+  const extension = filename.slice(filename.lastIndexOf('.')).toLowerCase();
+  if (!extensions.has(extension)) {
+    return { code: source, changed: false, diagnostics: [] };
+  }
+  if (importSource.length > 0 && !source.includes(importSource) && !hasEscapedFromSpecifier(source)) {
+    return { code: source, changed: false, diagnostics: [] };
+  }
+
+  const nativeResult = formatSourceWithNativeFormatter(source, options, loadNativeFormatter());
+  if (nativeResult) {
+    return nativeResult;
+  }
   return formatSourceWithParser(source, options, parseSync);
+}
+
+function formatSourceWithNativeFormatter(
+  source: string,
+  options: FormatSourceOptions,
+  nativeFormatter: NativeCssxFormatter | undefined,
+): FormatSourceResult | undefined {
+  if (!nativeFormatter) {
+    return undefined;
+  }
+  try {
+    const literals = nativeFormatter.findCssxFormattingLiterals(
+      source,
+      options.filename,
+      options.importSource ?? '@cssxio/cssx',
+    );
+    return formatSourceWithLiterals(source, literals);
+  } catch {
+    // Preserve the existing Oxc JavaScript parser's diagnostics as the fallback.
+    return undefined;
+  }
 }
 
 function formatSourceWithParser(
@@ -56,7 +95,6 @@ function formatSourceWithParser(
   if (!extensions.has(extension)) {
     return { code: source, changed: false, diagnostics: [] };
   }
-
   let parsed: ReturnType<typeof parseSync>;
   try {
     parsed = parse(filename, source, { sourceType: 'module' });
@@ -85,6 +123,84 @@ function formatSourceWithParser(
     code = `${code.slice(0, edit.start)}${edit.text}${code.slice(edit.end)}`;
   }
   return { code, changed: code !== source, diagnostics: [] };
+}
+
+function formatSourceWithLiterals(
+  source: string,
+  literals: readonly NativeCssxFormattingLiteral[],
+): FormatSourceResult {
+  const edits: Edit[] = [];
+  for (const literal of literals) {
+    if (
+      !Number.isInteger(literal.start) ||
+      !Number.isInteger(literal.end) ||
+      literal.start < 0 ||
+      literal.end <= literal.start ||
+      literal.end > source.length
+    ) {
+      throw new Error('The native CSSX formatter returned an invalid source range.');
+    }
+    const quote = source[literal.start]!;
+    if (quote !== '"' && quote !== "'" && quote !== '`') {
+      throw new Error('The native CSSX formatter returned a range outside a string literal.');
+    }
+    const formatted = formatUtilityList(literal.value);
+    if (formatted !== literal.value) {
+      edits.push({ start: literal.start, end: literal.end, text: encodeLiteral(formatted, quote) });
+    }
+  }
+
+  if (edits.length === 0) {
+    return { code: source, changed: false, diagnostics: [] };
+  }
+  edits.sort((left, right) => right.start - left.start);
+  let code = source;
+  for (const edit of edits) {
+    code = `${code.slice(0, edit.start)}${edit.text}${code.slice(edit.end)}`;
+  }
+  return { code, changed: code !== source, diagnostics: [] };
+}
+
+function hasEscapedFromSpecifier(source: string): boolean {
+  let fromIndex = source.indexOf('from');
+  while (fromIndex >= 0) {
+    const previous = source[fromIndex - 1];
+    const next = source[fromIndex + 4];
+    if ((!previous || !/[\w$]/.test(previous)) && (!next || !/[\w$]/.test(next))) {
+      let cursor = fromIndex + 4;
+      while (cursor < source.length) {
+        while (cursor < source.length && /\s/.test(source[cursor]!)) {
+          cursor += 1;
+        }
+        if (source.startsWith('//', cursor)) {
+          const newline = source.indexOf('\n', cursor + 2);
+          cursor = newline < 0 ? source.length : newline + 1;
+          continue;
+        }
+        if (source.startsWith('/*', cursor)) {
+          const end = source.indexOf('*/', cursor + 2);
+          cursor = end < 0 ? source.length : end + 2;
+          continue;
+        }
+        break;
+      }
+
+      const quote = source[cursor];
+      if (quote === '"' || quote === "'") {
+        for (cursor += 1; cursor < source.length; cursor += 1) {
+          const character = source[cursor];
+          if (character === '\\') {
+            return true;
+          }
+          if (character === quote) {
+            break;
+          }
+        }
+      }
+    }
+    fromIndex = source.indexOf('from', fromIndex + 4);
+  }
+  return false;
 }
 
 function collectUtilityEdits(program: Node, rootScope: Scope, source: string, edits: Edit[]): void {
@@ -407,6 +523,9 @@ function errorMessage(error: unknown): string {
 /** Internal helpers exposed only from this source module for focused unit coverage. */
 export const formatSourceInternals = {
   formatSourceWithParser,
+  formatSourceWithNativeFormatter,
+  formatSourceWithLiterals,
+  hasEscapedFromSpecifier,
   collectUtilityEdits,
   formatValueExpression,
   formatLiteral,

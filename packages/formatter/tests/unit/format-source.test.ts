@@ -1,7 +1,9 @@
+import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
 
-import { formatSource } from '../../src/format-source';
+import { formatSource, formatSourceInternals } from '../../src/format-source';
 import * as formatter from '../../src/index';
+import type { NativeCssxFormatter } from '../../src/load-native-formatter';
 
 const options = { filename: 'example.tsx' };
 
@@ -95,9 +97,101 @@ describe('formatSource', () => {
     });
   });
 
+  it('skips parsing unrelated source and still detects escaped CSSX module specifiers', () => {
+    const unrelated = 'const broken = ;';
+    expect(formatSource(unrelated, options)).toEqual({ code: unrelated, changed: false, diagnostics: [] });
+
+    const escapedImport = String.raw`import { sx } from '\x40cssxio/cssx'; sx("bg-white p-4");`;
+    expect(formatSource(escapedImport, options).code).toContain('sx("p-4 bg-white")');
+  });
+
   it('uses a configured package source for import recognition', () => {
     const source = `import { sx } from 'custom-cssx'; sx("bg-white   p-4");`;
     expect(formatSource(source, { ...options, importSource: 'custom-cssx' }).code).toContain('sx("p-4 bg-white")');
     expect(formatSource(source, options).changed).toBe(false);
+  });
+
+  it('formats literals returned by the native source analyzer without invoking the JS parser', () => {
+    const source = `import { sx } from '@cssxio/cssx'; sx("bg-white   p-4");`;
+    const start = source.indexOf('"bg-white   p-4"');
+    const nativeFormatter: NativeCssxFormatter = {
+      findCssxFormattingLiterals: () => [{ start, end: start + '"bg-white   p-4"'.length, value: 'bg-white   p-4' }],
+    };
+
+    expect(formatSourceInternals.formatSourceWithNativeFormatter(source, options, nativeFormatter)).toEqual({
+      code: `import { sx } from '@cssxio/cssx'; sx("p-4 bg-white");`,
+      changed: true,
+      diagnostics: [],
+    });
+  });
+
+  it('falls back to the JavaScript parser when native parsing fails or returns invalid ranges', () => {
+    const source = `import { sx } from '@cssxio/cssx'; sx("bg-white   p-4");`;
+    const throwingFormatter: NativeCssxFormatter = {
+      findCssxFormattingLiterals: () => {
+        throw new Error('native parse error');
+      },
+    };
+    const invalidRangeFormatter: NativeCssxFormatter = {
+      findCssxFormattingLiterals: () => [{ start: 0, end: source.length + 1, value: 'bg-white p-4' }],
+    };
+
+    expect(formatSourceInternals.formatSourceWithNativeFormatter(source, options, undefined)).toBeUndefined();
+    expect(formatSourceInternals.formatSourceWithNativeFormatter(source, options, throwingFormatter)).toBeUndefined();
+    expect(
+      formatSourceInternals.formatSourceWithNativeFormatter(source, options, invalidRangeFormatter),
+    ).toBeUndefined();
+    expect(formatSource(source, options).code).toContain('sx("p-4 bg-white")');
+    expect(formatSourceInternals.formatSourceWithParser(source, { filename: 'example.css' }, parseSync)).toEqual({
+      code: source,
+      changed: false,
+      diagnostics: [],
+    });
+  });
+
+  it('handles native source ranges for every quote form and rejects invalid ranges', () => {
+    for (const quote of ['"', "'", '`']) {
+      const source = `${quote}bg-white p-4${quote}`;
+      expect(
+        formatSourceInternals.formatSourceWithLiterals(source, [
+          { start: 0, end: source.length, value: 'bg-white p-4' },
+        ]),
+      ).toEqual({ code: `${quote}p-4 bg-white${quote}`, changed: true, diagnostics: [] });
+    }
+    expect(
+      formatSourceInternals.formatSourceWithLiterals('"p-4 bg-white"', [
+        { start: 0, end: '"p-4 bg-white"'.length, value: 'p-4 bg-white' },
+      ]),
+    ).toEqual({ code: '"p-4 bg-white"', changed: false, diagnostics: [] });
+
+    const source = 'bg-white p-4';
+    for (const range of [
+      { start: Number.NaN, end: 2, value: 'p-4 bg-white' },
+      { start: 0, end: Number.NaN, value: 'p-4 bg-white' },
+      { start: -1, end: 2, value: 'p-4 bg-white' },
+      { start: 2, end: 2, value: 'p-4 bg-white' },
+      { start: 0, end: source.length + 1, value: 'p-4 bg-white' },
+    ]) {
+      expect(() => formatSourceInternals.formatSourceWithLiterals(source, [range])).toThrow('invalid source range');
+    }
+    expect(() =>
+      formatSourceInternals.formatSourceWithLiterals(source, [{ start: 0, end: source.length, value: 'p-4 bg-white' }]),
+    ).toThrow('outside a string literal');
+  });
+
+  it('detects escaped import sources through comments and ignores ordinary from tokens', () => {
+    const isEscaped = formatSourceInternals.hasEscapedFromSpecifier;
+    expect(isEscaped(String.raw`import { sx } from '\x40cssxio/cssx';`)).toBe(true);
+    expect(isEscaped(String.raw`import { sx } from /* comment */ '\x40cssxio/cssx';`)).toBe(true);
+    expect(
+      isEscaped(String.raw`import { sx } from
+      // comment
+      '\x40cssxio/cssx';`),
+    ).toBe(true);
+    expect(isEscaped('import { sx } from // comment without a newline')).toBe(false);
+    expect(isEscaped('import { sx } from /* comment without a close')).toBe(false);
+    expect(isEscaped(`import { sx } from '@cssxio/cssx';`)).toBe(false);
+    expect(isEscaped('const fromage = "other"; from')).toBe(false);
+    expect(isEscaped('from')).toBe(false);
   });
 });
