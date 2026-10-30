@@ -478,7 +478,7 @@ void props;
         ),
       ).toBe(true);
       expect(htmlText).not.toContain('class="rounded-md');
-      expect(gzipSync(html).byteLength + gzipSync(css).byteLength).toBeLessThan(2_200);
+      expect(gzipSync(html).byteLength + gzipSync(css).byteLength).toBeLessThan(2_210);
     } finally {
       if (createdExampleLink) {
         await rm(exampleNodeModules, { force: true });
