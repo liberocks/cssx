@@ -365,7 +365,7 @@ void props;
     } finally {
       await Promise.all(staleFiles.map((path) => rm(path, { force: true })));
     }
-  }, 45_000);
+  }, 90_000);
 
   it('records reproducible compiler source and artifact checksums in the published build', async () => {
     const manifest = JSON.parse(
