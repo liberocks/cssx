@@ -9,7 +9,13 @@ const execFileAsync = promisify(execFile);
 
 export const releasePackages = [
   { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [], registry: 'npm' },
-  { name: '@cssxio/compiler-native', directory: 'packages/compiler-native', dependencies: [], registry: 'npm' },
+  {
+    name: '@cssxio/compiler-native',
+    directory: 'packages/compiler-native',
+    sourceDirectories: ['packages/compiler/native'],
+    dependencies: [],
+    registry: 'npm',
+  },
   {
     name: '@cssxio/babel-plugin',
     directory: 'packages/babel-plugin',
@@ -183,7 +189,7 @@ async function findChangedPackageNames() {
   const changedPackageNames = new Set();
   for (const packageInfo of releasePackages) {
     const baseRef = (await latestReleaseTag(packageInfo.name)) ?? (await releaseBaselineTag());
-    if (!baseRef || (await pathChangedSince(baseRef, packageInfo.directory))) {
+    if (!baseRef || (await packageChangedSince(packageInfo, baseRef))) {
       changedPackageNames.add(packageInfo.name);
     }
   }
@@ -216,6 +222,14 @@ async function pathChangedSince(baseRef, directory) {
     if (typeof error === 'object' && error && 'code' in error && error.code === 1) return true;
     throw error;
   }
+}
+
+/** Checks the package directory and any source directories used to build its release artifact. */
+export async function packageChangedSince(packageInfo, baseRef, hasChangedPath = pathChangedSince) {
+  for (const directory of [packageInfo.directory, ...(packageInfo.sourceDirectories ?? [])]) {
+    if (await hasChangedPath(baseRef, directory)) return true;
+  }
+  return false;
 }
 
 async function readPackageManifest(packageInfo) {

@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createAutoReleasePlan,
   createAutoRetryPlan,
   incrementVersion,
   isVersionInRange,
+  packageChangedSince,
 } from '../../../scripts/release-plan.mjs';
 import type { ReleaseBump, ReleaseManifest } from '../../../scripts/release-plan.mjs';
 
@@ -15,6 +16,37 @@ const releases: readonly [ReleaseBump, string, string][] = [
 ];
 
 describe('release plan', () => {
+  it('tracks Rust workspace changes for the native package release', async () => {
+    const hasChangedPath = vi.fn(
+      async (_baseRef: string, directory: string) => directory === 'packages/compiler/native',
+    );
+
+    await expect(
+      packageChangedSince(
+        {
+          name: '@cssxio/compiler-native',
+          directory: 'packages/compiler-native',
+          sourceDirectories: ['packages/compiler/native'],
+          dependencies: [],
+        },
+        'release-baseline',
+        hasChangedPath,
+      ),
+    ).resolves.toBe(true);
+    expect(hasChangedPath).toHaveBeenNthCalledWith(1, 'release-baseline', 'packages/compiler-native');
+    expect(hasChangedPath).toHaveBeenNthCalledWith(2, 'release-baseline', 'packages/compiler/native');
+  });
+
+  it('reports no package changes when all release directories are unchanged', async () => {
+    await expect(
+      packageChangedSince(
+        { name: '@cssxio/compiler-native', directory: 'packages/compiler-native', dependencies: [] },
+        'release-baseline',
+        async () => false,
+      ),
+    ).resolves.toBe(false);
+  });
+
   it.each(releases)('increments a %s release', (bump, currentVersion, nextVersion) => {
     expect(incrementVersion(currentVersion, bump)).toBe(nextVersion);
   });

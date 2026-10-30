@@ -4,6 +4,7 @@ export type ReleaseRegistry = 'npm' | 'vscode';
 export type ReleasePackage = {
   readonly name: string;
   readonly directory: string;
+  readonly sourceDirectories?: readonly string[];
   readonly dependencies: readonly string[];
   readonly registry?: ReleaseRegistry;
 };
@@ -22,6 +23,11 @@ export type PlannedReleasePackage = ReleasePackage & {
 };
 
 export const releasePackages: readonly ReleasePackage[];
+export function packageChangedSince(
+  packageInfo: ReleasePackage,
+  baseRef: string,
+  hasChangedPath?: (baseRef: string, directory: string) => Promise<boolean>,
+): Promise<boolean>;
 export function createAutoReleasePlan(
   packageInfos: readonly ReleasePackage[],
   manifests: ReadonlyMap<string, ReleaseManifest>,
