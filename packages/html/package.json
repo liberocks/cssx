@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/html",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Zero-build runtime utility styling for static HTML.",
   "license": "MIT",
   "repository": {
@@ -27,6 +27,6 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@cssxio/compiler": "^0.12.0"
+    "@cssxio/compiler": "^0.13.0"
   }
 }
