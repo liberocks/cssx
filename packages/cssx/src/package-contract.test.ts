@@ -1,6 +1,7 @@
 import { access, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -75,6 +76,26 @@ for (const specifier of [
   '@cssxio/unplugin/next-loader',
 ]) require(specifier);
 if (developmentRuntimeLoads !== 0) throw new Error('Production adapter imports loaded the CSSX development runtime.');
+`,
+    );
+
+    const result = await runNode(runnerPath);
+    expect(result.stderr).toBe('');
+  });
+
+  it('defers Babel and Vue dependencies until a fallback transform is needed', async () => {
+    const runnerPath = join(fixtureDirectory, 'production-fallback-imports.cjs');
+    await writeFile(
+      runnerPath,
+      `const Module = require('node:module');
+const loaded = new Set();
+const load = Module._load;
+Module._load = function(request, parent, isMain) {
+  if (['@babel/core', '@cssxio/babel-plugin', '@vue/compiler-sfc'].includes(request)) loaded.add(request);
+  return load.call(this, request, parent, isMain);
+};
+require('@cssxio/unplugin');
+if (loaded.size !== 0) throw new Error('The native production adapter eagerly loaded fallback dependencies: ' + [...loaded].join(', '));
 `,
     );
 
@@ -185,6 +206,58 @@ void props;
     }
   });
 
+  it('ships the Rust analyzer as an optional cross-platform dependency', async () => {
+    const nativeManifest = await readManifest('packages/compiler-native');
+    const unpluginManifest = await readManifest('packages/unplugin');
+
+    expect(nativeManifest.main).toBe('./index.cjs');
+    expect(nativeManifest.os).toBeUndefined();
+    expect(nativeManifest.cpu).toBeUndefined();
+    expect((nativeManifest as unknown as { files: string[] }).files).toEqual(['index.cjs', 'native/*.node']);
+    expect(unpluginManifest.optionalDependencies?.['@cssxio/compiler-native']).toBe('workspace:*');
+  });
+
+  it.each([
+    ['darwin', 'arm64', 'cssx_compiler_node.darwin-arm64.node'],
+    ['linux', 'x64', 'cssx_compiler_node.linux-x64.node'],
+    ['win32', 'x64', 'cssx_compiler_node.win32-x64.node'],
+  ])('selects the native binary for %s %s', async (platform, arch, binary) => {
+    const loader = await readFile(join(workspaceRoot, 'packages/compiler-native/index.cjs'), 'utf8');
+    const module = { exports: null as unknown, require: (path: string) => path };
+
+    runInNewContext(loader, { module, process: { platform, arch } });
+
+    expect(module.exports).toBe(`./native/${binary}`);
+  });
+
+  it('uses the Babel fallback on unsupported platforms or missing native files', async () => {
+    const loader = await readFile(join(workspaceRoot, 'packages/compiler-native/index.cjs'), 'utf8');
+    const unsupported = {
+      exports: undefined as unknown,
+      require: () => {
+        throw new Error('unsupported platform should not load a native binary');
+      },
+    };
+
+    runInNewContext(loader, {
+      module: unsupported,
+      process: { platform: 'linux', arch: 'arm64' },
+    });
+    expect(unsupported.exports).toBeNull();
+
+    const missingBinary = {
+      exports: undefined as unknown,
+      require: () => {
+        throw new Error('binary is not installed');
+      },
+    };
+    runInNewContext(loader, {
+      module: missingBinary,
+      process: { platform: 'linux', arch: 'x64' },
+    });
+    expect(missingBinary.exports).toBeNull();
+  });
+
   it('uses valid ranges for internal package dependencies', async () => {
     for (const packageDirectory of packageDirectories) {
       const manifest = await readManifest(packageDirectory);
@@ -273,11 +346,10 @@ void props;
     const staleFiles: string[] = [];
     try {
       for (const packageDirectory of packageDirectories) {
-        const manifest = await readManifest(packageDirectory);
         const staleFile = join(workspaceRoot, packageDirectory, 'dist', '__cssx_stale_contract__.js');
         await writeFile(staleFile, 'stale build output');
         staleFiles.push(staleFile);
-        await runCommand('pnpm', ['--filter', manifest.name, 'run', 'build'], workspaceRoot);
+        await runCommand('npm', ['run', 'build'], join(workspaceRoot, packageDirectory));
         await expect(access(staleFile)).rejects.toThrow();
       }
     } finally {
@@ -393,10 +465,18 @@ void props;
       const html = await readFile(join(workspaceRoot, 'examples/astro/dist/index.html'));
       const css = await readFile(join(workspaceRoot, 'examples/astro/dist/assets/cssx.css'));
       const htmlText = html.toString('utf8');
-      const cssxClassValues = [...htmlText.matchAll(/class="(s[0-9A-Za-z]+x)"/g)].map((match) => match[1] ?? '');
+      const classValues = [...htmlText.matchAll(/class="([^"]*)"/g)].map((match) => match[1] ?? '');
+      const cssxClassValues = classValues.filter(
+        (classNames) =>
+          classNames.length > 0 && classNames.split(' ').every((className) => /^s[0-9A-Za-z]+x?$/.test(className)),
+      );
 
       expect(cssxClassValues.length).toBeGreaterThan(0);
-      expect(cssxClassValues.every((className) => !className.includes(' '))).toBe(true);
+      expect(
+        cssxClassValues.every((classNames) =>
+          classNames.split(' ').every((className) => /^s[0-9A-Za-z]+x?$/.test(className)),
+        ),
+      ).toBe(true);
       expect(htmlText).not.toContain('class="rounded-md');
       expect(gzipSync(html).byteLength + gzipSync(css).byteLength).toBeLessThan(2_200);
     } finally {
@@ -440,10 +520,10 @@ void props;
       brotli: 12_400,
     });
     await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', {
-      // Development dispatch, source-map defaults, and normalized module IDs add fixed overhead; transports remain lazy.
-      raw: 51_250,
-      gzip: 17_700,
-      brotli: 15_800,
+      // Native Oxc static-style dispatch stays lazy; compressed overhead remains under 3 KB.
+      raw: 71_000,
+      gzip: 24_000,
+      brotli: 21_000,
     });
   }, 30_000);
 

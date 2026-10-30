@@ -12,6 +12,7 @@ import { transformCssxCall } from './transforms/transform-cssx-call';
 const DEFAULT_IMPORT_SOURCE = '@cssxio/cssx';
 
 export type { CssxPluginOptions } from './state/plugin-types';
+export { cssOnlySignature } from './state/css-only-signature';
 
 /**
  * Compiles CSSX calls in one source module.

@@ -10,7 +10,7 @@ export function dataFromValue(value: unknown): ModuleCssxData {
   if (!value || typeof value !== 'object') {
     return emptyModuleCssxData();
   }
-  const { id, rules, candidates, composites, atomicClasses, origins, cssOnlySignature } =
+  const { id, rules, candidates, composites, atomicClasses, origins, cssOnlySignature, precompiledCss } =
     value as Partial<ModuleCssxData>;
   return {
     id: typeof id === 'string' ? id : '',
@@ -20,5 +20,6 @@ export function dataFromValue(value: unknown): ModuleCssxData {
     ...(Array.isArray(atomicClasses) ? { atomicClasses } : {}),
     origins: origins && typeof origins === 'object' ? origins : {},
     cssOnlySignature: typeof cssOnlySignature === 'string' ? cssOnlySignature : '',
+    ...(typeof precompiledCss === 'string' ? { precompiledCss } : {}),
   };
 }

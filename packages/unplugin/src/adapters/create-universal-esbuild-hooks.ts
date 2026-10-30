@@ -8,7 +8,6 @@ import { developmentPluginOptions } from '../core/options';
 import type { CssxPluginOptions } from '../core/options';
 import { compileCssxStylesheet, cssWithSourceMapComment } from '../native/stylesheet';
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
-import { scanProjectCssxSourceModules } from '../transforms/project-scan';
 import type { NextDevelopmentHmrConnection } from './next-development-server';
 
 /** Configuration needed by the universal esbuild adapter hooks. */
@@ -30,7 +29,7 @@ export interface UniversalEsbuildHooks {
   /** Enables metadata collection before esbuild starts the build. */
   readonly config: (buildOptions: BuildOptions) => void;
   /** Registers stylesheet generation after esbuild completes. */
-  readonly setup: (build: PluginBuild) => void;
+  readonly setup: (build: PluginBuild) => void | Promise<void>;
   /** Returns esbuild's configured working directory for module transforms. */
   readonly getWorkingDirectory: () => string;
   /** Returns the explicit development browser transport when active. */
@@ -107,7 +106,9 @@ export function createUniversalEsbuildHooks(configuration: CreateUniversalEsbuil
 
         const sourceData =
           !development && options.coordination === 'manifest'
-            ? await scanProjectCssxSourceModules(workingDirectory, options)
+            ? await import('../transforms/project-scan').then(({ scanProjectCssxSourceModules }) =>
+                scanProjectCssxSourceModules(workingDirectory, options),
+              )
             : [...dataById.values()];
         const compiled = await compileCssxStylesheet(
           sourceData,

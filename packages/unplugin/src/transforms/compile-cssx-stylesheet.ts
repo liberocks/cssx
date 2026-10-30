@@ -1,9 +1,9 @@
-import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
 import type { DarkMode } from '@cssxio/compiler';
 
 import { CSSX_PREFLIGHT } from '../core/preflight';
 import type { CssxSourceModule, CssxSourceOrigin, CssxStylesheet } from '../native/stylesheet-types';
 import { createCssSourceMap } from '../source-map/create-css-source-map';
+import { loadNativeAnalyzer } from './load-native-analyzer';
 
 /**
  * Builds one stylesheet from source module data.
@@ -24,6 +24,18 @@ export async function compileCssxStylesheet(
   darkMode?: DarkMode,
   preflight = true,
 ): Promise<CssxStylesheet> {
+  const precompiled = !sourceMap && data.filter(hasStyleData).length <= 1 && data.every(isPrecompiledOrEmpty);
+  if (precompiled) {
+    const rules = [...new Set(data.map((module) => module.precompiledCss).filter(isString))].sort().join('');
+    const preflightCss = preflight ? CSSX_PREFLIGHT : '';
+    const content = `${preflightCss}${rules}`;
+    if (!content) {
+      return { css: '' };
+    }
+    const layerPrefix = layer ? `@layer ${layer}{` : '';
+    return { css: `${layerPrefix}${content}${layerPrefix ? '}' : ''}` };
+  }
+
   const candidates: Record<string, string> = Object.create(null) as Record<string, string>;
   const composites: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
   const atomicClasses = new Set<string>();
@@ -59,6 +71,7 @@ export async function compileCssxStylesheet(
     const css = preflightCss && layer ? `@layer ${layer}{${preflightCss}}` : preflightCss;
     return { css };
   }
+  const { compileUtilities, createSelectorAliases, serializeCss } = await import('@cssxio/compiler');
   const compiled = await compileUtilities(
     names,
     (candidate) => candidates[candidate]!,
@@ -67,10 +80,30 @@ export async function compileCssxStylesheet(
     hasAtomicClassMetadata ? atomicClasses : undefined,
     { darkMode },
   );
+  const utilityCss =
+    !sourceMap && loadNativeAnalyzer() ? serializeCss([{ className: '', css: compiled.css }]) : compiled.css;
   const layerPrefix = layer ? `@layer ${layer}{` : '';
-  const css = `${layerPrefix}${preflightCss}${compiled.css}${layerPrefix ? '}' : ''}`;
+  const css = `${layerPrefix}${preflightCss}${utilityCss}${layerPrefix ? '}' : ''}`;
   const map = sourceMap
     ? createCssSourceMap(`${layerPrefix}${preflightCss}${compiled.prefixCss}`, compiled.entries, origins)
     : undefined;
   return { css, ...(map ? { map } : {}) };
+}
+
+/** Checks whether a source module already has all CSS needed by the stylesheet. */
+function isPrecompiledOrEmpty(module: CssxSourceModule): boolean {
+  return (
+    typeof module.precompiledCss === 'string' ||
+    (Object.keys(module.candidates).length === 0 && Object.keys(module.composites ?? {}).length === 0)
+  );
+}
+
+/** Checks whether a source module contributes candidates or composites. */
+function hasStyleData(module: CssxSourceModule): boolean {
+  return Object.keys(module.candidates).length > 0 || Object.keys(module.composites ?? {}).length > 0;
+}
+
+/** Narrows optional CSS strings for joining. */
+function isString(value: string | undefined): value is string {
+  return value !== undefined;
 }

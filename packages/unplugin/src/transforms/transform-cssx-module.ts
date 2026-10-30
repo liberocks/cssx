@@ -1,12 +1,9 @@
 import type { transformAsync } from '@babel/core';
 import type { ClassNameAllocator, CssxRule } from '@cssxio/compiler';
 
-import { transformAstroSxModule } from '../adapters/transform-astro-sx';
-import { transformVueSfcModule } from '../adapters/transform-vue-sfc';
 import { assertPluginOptions, type CssxPluginOptions } from '../core/options';
 import type { CssxCandidateOrigin } from '../native/stylesheet';
 import type { IncomingSourceMap } from '../source-map/source-map-from-context';
-import { transformBabelCssxModule } from './transform-babel-cssx-module';
 
 /** The result of transforming one source module. */
 export interface TransformResult {
@@ -24,6 +21,8 @@ export interface TransformResult {
   readonly origins: Readonly<Record<string, CssxCandidateOrigin>>;
   /** Source with CSSX utility literals removed, used to identify CSS-only edits. */
   readonly cssOnlySignature: string;
+  /** Complete CSS for a module handled by the restricted arbitrary-property compiler. */
+  readonly precompiledCss?: string;
   /** Source map that continues a map supplied by an earlier transform. */
   readonly map?: NonNullable<Awaited<ReturnType<typeof transformAsync>>>['map'];
 }
@@ -79,10 +78,46 @@ export async function transformCssxModule(
     return null;
   }
   if (sourceId.endsWith('.astro')) {
+    const { transformAstroSxModule } = await import('../adapters/transform-astro-sx');
     return transformAstroSxModule(code, id, options, transformCssxModule, transformOptions);
   }
   if (sourceId.endsWith('.vue')) {
+    const { transformVueSfcModule } = await import('../adapters/transform-vue-sfc');
     return transformVueSfcModule(code, id, options, transformCssxModule, transformOptions);
   }
+  if (
+    options.mode === 'development' &&
+    options.stableClassNames === true &&
+    options.stableClassNameStrategy === 'module-order' &&
+    transformOptions.compileCss === false
+  ) {
+    const { tryTransformNativeStaticSxModule } = await import('./try-transform-native-static-sx');
+    const nativeTransform = await tryTransformNativeStaticSxModule(
+      code,
+      id,
+      sourceId,
+      options,
+      inputSourceMap,
+      transformOptions,
+    );
+    if (nativeTransform) {
+      return nativeTransform;
+    }
+  }
+  if (options.mode !== 'development' && transformOptions.compileCss !== false) {
+    const { tryTransformNativeStaticCreateModule } = await import('./try-transform-native-static-create');
+    const nativeStaticCreateTransform = await tryTransformNativeStaticCreateModule(
+      code,
+      id,
+      sourceId,
+      options,
+      inputSourceMap,
+      transformOptions,
+    );
+    if (nativeStaticCreateTransform) {
+      return nativeStaticCreateTransform;
+    }
+  }
+  const { transformBabelCssxModule } = await import('./transform-babel-cssx-module');
   return transformBabelCssxModule(code, sourceId, options, inputSourceMap, transformOptions);
 }

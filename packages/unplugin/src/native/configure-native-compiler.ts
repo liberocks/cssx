@@ -1,16 +1,9 @@
 import { resolve } from 'node:path';
 
-import { startDevelopmentCoordinator } from '../adapters/development-coordinator';
-import {
-  publishNextDevelopmentStylesheet,
-  startNextDevelopmentServer,
-  stopNextDevelopmentServer,
-} from '../adapters/next-development-server';
 import { configureCompilationAsset } from '../core/configure-compilation-asset';
 import { developmentPluginOptions, isDevelopmentMode, type CssxPluginOptions } from '../core/options';
 import { RULES_METADATA_KEY } from '../transforms/module-cssx-data';
 import { moduleId } from '../transforms/module-id';
-import { getCachedProjectScanSourceModules, scanProjectCssxSourceModules } from '../transforms/project-scan';
 import type { NativeCompiler } from './native';
 import { nativeBuildState } from './native-build-state';
 import { compileCssxStylesheet, cssWithSourceMapComment } from './stylesheet';
@@ -66,19 +59,26 @@ export function configureNativeCompiler({
         return;
       }
       const styleSheetFile = resolve(compiler.context, '.cssx/native.css');
-      const developmentHmr = startNextDevelopmentServer(compiler.context, styleSheetFile);
-      sharedNativeState.developmentHmr = developmentHmr;
-      coordinatorStartup = startDevelopmentCoordinator(
-        compiler.context,
-        styleSheetFile,
-        compilationOptions,
-        developmentHmr,
-      );
+      let developmentHmr: typeof sharedNativeState.developmentHmr;
       let notifyRevision = 0;
       let notifyPending: Promise<void> | undefined;
-      sharedNativeState.notifyDevelopmentStylesheet = () => {
-        if (compilationRuns <= 1 || sharedNativeState.developmentHmr !== developmentHmr) {
-          return Promise.resolve();
+      coordinatorStartup = Promise.all([
+        import('../adapters/development-coordinator'),
+        import('../adapters/next-development-server'),
+      ]).then(([coordinator, developmentServer]) => {
+        developmentHmr = developmentServer.startNextDevelopmentServer(compiler.context, styleSheetFile);
+        sharedNativeState.developmentHmr = developmentHmr;
+        return coordinator.startDevelopmentCoordinator(
+          compiler.context,
+          styleSheetFile,
+          compilationOptions,
+          developmentHmr,
+        );
+      });
+      sharedNativeState.notifyDevelopmentStylesheet = async () => {
+        await coordinatorStartup?.catch(() => undefined);
+        if (!developmentHmr || compilationRuns <= 1 || sharedNativeState.developmentHmr !== developmentHmr) {
+          return;
         }
         notifyRevision++;
         if (!notifyPending) {
@@ -87,6 +87,7 @@ export function configureNativeCompiler({
               let publishedRevision = -1;
               do {
                 publishedRevision = notifyRevision;
+                const { getCachedProjectScanSourceModules } = await import('../transforms/project-scan');
                 const sourceData = getCachedProjectScanSourceModules(compiler.context, compilationOptions);
                 const stylesheet = await compileCssxStylesheet(
                   sourceData ?? [...sharedNativeState.transformedDataById.values()],
@@ -98,9 +99,11 @@ export function configureNativeCompiler({
                 );
                 const css = cssWithSourceMapComment(stylesheet, 'generated.css');
                 if (
+                  developmentHmr &&
                   sharedNativeState.developmentHmr === developmentHmr &&
                   sharedNativeState.developmentStylesheet !== css
                 ) {
+                  const { publishNextDevelopmentStylesheet } = await import('../adapters/next-development-server');
                   await publishNextDevelopmentStylesheet(developmentHmr, css);
                   sharedNativeState.developmentStylesheet = css;
                 }
@@ -125,13 +128,15 @@ export function configureNativeCompiler({
   if (development) {
     compiler.hooks?.watchClose?.tap('@cssxio/unplugin', () => {
       void coordinatorStartup?.then(
-        (stop) => {
+        async (stop) => {
           stop();
+          const { stopNextDevelopmentServer } = await import('../adapters/next-development-server');
           stopNextDevelopmentServer(compiler.context);
           sharedNativeState.developmentHmr = undefined;
           sharedNativeState.developmentStylesheet = undefined;
         },
-        () => {
+        async () => {
+          const { stopNextDevelopmentServer } = await import('../adapters/next-development-server');
           stopNextDevelopmentServer(compiler.context);
           sharedNativeState.developmentHmr = undefined;
           sharedNativeState.developmentStylesheet = undefined;
@@ -151,7 +156,10 @@ export function configureNativeCompiler({
     compilationOptions.darkMode,
     compilationOptions.preflight,
     !development && (options.stableClassNames || options.naming === 'source' || options.coordination === 'manifest')
-      ? () => scanProjectCssxSourceModules(compiler.context, options)
+      ? () =>
+          import('../transforms/project-scan').then(({ scanProjectCssxSourceModules }) =>
+            scanProjectCssxSourceModules(compiler.context, options),
+          )
       : undefined,
     compilationOptions,
   );

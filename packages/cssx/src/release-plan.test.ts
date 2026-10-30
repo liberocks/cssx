@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createAutoReleasePlan,
   createAutoRetryPlan,
   incrementVersion,
   isVersionInRange,
+  packageChangedSince,
 } from '../../../scripts/release-plan.mjs';
 import type { ReleaseBump, ReleaseManifest } from '../../../scripts/release-plan.mjs';
 
@@ -15,6 +16,37 @@ const releases: readonly [ReleaseBump, string, string][] = [
 ];
 
 describe('release plan', () => {
+  it('tracks Rust workspace changes for the native package release', async () => {
+    const hasChangedPath = vi.fn(
+      async (_baseRef: string, directory: string) => directory === 'packages/compiler/native',
+    );
+
+    await expect(
+      packageChangedSince(
+        {
+          name: '@cssxio/compiler-native',
+          directory: 'packages/compiler-native',
+          sourceDirectories: ['packages/compiler/native'],
+          dependencies: [],
+        },
+        'release-baseline',
+        hasChangedPath,
+      ),
+    ).resolves.toBe(true);
+    expect(hasChangedPath).toHaveBeenNthCalledWith(1, 'release-baseline', 'packages/compiler-native');
+    expect(hasChangedPath).toHaveBeenNthCalledWith(2, 'release-baseline', 'packages/compiler/native');
+  });
+
+  it('reports no package changes when all release directories are unchanged', async () => {
+    await expect(
+      packageChangedSince(
+        { name: '@cssxio/compiler-native', directory: 'packages/compiler-native', dependencies: [] },
+        'release-baseline',
+        async () => false,
+      ),
+    ).resolves.toBe(false);
+  });
+
   it.each(releases)('increments a %s release', (bump, currentVersion, nextVersion) => {
     expect(incrementVersion(currentVersion, bump)).toBe(nextVersion);
   });
@@ -45,6 +77,26 @@ describe('release plan', () => {
       expect.objectContaining({ name: '@cssxio/compiler', bump: 'minor', nextVersion: '0.3.0' }),
       expect.objectContaining({ name: '@cssxio/babel-plugin', bump: 'patch', nextVersion: '0.2.2' }),
       expect.objectContaining({ name: '@cssxio/unplugin', bump: 'patch', nextVersion: '0.2.1' }),
+    ]);
+  });
+
+  it('includes dependents when an optional native dependency changes incompatibly', () => {
+    const packages = [
+      { name: '@cssxio/compiler-native', directory: 'packages/compiler-native', dependencies: [] },
+      {
+        name: '@cssxio/unplugin',
+        directory: 'packages/unplugin',
+        dependencies: ['@cssxio/compiler-native'],
+      },
+    ];
+    const manifests = new Map<string, ReleaseManifest>([
+      ['@cssxio/compiler-native', { version: '0.1.0' }],
+      ['@cssxio/unplugin', { version: '0.11.0', optionalDependencies: { '@cssxio/compiler-native': '^0.1.0' } }],
+    ]);
+
+    expect(createAutoReleasePlan(packages, manifests, new Set(['@cssxio/compiler-native']), 'minor')).toEqual([
+      expect.objectContaining({ name: '@cssxio/compiler-native', bump: 'minor', nextVersion: '0.2.0' }),
+      expect.objectContaining({ name: '@cssxio/unplugin', bump: 'patch', nextVersion: '0.11.1' }),
     ]);
   });
 

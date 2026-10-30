@@ -1,4 +1,4 @@
-import { vite } from '..';
+import { vite } from '../core/unplugin-factory';
 
 /**
  * Creates the CSSX adapter for Vite.

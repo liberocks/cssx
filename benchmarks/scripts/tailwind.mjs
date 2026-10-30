@@ -34,8 +34,34 @@ export async function runTailwindBenchmark(variant = 'large') {
   );
 }
 
+/** Compiles the same pre-extracted candidate workload as CSSX and returns CSS only. */
+export async function runTailwindUtilityBenchmark(variant = 'large') {
+  const workload = createWorkload(variant);
+  const candidates = [...new Set(workload.tailwindCandidates)];
+  return measure(
+    `Tailwind pre-extracted utility compilation (${workload.variant})`,
+    async () => {
+      const compiler = await compileTailwind('@import "tailwindcss/utilities.css" source(none);', {
+        base: dirname(tailwindCssPath),
+        loadStylesheet: async (id) => {
+          if (id !== 'tailwindcss/utilities.css') {
+            throw new Error(`Unexpected Tailwind stylesheet request: ${id}`);
+          }
+          return { content: tailwindCss, base: dirname(tailwindCssPath) };
+        },
+      });
+      return { js: '', css: compiler.build(candidates) };
+    },
+    (artifacts) => validateCss(artifacts.css, workload),
+  );
+}
+
 if (isDirectExecution(import.meta.url)) {
-  const result = await runTailwindBenchmark(readVariantArgument(process.argv.slice(2)));
+  const utilitiesOnly = process.argv.includes('--utilities');
+  const argumentsList = process.argv.slice(2).filter((argument) => argument !== '--utilities');
+  const result = utilitiesOnly
+    ? await runTailwindUtilityBenchmark(readVariantArgument(argumentsList))
+    : await runTailwindBenchmark(readVariantArgument(argumentsList));
   if (process.argv.includes('--json')) {
     process.stdout.write(JSON.stringify(result));
   } else {

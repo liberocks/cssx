@@ -7,6 +7,7 @@ import { expect, it, vi } from 'vitest';
 import { nativeBuildState } from '../native/native-build-state';
 import { RULES_METADATA_KEY, type ModuleCssxData } from '../transforms/module-cssx-data';
 import * as projectScan from '../transforms/project-scan';
+import * as transformModule from '../transforms/transform';
 import { createTransformHandler } from './create-transform-handler';
 
 it('transforms utilities and records module data for CSS extraction', async () => {
@@ -64,6 +65,80 @@ it('keeps production per-module CSS compilation enabled', async () => {
   expect(serializeCss((result!.meta[RULES_METADATA_KEY] as ModuleCssxData).rules)).toContain(
     'padding:calc(0.25rem * 4)',
   );
+});
+
+it('retains arbitrary CSS in module metadata', async () => {
+  const handler = createTransformHandler({
+    framework: 'webpack',
+    options: { mode: 'production', sourceMap: false },
+    classNameAllocator: createClassNameAllocator(),
+    rollupDataById: new Map(),
+    esbuildDataById: new Map(),
+    cssFileName: 'cssx.css',
+    getEsbuildWorkingDirectory: () => '/project',
+    notifyViteStyles: vi.fn(),
+  });
+  const result = await handler.call(
+    {},
+    "import { create, props } from '@cssxio/cssx'; const styles = create({ root: '[color:#fff]' }); export const value = props(styles.root);",
+    '/project/app.ts',
+  );
+
+  const data = result?.meta[RULES_METADATA_KEY] as ModuleCssxData;
+  expect(data.precompiledCss ?? serializeCss(data.rules)).toContain('color:#fff');
+});
+
+it('stores precompiled CSS returned by the module transform', async () => {
+  const transform = vi.spyOn(transformModule, 'transformCssxModule').mockResolvedValue({
+    code: 'export const value = {};',
+    rules: [],
+    candidates: {},
+    composites: {},
+    atomicClasses: [],
+    origins: {},
+    cssOnlySignature: '',
+    precompiledCss: '.d1{color:#fff}',
+  });
+  try {
+    const handler = createTransformHandler({
+      framework: 'webpack',
+      options: { mode: 'production' },
+      classNameAllocator: createClassNameAllocator(),
+      rollupDataById: new Map(),
+      esbuildDataById: new Map(),
+      cssFileName: 'cssx.css',
+      getEsbuildWorkingDirectory: () => '/project',
+      notifyViteStyles: vi.fn(),
+    });
+    const result = await handler.call({}, "import { sx } from '@cssxio/cssx'; sx('p-4');", '/project/app.ts');
+
+    expect((result?.meta[RULES_METADATA_KEY] as ModuleCssxData).precompiledCss).toBe('.d1{color:#fff}');
+  } finally {
+    transform.mockRestore();
+  }
+});
+
+it('skips generated framework output before transforming source', async () => {
+  const rollupDataById = new Map<string, ModuleCssxData>();
+  const handler = createTransformHandler({
+    framework: 'rollup',
+    options: {},
+    classNameAllocator: createClassNameAllocator(),
+    rollupDataById,
+    esbuildDataById: new Map(),
+    cssFileName: 'cssx.css',
+    getEsbuildWorkingDirectory: () => '/project',
+    notifyViteStyles: vi.fn(),
+  });
+
+  await expect(
+    handler.call(
+      {},
+      "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');",
+      '/project/.open-next/page.ts',
+    ),
+  ).resolves.toBeNull();
+  expect(rollupDataById).toEqual(new Map());
 });
 
 it('shares development atomic allocations across modules and repeated utilities', async () => {

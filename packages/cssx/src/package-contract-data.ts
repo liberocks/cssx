@@ -102,8 +102,10 @@ export const approvedDependencies = new Set([
   '@babel/core',
   '@cssxio/babel-plugin',
   '@cssxio/compiler',
+  '@cssxio/compiler-native',
   '@vue/compiler-sfc',
   'esbuild',
+  'magic-string',
   'unplugin',
 ]);
 
@@ -121,7 +123,10 @@ export type ExportTarget = { readonly types: string; readonly import: string; re
 /** Package manifest fields used by the package-contract suite. */
 export type PackageManifest = {
   readonly name: string;
+  readonly main?: string;
   readonly exports: Readonly<Record<string, ExportTarget>>;
+  readonly os?: readonly string[];
+  readonly cpu?: readonly string[];
   readonly dependencies?: Readonly<Record<string, string>>;
   readonly devDependencies?: Readonly<Record<string, string>>;
   readonly optionalDependencies?: Readonly<Record<string, string>>;

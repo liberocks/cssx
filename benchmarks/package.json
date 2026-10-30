@@ -17,6 +17,8 @@
     "benchmark:cssx-utilities": "node scripts/cssx-utilities.mjs",
     "prebenchmark:tailwind": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && node scripts/assert-compiler-build.mjs",
     "benchmark:tailwind": "node scripts/tailwind.mjs",
+    "prebenchmark:tailwind-utilities": "pnpm --dir ../packages/compiler build && node scripts/assert-compiler-build.mjs",
+    "benchmark:tailwind-utilities": "node scripts/tailwind.mjs --utilities",
     "prebenchmark:stylex": "pnpm --dir ../packages/compiler build && pnpm --dir ../packages/babel-plugin build && node scripts/assert-compiler-build.mjs",
     "benchmark:stylex": "node scripts/stylex.mjs",
     "benchmark:styled-components": "node scripts/styled-components.mjs",

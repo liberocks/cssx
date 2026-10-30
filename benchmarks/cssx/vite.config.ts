@@ -8,6 +8,7 @@ export default defineConfig({
       cssFileName: 'cssx.css',
       sourceMap: false,
       theme: '@theme { --font-display: Georgia, "Times New Roman", serif; }',
+      ...(process.env.CSSX_BENCHMARK_LEGACY_NAMES === '1' ? { className: { prefix: 's', suffix: 'x' } } : {}),
     }),
     react(),
   ],

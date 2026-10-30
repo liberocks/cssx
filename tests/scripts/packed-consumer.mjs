@@ -12,6 +12,7 @@ const root = resolve(import.meta.dirname, '../..');
 const packageCommand = (name) => (process.platform === 'win32' && name !== 'bun' ? `${name}.cmd` : name);
 const command = packageCommand(manager);
 const packageDirectories = [
+  'packages/compiler-native',
   'packages/compiler',
   'packages/cssx',
   'packages/babel-plugin',
@@ -80,6 +81,7 @@ try {
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
     for (const [name, tarball] of tarballByPackage) {
       if (manifest.dependencies?.[name]) manifest.dependencies[name] = `file:${tarball}`;
+      if (manifest.optionalDependencies?.[name]) manifest.optionalDependencies[name] = `file:${tarball}`;
     }
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     await run(

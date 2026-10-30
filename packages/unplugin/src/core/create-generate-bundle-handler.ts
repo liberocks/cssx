@@ -1,7 +1,6 @@
 import { compileCssxStylesheet, cssSourceMap, cssWithSourceMapComment } from '../native/stylesheet';
 import type { CssxSourceModule } from '../native/stylesheet-types';
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
-import { scanProjectCssxSourceModules } from '../transforms/project-scan';
 import { dataFromMetadata } from './data-from-metadata';
 import { moduleId, resolveCssFileName } from './options';
 import { developmentPluginOptions, isDevelopmentMode, type CssxPluginOptions } from './options';
@@ -82,7 +81,9 @@ export function createGenerateBundleHandler(configuration: GenerateBundleHandler
     }
     const data: readonly CssxSourceModule[] =
       outputOptions.coordination === 'manifest'
-        ? await scanProjectCssxSourceModules(process.cwd(), outputOptions)
+        ? await import('../transforms/project-scan').then(({ scanProjectCssxSourceModules }) =>
+            scanProjectCssxSourceModules(process.cwd(), outputOptions),
+          )
         : framework === 'vite'
           ? [...rollupDataById.values()]
           : [...liveIds].map((id) => {

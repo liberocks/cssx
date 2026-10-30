@@ -346,6 +346,8 @@ it('stops the development server when coordinator startup fails', async () => {
     });
     onWatchRun?.(watchedCompiler);
     await vi.waitFor(() => expect(warning).toHaveBeenCalledWith(expect.stringContaining('startup failed')));
+    const notify = (mocks.nativeBuildState.mock.results[0]?.value as NativeBuildState).notifyDevelopmentStylesheet!;
+    await expect(notify()).resolves.toBeUndefined();
     onWatchClose?.();
     await vi.waitFor(() => expect(mocks.stopNextDevelopmentServer).toHaveBeenCalledWith('/project'));
   } finally {

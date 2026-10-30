@@ -45,6 +45,26 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
+  rust-compiler:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt
+        shell: bash
+      - run: cargo +1.99.1 fmt --manifest-path packages/compiler/native/Cargo.toml --all -- --check
+        shell: bash
+      - run: cargo +1.99.1 test --locked --manifest-path packages/compiler/native/Cargo.toml --workspace --jobs 2
+        shell: bash
+      - run: cargo +1.99.1 clippy --locked --manifest-path packages/compiler/native/Cargo.toml --workspace --all-targets --jobs 2 -- -D warnings
+        shell: bash
+
   coverage:
     runs-on: ubuntu-latest
     steps:
@@ -65,6 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         include:
           - example: electron
@@ -99,6 +120,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         framework: [astro, gatsby, next, react, vite, remix, solid]
@@ -162,6 +184,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         manager: [npm, pnpm, yarn, bun]
@@ -186,6 +209,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
@@ -218,6 +242,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
@@ -251,4 +276,9 @@ jobs:
       - run: pnpm --dir examples/astro install --frozen-lockfile
       - run: pnpm test:release
       - run: pnpm benchmark:dev-hmr
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - run: cargo +1.99.1 build --locked --manifest-path packages/compiler/native/Cargo.toml --release --jobs 2 -p cssx-compiler-node
+      - run: |
+          mkdir -p packages/compiler-native/native
+          cp packages/compiler/native/target/release/libcssx_compiler_node.so packages/compiler-native/native/cssx_compiler_node.linux-x64.node
       - run: pnpm benchmark

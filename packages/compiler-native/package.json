@@ -1,0 +1,16 @@
+{
+  "name": "@cssxio/compiler-native",
+  "version": "0.1.0",
+  "description": "Optional cross-platform Rust and Oxc analyzer for CSSX.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liberocks/cssx.git",
+    "directory": "packages/compiler-native"
+  },
+  "main": "./index.cjs",
+  "files": [
+    "index.cjs",
+    "native/*.node"
+  ]
+}

@@ -4,11 +4,9 @@ import { resolve } from 'node:path';
 import type { NextDevelopmentHmrConnection } from '../adapters/next-development-server';
 import { nativeBuildRoot } from '../native/native-build-root';
 import { nativeBuildState } from '../native/native-build-state';
-import { withClassNameManifest } from '../native/with-class-name-manifest';
 import { sourceMapFromContext } from '../source-map/source-map-from-context';
 import { isIgnoredProjectSourcePath } from '../transforms/find-project-source-files';
 import { hasCssxStyleData, RULES_METADATA_KEY, type ModuleCssxData } from '../transforms/module-cssx-data';
-import { updateProjectScanModule } from '../transforms/project-scan';
 import { transformCssxModule } from '../transforms/transform';
 import { moduleId, stableId } from './options';
 import { developmentPluginOptions, isDevelopmentMode, type CssxPluginOptions } from './options';
@@ -130,12 +128,14 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
     delete compilerOptions.manifestPath;
     const transformed =
       !development && options.coordination === 'manifest'
-        ? await withClassNameManifest(options.manifestPath!, compilerOptions.className!, (allocator) =>
-            transformCssxModule(
-              code,
-              id,
-              { ...compilerOptions, classNameAllocator: allocator },
-              sourceMapFromContext(this, id),
+        ? await import('../native/with-class-name-manifest').then(({ withClassNameManifest }) =>
+            withClassNameManifest(options.manifestPath!, compilerOptions.className!, (allocator) =>
+              transformCssxModule(
+                code,
+                id,
+                { ...compilerOptions, classNameAllocator: allocator },
+                sourceMapFromContext(this, id),
+              ),
             ),
           )
         : await transformCssxModule(
@@ -153,6 +153,7 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
       atomicClasses: transformed?.atomicClasses ?? [],
       origins: transformed?.origins ?? {},
       cssOnlySignature: transformed?.cssOnlySignature ?? '',
+      ...(transformed?.precompiledCss !== undefined ? { precompiledCss: transformed.precompiledCss } : {}),
     };
     storeCompilationData(this, data, RULES_METADATA_KEY);
     const normalizedId = moduleId(id);
@@ -173,6 +174,7 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
       (transformed || (previousDevelopmentData !== undefined && hasCssxStyleData(previousDevelopmentData)))
     ) {
       if (projectRoot) {
+        const { updateProjectScanModule } = await import('../transforms/project-scan');
         await updateProjectScanModule(projectRoot, normalizedId, developmentPluginOptions(options), transformed, code);
       }
       if (framework !== 'rollup') {

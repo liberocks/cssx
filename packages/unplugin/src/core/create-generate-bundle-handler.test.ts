@@ -42,7 +42,7 @@ it('uses live metadata, prunes stale module data, and emits the compiled stylesh
 
   expect(records).toHaveLength(1);
   expect(records[0]?.fileName).toBe('cssx.css');
-  expect(records[0]?.source).toContain('.padding{padding:calc(0.25rem * 4);}');
+  expect(records[0]?.source).toMatch(/\.padding\{padding:calc\(0\.25rem \* 4\);?\}/);
   expect(rollupDataById.has(staleData.id)).toBe(false);
 });
 
@@ -107,7 +107,7 @@ it('scans sources through the persisted manifest for Rollup output', async () =>
     });
     await handler.call({ getModuleInfo: () => null, emitFile: (asset) => records.push(asset) }, {}, {});
 
-    expect(records[0]?.source).toContain('.s0x{padding:calc(0.25rem * 4);}');
+    expect(records[0]?.source).toMatch(/\.s0x\{padding:calc\(0\.25rem \* 4\);?\}/);
   } finally {
     process.chdir(previousCwd);
     await rm(root, { recursive: true, force: true });

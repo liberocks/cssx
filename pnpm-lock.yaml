@@ -390,6 +390,8 @@ importers:
 
   packages/compiler: {}
 
+  packages/compiler-native: {}
+
   packages/cssx: {}
 
   packages/docs:
@@ -451,9 +453,16 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      magic-string:
+        specifier: ^0.30.21
+        version: 0.30.21
       unplugin:
         specifier: ^3.3.0
         version: 3.4.0(@rspack/core@2.2.9)(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.65.0)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(webpack@5.112.1(csso@5.0.5)(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.31)(sharp@0.35.5(@types/node@22.20.5))(svgo@4.1.0))
+    optionalDependencies:
+      '@cssxio/compiler-native':
+        specifier: workspace:*
+        version: link:../compiler-native
 
   tests:
     devDependencies:

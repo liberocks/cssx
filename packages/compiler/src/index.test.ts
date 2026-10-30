@@ -237,8 +237,8 @@ describe('CSSX compiler', () => {
     expect(mergeCompiledStyles([horizontal, right])).toBe(`${horizontalAtoms[0]} ${result.classes['pr-1']}`);
     expect(css).toContain(`.${horizontalAtoms[0]}`);
     expect(css).toContain(`.${horizontalAtoms[1]}`);
-    expect(css).toContain('padding-left:calc(0.25rem * 2);');
-    expect(css).toContain('padding-right:calc(0.25rem * 2);');
+    expect(css).toContain('padding-left:calc(0.25rem * 2)');
+    expect(css).toContain('padding-right:calc(0.25rem * 2)');
   });
 
   it('keeps transform channels independently overridable after atomic lowering', async () => {

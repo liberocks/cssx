@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 24686)
+Total output lines: 1337
+
 # CSSX
 
 CSSX turns static utility strings into class names and CSS when you build your app. It keeps a small helper in the browser for styles that change at runtime.
@@ -133,6 +136,16 @@ When a Vite-powered SSR framework skips Vite's HTML transform hook, CSSX injects
 
 The performance target is at most 100 ms from saving an existing static style literal to the updated computed style after the next browser animation frame, on the reference development machine with a warm server. It excludes cold startup, new components or call sites, JavaScript edits, whole-theme changes, and composition-structure changes. Run `pnpm benchmark:dev-hmr` for the warm metadata and stylesheet-emission benchmark, and `pnpm test:hmr` for the browser save-to-visible gate across esbuild, Rollup, Webpack, and Rspack. The Vite and Next.js browser gates run with the visual matrix; run `CSSX_VISUAL_FRAMEWORK=vite CSSX_VISUAL_MODE=development pnpm --dir tests exec playwright test vite/hmr-performance.spec.ts`, or set `CSSX_VISUAL_FRAMEWORK=next` and `CSSX_NEXT_BUNDLER` to `webpack` or `turbopack`. Local browser runs enforce the 100 ms maximum by default. CI enforces it on Linux and Windows; macOS framework jobs still run all 30 edits and check the visible styles and preserved UI state, while reporting timing without using the shared hosted runner as the target-machine gate. Compiler-only timings are not save-to-visible results.
 
+On the reference ARM64 machine, the final run of 30 warm browser edits had maximum save-to-visible times of 43.2 ms (esbuild), 36.5 ms (Rollup), 77.6 ms (Webpack), 76.9 ms (Rspack), 64.0 ms (Vite), 79.0 ms (Next.js Turbopack), and 80.0 ms (Next.js Webpack). The browser checks confirmed computed styles updated while the page, input value, focus, and scroll position stayed in place. In the 400-module source-scan fixture, the native analyzer measured a 253 ms initial scan and warm edit transform plus stylesheet preparation of 1.5 ms median, 2.2 ms p95, and 8.7 ms maximum. The Node process used 72.6 MB heap and 148.2 MB RSS. These are local fixture results; they are not guarantees for cold builds or different hardware.
+
+The Rust workspace under `packages/compiler/native` uses Oxc for JavaScript and TypeScript parsing and `lowdash` for bounded source batches. Install Rust 1.99.1 with `rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt`, then build the optional local Node addon with `cargo +1.99.1 build --manifest-path packages/compiler/native/Cargo.toml --release -p cssx-compiler-node`. Point `CSSX_NATIVE_COMPILER_PATH` at the resulting addon (`libcssx_compiler_node.dylib`, `.so`, or `.dll`) before starting the CSSX development server or production build. Published `@cssxio/unplugin` installs `@cssxio/compiler-native` optionally on Linux x64, macOS arm64, and Windows x64; unsupported operating systems or architectures use the Babel fallback. The release workflow builds all three packaged addons with Rust 1.99.1, while CI checks the Rust workspace on Linux, macOS, and Windows.
+
+The native analyzer collects metadata for development modules that contain statically foldable `sx()` calls. In production, it can also transform an unexported static `create()` map when every reference is a statically resolvable `props()` call, source maps are disabled, and stable class names are off. Other `create()`/`props()` forms, dynamic `sx()` expressions, and parse errors use the existing Babel transform. Utility resolution and CSS emission continue to use the TypeScript compiler. Without the addon, CSSX uses the Babel transform for every module.
+
+`pnpm benchmark:dev-hmr` reports the initial 400-module metadata scan, 30 warm edits, and Node heap/RSS. Set `CSSX_DISABLE_NATIVE_COMPILER=1` to measure the Babel fallback. For pre-extracted production utility compilation, run `pnpm benchmark:cssx-utilities -- large --json` and `pnpm benchmark:tailwind-utilities -- large --json`. `pnpm --dir benchmarks benchmark:vite` compares five warmed full React/Vite builds after one warm-up: native CSSX, its Babel fallback, Tailwind, styled-components, and StyleX. It reports medians, ranges, and initial-route output sizes; set `CSSX_NATIVE_COMPILER_PATH` to the built Rust addon to ensure the native row uses Rust. The final bundled build comparison is `pnpm --dir benchmarks benchmark:small`. Compiler-only, full-app build, and save-to-visible timings measure different work.
+
+On the local macOS arm64 benchmark machine, pre-extracted utility compilation medians were 0.53/1.06 ms (CSSX/Tailwind) for small, 1.36/1.81 ms for medium, and 2.73/3.57 ms for large. The large generated CSS was 19.1 KB (4.28 KB gzip) for CSSX and 40.4 KB (5.30 KB gzip) for Tailwind. In the warmed full React/Vite build, native CSSX measured 263 ms, versus 260 ms for Tailwind and 804 ms for the pre-rewrite Babel path. Native CSSX was 3.1 times faster than the pre-rewrite path in this fixture; the full-app build medians for native CSSX and Tailwind were within 1.2% of each other. Its stylesheet was 38,357 B raw (9,748 B gzip), compared with 42,450 B (10,627 B gzip) for pre-rewrite CSSX and 68,783 B (12,910 B gzip) for Tailwind. That is 9.6% smaller raw and 8.3% smaller gzip than pre-rewrite CSSX, and 44.2% smaller raw and 24.5% smaller gzip than Tailwind. The initial-route payload was 98.1 KB gzip, compared with 107.3 KB for Tailwind. The benchmark requires native CSSX CSS to be smaller both raw and gzip than the two baselines and reports the 10% raw reduction as a stretch target; the current measured 9.6% reduction is accepted. CSSX keeps a one-character selector namespace prefix to avoid collisions. These results are local measurements, not guarantees for other machines or application shapes.
+
 Keep the stylesheet link required by your adapter. Do not add generated CSSX stylesheets to source control.
 
 ```ts
@@ -256,7 +269,9 @@ const result = await compileStyleMaps(
 `prefix` and `suffix` work for both `serial` and the `random` (stable hash)
 variant. Serial uses a case-sensitive base-62 sequence (`0`–`9`, `a`–`z`,
 `A`–`Z`, then `10`) and defaults to an `s` prefix plus `x` suffix (`s0x`,
-`s1x`, …). To bound hashed names, set its hash fragment length, for example
+`s1x`, …) in the programmatic compiler API. Build adapters omit the default
+production suffix to reduce emitted CSS; explicitly configured class names,
+stable names, and manifest coordination keep their selected format. To bound hashed names, set its hash fragment length, for example
 `{ className: { variant: 'random', prefix: 'app_', length: 5 } }`. CSSX uses
 deterministic collision resolution and fails rather than reusing a name if the
 chosen length cannot represent every generated class.
@@ -272,382 +287,432 @@ safe. An unsupported utility stops the build. The examples below use:
 import * as cssx from '@cssxio/cssx';
 ```
 
-### Syntax and values
-
-| Class                             | Styles                                                                                |
-| --------------------------------- | ------------------------------------------------------------------------------------- |
-| `-<utility>`                      | Negates supported spacing, dimensions, order, angles, hue rotation, and scale values. |
-| `!<utility>` or `<utility>!`      | Marks every declaration emitted by the utility as `!important`.                       |
-| `<family>-[value]`                | Provides a validated static arbitrary value for that family.                          |
-| `<supported-family>-(--property)` | Uses `var(--property)` where that family accepts custom properties.                   |
-| `[property:value]`                | Emits one validated static declaration.                                               |
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  card: 'sm:!-mt-2 bg-position-(--hero-position)',
-});
-
-<article {...cssx.props(styles.card)} />;
-```
-
-### Display and visibility
-
-| Class                                                                                                       | Styles                                                          |
-| ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `block`, `inline-block`, `inline`, `flex`, `inline-flex`, `grid`, `inline-grid`                             | Corresponding `display` value.                                  |
-| `flow-root`, `contents`, `list-item`, `hidden`                                                              | `display: flow-root`, `contents`, `list-item`, or `none`.       |
-| `table`, `inline-table`, `table-{caption,cell,column,column-group,footer-group,header-group,row,row-group}` | Corresponding table `display` value.                            |
-| `visible`, `invisible`                                                                                      | `visibility: visible` or `hidden`.                              |
-| `sr-only`, `not-sr-only`                                                                                    | Applies or resets the screen-reader-only clipping declarations. |
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  label: 'sr-only',
-  menu: 'hidden md:flex',
-});
-
-<>
-  <span {...cssx.props(styles.label)}>Navigation</span>
-  <nav {...cssx.props(styles.menu)} />
-</>;
-```
-
-### General layout
-
-| Class                                                                                                                        | Styles                                                 |
-| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `columns-{auto,n,[value],(--property)}`                                                                                      | `columns`.                                             |
-| `break-{before,after}-{auto,avoid,all,avoid-page,page,left,right,column}`                                                    | `break-before` or `break-after`.                       |
-| `break-inside-{auto,avoid,avoid-page,avoid-column}`                                                                          | `break-inside`.                                        |
-| `box-{border,content}`                                                                                                       | `box-sizing`.                                          |
-| `box-decoration-{slice,clone}`                                                                                               | `box-decoration-break`, including the WebKit fallback. |
-| `float-{start,end,left,right,none}`, `clear-{start,end,left,right,both,none}`                                                | `float` or `clear`.                                    |
-| `overflow[-x/-y]-{auto,hidden,clip,visible,scroll}`                                                                          | `overflow`, `overflow-x`, or `overflow-y`.             |
-| `overscroll[-x/-y]-{auto,contain,none}`                                                                                      | `overscroll-behavior` channels.                        |
-| `isolate`, `isolation-auto`                                                                                                  | `isolation: isolate` or `auto`.                        |
-| `object-{contain,cover,fill,none,scale-down}`                                                                                | `object-fit`.                                          |
-| `object-{top-left,top,top-right,left,center,right,bottom-left,bottom,bottom-right}`, `object-[value]`, `object-(--property)` | `object-position`.                                     |
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  image: 'columns-3 break-inside-avoid overflow-x-auto object-cover object-center',
-});
-
-<img {...cssx.props(styles.image)} alt="" />;
-```
-
-### Position, sizing, and aspect ratio
-
-| Class                                                     | Styles                                                      |
-| --------------------------------------------------------- | ----------------------------------------------------------- |
-| `static`, `fixed`, `absolute`, `relative`, `sticky`       | `position`.                                                 |
-| `top/right/bottom/left-<value>`                           | Corresponding physical inset.                               |
-| `inset[-x/-y]-<value>`                                    | `inset`, both horizontal sides, or both vertical sides.     |
-| `inset-s-*`, `start-*`, `inset-e-*`, `end-*`              | Logical inline insets.                                      |
-| `z-{n,auto}`                                              | `z-index`.                                                  |
-| `w/h/min-w/max-w/min-h/max-h-<value>`                     | Physical dimensions.                                        |
-| `inline/min-inline/max-inline-<value>`                    | Logical inline dimensions.                                  |
-| `block/min-block/max-block-<value>`                       | Logical block dimensions.                                   |
-| `size-<value>`                                            | Sets both width and height.                                 |
-| `max-{w,inline}-{xs,sm,md,lg,xl,2xl,3xl,4xl,5xl,6xl,7xl}` | Named maximum inline or physical width.                     |
-| `aspect-{auto,square,video,[ratio]}`                      | `aspect-ratio`.                                             |
-| `container`                                               | `width: 100%` and active `sm` through `2xl` maximum widths. |
-
-`<value>` accepts supported spacing values, `auto`, `full`, `screen`, fractions,
-and family-specific arbitrary values. Logical and physical writes remain
-independently composable.
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  media: 'relative inset-s-4 top-2 z-10 inline-full max-inline-lg aspect-video',
-});
-
-<video {...cssx.props(styles.media)} />;
-```
-
-### Tables
-
-| Class                                                      | Styles                                            |
-| ---------------------------------------------------------- | ------------------------------------------------- |
-| `border-{collapse,separate}`                               | `border-collapse`.                                |
-| `border-spacing-<spacing>`                                 | `border-spacing`.                                 |
-| `border-spacing-x-<spacing>`, `border-spacing-y-<spacing>` | Composed horizontal or vertical `border-spacing`. |
-| `table-{auto,fixed}`                                       | `table-layout`.                                   |
-| `caption-{top,bottom}`                                     | `caption-side`.                                   |
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  report: 'border-separate border-spacing-x-4 border-spacing-y-2 table-fixed',
-});
-
-<table {...cssx.props(styles.report)} />;
-```
-
-### Flexbox and alignment
-
-| Class                                                              | Styles                                                       |
-| ------------------------------------------------------------------ | ------------------------------------------------------------ |
-| `flex-{row,row-reverse,col,col-reverse}`                           | `flex-direction`.                                            |
-| `flex-{wrap,wrap-reverse,nowrap}`                                  | `flex-wrap`.                                                 |
-| `flex-{auto,initial,none}`                                         | `flex: 1 1 auto`, `0 1 auto`, or `none`.                     |
-| `flex-<n>`, `flex-<fraction>`, `flex-[value]`, `flex-(--property)` | `flex` shorthand. Fractions become a percentage calculation. |
-| `grow`, `grow-0`, `shrink`, `shrink-0`                             | `flex-grow` or `flex-shrink`.                                |
-| `basis-<value>`                                                    | `flex-basis`.                                                |
-| `order-{first,last,none,n}`                                        | `order`. Negative numeric forms are supported.               |
-| `items-{start,center,end,stretch,baseline}`                        | `align-items`.                                               |
-| `self-{auto,start,center,end,stretch,baseline}`                    | `align-self`.                                                |
-| `justify-{start,center,end,between,around,evenly}`                 | `justify-content`.                                           |
-| `justify-items-{start,center,end,stretch}`                         | `justify-items`.                                             |
-| `justify-self-{auto,start,center,end,stretch}`                     | `justify-self`.                                              |
-| `place-items-{start,center,end,stretch,baseline}`                  | `place-items`.                                               |
-| `place-self-{auto,start,center,end,stretch}`                       | `place-self`.                                                |
-| `place-content-{start,center,end,between,around,evenly,stretch}`   | `place-content`.                                             |
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  toolbar: 'flex flex-col md:flex-row items-center justify-between gap-4',
-  search: 'basis-1/2 grow',
-});
-
-<div {...cssx.props(styles.toolbar)}>
-  <input {...cssx.props(styles.search)} />
-</div>;
-```
-
-### Grid
-
-| Class                                       | Styles                                                     |
-| ------------------------------------------- | ---------------------------------------------------------- |
-| `grid-cols-<n>`, `grid-rows-<n>`            | Repeating `grid-template-columns` or `grid-template-rows`. |
-| `grid-{cols,rows}-subgrid`                  | A `subgrid` template.                                      |
-| `{col,row}-span-<n>`, `{col,row}-span-full` | `grid-column` or `grid-row` span.                          |
-| `{col,row}-{start,end}-{n,auto}`            | Grid line placement.                                       |
-| `grid-flow-{row,col,row-dense,col-dense}`   | `grid-auto-flow`.                                          |
-| `auto-{cols,rows}-{auto,min,max,fr}`        | `grid-auto-columns` or `grid-auto-rows`.                   |
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  gallery: 'grid grid-cols-3 grid-flow-row-dense auto-rows-fr gap-4',
-  feature: 'col-span-2 row-start-3',
-});
-
-<div {...cssx.props(styles.gallery)}>
-  <article {...cssx.props(styles.feature)} />
-</div>;
-```
-
-### Spacing
-
-| Class                                                 | Styles                                                  |
-| ----------------------------------------------------- | ------------------------------------------------------- |
-| `p/px/py/pt/pr/pb/pl/ps/pe-<spacing>`                 | Physical or logical padding.                            |
-| `m/mx/my/mt/mr/mb/ml/ms/me-<spacing>`                 | Physical or logical margin. Margins also accept `auto`. |
-| `gap-<spacing>`, `gap-x-<spacing>`, `gap-y-<spacing>` | `gap`, `column-gap`, or `row-gap`.                      |
-| `space-x-<spacing>`, `space-y-<spacing>`              | Child margins on every child except the last.           |
-| `space-{x,y}-reverse`                                 | Reverses the matching child-spacing direction.          |
-
-`<spacing>` accepts `px`, `full`, numeric values resolved through `--spacing`,
-and supported arbitrary values. Negative forms are supported where CSS accepts
-them.
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  card: 'px-4 py-2 -mt-2',
-  stack: 'space-y-2',
-});
-
-<section {...cssx.props(styles.card)}>
-  <div {...cssx.props(styles.stack)} />
-</section>;
-```
-
-### Typography
-
-| Class                                                                                                                                                    | Styles                                                                 |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `font-{sans,serif,mono}`, `font-[value]`, `font-(--property)`                                                                                            | Built-in or custom `font-family`.                                      |
-| `font-{thin,extralight,light,normal,medium,semibold,bold,extrabold,black}`                                                                               | `font-weight` from 100 through 900.                                    |
-| `antialiased`, `subpixel-antialiased`                                                                                                                    | Font smoothing declarations.                                           |
-| `italic`, `not-italic`                                                                                                                                   | `font-style`.                                                          |
-| `text-{xs,sm,base,lg,xl,2xl}`, `text-[length]`                                                                                                           | Font size; named sizes include a default line height.                  |
-| `leading-{none,tight,snug,normal,relaxed,loose,[value]}`                                                                                                 | `line-height`.                                                         |
-| `tracking-{tighter,tight,normal,wide,wider,widest}`                                                                                                      | `letter-spacing`.                                                      |
-| `text-{left,center,right,justify}`                                                                                                                       | `text-align`.                                                          |
-| `uppercase`, `lowercase`, `capitalize`, `normal-case`                                                                                                    | `text-transform`.                                                      |
-| `ordinal`, `slashed-zero`, `lining-nums`, `oldstyle-nums`, `proportional-nums`, `tabular-nums`, `diagonal-fractions`, `stacked-fractions`, `normal-nums` | Composable `font-variant-numeric` controls; `normal-nums` resets them. |
-| `underline`, `overline`, `line-through`, `no-underline`                                                                                                  | `text-decoration-line`.                                                |
-| `decoration-{solid,double,dotted,dashed,wavy}`                                                                                                           | `text-decoration-style`.                                               |
-| `decoration-{auto,from-font,n,[value],(--property)}`                                                                                                     | `text-decoration-thickness`.                                           |
-| `underline-offset-{auto,n,[value],(--property)}`                                                                                                         | `text-underline-offset`.                                               |
-| `truncate`, `text-{ellipsis,clip}`                                                                                                                       | Text overflow behavior.                                                |
-| `text-{wrap,nowrap,balance,pretty}`, `wrap-{anywhere,break-word,normal}`                                                                                 | Text wrapping behavior.                                                |
-| `hyphens-{none,manual,auto}`, `whitespace-{normal,nowrap,pre,pre-line,pre-wrap,break-spaces}`                                                            | Hyphenation or whitespace.                                             |
-| `tab-{n,[value],(--property)}`                                                                                                                           | `tab-size`.                                                            |
-| `list-{inside,outside}`, `list-{none,disc,decimal}`, `list-image-{none,[value],(--property)}`                                                            | List styling.                                                          |
-| `line-clamp-{n,none}`                                                                                                                                    | WebKit line-clamp declaration bundle.                                  |
-| `content-none`, `content-[value]`, `content-(--property)`                                                                                                | `content`, typically with `before:` or `after:`.                       |
-| `writing-{horizontal-tb,vertical-rl,vertical-lr}`, `text-orientation-{mixed,upright,sideways}`, `text-combine-upright-{none,all}`                        | Writing mode and vertical text controls.                               |
-| `unicode-bidi-{normal,embed,isolate,bidi-override,isolate-override,plaintext}`                                                                           | Bidirectional-text handling.                                           |
-| `font-optical-{auto,none}`, `font-kerning-{auto,normal,none}`, `font-synthesis-{none,weight,style,small-caps,position}`                                  | Advanced font rendering controls.                                      |
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  title: 'font-sans text-lg font-semibold leading-tight tracking-wide tabular-nums',
-  required: "before:content-['required'] before:text-red-600",
-});
-
-<h2 {...cssx.props(styles.title, styles.required)}>Invoice 0042</h2>;
-```
-
-### Colors
-
-| Class                                                      | Styles                                        |
-| ---------------------------------------------------------- | --------------------------------------------- |
-| `bg-<color>`, `text-<color>`, `border-<color>`             | Background, foreground, or border color.      |
-| `outline-<color>`, `divide-<color>`, `placeholder-<color>` | Outline, child divider, or placeholder color. |
-| `accent-<color>`, `caret-<color>`                          | Accent or caret color.                        |
-| `fill-<color>`, `stroke-<color>`                           | SVG paint color.                              |
-| `ring-<color>`, `ring-offset-<color>`                      | Ring or ring-offset color channel.            |
-| `<color-utility>/<0..100>` or `<color-utility>/[number]`   | Applies color opacity with `color-mix()`.     |
-
-The default palette has 50-950 shades for `red`, `orange`, `amber`, `yellow`,
-`lime`, `green`, `emerald`, `teal`, `cyan`, `sky`, `blue`, `indigo`, `violet`,
-`purple`, `fuchsia`, `pink`, `rose`, `slate`, `gray`, `zinc`, `neutral`,
-`stone`, `mauve`, `olive`, `mist`, `taupe`, `steel`, `brown`, `vermilion`,
-`mint`, `azure`, and `amethyst`, plus `black`, `white`, and `transparent`.
-Every family name works in every color utility, such as `bg-vermilion-500`,
-`text-steel-950`, and `border-mint-200`.
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  input: 'bg-blue-600 text-white border-blue-700/50 placeholder-slate-500',
-});
-
-<input {...cssx.props(styles.input)} placeholder="Project name" />;
-```
-
-### Backgrounds and gradients
-
-| Class                                                                                        | Styles                                                |
-| -------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `bg-none`, `bg-[image]`                                                                      | `background-image`.                                   |
-| `bg-{auto,cover,contain}`                                                                    | `background-size`.                                    |
-| `bg-{top-left,top,top-right,left,center,right,bottom-left,bottom,bottom-right}`              | `background-position`.                                |
-| `bg-{repeat,no-repeat,repeat-x,repeat-y,repeat-round,repeat-space}`                          | `background-repeat`.                                  |
-| `bg-{fixed,local,scroll}`                                                                    | `background-attachment`.                              |
-| `bg-clip-{border,padding,content,text}`, `bg-origin-{border,padding,content}`                | Background clip or origin.                            |
-| `bg-position-[value]`, `bg-position-(--property)`, `bg-size-[value]`, `bg-size-(--property)` | Custom position or size.                              |
-| `bg-linear-to-{t,tr,r,br,b,bl,l,tl}`                                                         | Directional `linear-gradient()`.                      |
-| `bg-linear-{angle,[angle]}`                                                                  | Angled `linear-gradient()`.                           |
-| `from/via/to-<color>`, `from/via/to-<0..100%>`                                               | Composable gradient color and stop-position channels. |
-
-Spaces may appear directly inside bracketed utility values and arbitrary selector or condition variants. For example, `grid-cols-[13rem minmax(0,1fr)]`, `animate-[fade 1s ease-in]`, and `[& h1]:text-lg` are valid. Unescaped underscores remain supported as a whitespace alias for compatibility. Use `\_` for a literal underscore. Underscores inside `url(...)` payloads and `var()` or `env()` names are preserved.
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  banner: 'bg-linear-to-r/oklch from-blue-500 via-violet-500 to-pink-500 bg-cover',
-});
-
-<section {...cssx.props(styles.banner)} />;
-```
-
-### Borders, radii, outlines, and rings
-
-| Class                                                     | Styles                            |
-| --------------------------------------------------------- | --------------------------------- |
-| `border`, `border-{0,2,4,8}`                              | All-side border width.            |
-| `border-{x,y,t,r,b,l}`, `border-{x,y,t,r,b,l}-{0,2,4,8}`  | Selected border width.            |
-| `rounded`, `rounded-{none,sm,md,lg,xl,2xl,full}`          | `border-radius`.                  |
-| `divide-{x,y}[-{0,2,4,8,[value]}]`                        | Child-scoped divider widths.      |
-| `divide-{x,y}-reverse`                                    | Reverses divider direction.       |
-| `outline`                                                 | Solid 1px outline.                |
-| `outline-{none,hidden,solid,dashed,dotted,double}`        | Outline style or reset.           |
-| `outline-{0,1,2,4,8,[value]}`, `outline-offset-<spacing>` | Outline width or offset.          |
-| `ring`, `ring-{0,2,4,8,[value]}`                          | Composable ring width and shadow. |
-| `ring-offset-{0,2,4,8,[value]}`                           | Ring offset width.                |
-
-Color forms are documented in [Colors](#colors). Dividers apply to every child
-except the last, and rings compose with regular shadows.
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  panel: 'border border-blue-500 rounded-lg outline outline-2 outline-blue-500 ring-2 ring-blue-500/50',
-});
-
-<section {...cssx.props(styles.panel)} />;
-```
-
-### Effects, filters, and masks
-
-| Class                                                                                                                             | Styles                               |
-| --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `shadow`, `shadow-{sm,md,lg,xl,none}`                                                                                             | Composable `box-shadow` channel.     |
-| `opacity-<n>`                                                                                                                     | `opacity: n / 100`.                  |
-| `filter-none`                                                                                                                     | Resets filter channels.              |
-| `blur-{none,xs,sm,md,lg,xl,2xl,3xl,[value]}`                                                                                      | Composable `blur()`.                 |
-| `brightness-*`, `contrast-*`, `saturate-*`, `grayscale[-0]`, `hue-rotate-{n,[value]}`, `invert[-0]`, `sepia[-0]`, `drop-shadow-*` | Composable `filter` channels.        |
-| `backdrop-filter-none`                                                                                                            | Resets backdrop-filter channels.     |
-| `backdrop-{blur,brightness,contrast,grayscale,hue-rotate,invert,opacity,saturate,sepia}-*`                                        | Composable backdrop-filter channels. |
-| `mask-none`, `mask-[image]`, `mask-(--property)`                                                                                  | `mask-image`.                        |
-| `mask-{cover,contain}`, `mask-{repeat,no-repeat,repeat-x,repeat-y,repeat-round,repeat-space}`                                     | Mask size or repeat.                 |
-| `mask-clip-{border,padding,content}`, `mask-no-clip`, `mask-origin-{border,padding,content}`                                      | Mask clipping or origin.             |
-| `mask-{position,size}-[value]`, `mask-{position,size}-(--property)`                                                               | Custom mask position or size.        |
-
-#### Example
-
-```tsx
-const styles = cssx.create({
-  portrait: 'shadow-md opacity-90 blur-sm backdrop-blur-md mask-[url("/mask.svg")] mask-cover',
-});
-
-<img {...cssx.props(styles.portrait)} alt="" />;
-```
-
-### Transitions, animation, and transforms
-
-| Class                                                                                                                                                                                      | Styles                                      |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
-| `transition`, `transition-{none,all,colors,opacity,shadow,transform,transform-opacity,filter,size,[value]}`                                                                                | Transition property and default timing.     |
-| `transition-{normal,discrete}`                                                                                                                                                             | `transition-behavior`.                      |
-| `duration-{n,theme,[value],(--property)}`, `delay-{n,theme,[value],(--property)}`                                                                                                          | Transition duration or delay.               |
-| `ease-{linear,in,out,in-out,theme,[value],(--property)}`                                                                                                                                   | Transition timing function.                 |
-| `motion-safe:*`, `motion-reduce:*`, `starting:*`                                                                                                                                           | Motion preference or entry-style variant.   |
-| `animate-none`, `animate-{spin,ping,pulse,bounce,fade-in,fade-out,slide-in-*,scale-in,scale-out,shimmer}`, `animate-<theme-name>`, `animate-[value]`                                       | Animation. Only used keyframes are emitted. |
-| `animation-name-{none,preset,theme,[value]}`, `animation-composition-{replace,add,accumulate}`                                                                                             | Animation name or composition.              |
-| `animation-duration-{n,theme,[value],(--property)}`, `animation-delay-{n,theme,[value],(--property)}`                                                                                      | Independent animation duration or delay.    |
-| `animation-ease-{linear,in,out,in-out,theme,[value],(--property)}`                                                                                                                         | Independent animation timing function.      |
-| `animation-iterations-{1,2,3,infinite}`, `animation-direction-{normal,reverse,alternate,alternate-reverse}`, `animation-fill-{none,forwards,backwards,both}`, `animation-{running,paused}` | Independent animation playback controls.    |
-| `stagger-*`, `stagger-index-*`, `stagger-count-*`, `stagger-reverse`, `{animation-,}delay-stagger`                                                                                         | Explicit CSS stagger channels.              |
-| `animation-timeline-*`, `{scroll,view}-timeline-*`, `timeline-scope-*`, `animation-range-*`                                                                                                | Progress timelines and attachment ranges.   |
-| `view-transition-{name,class}-*`, `vt-{old,new,group,image-pair}-[target]:*`                                                                                                               | Native snapshot capture and styling.        |
-| `translate-{x,y}-<spacing>`                                                                                                                                                                | Composable individual `translate`.          |
-| `rotate-{n,[value]}`                                                                                                                                                                       | Individual `rotate`.                        |
-| `scale[-x/-y]-{n,[value]}`                                                                                                                                                                 | Composable individual `scale`.              |
-| `skew-{x,y}-{n,[value]}`                                                                                                                                                                   | Composable `transform` skew channel.        |
+The tables below document CSSX's supported utility class families, fixed class
+names, value forms, and variants. A suffix such as `<spacing>`, `<color>`, or
+`<value>` follows the family-specific rules in its table and may resolve from
+the active `@theme` input or a validated arbitrary value.
+
+<!-- cssx-utility-reference:start -->
+<details>
+<summary>Complete compiler class index: 258 value families and 145 exact classes</summary>
+
+The family prefixes below accept the value forms described in the utility sections above. The semantic group is the compiler write group used for conflict resolution and composition.
+
+#### Value-based utility class prefixes
+
+| Class prefix                     | Semantic group                  |
+| -------------------------------- | ------------------------------- |
+| `content-visibility-`            | `content-visibility`            |
+| `contain-intrinsic-inline-size-` | `contain-intrinsic-inline-size` |
+| `contain-intrinsic-block-size-`  | `contain-intrinsic-block-size`  |
+| `contain-intrinsic-size-`        | `contain-intrinsic-size`        |
+| `contain-`                       | `contain`                       |
+| `columns-`                       | `columns`                       |
+| `break-before-`                  | `break-before`                  |
+| `break-after-`                   | `break-after`                   |
+| `break-inside-`                  | `break-inside`                  |
+| `float-`                         | `float`                         |
+| `clear-`                         | `clear`                         |
+| `box-decoration-`                | `box-decoration-break`          |
+| `line-clamp-`                    | `line-clamp`                    |
+| `list-image-`                    | `list-style-image`              |
+| `list-`                          | `list-style-type`               |
+| `tab-`                           | `tab-size`                      |
+| `whitespace-`                    | `white-space`                   |
+| `hyphens-`                       | `hyphens`                       |
+| `wrap-`                          | `overflow-wrap`                 |
+| `table-`                         | `display`                       |
+| `overflow-x-`                    | `overflow-x`                    |
+| `overflow-y-`                    | `overflow-y`                    |
+| `overscroll-x-`                  | `overscroll-x`                  |
+| `overscroll-y-`                  | `overscroll-y`                  |
+| `overscroll-`                    | `overscroll`                    |
+| `object-`                        | `object`                        |
+| `isolation-`                     | `isolation`                     |
+| `z-`                             | `z-index`                       |
+| `order-`                         | `order`                         |
+| `col-span-`                      | `grid-column`                   |
+| `col-start-`                     | `grid-column-start`             |
+| `col-end-`                       | `grid-column-end`               |
+| `row-span-`                      | `grid-row`                      |
+| `row-start-`                     | `grid-row-start`                |
+| `row-end-`                       | `grid-row-end`                  |
+| `grid-cols-`                     | `grid-template-columns`         |
+| `grid-rows-`                     | `grid-template-rows`            |
+| `grid-flow-`                     | `grid-auto-flow`                |
+| `auto-cols-`                     | `grid-auto-columns`             |
+| `auto-rows-`                     | `grid-auto-rows`                |
+| `place-content-`                 | `place-content`                 |
+| `place-items-`                   | `place-items`                   |
+| `place-self-`                    | `place-self`                    |
+| `justify-items-`                 | `justify-items`                 |
+| `justify-self-`                  | `justify-self`                  |
+| `justify-`                       | `justify-content`               |
+| `items-`                         | `align-items`                   |
+| `self-`                          | `align-self`                    |
+| `content-`                       | `align-content`                 |
+| `basis-`                         | `flex-basis`                    |
+| `flex-`                          | `flex`                          |
+| `grow`                           | `flex-grow`                     |
+| `shrink`                         | `flex-shrink`                   |
+| `aspect-`                        | `aspect-ratio`                  |
+| `size-`                          | `size`                          |
+| `min-inline-`                    | `min-inline-size`               |
+| `max-inline-`                    | `max-inline-size`               |
+| `inline-`                        | `inline-size`                   |
+| `min-block-`                     | `min-block-size`                |
+| `max-block-`                     | `max-block-size`                |
+| `block-`                         | `block-size`                    |
+| `min-w-`                         | `min-width`                     |
+| `max-w-`                         | `max-width`                     |
+| `min-h-`                         | `min-height`                    |
+| `max-h-`                         | `max-height`                    |
+| `w-`                             | `width`                         |
+| `h-`                             | `height`                        |
+| `inset-x-`                       | `inset-x`                       |
+| `inset-y-`                       | `inset-y`                       |
+| `inset-s-`                       | `start`                         |
+| `inset-e-`                       | `end`                           |
+| `inset-bs-`                      | `inset-block-start`             |
+| `inset-be-`                      | `inset-block-end`               |
+| `inset-`                         | `inset`                         |
+| `start-`                         | `inset-inline-start`            |
+| `end-`                           | `inset-inline-end`              |
+| `top-`                           | `top`                           |
+| `right-`                         | `right`                         |
+| `bottom-`                        | `bottom`                        |
+| `left-`                          | `left`                          |
+| `space-x-`                       | `space-x`                       |
+| `space-y-`                       | `space-y`                       |
+| `placeholder-`                   | `placeholder-color`             |
+| `underline-offset-`              | `text-underline-offset`         |
+| `decoration-`                    | `text-decoration-thickness`     |
+| `divide-x-`                      | `divide-x`                      |
+| `divide-y-`                      | `divide-y`                      |
+| `divide-`                        | `divide-color`                  |
+| `outline-offset-`                | `outline-offset`                |
+| `outline-`                       | `outline-width`                 |
+| `gap-x-`                         | `column-gap`                    |
+| `gap-y-`                         | `row-gap`                       |
+| `gap-`                           | `gap`                           |
+| `scroll-mx-`                     | `scroll-margin-x`               |
+| `scroll-my-`                     | `scroll-margin-y`               |
+| `scroll-ms-`                     | `scroll-margin-inline-start`    |
+| `scroll-me-`                     | `scroll-margin-inline-end`      |
+| `scroll-mbs-`                    | `scroll-margin-block-start`     |
+| `scroll-mbe-`                    | `scroll-margin-block-end`       |
+| `scroll-mt-`                     | `scroll-margin-top`             |
+| `scroll-mr-`                     | `scroll-margin-right`           |
+| `scroll-mb-`                     | `scroll-margin-bottom`          |
+| `scroll-ml-`                     | `scroll-margin-left`            |
+| `scroll-m-`                      | `scroll-margin`                 |
+| `scroll-px-`                     | `scroll-padding-x`              |
+| `scroll-py-`                     | `scroll-padding-y`              |
+| `scroll-ps-`                     | `scroll-padding-inline-start`   |
+| `scroll-pe-`                     | `scroll-padding-inline-end`     |
+| `scroll-pbs-`                    | `scroll-padding-block-start`    |
+| `scroll-pbe-`                    | `scroll-padding-block-end`      |
+| `scroll-pt-`                     | `scroll-padding-top`            |
+| `scroll-pr-`                     | `scroll-padding-right`          |
+| `scroll-pb-`                     | `scroll-padding-bottom`         |
+| `scroll-pl-`                     | `scroll-padding-left`           |
+| `scroll-p-`                      | `scroll-padding`                |
+| `mx-`                            | `mx`                            |
+| `my-`                            | `my`                            |
+| `ms-`                            | `ms`                            |
+| `me-`                            | `me`                            |
+| `mbs-`                           | `margin-block-start`            |
+| `mbe-`                           | `margin-block-end`              |
+| `mt-`                            | `mt`                            |
+| `mr-`                            | `mr`                            |
+| `mb-`                            | `mb`                            |
+| `ml-`                            | `ml`                            |
+| `m-`                             | `m`                             |
+| `px-`                            | `px`                            |
+| `py-`                            | `py`                            |
+| `ps-`                            | `ps`                            |
+| `pe-`                            | `pe`                            |
+| `pbs-`                           | `padding-block-start`           |
+| `pbe-`                           | `padding-block-end`             |
+| `pt-`                            | `pt`                            |
+| `pr-`                            | `pr`                            |
+| `pb-`                            | `pb`                            |
+| `pl-`                            | `pl`                            |
+| `p-`                             | `p`                             |
+| `font-synthesis-`                | `font-synthesis`                |
+| `font-optical-`                  | `font-optical-sizing`           |
+| `font-kerning-`                  | `font-kerning`                  |
+| `font-`                          | `font-family`                   |
+| `text-combine-upright-`          | `text-combine-upright`          |
+| `text-orientation-`              | `text-orientation`              |
+| `text-`                          | `text`                          |
+| `leading-`                       | `line-height`                   |
+| `tracking-`                      | `letter-spacing`                |
+| `indent-`                        | `text-indent`                   |
+| `align-`                         | `vertical-align`                |
+| `whitespace-`                    | `white-space`                   |
+| `break-`                         | `word-break`                    |
+| `hyphens-`                       | `hyphens`                       |
+| `bg-linear-to-`                  | `background-image`              |
+| `bg-linear-`                     | `background-image`              |
+| `bg-`                            | `background`                    |
+| `accent-`                        | `accent-color`                  |
+| `caret-`                         | `caret-color`                   |
+| `stroke-miterlimit-`             | `stroke-miterlimit`             |
+| `stroke-dasharray-`              | `stroke-dasharray`              |
+| `stroke-dashoffset-`             | `stroke-dashoffset`             |
+| `stroke-cap-`                    | `stroke-linecap`                |
+| `stroke-join-`                   | `stroke-linejoin`               |
+| `fill-rule-`                     | `fill-rule`                     |
+| `clip-rule-`                     | `clip-rule`                     |
+| `vector-effect-`                 | `vector-effect`                 |
+| `paint-order-`                   | `paint-order`                   |
+| `shape-rendering-`               | `shape-rendering`               |
+| `fill-`                          | `fill`                          |
+| `stroke-`                        | `stroke`                        |
+| `scrollbar-thumb-`               | `scrollbar-thumb`               |
+| `scrollbar-track-`               | `scrollbar-track`               |
+| `scheme-`                        | `color-scheme`                  |
+| `mask-`                          | `mask-image`                    |
+| `from-`                          | `gradient-from`                 |
+| `via-`                           | `gradient-via`                  |
+| `to-`                            | `gradient-to`                   |
+| `rounded-`                       | `border-radius`                 |
+| `border-spacing-`                | `border-spacing`                |
+| `border-x-`                      | `border-x`                      |
+| `border-y-`                      | `border-y`                      |
+| `border-s-`                      | `border-inline-start`           |
+| `border-e-`                      | `border-inline-end`             |
+| `border-bs-`                     | `border-block-start`            |
+| `border-be-`                     | `border-block-end`              |
+| `border-t-`                      | `border-top`                    |
+| `border-r-`                      | `border-right`                  |
+| `border-b-`                      | `border-bottom`                 |
+| `border-l-`                      | `border-left`                   |
+| `border-`                        | `border`                        |
+| `outline-`                       | `outline`                       |
+| `ring-offset-`                   | `ring-offset`                   |
+| `ring-`                          | `ring`                          |
+| `shadow-`                        | `box-shadow`                    |
+| `opacity-`                       | `opacity`                       |
+| `mix-blend-`                     | `mix-blend-mode`                |
+| `bg-blend-`                      | `background-blend-mode`         |
+| `filter-`                        | `filter`                        |
+| `blur-`                          | `blur`                          |
+| `brightness-`                    | `brightness`                    |
+| `contrast-`                      | `contrast`                      |
+| `drop-shadow-`                   | `drop-shadow`                   |
+| `grayscale-`                     | `grayscale`                     |
+| `hue-rotate-`                    | `hue-rotate`                    |
+| `invert-`                        | `invert`                        |
+| `saturate-`                      | `saturate`                      |
+| `sepia-`                         | `sepia`                         |
+| `backdrop-`                      | `backdrop-filter`               |
+| `animation-name-`                | `animation-name`                |
+| `animation-composition-`         | `animation-composition`         |
+| `animation-timeline-`            | `animation-timeline`            |
+| `animation-range-start-`         | `animation-range-start`         |
+| `animation-range-end-`           | `animation-range-end`           |
+| `animation-range-`               | `animation-range`               |
+| `animation-duration-`            | `animation-duration`            |
+| `animation-delay-`               | `animation-delay`               |
+| `animation-ease-`                | `animation-timing-function`     |
+| `animation-iterations-`          | `animation-iteration-count`     |
+| `animation-direction-`           | `animation-direction`           |
+| `animation-fill-`                | `animation-fill-mode`           |
+| `animation-`                     | `animation-play-state`          |
+| `writing-`                       | `writing-mode`                  |
+| `unicode-bidi-`                  | `unicode-bidi`                  |
+| `image-render-`                  | `image-rendering`               |
+| `transition-`                    | `transition-property`           |
+| `duration-`                      | `transition-duration`           |
+| `delay-`                         | `transition-delay`              |
+| `ease-`                          | `transition-timing-function`    |
+| `animate-`                       | `animation`                     |
+| `stagger-index-`                 | `stagger-index`                 |
+| `stagger-count-`                 | `stagger-count`                 |
+| `stagger-reverse`                | `stagger-reverse`               |
+| `stagger-`                       | `stagger`                       |
+| `scroll-timeline-name-`          | `scroll-timeline-name`          |
+| `scroll-timeline-axis-`          | `scroll-timeline-axis`          |
+| `view-timeline-name-`            | `view-timeline-name`            |
+| `view-timeline-axis-`            | `view-timeline-axis`            |
+| `view-timeline-inset-`           | `view-timeline-inset`           |
+| `timeline-scope-`                | `timeline-scope`                |
+| `view-transition-name-`          | `view-transition-name`          |
+| `view-transition-class-`         | `view-transition-class`         |
+| `origin-`                        | `transform-origin`              |
+| `scale-x-`                       | `scale-x`                       |
+| `scale-y-`                       | `scale-y`                       |
+| `scale-z-`                       | `scale-z`                       |
+| `scale-`                         | `scale`                         |
+| `rotate-x-`                      | `rotate-x`                      |
+| `rotate-y-`                      | `rotate-y`                      |
+| `rotate-z-`                      | `rotate-z`                      |
+| `rotate-`                        | `rotate`                        |
+| `translate-x-`                   | `translate-x`                   |
+| `translate-y-`                   | `translate-y`                   |
+| `translate-z-`                   | `translate-z`                   |
+| `translate-`                     | `translate`                     |
+| `skew-x-`                        | `skew-x`                        |
+| `skew-y-`                        | `skew-y`                        |
+| `skew-`                          | `skew`                          |
+| `cursor-`                        | `cursor`                        |
+| `touch-`                         | `touch-action`                  |
+| `will-change-`                   | `will-change`                   |
+
+#### Exact utility classes
+
+| Class                      | Semantic group               |
+| -------------------------- | ---------------------------- |
+| `absolute`                 | `position`                   |
+| `accent-auto`              | `accent-color`               |
+| `antialiased`              | `font-smoothing`             |
+| `appearance-auto`          | `appearance`                 |
+| `appearance-none`          | `appearance`                 |
+| `block`                    | `display`                    |
+| `blur`                     | `blur`                       |
+| `border`                   | `border-width`               |
+| `border-collapse`          | `border-collapse`            |
+| `border-dashed`            | `border-style`               |
+| `border-dotted`            | `border-style`               |
+| `border-double`            | `border-style`               |
+| `border-hidden`            | `border-style`               |
+| `border-none`              | `border-style`               |
+| `border-separate`          | `border-collapse`            |
+| `border-solid`             | `border-style`               |
+| `box-border`               | `box-sizing`                 |
+| `box-content`              | `box-sizing`                 |
+| `capitalize`               | `text-transform`             |
+| `caption-bottom`           | `caption-side`               |
+| `caption-top`              | `caption-side`               |
+| `caret-auto`               | `caret-color`                |
+| `collapse`                 | `visibility`                 |
+| `container`                | `container`                  |
+| `contents`                 | `display`                    |
+| `diagonal-fractions`       | `numeric-diagonal-fractions` |
+| `divide-x`                 | `divide-x`                   |
+| `divide-y`                 | `divide-y`                   |
+| `drop-shadow`              | `drop-shadow`                |
+| `field-sizing-content`     | `field-sizing`               |
+| `fill-none`                | `fill`                       |
+| `fixed`                    | `position`                   |
+| `flex`                     | `display`                    |
+| `flex-col`                 | `flex-direction`             |
+| `flex-col-reverse`         | `flex-direction`             |
+| `flex-nowrap`              | `flex-wrap`                  |
+| `flex-row`                 | `flex-direction`             |
+| `flex-row-reverse`         | `flex-direction`             |
+| `flex-wrap`                | `flex-wrap`                  |
+| `flex-wrap-reverse`        | `flex-wrap`                  |
+| `flow-root`                | `display`                    |
+| `font-black`               | `font-weight`                |
+| `font-bold`                | `font-weight`                |
+| `font-extrabold`           | `font-weight`                |
+| `font-extralight`          | `font-weight`                |
+| `font-light`               | `font-weight`                |
+| `font-medium`              | `font-weight`                |
+| `font-normal`              | `font-weight`                |
+| `font-semibold`            | `font-weight`                |
+| `font-thin`                | `font-weight`                |
+| `forced-color-adjust-auto` | `forced-color-adjust`        |
+| `forced-color-adjust-none` | `forced-color-adjust`        |
+| `grayscale`                | `grayscale`                  |
+| `grid`                     | `display`                    |
+| `hidden`                   | `display`                    |
+| `inline`                   | `display`                    |
+| `inline-block`             | `display`                    |
+| `inline-flex`              | `display`                    |
+| `inline-grid`              | `display`                    |
+| `inline-table`             | `display`                    |
+| `invert`                   | `invert`                     |
+| `invisible`                | `visibility`                 |
+| `isolate`                  | `isolation`                  |
+| `isolation-auto`           | `isolation`                  |
+| `italic`                   | `font-style`                 |
+| `line-through`             | `text-decoration-line`       |
+| `lining-nums`              | `numeric-lining-nums`        |
+| `list-item`                | `display`                    |
+| `lowercase`                | `text-transform`             |
+| `no-underline`             | `text-decoration-line`       |
+| `normal-case`              | `text-transform`             |
+| `normal-nums`              | `numeric-normal`             |
+| `not-italic`               | `font-style`                 |
+| `not-sr-only`              | `sr-only`                    |
+| `oldstyle-nums`            | `numeric-oldstyle-nums`      |
+| `ordinal`                  | `numeric-ordinal`            |
+| `outline`                  | `outline-width`              |
+| `outline-dashed`           | `outline-style`              |
+| `outline-dotted`           | `outline-style`              |
+| `outline-double`           | `outline-style`              |
+| `outline-hidden`           | `outline-hidden`             |
+| `outline-none`             | `outline-style`              |
+| `outline-solid`            | `outline-style`              |
+| `overflow-auto`            | `overflow`                   |
+| `overflow-clip`            | `overflow`                   |
+| `overflow-hidden`          | `overflow`                   |
+| `overflow-scroll`          | `overflow`                   |
+| `overflow-visible`         | `overflow`                   |
+| `overline`                 | `text-decoration-line`       |
+| `pointer-events-auto`      | `pointer-events`             |
+| `pointer-events-none`      | `pointer-events`             |
+| `proportional-nums`        | `numeric-proportional-nums`  |
+| `relative`                 | `position`                   |
+| `resize`                   | `resize`                     |
+| `resize-none`              | `resize`                     |
+| `resize-x`                 | `resize`                     |
+| `resize-y`                 | `resize`                     |
+| `rounded`                  | `border-radius`              |
+| `scroll-auto`              | `scroll-behavior`            |
+| `scroll-smooth`            | `scroll-behavior`            |
+| `scrollbar-auto`           | `scrollbar-width`            |
+| `scrollbar-gutter-auto`    | `scrollbar-gutter`           |
+| `scrollbar-gutter-both`    | `scrollbar-gutter`           |
+| `scrollbar-gutter-stable`  | `scrollbar-gutter`           |
+| `scrollbar-none`           | `scrollbar-width`            |
+| `scrollbar-thin`           | `scrollbar-width`            |
+| `select-all`               | `user-select`                |
+| `select-auto`              | `user-select`                |
+| `select-none`              | `user-select`                |
+| `select-text`              | `user-select`                |
+| `sepia`                    | `sepia`                      |
+| `shadow`                   | `box-shadow`                 |
+| `slashed-zero`             | `numeric-slashed-zero`       |
+| `snap-align-none`          | `scroll-snap-align`          |
+| `snap-always`              | `scroll-snap-stop`           |
+| `snap-both`                | `scroll-snap-type`           |
+| `snap-center`              | `scroll-snap-align`          |
+| `snap-end`                 | `scroll-snap-align`          |
+| `snap-mandatory`           | `scroll-snap-strictness`     |
+| `snap-none`                | `scroll-snap-type`           |
+| `snap-normal`              | `scroll-snap-stop`           |
+| `snap-proximity`           | `scroll-snap-strictness`     |
+| `snap-start`               | `scroll-snap-align`          |
+| `snap-x`                   | `scroll-snap-type`           |
+| `snap-y`                   | `scroll-snap-type`           |
+| `sr-only`                  | `sr-only`                    |
+| `stacked-fractions`        | `numeric-stacked-fractions`  |
+| `static`                   | `position`                   |
+| `sticky`                   | `position`                   |
+| `stroke-none`              | `stroke`                     |
+| `subpixel-antialiased`     | `font-smoothing`             |
+| `table`                    | `display`                    |
+| `table-auto`               | `table-layout`               |
+| `table-fixed`              | `table-layout`               |
+| `tabular-nums`             | `numeric-tabular-nums`       |
+| `transform`                | `transform`                  |
+| `transform-none`           | `transform`                  |
+| `transition`               | `transition-property`        |
+| `transition-discrete`      | `transition-behavior`        |
+| `transition-none`          | `transition-property`        |
+| `transition-normal`        | `transition-behavior`        |
+| `truncate`                 | `truncate`                   |
+| `underline`                | `text-decoration-line`       |
+| `uppercase`                | `text-transform`             |
+| `visible`                  | `visibility`                 |
+
+</details>
+<!-- cssx-utility-reference:end -->
 
 #### Example
 
@@ -838,6 +903,7 @@ raw class strings or be modeled as explicit static style choices.
 - `pnpm lint` checks source files and tests with ESLint.
 - `pnpm typecheck` checks workspace types.
 - `pnpm test:release` runs formatting, linting, coverage, package checks, and type checks.
+- `pnpm generate:utility-reference` updates the README's full compiler-backed value-prefix and exact-class index. `pnpm test:release` checks that this index matches the utility registry.
 
 ## Package releases
 

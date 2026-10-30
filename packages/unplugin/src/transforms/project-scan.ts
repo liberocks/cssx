@@ -11,6 +11,7 @@ import { stableModuleFileName } from '../core/stable-module-file-name';
 import type { CssxSourceModule } from '../native/stylesheet';
 import { withClassNameManifest } from '../native/with-class-name-manifest';
 import { findProjectSourceFiles, isIgnoredProjectSourcePath } from './find-project-source-files';
+import { scanNativeStaticSxModule } from './native-static-sx';
 import { transformCssxModule } from './transform';
 
 /**
@@ -47,6 +48,25 @@ export async function scanProjectCssxSourceModules(
       }
       const code = isMdx ? await compileNextMdx(source, canonicalRoot, options.mdx) : source;
       const stable = options.stableClassNames || options.naming === 'source';
+      const stableFileName = stable
+        ? stableModuleFileName(canonicalRoot, fileName, options.mode === 'development')
+        : undefined;
+      if (!isMdx && !/\.(?:astro|vue)$/i.test(fileName)) {
+        const nativeScan = await scanNativeStaticSxModule(
+          code,
+          fileName,
+          canonicalRoot,
+          options,
+          allocator,
+          stableFileName ?? fileName,
+        );
+        if (nativeScan.handled) {
+          if (nativeScan.module) {
+            modules.push(nativeScan.module);
+          }
+          continue;
+        }
+      }
       const transformed = await transformCssxModule(
         code,
         isMdx ? `${fileName}.tsx` : fileName,
@@ -54,9 +74,7 @@ export async function scanProjectCssxSourceModules(
           ...transformOptions,
           classNameAllocator: allocator,
           stableClassNames: stable,
-          ...(stable
-            ? { stableClassNameFileName: stableModuleFileName(canonicalRoot, fileName, options.mode === 'development') }
-            : {}),
+          ...(stable ? { stableClassNameFileName: stableFileName } : {}),
         },
         undefined,
         { compileCss: false },
@@ -124,6 +142,28 @@ export async function scanProjectCssxSourceModules(
       }
       const code = isMdx ? await compileNextMdx(source, canonicalRoot, options.mdx) : source;
       const stable = options.stableClassNames || options.naming === 'source';
+      const stableFileName = stable
+        ? stableModuleFileName(canonicalRoot, fileName, options.mode === 'development')
+        : undefined;
+      if (!isMdx && !/\.(?:astro|vue)$/i.test(fileName)) {
+        const nativeScan = await scanNativeStaticSxModule(
+          code,
+          fileName,
+          canonicalRoot,
+          options,
+          state.allocator,
+          stableFileName ?? fileName,
+        );
+        if (nativeScan.handled) {
+          if (nativeScan.module) {
+            state.modules.set(fileName, nativeScan.module);
+          } else {
+            state.modules.delete(fileName);
+          }
+          state.signatures.set(fileName, signature);
+          continue;
+        }
+      }
       const transformed = await transformCssxModule(
         code,
         isMdx ? `${fileName}.tsx` : fileName,
@@ -131,9 +171,7 @@ export async function scanProjectCssxSourceModules(
           ...transformOptions,
           classNameAllocator: state.allocator,
           stableClassNames: stable,
-          ...(stable
-            ? { stableClassNameFileName: stableModuleFileName(canonicalRoot, fileName, options.mode === 'development') }
-            : {}),
+          ...(stable ? { stableClassNameFileName: stableFileName } : {}),
         },
         undefined,
         { compileCss: false },
@@ -581,6 +619,28 @@ async function updateProjectScanSourceFile(
     }
     const code = isMdx ? await compileNextMdx(source, root, options.mdx) : source;
     const stable = options.stableClassNames || options.naming === 'source';
+    const stableFileName = stable
+      ? stableModuleFileName(root, absoluteFileName, options.mode === 'development')
+      : undefined;
+    if (!isMdx && !/\.(?:astro|vue)$/i.test(absoluteFileName)) {
+      const nativeScan = await scanNativeStaticSxModule(
+        code,
+        absoluteFileName,
+        root,
+        options,
+        state.allocator,
+        stableFileName ?? absoluteFileName,
+      );
+      if (nativeScan.handled) {
+        if (nativeScan.module) {
+          state.modules.set(absoluteFileName, nativeScan.module);
+        } else {
+          state.modules.delete(absoluteFileName);
+        }
+        state.signatures.set(absoluteFileName, signature);
+        return previous || nativeScan.module !== undefined;
+      }
+    }
     const transformOptions = { ...options };
     delete transformOptions.coordination;
     delete transformOptions.manifestPath;
@@ -592,9 +652,7 @@ async function updateProjectScanSourceFile(
         ...transformOptions,
         classNameAllocator: state.allocator,
         stableClassNames: stable,
-        ...(stable
-          ? { stableClassNameFileName: stableModuleFileName(root, absoluteFileName, options.mode === 'development') }
-          : {}),
+        ...(stable ? { stableClassNameFileName: stableFileName } : {}),
       },
       undefined,
       { compileCss: false },

@@ -18,3 +18,18 @@ it('does not wrap empty CSS in a layer', () => {
   expect(serializeCss([], { layer: 'utilities' })).toBe('');
   expect(serializeCss(rules([['', '']]), { layer: 'utilities' })).toBe('');
 });
+
+it('removes terminal declaration semicolons while preserving nested rule structure', () => {
+  expect(serializeCss(rules([['.a{color:red;}.b{color:blue;}']]))).toBe('.a{color:red}.b{color:blue}');
+  expect(serializeCss(rules([['@media(x){.a{color:red;}}']]))).toBe('@media(x){.a{color:red}}');
+});
+
+it('preserves semicolons inside strings, comments, and non-terminal declarations', () => {
+  expect(serializeCss(rules([[`.a{content:";}";content:';\\\\';/* ;} */color:red;}`]]))).toBe(
+    `.a{content:";}";content:';\\\\';/* ;} */color:red}`,
+  );
+});
+
+it('keeps declaration semicolons when a closing brace does not follow', () => {
+  expect(serializeCss(rules([['.a{color:red; /* gap */ }']]))).toBe('.a{color:red; /* gap */ }');
+});

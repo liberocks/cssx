@@ -5,6 +5,7 @@ import {
   assertPluginOptions,
   developmentPluginOptions,
   effectiveClassNameOptions,
+  productionClassNameOptions,
   isDevelopmentMode,
   loadTheme,
   moduleId,
@@ -101,4 +102,12 @@ describe('unplugin options', () => {
     expect(isDevelopmentMode({}, { bundlerMode: 'development' })).toBe(true);
     expect(isDevelopmentMode({}, { viteDevServer: true })).toBe(true);
   });
+});
+
+it('shortens only default production class names', () => {
+  expect(productionClassNameOptions({})).toEqual({ suffix: '' });
+  expect(productionClassNameOptions({ className: { prefix: 'app-' } })).toEqual({ prefix: 'app-' });
+  expect(productionClassNameOptions({ naming: 'serial' })).toEqual({ variant: 'serial' });
+  expect(productionClassNameOptions({ coordination: 'manifest' })).toEqual({});
+  expect(productionClassNameOptions({ stableClassNames: true })).toEqual({});
 });
