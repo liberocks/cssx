@@ -325,6 +325,7 @@ jobs:
       - name: Publish packages
         if: steps.plan.outputs.has-release == 'true'
         env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
