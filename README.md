@@ -907,17 +907,25 @@ raw class strings or be modeled as explicit static style choices.
 
 ## Package releases
 
-The **Release packages** workflow defaults to `auto`, which detects every public
-package changed since its last release tag. This includes the npm packages and
-the `cssx-intellisense` Visual Studio Code extension. It applies the selected
-version bump to those packages, adds patch releases for dependents whose
-internal dependency range must advance, and creates one version-bump PR for the
-complete set. You can instead select one package explicitly. The release App is
-the only actor that can bypass protected checks to merge this specific PR,
-preserving an auditable PR trail without repeating CI for a package-version-only
-change. The merged commit is still verified before packages are built,
-published, and tagged. GitHub repository auto-merge remains disabled for
-ordinary pull requests.
+Dispatch **Prepare package versions** to select a semver bump. It detects public
+packages changed since their latest release tags, adds patch bumps for
+dependents whose internal dependency ranges must advance, checks that each
+planned version is valid, unpublished, and untagged, updates the manifests and
+lockfile, and opens a version-preparation PR. It does not merge the PR or bypass
+branch protection. Wait for the PR's required checks, merge it, and wait for the
+resulting `main` CI run to pass.
+
+Then dispatch **Release packages** with **package** set to `auto`. It publishes
+the changed packages at their prepared versions, verifies that the selected
+main commit passed CI, and creates tags and GitHub Releases. This workflow does
+not change package versions or open a PR, so publication can start after version
+validation and CI are already complete. If a partial publish fails, rerun it
+from the same `main` with **auto** to complete packages that are still untagged.
+For a package whose tag already exists but whose GitHub Release was not
+completed, select that package explicitly to retry the current version. The
+workflow skips already-published artifacts and refuses a tag that points at a
+different commit. GitHub repository auto-merge remains disabled for ordinary
+pull requests.
 
 Configure npm trusted publishing separately for each npm package, with
 repository `liberocks/cssx` and workflow file `release-packages.yml`. Do not select
@@ -931,19 +939,9 @@ Marketplace publisher settings. The release job uses `@vscode/vsce publish
 --oidc` and needs no Marketplace token secret. The policy must be in place
 before the first automated publication.
 
-If a release fails after its version-bump PR has merged but before the registry
-accepts the publish, first correct the trusted-publisher setting. Then rerun
-**Release packages** for the same explicitly selected package with **retry existing
-version** enabled. That guarded mode verifies `main` and publishes only the
-current version when it is still unpublished and has no tag; it neither creates
-another version-bump PR nor skips ahead to a new version. The chosen bump value
-is ignored in retry mode. It also detects an existing package-version tag or
-GitHub Release and skips that artifact while completing any missing release
-artifacts. For an IntelliSense-only release, select `cssx-intellisense`
-explicitly and choose a version bump so the release PR versions the current
-extension contents before publication. For a multi-package release, leave
-**package** set to `auto` so all changed packages are included. Version `0.1.1`
-is currently published.
+For an IntelliSense-only release, **Prepare package versions** still detects the
+changed extension automatically; the release step can use the default `auto`
+selection. Version `0.1.1` is currently published.
 
 Each GitHub Release lists the commits merged since that package's previous tag.
 For a package's first automated release, it uses the `release-baseline` tag
@@ -952,8 +950,9 @@ when available.
 Create a repository GitHub App with **Contents: read and write** and **Pull
 requests: read and write** permissions, install it on this repository, and add
 its ID and PEM private key as the `RELEASE_APP_ID` and
-`RELEASE_APP_PRIVATE_KEY` Actions secrets. The workflow uses its short-lived
-installation token only for release branches, PRs, tags, and releases.
+`RELEASE_APP_PRIVATE_KEY` Actions secrets. The version-preparation workflow uses
+its short-lived installation token to push the version branch and open a PR;
+the release workflow uses it for tags and GitHub Releases.
 
 CSSX conforms to every built-in static candidate in the pinned Tailwind 4.3.3
 IntelliSense snapshot, including candidates whose correct default-theme result

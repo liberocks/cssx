@@ -1,11 +1,11 @@
 name: Release packages
-run-name: Release packages ${{ inputs.package }} (${{ inputs.bump }}) from main by @${{ github.actor }}
+run-name: Release prepared packages (${{ inputs.package }}) from main by @${{ github.actor }}
 
 on:
   workflow_dispatch:
     inputs:
       package:
-        description: Package to release, or auto to release every changed package
+        description: Changed packages to publish, or one package to finish a partial release
         required: true
         type: choice
         default: auto
@@ -19,19 +19,6 @@ on:
           - '@cssxio/react-native'
           - '@cssxio/unplugin'
           - cssx-intellisense
-      bump:
-        description: Version bump
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-      retry_existing_version:
-        description: Retry current versions
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -43,12 +30,13 @@ concurrency:
 
 jobs:
   verify:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: build-native
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: main
+          ref: ${{ github.sha }}
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 12.4.1
@@ -69,6 +57,7 @@ jobs:
       - run: pnpm benchmark
 
   build-native:
+    if: github.ref == 'refs/heads/main'
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -92,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Install Rust 1.99.1
         run: rustup toolchain install 1.99.1 --profile minimal
@@ -113,6 +102,7 @@ jobs:
           if-no-files-found: error
 
   release:
+    if: github.ref == 'refs/heads/main'
     needs: [verify, build-native]
     runs-on: ubuntu-latest
     permissions:
@@ -121,7 +111,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
           # Release branch and tag pushes must authenticate with RELEASE_TOKEN,
           # not the read-only workflow GITHUB_TOKEN persisted by checkout.
@@ -142,13 +132,11 @@ jobs:
           node-version: 24.22.1
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      - name: Plan npm release
+      - name: Plan prepared package release
         id: plan
-        run: node scripts/release-plan.mjs plan --package "$PACKAGE" --bump "$BUMP" --retry-existing-version "$RETRY_EXISTING_VERSION" --output "$RUNNER_TEMP/release-plan.json"
+        run: node scripts/release-plan.mjs plan --package "$PACKAGE" --bump patch --retry-existing-version true --output "$RUNNER_TEMP/release-plan.json"
         env:
-          BUMP: ${{ inputs.bump }}
           PACKAGE: ${{ inputs.package }}
-          RETRY_EXISTING_VERSION: ${{ inputs.retry_existing_version }}
       - name: Create release GitHub App token
         if: steps.plan.outputs.has-release == 'true'
         id: release_app_token
@@ -156,93 +144,12 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-      - name: Apply and commit release versions
-        if: steps.plan.outputs.requires-version-bump == 'true'
-        id: release_commit
-        run: |
-          node scripts/release-plan.mjs apply --input "$RUNNER_TEMP/release-plan.json"
-          pnpm install --no-frozen-lockfile --config.link-workspace-packages=true
-          pnpm exec prettier pnpm-lock.yaml --write
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          release_branch="release/$BUMP-$GITHUB_RUN_ID"
-          git switch --create "$release_branch"
-          git add pnpm-lock.yaml packages/*/package.json examples/*/package.json
-          git commit -m "chore(release): publish $BUMP releases"
-          git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push --set-upstream origin "$release_branch"
-          printf 'release-branch=%s\n' "$release_branch" >> "$GITHUB_OUTPUT"
-          printf 'release-sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-        env:
-          BUMP: ${{ inputs.bump }}
-          RELEASE_TOKEN: ${{ steps.release_app_token.outputs.token }}
-      - name: Create and merge the release PR
-        if: steps.plan.outputs.requires-version-bump == 'true'
-        id: release_pr
-        run: |
-          merge_release_pr() {
-            gh pr merge "$release_pr_number" --squash --delete-branch
-          }
-
-          release_pr="$(gh pr create \
-            --base main \
-            --head "$RELEASE_BRANCH" \
-            --title "chore(release): publish $BUMP releases" \
-            --body "Automated release version bump. The release App is the only actor allowed to bypass protected checks when merging this PR.")"
-          release_pr_number="$(gh pr view "$release_pr" --json number --jq '.number')"
-
-          attempts_remaining=360
-          while [ "$attempts_remaining" -gt 0 ]; do
-            if merge_release_pr; then break; fi
-
-            release_pr_status="$(gh pr view "$release_pr_number" --json state,mergeStateStatus --jq '[.state, .mergeStateStatus] | @tsv')"
-            release_state="${release_pr_status%%$'\t'*}"
-            merge_state="${release_pr_status#*$'\t'}"
-            if [ "$release_state" = MERGED ]; then break; fi
-            if [ "$release_state" = CLOSED ]; then
-              printf 'Release PR %s was closed without merging\n' "$release_pr_number" >&2
-              exit 1
-            fi
-            if [ "$merge_state" = BEHIND ]; then
-              gh pr update-branch "$release_pr_number"
-            fi
-            sleep 5
-            attempts_remaining=$((attempts_remaining - 1))
-          done
-          release_sha="$(gh pr view "$release_pr_number" --json mergeCommit --jq '.mergeCommit.oid')"
-          [ -n "$release_sha" ] || { printf 'Timed out waiting for release PR %s to merge\n' "$release_pr_number" >&2; exit 1; }
-          printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
-        env:
-          BUMP: ${{ inputs.bump }}
-          GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
-          RELEASE_BRANCH: ${{ steps.release_commit.outputs.release-branch }}
-          RELEASE_SHA: ${{ steps.release_commit.outputs.release-sha }}
       - name: Select the release commit
         if: steps.plan.outputs.has-release == 'true'
         id: release_source
         run: |
-          release_sha="$MERGED_RELEASE_SHA"
-          if [ "$RETRY_EXISTING_VERSION" = true ]; then
-            release_sha="$GITHUB_SHA"
-          elif [ "$REQUIRES_VERSION_BUMP" = false ]; then
-            manifest_path="$(jq -r '.packages[0].directory + "/package.json"' "$RUNNER_TEMP/release-plan.json")"
-            release_version="$(jq -r '.packages[0].nextVersion' "$RUNNER_TEMP/release-plan.json")"
-            while IFS= read -r candidate_sha; do
-              candidate_version="$(git show "$candidate_sha:$manifest_path" | jq -r '.version')"
-              parent_version="$(git show "$candidate_sha^:$manifest_path" 2>/dev/null | jq -r '.version' 2>/dev/null || true)"
-              if [ "$candidate_version" = "$release_version" ] && [ "$parent_version" != "$release_version" ]; then
-                release_sha="$candidate_sha"
-                break
-              fi
-            done < <(git log --format=%H -- "$manifest_path")
-          fi
-          [ -n "$release_sha" ] || { printf 'No release commit was selected\n' >&2; exit 1; }
-          printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
-        env:
-          MERGED_RELEASE_SHA: ${{ steps.release_pr.outputs.release-sha }}
-          REQUIRES_VERSION_BUMP: ${{ steps.plan.outputs.requires-version-bump }}
-          RETRY_EXISTING_VERSION: ${{ inputs.retry_existing_version }}
-      - name: Verify the merged release commit
+          printf 'release-sha=%s\n' "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+      - name: Verify the selected main commit
         if: steps.plan.outputs.has-release == 'true'
         run: |
           release_sha="$RELEASE_SHA"
