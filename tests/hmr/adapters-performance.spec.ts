@@ -5,7 +5,7 @@ import cssxWebpack from '@cssxio/unplugin/webpack';
 import { expect, test } from '@playwright/test';
 import { rspack } from '@rspack/core';
 import { context as esbuildContext } from 'esbuild';
-import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve } from 'node:path';
@@ -100,7 +100,7 @@ for (const adapter of adapters) {
         }, expected);
         const buildFinished = waitForBuild?.();
         const savedAt = performance.timeOrigin + performance.now();
-        await writeFile(fixture.styleSource, source);
+        await saveSourceAtomically(fixture.styleSource, source);
         await page.waitForFunction(
           () => typeof (window as Window & { __cssxHmrVisibleAt?: number }).__cssxHmrVisibleAt === 'number',
           undefined,
@@ -179,7 +179,7 @@ test('rollup publishes the latest stylesheet after rapid saves', async ({ page }
     for (let edit = 0; edit < 4; edit++) {
       const next = current === 'p-2' ? 'p-4' : 'p-2';
       source = source.replace("sx('" + current + "')", "sx('" + next + "')");
-      await writeFile(fixture.styleSource, source);
+      await saveSourceAtomically(fixture.styleSource, source);
       current = next;
     }
 
@@ -395,6 +395,12 @@ async function waitForCoordinatorStylesheet(fileName: string): Promise<void> {
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 10));
   }
   throw new Error('The ' + basename(fileName) + ' coordinator did not finish its initial scan.');
+}
+
+async function saveSourceAtomically(fileName: string, source: string): Promise<void> {
+  const temporaryFile = fileName + '.tmp';
+  await writeFile(temporaryFile, source);
+  await rename(temporaryFile, fileName);
 }
 
 async function waitForRollupBuild(watcher: RollupWatcher): Promise<void> {
