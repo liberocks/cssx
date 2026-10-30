@@ -138,9 +138,13 @@ The performance target is at most 100 ms from saving an existing static style li
 
 On the reference ARM64 machine, 30 warm browser edits had maximum save-to-visible times of 45.6 ms (esbuild), 53.1 ms (Rollup), 77.6 ms (Webpack), 76.9 ms (Rspack), 65.0 ms (Vite), 79.0 ms (Next.js Turbopack), and 78.3 ms (Next.js Webpack). The browser checks confirmed computed styles updated while the page, input value, focus, and scroll position stayed in place. In the 400-module source-scan fixture, the native analyzer measured a 199 ms initial scan and 1.9 ms p95 warm edit transform plus stylesheet preparation, compared with 350 ms and 2.5 ms using the Babel fallback. Measured Node RSS was 168 MB with the native analyzer and 248 MB with the fallback. These are local fixture results; they are not guarantees for cold builds or different hardware.
 
-The Rust workspace under `packages/compiler/native` uses Oxc for JavaScript and TypeScript parsing and `lowdash` for bounded source batches. To build the optional local Node addon, use Rust 1.99 and run `cargo build --manifest-path packages/compiler/native/Cargo.toml --release`. Point `CSSX_NATIVE_COMPILER_PATH` at the resulting addon (`libcssx_compiler_node.dylib`, `.so`, or `.dll`) before starting the CSSX development server. The native path currently collects metadata for development modules that contain only statically foldable `sx()` calls; modules with `create()`, `props()`, dynamic `sx()` expressions, or parse errors use the existing Babel path. Production transforms and CSS emission still use the TypeScript compiler. Without the addon, CSSX uses the Babel path for every module.
+The Rust workspace under `packages/compiler/native` uses Oxc for JavaScript and TypeScript parsing and `lowdash` for bounded source batches. Install Rust 1.99.1 with `rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt`, then build the optional local Node addon with `cargo +1.99.1 build --manifest-path packages/compiler/native/Cargo.toml --release -p cssx-compiler-node`. Point `CSSX_NATIVE_COMPILER_PATH` at the resulting addon (`libcssx_compiler_node.dylib`, `.so`, or `.dll`) before starting the CSSX development server or production build. Published `@cssxio/unplugin` installs `@cssxio/compiler-native` optionally on macOS arm64; other platforms continue through the Babel fallback. The release workflow builds the packaged addon with Rust 1.99.1.
 
-`pnpm benchmark:dev-hmr` reports the initial 400-module metadata scan, 30 warm edits, and Node heap/RSS. Set `CSSX_DISABLE_NATIVE_COMPILER=1` to measure the Babel fallback. For pre-extracted production utility compilation, run `pnpm benchmark:cssx-utilities -- small --json` and `pnpm benchmark:tailwind-utilities -- small --json`. The final bundled build comparison remains `pnpm --dir benchmarks benchmark:small`; compiler-only and final-bundle timings measure different work.
+The native analyzer collects metadata for development modules that contain statically foldable `sx()` calls. In production, it can also transform an unexported static `create()` map when every reference is a statically resolvable `props()` call, source maps are disabled, and stable class names are off. Other `create()`/`props()` forms, dynamic `sx()` expressions, and parse errors use the existing Babel transform. Utility resolution and CSS emission continue to use the TypeScript compiler. Without the addon, CSSX uses the Babel transform for every module.
+
+`pnpm benchmark:dev-hmr` reports the initial 400-module metadata scan, 30 warm edits, and Node heap/RSS. Set `CSSX_DISABLE_NATIVE_COMPILER=1` to measure the Babel fallback. For pre-extracted production utility compilation, run `pnpm benchmark:cssx-utilities -- large --json` and `pnpm benchmark:tailwind-utilities -- large --json`. `pnpm --dir benchmarks benchmark:vite` compares five warmed full React/Vite builds after one warm-up: native CSSX, its Babel fallback, Tailwind, styled-components, and StyleX. It reports medians, ranges, and initial-route output sizes; set `CSSX_NATIVE_COMPILER_PATH` to the built Rust addon to ensure the native row uses Rust. The final bundled build comparison is `pnpm --dir benchmarks benchmark:small`. Compiler-only, full-app build, and save-to-visible timings measure different work.
+
+On the local macOS arm64 benchmark machine, pre-extracted utility compilation medians were 0.53/1.06 ms (CSSX/Tailwind) for small, 1.36/1.81 ms for medium, and 2.70/3.85 ms for large. The large generated CSS was 19.1 KB (4.28 KB gzip) for CSSX and 40.4 KB (5.30 KB gzip) for Tailwind. In the warmed full React/Vite build, native CSSX measured 231 ms versus 247 ms for Tailwind; the Babel fallback measured 800 ms. The native CSSX build was about 3.5 times faster than its fallback and 6.5% faster than Tailwind in this fixture. Its initial-route payload was 98.7 KB gzip, compared with 107.3 KB for Tailwind. These results are local measurements, not guarantees for other machines or application shapes.
 
 Keep the stylesheet link required by your adapter. Do not add generated CSSX stylesheets to source control.
 
@@ -393,15 +397,320 @@ The family prefixes below accept the value forms described in the utility sectio
 | `scroll-my-`                     | `scroll-margin-y`               |
 | `scroll-ms-`                     | `scroll-margin-inline-start`    |
 | `scroll-me-`                     | `scroll-margin-inline-end`      |
-| `scroll-mbs-`                    | `scroll-margin-block-start`  …12686 tokens truncated…                  | Independent animation timing function.      |
-| `animation-iterations-{1,2,3,infinite}`, `animation-direction-{normal,reverse,alternate,alternate-reverse}`, `animation-fill-{none,forwards,backwards,both}`, `animation-{running,paused}` | Independent animation playback controls.    |
-| `stagger-*`, `stagger-index-*`, `stagger-count-*`, `stagger-reverse`, `{animation-,}delay-stagger`                                                                                         | Explicit CSS stagger channels.              |
-| `animation-timeline-*`, `{scroll,view}-timeline-*`, `timeline-scope-*`, `animation-range-*`                                                                                                | Progress timelines and attachment ranges.   |
-| `view-transition-{name,class}-*`, `vt-{old,new,group,image-pair}-[target]:*`                                                                                                               | Native snapshot capture and styling.        |
-| `translate-{x,y}-<spacing>`                                                                                                                                                                | Composable individual `translate`.          |
-| `rotate-{n,[value]}`                                                                                                                                                                       | Individual `rotate`.                        |
-| `scale[-x/-y]-{n,[value]}`                                                                                                                                                                 | Composable individual `scale`.              |
-| `skew-{x,y}-{n,[value]}`                                                                                                                                                                   | Composable `transform` skew channel.        |
+| `scroll-mbs-`                    | `scroll-margin-block-start`     |
+| `scroll-mbe-`                    | `scroll-margin-block-end`       |
+| `scroll-mt-`                     | `scroll-margin-top`             |
+| `scroll-mr-`                     | `scroll-margin-right`           |
+| `scroll-mb-`                     | `scroll-margin-bottom`          |
+| `scroll-ml-`                     | `scroll-margin-left`            |
+| `scroll-m-`                      | `scroll-margin`                 |
+| `scroll-px-`                     | `scroll-padding-x`              |
+| `scroll-py-`                     | `scroll-padding-y`              |
+| `scroll-ps-`                     | `scroll-padding-inline-start`   |
+| `scroll-pe-`                     | `scroll-padding-inline-end`     |
+| `scroll-pbs-`                    | `scroll-padding-block-start`    |
+| `scroll-pbe-`                    | `scroll-padding-block-end`      |
+| `scroll-pt-`                     | `scroll-padding-top`            |
+| `scroll-pr-`                     | `scroll-padding-right`          |
+| `scroll-pb-`                     | `scroll-padding-bottom`         |
+| `scroll-pl-`                     | `scroll-padding-left`           |
+| `scroll-p-`                      | `scroll-padding`                |
+| `mx-`                            | `mx`                            |
+| `my-`                            | `my`                            |
+| `ms-`                            | `ms`                            |
+| `me-`                            | `me`                            |
+| `mbs-`                           | `margin-block-start`            |
+| `mbe-`                           | `margin-block-end`              |
+| `mt-`                            | `mt`                            |
+| `mr-`                            | `mr`                            |
+| `mb-`                            | `mb`                            |
+| `ml-`                            | `ml`                            |
+| `m-`                             | `m`                             |
+| `px-`                            | `px`                            |
+| `py-`                            | `py`                            |
+| `ps-`                            | `ps`                            |
+| `pe-`                            | `pe`                            |
+| `pbs-`                           | `padding-block-start`           |
+| `pbe-`                           | `padding-block-end`             |
+| `pt-`                            | `pt`                            |
+| `pr-`                            | `pr`                            |
+| `pb-`                            | `pb`                            |
+| `pl-`                            | `pl`                            |
+| `p-`                             | `p`                             |
+| `font-synthesis-`                | `font-synthesis`                |
+| `font-optical-`                  | `font-optical-sizing`           |
+| `font-kerning-`                  | `font-kerning`                  |
+| `font-`                          | `font-family`                   |
+| `text-combine-upright-`          | `text-combine-upright`          |
+| `text-orientation-`              | `text-orientation`              |
+| `text-`                          | `text`                          |
+| `leading-`                       | `line-height`                   |
+| `tracking-`                      | `letter-spacing`                |
+| `indent-`                        | `text-indent`                   |
+| `align-`                         | `vertical-align`                |
+| `whitespace-`                    | `white-space`                   |
+| `break-`                         | `word-break`                    |
+| `hyphens-`                       | `hyphens`                       |
+| `bg-linear-to-`                  | `background-image`              |
+| `bg-linear-`                     | `background-image`              |
+| `bg-`                            | `background`                    |
+| `accent-`                        | `accent-color`                  |
+| `caret-`                         | `caret-color`                   |
+| `stroke-miterlimit-`             | `stroke-miterlimit`             |
+| `stroke-dasharray-`              | `stroke-dasharray`              |
+| `stroke-dashoffset-`             | `stroke-dashoffset`             |
+| `stroke-cap-`                    | `stroke-linecap`                |
+| `stroke-join-`                   | `stroke-linejoin`               |
+| `fill-rule-`                     | `fill-rule`                     |
+| `clip-rule-`                     | `clip-rule`                     |
+| `vector-effect-`                 | `vector-effect`                 |
+| `paint-order-`                   | `paint-order`                   |
+| `shape-rendering-`               | `shape-rendering`               |
+| `fill-`                          | `fill`                          |
+| `stroke-`                        | `stroke`                        |
+| `scrollbar-thumb-`               | `scrollbar-thumb`               |
+| `scrollbar-track-`               | `scrollbar-track`               |
+| `scheme-`                        | `color-scheme`                  |
+| `mask-`                          | `mask-image`                    |
+| `from-`                          | `gradient-from`                 |
+| `via-`                           | `gradient-via`                  |
+| `to-`                            | `gradient-to`                   |
+| `rounded-`                       | `border-radius`                 |
+| `border-spacing-`                | `border-spacing`                |
+| `border-x-`                      | `border-x`                      |
+| `border-y-`                      | `border-y`                      |
+| `border-s-`                      | `border-inline-start`           |
+| `border-e-`                      | `border-inline-end`             |
+| `border-bs-`                     | `border-block-start`            |
+| `border-be-`                     | `border-block-end`              |
+| `border-t-`                      | `border-top`                    |
+| `border-r-`                      | `border-right`                  |
+| `border-b-`                      | `border-bottom`                 |
+| `border-l-`                      | `border-left`                   |
+| `border-`                        | `border`                        |
+| `outline-`                       | `outline`                       |
+| `ring-offset-`                   | `ring-offset`                   |
+| `ring-`                          | `ring`                          |
+| `shadow-`                        | `box-shadow`                    |
+| `opacity-`                       | `opacity`                       |
+| `mix-blend-`                     | `mix-blend-mode`                |
+| `bg-blend-`                      | `background-blend-mode`         |
+| `filter-`                        | `filter`                        |
+| `blur-`                          | `blur`                          |
+| `brightness-`                    | `brightness`                    |
+| `contrast-`                      | `contrast`                      |
+| `drop-shadow-`                   | `drop-shadow`                   |
+| `grayscale-`                     | `grayscale`                     |
+| `hue-rotate-`                    | `hue-rotate`                    |
+| `invert-`                        | `invert`                        |
+| `saturate-`                      | `saturate`                      |
+| `sepia-`                         | `sepia`                         |
+| `backdrop-`                      | `backdrop-filter`               |
+| `animation-name-`                | `animation-name`                |
+| `animation-composition-`         | `animation-composition`         |
+| `animation-timeline-`            | `animation-timeline`            |
+| `animation-range-start-`         | `animation-range-start`         |
+| `animation-range-end-`           | `animation-range-end`           |
+| `animation-range-`               | `animation-range`               |
+| `animation-duration-`            | `animation-duration`            |
+| `animation-delay-`               | `animation-delay`               |
+| `animation-ease-`                | `animation-timing-function`     |
+| `animation-iterations-`          | `animation-iteration-count`     |
+| `animation-direction-`           | `animation-direction`           |
+| `animation-fill-`                | `animation-fill-mode`           |
+| `animation-`                     | `animation-play-state`          |
+| `writing-`                       | `writing-mode`                  |
+| `unicode-bidi-`                  | `unicode-bidi`                  |
+| `image-render-`                  | `image-rendering`               |
+| `transition-`                    | `transition-property`           |
+| `duration-`                      | `transition-duration`           |
+| `delay-`                         | `transition-delay`              |
+| `ease-`                          | `transition-timing-function`    |
+| `animate-`                       | `animation`                     |
+| `stagger-index-`                 | `stagger-index`                 |
+| `stagger-count-`                 | `stagger-count`                 |
+| `stagger-reverse`                | `stagger-reverse`               |
+| `stagger-`                       | `stagger`                       |
+| `scroll-timeline-name-`          | `scroll-timeline-name`          |
+| `scroll-timeline-axis-`          | `scroll-timeline-axis`          |
+| `view-timeline-name-`            | `view-timeline-name`            |
+| `view-timeline-axis-`            | `view-timeline-axis`            |
+| `view-timeline-inset-`           | `view-timeline-inset`           |
+| `timeline-scope-`                | `timeline-scope`                |
+| `view-transition-name-`          | `view-transition-name`          |
+| `view-transition-class-`         | `view-transition-class`         |
+| `origin-`                        | `transform-origin`              |
+| `scale-x-`                       | `scale-x`                       |
+| `scale-y-`                       | `scale-y`                       |
+| `scale-z-`                       | `scale-z`                       |
+| `scale-`                         | `scale`                         |
+| `rotate-x-`                      | `rotate-x`                      |
+| `rotate-y-`                      | `rotate-y`                      |
+| `rotate-z-`                      | `rotate-z`                      |
+| `rotate-`                        | `rotate`                        |
+| `translate-x-`                   | `translate-x`                   |
+| `translate-y-`                   | `translate-y`                   |
+| `translate-z-`                   | `translate-z`                   |
+| `translate-`                     | `translate`                     |
+| `skew-x-`                        | `skew-x`                        |
+| `skew-y-`                        | `skew-y`                        |
+| `skew-`                          | `skew`                          |
+| `cursor-`                        | `cursor`                        |
+| `touch-`                         | `touch-action`                  |
+| `will-change-`                   | `will-change`                   |
+
+#### Exact utility classes
+
+| Class                      | Semantic group               |
+| -------------------------- | ---------------------------- |
+| `absolute`                 | `position`                   |
+| `accent-auto`              | `accent-color`               |
+| `antialiased`              | `font-smoothing`             |
+| `appearance-auto`          | `appearance`                 |
+| `appearance-none`          | `appearance`                 |
+| `block`                    | `display`                    |
+| `blur`                     | `blur`                       |
+| `border`                   | `border-width`               |
+| `border-collapse`          | `border-collapse`            |
+| `border-dashed`            | `border-style`               |
+| `border-dotted`            | `border-style`               |
+| `border-double`            | `border-style`               |
+| `border-hidden`            | `border-style`               |
+| `border-none`              | `border-style`               |
+| `border-separate`          | `border-collapse`            |
+| `border-solid`             | `border-style`               |
+| `box-border`               | `box-sizing`                 |
+| `box-content`              | `box-sizing`                 |
+| `capitalize`               | `text-transform`             |
+| `caption-bottom`           | `caption-side`               |
+| `caption-top`              | `caption-side`               |
+| `caret-auto`               | `caret-color`                |
+| `collapse`                 | `visibility`                 |
+| `container`                | `container`                  |
+| `contents`                 | `display`                    |
+| `diagonal-fractions`       | `numeric-diagonal-fractions` |
+| `divide-x`                 | `divide-x`                   |
+| `divide-y`                 | `divide-y`                   |
+| `drop-shadow`              | `drop-shadow`                |
+| `field-sizing-content`     | `field-sizing`               |
+| `fill-none`                | `fill`                       |
+| `fixed`                    | `position`                   |
+| `flex`                     | `display`                    |
+| `flex-col`                 | `flex-direction`             |
+| `flex-col-reverse`         | `flex-direction`             |
+| `flex-nowrap`              | `flex-wrap`                  |
+| `flex-row`                 | `flex-direction`             |
+| `flex-row-reverse`         | `flex-direction`             |
+| `flex-wrap`                | `flex-wrap`                  |
+| `flex-wrap-reverse`        | `flex-wrap`                  |
+| `flow-root`                | `display`                    |
+| `font-black`               | `font-weight`                |
+| `font-bold`                | `font-weight`                |
+| `font-extrabold`           | `font-weight`                |
+| `font-extralight`          | `font-weight`                |
+| `font-light`               | `font-weight`                |
+| `font-medium`              | `font-weight`                |
+| `font-normal`              | `font-weight`                |
+| `font-semibold`            | `font-weight`                |
+| `font-thin`                | `font-weight`                |
+| `forced-color-adjust-auto` | `forced-color-adjust`        |
+| `forced-color-adjust-none` | `forced-color-adjust`        |
+| `grayscale`                | `grayscale`                  |
+| `grid`                     | `display`                    |
+| `hidden`                   | `display`                    |
+| `inline`                   | `display`                    |
+| `inline-block`             | `display`                    |
+| `inline-flex`              | `display`                    |
+| `inline-grid`              | `display`                    |
+| `inline-table`             | `display`                    |
+| `invert`                   | `invert`                     |
+| `invisible`                | `visibility`                 |
+| `isolate`                  | `isolation`                  |
+| `isolation-auto`           | `isolation`                  |
+| `italic`                   | `font-style`                 |
+| `line-through`             | `text-decoration-line`       |
+| `lining-nums`              | `numeric-lining-nums`        |
+| `list-item`                | `display`                    |
+| `lowercase`                | `text-transform`             |
+| `no-underline`             | `text-decoration-line`       |
+| `normal-case`              | `text-transform`             |
+| `normal-nums`              | `numeric-normal`             |
+| `not-italic`               | `font-style`                 |
+| `not-sr-only`              | `sr-only`                    |
+| `oldstyle-nums`            | `numeric-oldstyle-nums`      |
+| `ordinal`                  | `numeric-ordinal`            |
+| `outline`                  | `outline-width`              |
+| `outline-dashed`           | `outline-style`              |
+| `outline-dotted`           | `outline-style`              |
+| `outline-double`           | `outline-style`              |
+| `outline-hidden`           | `outline-hidden`             |
+| `outline-none`             | `outline-style`              |
+| `outline-solid`            | `outline-style`              |
+| `overflow-auto`            | `overflow`                   |
+| `overflow-clip`            | `overflow`                   |
+| `overflow-hidden`          | `overflow`                   |
+| `overflow-scroll`          | `overflow`                   |
+| `overflow-visible`         | `overflow`                   |
+| `overline`                 | `text-decoration-line`       |
+| `pointer-events-auto`      | `pointer-events`             |
+| `pointer-events-none`      | `pointer-events`             |
+| `proportional-nums`        | `numeric-proportional-nums`  |
+| `relative`                 | `position`                   |
+| `resize`                   | `resize`                     |
+| `resize-none`              | `resize`                     |
+| `resize-x`                 | `resize`                     |
+| `resize-y`                 | `resize`                     |
+| `rounded`                  | `border-radius`              |
+| `scroll-auto`              | `scroll-behavior`            |
+| `scroll-smooth`            | `scroll-behavior`            |
+| `scrollbar-auto`           | `scrollbar-width`            |
+| `scrollbar-gutter-auto`    | `scrollbar-gutter`           |
+| `scrollbar-gutter-both`    | `scrollbar-gutter`           |
+| `scrollbar-gutter-stable`  | `scrollbar-gutter`           |
+| `scrollbar-none`           | `scrollbar-width`            |
+| `scrollbar-thin`           | `scrollbar-width`            |
+| `select-all`               | `user-select`                |
+| `select-auto`              | `user-select`                |
+| `select-none`              | `user-select`                |
+| `select-text`              | `user-select`                |
+| `sepia`                    | `sepia`                      |
+| `shadow`                   | `box-shadow`                 |
+| `slashed-zero`             | `numeric-slashed-zero`       |
+| `snap-align-none`          | `scroll-snap-align`          |
+| `snap-always`              | `scroll-snap-stop`           |
+| `snap-both`                | `scroll-snap-type`           |
+| `snap-center`              | `scroll-snap-align`          |
+| `snap-end`                 | `scroll-snap-align`          |
+| `snap-mandatory`           | `scroll-snap-strictness`     |
+| `snap-none`                | `scroll-snap-type`           |
+| `snap-normal`              | `scroll-snap-stop`           |
+| `snap-proximity`           | `scroll-snap-strictness`     |
+| `snap-start`               | `scroll-snap-align`          |
+| `snap-x`                   | `scroll-snap-type`           |
+| `snap-y`                   | `scroll-snap-type`           |
+| `sr-only`                  | `sr-only`                    |
+| `stacked-fractions`        | `numeric-stacked-fractions`  |
+| `static`                   | `position`                   |
+| `sticky`                   | `position`                   |
+| `stroke-none`              | `stroke`                     |
+| `subpixel-antialiased`     | `font-smoothing`             |
+| `table`                    | `display`                    |
+| `table-auto`               | `table-layout`               |
+| `table-fixed`              | `table-layout`               |
+| `tabular-nums`             | `numeric-tabular-nums`       |
+| `transform`                | `transform`                  |
+| `transform-none`           | `transform`                  |
+| `transition`               | `transition-property`        |
+| `transition-discrete`      | `transition-behavior`        |
+| `transition-none`          | `transition-property`        |
+| `transition-normal`        | `transition-behavior`        |
+| `truncate`                 | `truncate`                   |
+| `underline`                | `text-decoration-line`       |
+| `uppercase`                | `text-transform`             |
+| `visible`                  | `visibility`                 |
+
+</details>
+<!-- cssx-utility-reference:end -->
 
 #### Example
 

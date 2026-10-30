@@ -9,6 +9,7 @@ const execFileAsync = promisify(execFile);
 
 export const releasePackages = [
   { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [], registry: 'npm' },
+  { name: '@cssxio/compiler-native', directory: 'packages/compiler-native', dependencies: [], registry: 'npm' },
   {
     name: '@cssxio/babel-plugin',
     directory: 'packages/babel-plugin',
@@ -26,7 +27,7 @@ export const releasePackages = [
   {
     name: '@cssxio/unplugin',
     directory: 'packages/unplugin',
-    dependencies: ['@cssxio/babel-plugin', '@cssxio/compiler'],
+    dependencies: ['@cssxio/babel-plugin', '@cssxio/compiler', '@cssxio/compiler-native'],
     registry: 'npm',
   },
   { name: 'cssx-intellisense', directory: 'packages/intellisense', dependencies: [], registry: 'vscode' },
@@ -131,7 +132,7 @@ export function createAutoReleasePlan(packageInfos, manifests, changedPackageNam
           dependencyManifest.version,
           changedPackageNames.has(dependency) ? bump : 'patch',
         );
-        if (!isVersionInRange(manifest.dependencies?.[dependency], dependencyNextVersion)) {
+        if (!isVersionInRange(dependencyRange(manifest, dependency), dependencyNextVersion)) {
           selectedPackageNames.add(packageInfo.name);
           addedPackage = true;
           break;
@@ -255,8 +256,10 @@ async function applyPlan({ input }) {
     manifest.version = releasePackage.nextVersion;
     for (const dependency of packageInfo.dependencies) {
       const dependencyNextVersion = nextVersionByPackage.get(dependency);
-      if (dependencyNextVersion && !isVersionInRange(manifest.dependencies?.[dependency], dependencyNextVersion)) {
-        manifest.dependencies[dependency] = `^${dependencyNextVersion}`;
+      if (dependencyNextVersion && !isVersionInRange(dependencyRange(manifest, dependency), dependencyNextVersion)) {
+        const section = manifest.dependencies?.[dependency] ? 'dependencies' : 'optionalDependencies';
+        manifest[section] ??= {};
+        manifest[section][dependency] = `^${dependencyNextVersion}`;
       }
     }
     const manifestPath = resolve(workspaceRoot, packageInfo.directory, 'package.json');
@@ -276,7 +279,7 @@ async function updateDependencyVersions(releasePackages) {
   for (const manifestPath of manifestPaths) {
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
     let changed = false;
-    for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    for (const section of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
       if (!manifest[section]) continue;
       for (const [name, version] of Object.entries(manifest[section])) {
         const nextVersion = releasedVersions.get(name);
@@ -288,6 +291,10 @@ async function updateDependencyVersions(releasePackages) {
     }
     if (changed) await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   }
+}
+
+function dependencyRange(manifest, dependency) {
+  return manifest.dependencies?.[dependency] ?? manifest.optionalDependencies?.[dependency];
 }
 
 function updateVersionRange(version, nextVersion) {

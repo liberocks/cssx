@@ -79,17 +79,17 @@ CSS-only utility medians were:
 
 | Variant |     CSSX | Tailwind | CSSX CSS bytes | Tailwind CSS bytes |
 | ------- | -------: | -------: | -------------: | -----------------: |
-| Small   | 0.487 ms | 1.040 ms |          2,709 |              5,860 |
-| Medium  | 1.334 ms | 1.803 ms |          9,909 |             21,060 |
-| Large   | 2.768 ms | 3.366 ms |         19,069 |             40,380 |
+| Small   | 0.527 ms | 1.062 ms |          2,709 |              5,860 |
+| Medium  | 1.363 ms | 1.811 ms |          9,909 |             21,060 |
+| Large   | 2.702 ms | 3.846 ms |         19,069 |             40,380 |
 
 These pre-extracted candidate measurements use CSSX's current TypeScript
 compiler; they do not measure the Rust analyzer. The separate full small
-final-bundle measurement was 9.819 ms for CSSX and 3.180 ms for Tailwind.
-CSSX's utility-only stage is faster in this corpus, while its full final-build
-pipeline is still slower than Tailwind and does not yet meet the production
-build target. These local measurements do not replace the browser
-save-to-visible gate.
+final-bundle measurement was 9.819 ms for CSSX and 3.180 ms for Tailwind. The
+full-app production comparison below includes a Rust native transform row and
+a Babel fallback row; it has a different workload and should not be compared
+directly with these compiler-only results. These local measurements do not
+replace the browser save-to-visible gate.
 
 ## Measurement protocol
 
@@ -114,9 +114,18 @@ pnpm --dir benchmarks benchmark:tailwind
 
 ### Vite application output
 
-`benchmark:vite` builds four matching React/Vite applications in `cssx`,
-`tailwind`, `styled-components`, and `stylex`. They share the exact component tree and content while
-each project uses its native styling integration.
+`benchmark:vite` builds five React/Vite variants from the same 2,000-style,
+200,000-element corpus: native CSSX, CSSX's Babel fallback, Tailwind,
+styled-components, and StyleX. Each project uses its native styling
+integration. To make the CSSX native row use Rust, build the addon and set
+`CSSX_NATIVE_COMPILER_PATH` to its platform binary before running the suite.
+
+On the reference macOS arm64 machine, the warmed build medians were 231 ms for
+native CSSX, 800 ms for the Babel fallback, and 247 ms for Tailwind. Native
+CSSX was about 3.5 times faster than its fallback and 6.5% faster than Tailwind
+in this corpus. Native CSSX delivered 98,652 B gzip across initial-route assets;
+Tailwind delivered 107,334 B. These are local fixture results, not a general
+framework ranking.
 
 ```sh
 pnpm --dir benchmarks benchmark:vite

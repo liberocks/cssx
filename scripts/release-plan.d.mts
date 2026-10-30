@@ -11,6 +11,7 @@ export type ReleasePackage = {
 export type ReleaseManifest = {
   readonly version: string;
   readonly dependencies?: Readonly<Record<string, string>>;
+  readonly optionalDependencies?: Readonly<Record<string, string>>;
 };
 
 export type PlannedReleasePackage = ReleasePackage & {

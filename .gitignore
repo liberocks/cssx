@@ -1,5 +1,6 @@
 node_modules/
 packages/compiler/native/target/
+packages/compiler-native/libcssx_compiler_node.dylib
 packages/*/dist/
 packages/docs/.astro/
 examples/*/dist/

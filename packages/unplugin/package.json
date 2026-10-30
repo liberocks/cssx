@@ -69,7 +69,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup src/index.ts src/vite.ts src/rollup.ts src/webpack.ts src/rspack.ts src/esbuild.ts src/next.ts src/next-loader.ts src/development-runtime.ts src/transform-runtime.ts --format esm,cjs --dts --minify --external @cssxio/unplugin/internal/development-runtime --external @cssxio/unplugin/internal/transform-runtime --clean"
+    "build": "tsup src/index.ts src/vite.ts src/rollup.ts src/webpack.ts src/rspack.ts src/esbuild.ts src/next.ts src/next-loader.ts src/development-runtime.ts src/transform-runtime.ts src/unplugin-factory-runtime.ts --format esm,cjs --dts --minify --external @cssxio/unplugin/internal/development-runtime --external @cssxio/unplugin/internal/transform-runtime --clean"
   },
   "dependencies": {
     "@babel/core": "^7.29.7",
@@ -77,6 +77,9 @@
     "@cssxio/compiler": "^0.11.0",
     "@vue/compiler-sfc": "^3.5.0",
     "unplugin": "^3.3.0"
+  },
+  "optionalDependencies": {
+    "@cssxio/compiler-native": "workspace:*"
   },
   "peerDependencies": {
     "esbuild": ">=0.27.0"

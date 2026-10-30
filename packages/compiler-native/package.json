@@ -1,0 +1,24 @@
+{
+  "name": "@cssxio/compiler-native",
+  "version": "0.1.0",
+  "description": "Optional Rust and Oxc analyzer for CSSX on macOS arm64.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liberocks/cssx.git",
+    "directory": "packages/compiler-native"
+  },
+  "main": "./libcssx_compiler_node.dylib",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "libcssx_compiler_node.dylib"
+  ],
+  "scripts": {
+    "prepack": "node ../../scripts/assert-native-package.mjs"
+  }
+}

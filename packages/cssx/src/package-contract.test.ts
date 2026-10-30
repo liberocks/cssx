@@ -82,6 +82,26 @@ if (developmentRuntimeLoads !== 0) throw new Error('Production adapter imports l
     expect(result.stderr).toBe('');
   });
 
+  it('defers Babel and Vue dependencies until a fallback transform is needed', async () => {
+    const runnerPath = join(fixtureDirectory, 'production-fallback-imports.cjs');
+    await writeFile(
+      runnerPath,
+      `const Module = require('node:module');
+const loaded = new Set();
+const load = Module._load;
+Module._load = function(request, parent, isMain) {
+  if (['@babel/core', '@cssxio/babel-plugin', '@vue/compiler-sfc'].includes(request)) loaded.add(request);
+  return load.call(this, request, parent, isMain);
+};
+require('@cssxio/unplugin');
+if (loaded.size !== 0) throw new Error('The native production adapter eagerly loaded fallback dependencies: ' + [...loaded].join(', '));
+`,
+    );
+
+    const result = await runNode(runnerPath);
+    expect(result.stderr).toBe('');
+  });
+
   it('ships every ESM, CommonJS, and declaration target declared by the public manifests', async () => {
     for (const packageDirectory of packageDirectories) {
       const manifest = await readManifest(packageDirectory);
@@ -185,6 +205,16 @@ void props;
     }
   });
 
+  it('ships the Rust analyzer as an optional macOS arm64 dependency', async () => {
+    const nativeManifest = await readManifest('packages/compiler-native');
+    const unpluginManifest = await readManifest('packages/unplugin');
+
+    expect(nativeManifest.main).toBe('./libcssx_compiler_node.dylib');
+    expect(nativeManifest.os).toEqual(['darwin']);
+    expect(nativeManifest.cpu).toEqual(['arm64']);
+    expect(unpluginManifest.optionalDependencies?.['@cssxio/compiler-native']).toBe('workspace:*');
+  });
+
   it('uses valid ranges for internal package dependencies', async () => {
     for (const packageDirectory of packageDirectories) {
       const manifest = await readManifest(packageDirectory);
@@ -273,11 +303,10 @@ void props;
     const staleFiles: string[] = [];
     try {
       for (const packageDirectory of packageDirectories) {
-        const manifest = await readManifest(packageDirectory);
         const staleFile = join(workspaceRoot, packageDirectory, 'dist', '__cssx_stale_contract__.js');
         await writeFile(staleFile, 'stale build output');
         staleFiles.push(staleFile);
-        await runCommand('pnpm', ['--filter', manifest.name, 'run', 'build'], workspaceRoot);
+        await runCommand('npm', ['run', 'build'], join(workspaceRoot, packageDirectory));
         await expect(access(staleFile)).rejects.toThrow();
       }
     } finally {
@@ -440,10 +469,10 @@ void props;
       brotli: 12_400,
     });
     await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', {
-      // The optional Oxc static-sx scan adds development-only metadata handling; transports remain lazy.
-      raw: 56_000,
-      gzip: 19_000,
-      brotli: 17_000,
+      // Native Oxc static-style dispatch stays lazy; compressed overhead remains under 3 KB.
+      raw: 70_000,
+      gzip: 24_000,
+      brotli: 21_000,
     });
   }, 30_000);
 

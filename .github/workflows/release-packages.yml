@@ -12,6 +12,7 @@ on:
         options:
           - auto
           - '@cssxio/compiler'
+          - '@cssxio/compiler-native'
           - '@cssxio/babel-plugin'
           - '@cssxio/cssx'
           - '@cssxio/html'
@@ -60,8 +61,26 @@ jobs:
       - run: pnpm test:release
       - run: pnpm benchmark
 
+  build-native:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+      - name: Install Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Build the macOS arm64 native compiler
+        run: cargo +1.99.1 build --manifest-path packages/compiler/native/Cargo.toml --release -p cssx-compiler-node
+        env:
+          CARGO_BUILD_JOBS: 2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: compiler-native-darwin-arm64
+          path: packages/compiler/native/target/release/libcssx_compiler_node.dylib
+          if-no-files-found: error
+
   release:
-    needs: verify
+    needs: [verify, build-native]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -74,6 +93,11 @@ jobs:
           # Release branch and tag pushes must authenticate with RELEASE_TOKEN,
           # not the read-only workflow GITHUB_TOKEN persisted by checkout.
           persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: needs.verify.result == 'success'
+        with:
+          name: compiler-native-darwin-arm64
+          path: packages/compiler-native
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 12.4.1
