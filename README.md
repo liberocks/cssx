@@ -920,12 +920,16 @@ the changed packages at their prepared versions, verifies that the selected
 main commit passed CI, and creates tags and GitHub Releases. This workflow does
 not change package versions or open a PR, so publication can start after version
 validation and CI are already complete. If a partial publish fails, rerun it
-from the same `main` with **auto** to complete packages that are still untagged.
-For a package whose tag already exists but whose GitHub Release was not
-completed, select that package explicitly to retry the current version. The
-workflow skips already-published artifacts and refuses a tag that points at a
-different commit. GitHub repository auto-merge remains disabled for ordinary
-pull requests.
+with **auto** to complete packages that are still untagged. Leave **release_sha**
+empty when retrying from the original main commit. If `main` has moved, set
+**release_sha** to the commit SHA shown in the failed release run's summary so
+all remaining packages are built and tagged from the same commit as the ones
+already published. The workflow verifies that this commit is still in `main`
+and waits for its CI. For a package whose tag already exists but whose GitHub
+Release was not completed, select that package explicitly and pass the same
+**release_sha** if needed. The workflow skips already-published artifacts and
+refuses a tag that points at a different commit. GitHub repository auto-merge
+remains disabled for ordinary pull requests.
 
 Configure npm trusted publishing separately for each npm package, with
 repository `liberocks/cssx` and workflow file `release-packages.yml`. Do not select

@@ -58,6 +58,28 @@ jobs:
       - name: Check planned versions are unpublished
         if: steps.plan.outputs.has-release == 'true'
         run: |
+          npm_version_is_published() {
+            local package="$1"
+            local version="$2"
+            local package_path="${package//\//%2f}"
+            local status
+
+            if ! status="$(curl --silent --show-error --connect-timeout 10 --max-time 30 --retry 2 --retry-all-errors --output "$RUNNER_TEMP/npm-package-metadata.json" --write-out '%{http_code}' "https://registry.npmjs.org/$package_path")"; then
+              printf 'Could not query npm version metadata for %s\n' "$package" >&2
+              return 2
+            fi
+            if [ "$status" = 404 ]; then return 1; fi
+            if [ "$status" != 200 ]; then
+              printf 'npm returned HTTP %s while querying %s\n' "$status" "$package" >&2
+              return 2
+            fi
+            if ! jq -e 'type == "object" and (.versions | type == "object")' "$RUNNER_TEMP/npm-package-metadata.json" >/dev/null; then
+              printf 'Unexpected npm version metadata for %s\n' "$package" >&2
+              return 2
+            fi
+            jq -e --arg version "$version" '.versions | has($version)' "$RUNNER_TEMP/npm-package-metadata.json" >/dev/null
+          }
+
           vscode_version_is_published() {
             local extension_id="$1"
             local version="$2"
@@ -78,9 +100,15 @@ jobs:
           while IFS=$'\t' read -r package version tag registry directory; do
             case "$registry" in
               npm)
-                if pnpm view "$package@$version" version >/dev/null 2>&1; then
+                if npm_version_is_published "$package" "$version"; then
                   printf '%s@%s is already published to npm\n' "$package" "$version" >&2
                   exit 1
+                else
+                  query_status=$?
+                  if [ "$query_status" -gt 1 ]; then
+                    printf 'Could not check whether %s@%s is published\n' "$package" "$version" >&2
+                    exit "$query_status"
+                  fi
                 fi
                 ;;
               vscode)
@@ -98,7 +126,11 @@ jobs:
                 exit 1
                 ;;
             esac
-            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            if ! tag_refs="$(git ls-remote --tags origin "refs/tags/$tag")"; then
+              printf 'Could not query remote tags for %s\n' "$tag" >&2
+              exit 1
+            fi
+            if [ -n "$tag_refs" ]; then
               printf 'Release tag %s already exists\n' "$tag" >&2
               exit 1
             fi
@@ -110,6 +142,8 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
       - name: Apply planned versions and create branch
         if: steps.plan.outputs.has-release == 'true'
         run: |

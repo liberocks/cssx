@@ -19,6 +19,11 @@ on:
           - '@cssxio/react-native'
           - '@cssxio/unplugin'
           - cssx-intellisense
+      release_sha:
+        description: Original main commit for a partial-release retry; leave empty for current main
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -29,14 +34,46 @@ concurrency:
   queue: max
 
 jobs:
-  verify:
+  validate:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    needs: build-native
+    outputs:
+      release-sha: ${{ steps.validate.outputs.release-sha }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.sha }}
+          ref: main
+          fetch-depth: 0
+      - name: Validate release commit
+        id: validate
+        env:
+          REQUESTED_RELEASE_SHA: ${{ inputs.release_sha || github.sha }}
+        run: |
+          release_sha="${REQUESTED_RELEASE_SHA,,}"
+          if [[ ! "$release_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            printf 'release_sha must be a full 40-character commit SHA\n' >&2
+            exit 1
+          fi
+          git fetch origin main
+          if ! git cat-file -e "$release_sha^{commit}"; then
+            printf 'Release commit %s is not available in this repository\n' "$release_sha" >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$release_sha" origin/main; then
+            printf 'Release commit %s is not reachable from main\n' "$release_sha" >&2
+            exit 1
+          fi
+          printf 'release-sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
+          printf 'Publishing from commit %s.\n' "$release_sha" >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [build-native, validate]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.validate.outputs.release-sha }}
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 12.4.1
@@ -58,6 +95,7 @@ jobs:
 
   build-native:
     if: github.ref == 'refs/heads/main'
+    needs: validate
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -81,7 +119,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.validate.outputs.release-sha }}
           persist-credentials: false
       - name: Install Rust 1.99.1
         run: rustup toolchain install 1.99.1 --profile minimal
@@ -103,7 +141,7 @@ jobs:
 
   release:
     if: github.ref == 'refs/heads/main'
-    needs: [verify, build-native]
+    needs: [verify, build-native, validate]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -111,7 +149,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.validate.outputs.release-sha }}
           fetch-depth: 0
           # Release branch and tag pushes must authenticate with RELEASE_TOKEN,
           # not the read-only workflow GITHUB_TOKEN persisted by checkout.
@@ -148,7 +186,9 @@ jobs:
         if: steps.plan.outputs.has-release == 'true'
         id: release_source
         run: |
-          printf 'release-sha=%s\n' "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          printf 'release-sha=%s\n' "$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.release-sha }}
       - name: Verify the selected main commit
         if: steps.plan.outputs.has-release == 'true'
         run: |
@@ -174,6 +214,28 @@ jobs:
         if: steps.plan.outputs.has-release == 'true'
         run: |
           release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
+          npm_version_is_published() {
+            local package="$1"
+            local version="$2"
+            local package_path="${package//\//%2f}"
+            local status
+
+            if ! status="$(curl --silent --show-error --connect-timeout 10 --max-time 30 --retry 2 --retry-all-errors --output "$RUNNER_TEMP/npm-package-metadata.json" --write-out '%{http_code}' "https://registry.npmjs.org/$package_path")"; then
+              printf 'Could not query npm version metadata for %s\n' "$package" >&2
+              return 2
+            fi
+            if [ "$status" = 404 ]; then return 1; fi
+            if [ "$status" != 200 ]; then
+              printf 'npm returned HTTP %s while querying %s\n' "$status" "$package" >&2
+              return 2
+            fi
+            if ! jq -e 'type == "object" and (.versions | type == "object")' "$RUNNER_TEMP/npm-package-metadata.json" >/dev/null; then
+              printf 'Unexpected npm version metadata for %s\n' "$package" >&2
+              return 2
+            fi
+            jq -e --arg version "$version" '.versions | has($version)' "$RUNNER_TEMP/npm-package-metadata.json" >/dev/null
+          }
+
           vscode_version_is_published() {
             local extension_id="$1"
             local version="$2"
@@ -195,7 +257,12 @@ jobs:
             package_is_published=false
             case "$registry" in
               npm)
-                if pnpm view "$package@$version" version >/dev/null 2>&1; then package_is_published=true; fi
+                if npm_version_is_published "$package" "$version"; then
+                  package_is_published=true
+                else
+                  query_status=$?
+                  if [ "$query_status" -gt 1 ]; then exit "$query_status"; fi
+                fi
                 ;;
               vscode)
                 extension_id="$(jq -er '.publisher + "." + .name' "$directory/package.json")"
@@ -218,7 +285,11 @@ jobs:
               fi
               printf '%s@%s is already published; retry will create its missing package tag and update its commit release\n' "$package" "$version"
             fi
-            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            if ! tag_refs="$(git ls-remote --tags origin "refs/tags/$tag")"; then
+              printf 'Could not query remote tags for %s\n' "$tag" >&2
+              exit 1
+            fi
+            if [ -n "$tag_refs" ]; then
               if [ "$release_mode" != retry ]; then
                 printf 'Tag %s already exists\n' "$tag" >&2
                 exit 1
@@ -236,6 +307,28 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           release_mode="$(jq -r '.mode' "$RUNNER_TEMP/release-plan.json")"
+          npm_version_is_published() {
+            local package="$1"
+            local version="$2"
+            local package_path="${package//\//%2f}"
+            local status
+
+            if ! status="$(curl --silent --show-error --connect-timeout 10 --max-time 30 --retry 2 --retry-all-errors --output "$RUNNER_TEMP/npm-package-metadata.json" --write-out '%{http_code}' "https://registry.npmjs.org/$package_path")"; then
+              printf 'Could not query npm version metadata for %s\n' "$package" >&2
+              return 2
+            fi
+            if [ "$status" = 404 ]; then return 1; fi
+            if [ "$status" != 200 ]; then
+              printf 'npm returned HTTP %s while querying %s\n' "$status" "$package" >&2
+              return 2
+            fi
+            if ! jq -e 'type == "object" and (.versions | type == "object")' "$RUNNER_TEMP/npm-package-metadata.json" >/dev/null; then
+              printf 'Unexpected npm version metadata for %s\n' "$package" >&2
+              return 2
+            fi
+            jq -e --arg version "$version" '.versions | has($version)' "$RUNNER_TEMP/npm-package-metadata.json" >/dev/null
+          }
+
           vscode_version_is_published() {
             local extension_id="$1"
             local version="$2"
@@ -256,13 +349,16 @@ jobs:
           while IFS=$'\t' read -r package version registry directory; do
             case "$registry" in
               npm)
-                if pnpm view "$package@$version" version >/dev/null 2>&1; then
+                if npm_version_is_published "$package" "$version"; then
                   if [ "$release_mode" != retry ]; then
                     printf '%s@%s is already published\n' "$package" "$version" >&2
                     exit 1
                   fi
                   printf 'Skipping already-published %s@%s\n' "$package" "$version"
                   continue
+                else
+                  query_status=$?
+                  if [ "$query_status" -gt 1 ]; then exit "$query_status"; fi
                 fi
                 pnpm --filter "$package" publish --access public --no-git-checks --provenance
                 ;;
@@ -303,12 +399,18 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           while IFS= read -r tag; do
-            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            if ! tag_refs="$(git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}")"; then
+              printf 'Could not query remote tags for %s\n' "$tag" >&2
+              exit 1
+            fi
+            tag_ref="$(awk -v ref="refs/tags/$tag" '$2 == ref { print $1; exit }' <<< "$tag_refs")"
+            if [ -n "$tag_ref" ]; then
               if [ "$release_mode" != retry ]; then
                 printf 'Tag %s already exists\n' "$tag" >&2
                 exit 1
               fi
-              tag_commit="$(git ls-remote origin "refs/tags/$tag^{}" | awk 'NR == 1 { print $1 }')"
+              tag_commit="$(awk -v ref="refs/tags/$tag^{}" '$2 == ref { print $1; exit }' <<< "$tag_refs")"
+              tag_commit="${tag_commit:-$tag_ref}"
               if [ "$tag_commit" != "$release_sha" ]; then
                 printf 'Tag %s points to %s, not release commit %s\n' "$tag" "$tag_commit" "$release_sha" >&2
                 exit 1
