@@ -353,6 +353,9 @@ function transformArbitraryStaticCreateModule(
   }
 
   const stylesByName = new Map(styleEntries.map((style) => [style.name, style.utilities]));
+  if ([...usedStyleNames].some((name) => !stylesByName.has(name))) {
+    return null;
+  }
   const candidatesByStyle = new Map<string, readonly string[]>();
   const declarationsByCandidate = new Map<string, ArbitraryDeclaration>();
   const declarationCache = new Map<string, ArbitraryDeclaration>();
@@ -400,7 +403,10 @@ function transformArbitraryStaticCreateModule(
   for (const name of usedStyleNames) {
     classNamesByStyle.set(
       name,
-      (candidatesByStyle.get(name) ?? []).map((candidate) => classNames.get(candidate)!).join(' '),
+      candidatesByStyle
+        .get(name)!
+        .map((candidate) => classNames.get(candidate)!)
+        .join(' '),
     );
   }
   const classNamesByCall = new Map(

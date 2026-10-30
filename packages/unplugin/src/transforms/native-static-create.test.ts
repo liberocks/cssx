@@ -1,4 +1,7 @@
 import { createClassNameAllocator } from '@cssxio/compiler';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { transformNativeStaticCreateModule } from './native-static-create';
@@ -225,6 +228,7 @@ describe('transformNativeStaticCreateModule', () => {
   it('falls back when native analysis has a missing style name', async () => {
     const input =
       "import { create, props } from '@cssxio/cssx'; const styles = create({ root: '[color:#fff]' }); export const value = props(styles.root);";
+    const calls = staticCalls(input, ['root'], [{ name: 'root', utilities: '[color:#fff]' }]);
     const result = await transformNativeStaticCreateModule(
       input,
       '/project/page.tsx',
@@ -240,12 +244,60 @@ describe('transformNativeStaticCreateModule', () => {
           createLine: 1,
           createColumn: 0,
           replaceCalls: () => 'const value = {};',
+          getCalls: () => calls,
+        }),
+      },
+    );
+
+    expect(result?.candidates).toHaveProperty('[color:#fff]');
+    expect(result?.code).toContain('className');
+  });
+
+  it('declines the native fast path when there is no static create call', async () => {
+    const result = await transformNativeStaticCreateModule(
+      source,
+      '/project/page.tsx',
+      '/project',
+      { mode: 'production', sourceMap: false },
+      createClassNameAllocator(),
+      {
+        findCssxCalls: () => [],
+        analyzeCssxModule: () => ({
+          fastStaticCreate: true,
+          styles: styleEntries,
+          usedStyleNames: ['root'],
+          createLine: 1,
+          createColumn: 0,
+          replaceCalls: () => source,
           getCalls: () => [],
         }),
       },
     );
 
     expect(result).toBeNull();
+  });
+
+  it('compiles static create styles when the theme is loaded from a file', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'cssx-native-theme-'));
+    const themeFile = join(root, 'theme.css');
+    const input =
+      "import { create, props } from '@cssxio/cssx'; const styles = create({ root: 'p-4' }); export const value = props(styles.root);";
+    try {
+      await writeFile(themeFile, '@theme { --spacing: 1rem; }');
+      const result = await transformNativeStaticCreateModule(
+        input,
+        '/project/page.tsx',
+        '/project',
+        { mode: 'production', sourceMap: false, themeFile },
+        createClassNameAllocator(),
+        analyzer(staticCalls(input, ['root'], [{ name: 'root', utilities: 'p-4' }])),
+      );
+
+      expect(result?.candidates).toHaveProperty('p-4');
+      expect(result?.rules[0]?.css).toContain('padding:');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('keeps supported static create call records in the native addon', async () => {
