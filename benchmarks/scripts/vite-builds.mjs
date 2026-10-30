@@ -8,7 +8,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const gzipOptions = Object.freeze({ level: 6 });
 const projects = [
   { name: 'CSSX native', directory: 'cssx', stylesheet: 'cssx.css', native: true },
-  { name: 'CSSX Babel fallback', directory: 'cssx', stylesheet: 'cssx.css', native: false },
+  { name: 'CSSX before Rust rewrite', directory: 'cssx', stylesheet: 'cssx.css', native: false, legacyNames: true },
   { name: 'Tailwind', directory: 'tailwind' },
   { name: 'styled-components', directory: 'styled-components' },
   { name: 'StyleX', directory: 'stylex' },
@@ -28,14 +28,41 @@ console.table(
     'Warm build range': `${(result.samples[0] ?? 0).toFixed(0)}–${(result.samples.at(-1) ?? 0).toFixed(0)} ms`,
     'Delivered gzip': `${result.gzip.toLocaleString()} B`,
     'JS gzip': `${result.js.gzip.toLocaleString()} B`,
+    'CSS raw': `${result.css.bytes.toLocaleString()} B`,
     'CSS gzip': `${result.css.gzip.toLocaleString()} B`,
   })),
 );
 
+const nativeCssx = results.find((result) => result.name === 'CSSX native');
+const previousCssx = results.find((result) => result.name === 'CSSX before Rust rewrite');
+const tailwind = results.find((result) => result.name === 'Tailwind');
+if (!nativeCssx || !previousCssx || !tailwind) {
+  throw new Error('CSSX native, pre-rewrite CSSX, and Tailwind size results are required.');
+}
+for (const baseline of [previousCssx, tailwind]) {
+  if (nativeCssx.css.bytes >= baseline.css.bytes || nativeCssx.css.gzip >= baseline.css.gzip) {
+    throw new Error(
+      `Native CSSX CSS (${nativeCssx.css.bytes} B raw, ${nativeCssx.css.gzip} B gzip) must be smaller than ${baseline.name} (${baseline.css.bytes} B raw, ${baseline.css.gzip} B gzip).`,
+    );
+  }
+  const rawReduction = ((baseline.css.bytes - nativeCssx.css.bytes) / baseline.css.bytes) * 100;
+  const gzipReduction = ((baseline.css.gzip - nativeCssx.css.gzip) / baseline.css.gzip) * 100;
+  console.log(
+    `Native CSSX CSS is ${rawReduction.toFixed(1)}% smaller raw and ${gzipReduction.toFixed(1)}% smaller gzip than ${baseline.name}.`,
+  );
+}
+const rawTargetReduction = ((previousCssx.css.bytes - nativeCssx.css.bytes) / previousCssx.css.bytes) * 100;
+console.log(
+  `10% pre-rewrite raw CSS reduction target: ${rawTargetReduction >= 10 ? 'met' : 'not met'} (${rawTargetReduction.toFixed(1)}%).`,
+);
+
 async function buildProject(project) {
   const directory = resolve(root, project.directory);
-  const environment =
-    project.native === undefined ? undefined : { CSSX_DISABLE_NATIVE_COMPILER: project.native ? '0' : '1' };
+  const environment = {
+    ...(project.native === undefined ? {} : { CSSX_DISABLE_NATIVE_COMPILER: project.native ? '0' : '1' }),
+    ...(project.native ? { CSSX_REQUIRE_NATIVE_COMPILER: '1' } : {}),
+    ...(project.legacyNames ? { CSSX_BENCHMARK_LEGACY_NAMES: '1' } : {}),
+  };
   await run(process.execPath, [resolve(root, 'scripts/generate-vite-corpus.mjs'), project.directory], directory);
   await buildProjectOnce(directory, environment);
   const samples = [];
