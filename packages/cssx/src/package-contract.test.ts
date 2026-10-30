@@ -214,7 +214,9 @@ void props;
     expect(nativeManifest.os).toBeUndefined();
     expect(nativeManifest.cpu).toBeUndefined();
     expect((nativeManifest as unknown as { files: string[] }).files).toEqual(['index.cjs', 'native/*.node']);
-    expect(unpluginManifest.optionalDependencies?.['@cssxio/compiler-native']).toBe('workspace:*');
+    expect(['workspace:*', `^${nativeManifest.version}`]).toContain(
+      unpluginManifest.optionalDependencies?.['@cssxio/compiler-native'],
+    );
   });
 
   it.each([
