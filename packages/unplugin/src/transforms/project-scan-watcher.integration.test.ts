@@ -291,8 +291,8 @@ it('caps source directory watchers across large workspaces', async () => {
     watchMocks.watchers.length = 0;
     stop = await watchProjectCssxSourceModules(root, options, () => undefined);
 
-    expect(watchMocks.watchers).toHaveLength(16);
-    expect(warning).toHaveBeenCalledWith('CSSX: development source watcher reached the 16-directory limit.');
+    expect(watchMocks.watchers).toHaveLength(64);
+    expect(warning).toHaveBeenCalledWith('CSSX: development source watcher reached the 64-directory limit.');
     stop();
     stop = undefined;
     expect(watchMocks.watchers.every(({ closed }) => closed)).toBe(true);
