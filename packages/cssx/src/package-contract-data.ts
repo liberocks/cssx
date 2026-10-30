@@ -12,15 +12,23 @@ export const publicExports = [
     packageDirectory: 'packages/compiler',
     exportPath: '.',
     exports: [
+      'compareCandidateVariants',
       'classifyUtility',
       'compileStyleRecords',
       'compileStyleMap',
       'compileSourceUtilities',
       'compileUtilities',
+      'describeUtilityFormatting',
       'mergeCompiledStyles',
       'parseTheme',
       'serializeCss',
     ],
+  },
+  {
+    specifier: '@cssxio/formatter',
+    packageDirectory: 'packages/formatter',
+    exportPath: '.',
+    exports: ['formatSource', 'formatUtilityList'],
   },
   {
     specifier: '@cssxio/html',
@@ -103,6 +111,8 @@ export const approvedDependencies = new Set([
   '@cssxio/babel-plugin',
   '@cssxio/compiler',
   '@cssxio/compiler-native',
+  'oxc-parser',
+  'tinyglobby',
   '@vue/compiler-sfc',
   'esbuild',
   'magic-string',
@@ -132,4 +142,5 @@ export type PackageManifest = {
   readonly devDependencies?: Readonly<Record<string, string>>;
   readonly optionalDependencies?: Readonly<Record<string, string>>;
   readonly peerDependencies?: Readonly<Record<string, string>>;
+  readonly bin?: Readonly<Record<string, string>>;
 };

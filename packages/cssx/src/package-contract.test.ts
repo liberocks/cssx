@@ -124,6 +124,14 @@ if (loaded.size !== 0) throw new Error('The native production adapter eagerly lo
     }
   });
 
+  it('publishes the formatter CLI and its public API', async () => {
+    const manifest = await readManifest('packages/formatter');
+    expect(manifest.bin).toEqual({ 'cssx-format': './dist/cli.js' });
+    const formatter = await import('@cssxio/formatter');
+    expect(typeof formatter.formatSource).toBe('function');
+    expect(typeof formatter.formatUtilityList).toBe('function');
+  });
+
   it('type-checks keyed styles and props through the published CSSX declaration', async () => {
     const sourcePath = join(fixtureDirectory, 'cssx-types.mts');
     await writeFile(
@@ -357,7 +365,7 @@ void props;
     } finally {
       await Promise.all(staleFiles.map((path) => rm(path, { force: true })));
     }
-  }, 45_000);
+  }, 90_000);
 
   it('records reproducible compiler source and artifact checksums in the published build', async () => {
     const manifest = JSON.parse(

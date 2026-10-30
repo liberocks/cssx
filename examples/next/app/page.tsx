@@ -7,15 +7,15 @@ import { ClientCssx } from './client-cssx';
 import Content from './content.mdx';
 
 const styles = cssx.create({
-  page: 'flex min-h-[100vh] items-center justify-center bg-slate-100 p-6 font-[var(--font-display)]',
-  main: 'flex min-h-[100vh] w-full max-w-3xl flex-col items-start justify-between gap-12 bg-white p-12',
-  logo: 'h-5 w-auto',
-  intro: 'flex max-w-lg flex-col items-start gap-6 text-left',
-  title: 'text-[2.5rem] leading-[1.2] font-semibold text-slate-950',
+  page: 'flex justify-center items-center min-h-[100vh] p-6 font-[var(--font-display)] bg-slate-100',
+  main: 'flex justify-between items-start flex-col w-full max-w-3xl min-h-[100vh] gap-12 p-12 bg-white',
+  logo: 'w-auto h-5',
+  intro: 'flex items-start flex-col max-w-lg gap-6 text-left',
+  title: 'leading-[1.2] text-[2.5rem] font-semibold text-slate-950',
   copy: 'text-lg text-slate-600',
   inlineLink: 'font-medium text-slate-950 hover:text-brand',
   ctas: 'flex flex-wrap gap-4 text-sm',
-  secondary: 'rounded-full border border-slate-200 px-4 py-3 font-medium text-slate-950 hover:bg-slate-100',
+  secondary: 'px-4 py-3 font-medium text-slate-950 rounded-full border-slate-200 border hover:bg-slate-100',
 });
 
 export default function Page() {
@@ -39,7 +39,7 @@ export default function Page() {
         <div {...cssx.props(styles.ctas)}>
           <a
             className={sx(
-              'flex items-center justify-center gap-2 rounded-full bg-brand px-4 py-3 text-sm font-medium text-white hover:bg-slate-800',
+              'flex justify-center items-center gap-2 px-4 py-3 text-sm font-medium text-white rounded-full bg-brand hover:bg-slate-800',
             )}
             href="https://vercel.com/new"
           >

@@ -12,6 +12,7 @@ CSSX turns static utility strings into class names and CSS when you build your a
 | [`@cssxio/cssx`](packages/cssx/README.md)                 | The `create`, `props`, and `sx` runtime API.           |
 | [`@cssxio/html`](packages/html/README.md)                 | Zero-build runtime styling for ordinary HTML.          |
 | [`@cssxio/compiler`](packages/compiler/README.md)         | Static utility compilation and CSS output.             |
+| [`@cssxio/formatter`](packages/formatter/README.md)       | CSSX-aware utility ordering and whitespace formatting. |
 | [`@cssxio/babel-plugin`](packages/babel-plugin/README.md) | Source transform for static CSSX calls.                |
 | [`@cssxio/unplugin`](packages/unplugin/README.md)         | Build tool adapters that create the CSS file.          |
 | [`@cssxio/react-native`](packages/react-native/README.md) | Native style objects for React Native and Expo.        |
@@ -112,6 +113,42 @@ fallback for combinations that depend on runtime conditions.
 `sx` accepts static utility strings, nested arrays, and conditional strings. CSSX builds the static utilities. Dynamic calls only join strings at runtime.
 
 CSSX keeps raw strings as written. It does not check or merge the classes inside them.
+
+## Format CSSX utilities
+
+Install the formatter in your development dependencies and run it before your
+source formatter:
+
+```sh
+pnpm add -D @cssxio/formatter
+pnpm exec cssx-format --write .
+```
+
+The formatter recognizes imported `sx`, `create`, and `props` calls from
+`@cssxio/cssx`, including aliases and namespace imports. It sorts inline
+utility strings in this order: layout and positioning, flex/grid/alignment,
+sizing, spacing, typography, borders and radii, backgrounds, effects,
+transforms and motion, then interaction and accessibility. Responsive and
+state variants follow the CSSX compiler's variant order and come after base
+utilities.
+
+Utilities that can write overlapping CSS properties keep their source order,
+including directional conflicts such as `p-4 px-2`. Duplicates remain in
+place. Unknown or ambiguous utilities form sorting boundaries. Whitespace
+between utility tokens becomes one space; spaces inside bracketed values,
+quoted values, escapes, and Unicode text are preserved. Shared constants and
+interpolated templates are left alone. A parse error reports a diagnostic and
+leaves that file unchanged.
+
+`cssx-format` accepts files, directories, and glob patterns. It defaults to the
+current directory, writes by default, and supports `--write`, `--check`, and
+`--ignore-path <file>`. The default ignore file is `.cssxformatignore`; its
+non-empty, non-comment lines are glob patterns. The JavaScript API exports
+`formatUtilityList(value)` and
+`formatSource(source, { filename, importSource? })`. Oxfmt or Prettier can run
+afterward for JavaScript/TypeScript layout and import ordering. The complete
+CSSX utility reference and supported class families are listed in
+[Utility Support](#utility-support).
 
 ## Compiler Setup
 

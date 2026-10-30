@@ -5,12 +5,12 @@ import { useState } from 'react';
 import reactLogo from './assets/react.svg';
 
 const styles = cssx.create({
-  page: 'flex min-h-[100vh] flex-col items-center justify-center gap-6 bg-slate-950 p-8 text-center text-slate-100 font-[var(--font-display)]',
-  logos: 'flex items-center justify-center gap-2',
-  logoLink: 'rounded-md p-4 hover:scale-105',
-  logo: 'h-24 w-24',
-  title: 'text-[2.5rem] leading-[1.2] font-semibold',
-  card: 'flex flex-col items-center gap-4',
+  page: 'flex justify-center items-center flex-col min-h-[100vh] gap-6 p-8 font-[var(--font-display)] text-center text-slate-100 bg-slate-950',
+  logos: 'flex justify-center items-center gap-2',
+  logoLink: 'p-4 rounded-md hover:scale-105',
+  logo: 'w-24 h-24',
+  title: 'leading-[1.2] text-[2.5rem] font-semibold',
+  card: 'flex items-center flex-col gap-4',
   copy: 'text-sm text-slate-300',
   hint: 'text-sm text-slate-400',
 });
@@ -25,7 +25,7 @@ export default function App() {
           <img {...cssx.props(styles.logo)} src="/vite.svg" alt="Vite logo" />
         </a>
         <a {...cssx.props(styles.logoLink)} href="https://react.dev" target="_blank" rel="noreferrer">
-          <img className={sx('h-24 w-24 animate-logo-spin')} src={reactLogo} alt="React logo" />
+          <img className={sx('w-24 h-24 animate-logo-spin')} src={reactLogo} alt="React logo" />
         </a>
       </div>
       <h1 {...cssx.props(styles.title)}>Vite + React</h1>
@@ -33,7 +33,7 @@ export default function App() {
         <button
           data-cssx-probe="sx"
           className={sx(
-            'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-blue-700',
+            'px-4 py-2 font-medium text-white rounded-md bg-brand hover:bg-blue-700',
             count > 0 && 'scale-105',
           )}
           onClick={() => setCount((value) => value + 1)}

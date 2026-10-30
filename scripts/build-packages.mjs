@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const packages = [
   '@cssxio/compiler',
+  '@cssxio/formatter',
   '@cssxio/cssx',
   '@cssxio/babel-plugin',
   '@cssxio/html',
