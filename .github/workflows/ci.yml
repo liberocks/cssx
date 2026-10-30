@@ -143,7 +143,7 @@ jobs:
           # Snapshot baselines are refreshed on the matching hosted OS in
           # visual-baselines.yml, then reviewed and committed separately.
           CSSX_VISUAL_SCREENSHOTS: '0'
-          # Enforce the 100 ms browser budget except on shared hosted macOS,
+          # Enforce the 100 ms p95 browser budget except on shared hosted macOS,
           # which still reports timings and gates HMR correctness/state.
           CSSX_ENFORCE_HMR_BUDGET: ${{ matrix.os != 'macos-latest' && 'true' || 'false' }}
           # Keep Windows on Next's Webpack dev server; Linux and macOS exercise Turbopack.
