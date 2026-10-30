@@ -346,7 +346,7 @@ const MAX_INACTIVE_PROJECT_SCANS = 8;
 /** Maximum distinct paths retained between one watcher flush and the next. */
 const MAX_PENDING_SOURCE_CHANGES = 256;
 /** Maximum project-directory watchers retained across active CSSX coordinators. */
-const MAX_PROJECT_SOURCE_WATCHERS = 16;
+const MAX_PROJECT_SOURCE_WATCHERS = 64;
 /** Active watcher handles shared by all project scan coordinators in this process. */
 let activeProjectSourceWatchers = 0;
 /**
