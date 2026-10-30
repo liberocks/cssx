@@ -1,4 +1,3 @@
-import { compileUtilities, createSelectorAliases } from '@cssxio/compiler';
 import type { DarkMode } from '@cssxio/compiler';
 
 import { CSSX_PREFLIGHT } from '../core/preflight';
@@ -24,6 +23,14 @@ export async function compileCssxStylesheet(
   darkMode?: DarkMode,
   preflight = true,
 ): Promise<CssxStylesheet> {
+  const precompiled = !sourceMap && data.filter(hasStyleData).length <= 1 && data.every(isPrecompiledOrEmpty);
+  if (precompiled) {
+    const rules = [...new Set(data.map((module) => module.precompiledCss).filter(isString))].sort().join('');
+    const preflightCss = preflight ? CSSX_PREFLIGHT : '';
+    const layerPrefix = layer ? `@layer ${layer}{` : '';
+    return { css: `${layerPrefix}${preflightCss}${rules}${layerPrefix ? '}' : ''}` };
+  }
+
   const candidates: Record<string, string> = Object.create(null) as Record<string, string>;
   const composites: Record<string, readonly string[]> = Object.create(null) as Record<string, readonly string[]>;
   const atomicClasses = new Set<string>();
@@ -59,6 +66,7 @@ export async function compileCssxStylesheet(
     const css = preflightCss && layer ? `@layer ${layer}{${preflightCss}}` : preflightCss;
     return { css };
   }
+  const { compileUtilities, createSelectorAliases } = await import('@cssxio/compiler');
   const compiled = await compileUtilities(
     names,
     (candidate) => candidates[candidate]!,
@@ -73,4 +81,22 @@ export async function compileCssxStylesheet(
     ? createCssSourceMap(`${layerPrefix}${preflightCss}${compiled.prefixCss}`, compiled.entries, origins)
     : undefined;
   return { css, ...(map ? { map } : {}) };
+}
+
+/** Checks whether a source module already has all CSS needed by the stylesheet. */
+function isPrecompiledOrEmpty(module: CssxSourceModule): boolean {
+  return (
+    typeof module.precompiledCss === 'string' ||
+    (Object.keys(module.candidates).length === 0 && Object.keys(module.composites ?? {}).length === 0)
+  );
+}
+
+/** Checks whether a source module contributes candidates or composites. */
+function hasStyleData(module: CssxSourceModule): boolean {
+  return Object.keys(module.candidates).length > 0 || Object.keys(module.composites ?? {}).length > 0;
+}
+
+/** Narrows optional CSS strings for joining. */
+function isString(value: string | undefined): value is string {
+  return value !== undefined;
 }

@@ -20,6 +20,7 @@ it('normalizes malformed and valid CSSX metadata values', () => {
       atomicClasses: ['x0'],
       origins: { p: [] },
       cssOnlySignature: 'signature',
+      precompiledCss: '.x0{padding:1rem;}',
     }),
   ).toEqual({
     id: 'entry.ts',
@@ -29,5 +30,6 @@ it('normalizes malformed and valid CSSX metadata values', () => {
     atomicClasses: ['x0'],
     origins: { p: [] },
     cssOnlySignature: 'signature',
+    precompiledCss: '.x0{padding:1rem;}',
   });
 });

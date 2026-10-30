@@ -1,4 +1,3 @@
-import { cssOnlySignature } from '@cssxio/babel-plugin';
 import { compileStyleRecords, stableCompositeName } from '@cssxio/compiler';
 import type { ClassNameAllocator } from '@cssxio/compiler';
 
@@ -8,20 +7,47 @@ import type { CssxSourceModule } from '../native/stylesheet-types';
 import { loadNativeAnalyzer } from './load-native-analyzer';
 
 /** Static CSSX call data returned by the native Oxc analyzer. */
-interface NativeCssxCall {
+export interface NativeCssxCall {
   readonly entryPoint: string;
+  readonly start?: number;
+  readonly end?: number;
   readonly startUtf16?: number;
   readonly endUtf16?: number;
   readonly line: number;
   readonly column: number;
   readonly staticSx: boolean;
   readonly utilities: readonly string[];
+  /** Static literal map returned for a `create()` call. */
+  readonly styles?: readonly { readonly name: string; readonly utilities: string }[];
+  /** Static keys referenced by a `props()` call. */
+  readonly styleNames?: readonly string[];
+  /** Whether `create()` contains only string values in an object literal. */
+  readonly staticCreate?: boolean;
+  /** Whether every `props()` argument resolves to a known static style key. */
+  readonly staticProps?: boolean;
+  /** Whether all style-map references can be folded safely in this module. */
+  readonly fastTransformSafe?: boolean;
 }
 
 /** Runtime interface exposed by the optional N-API addon. */
 export interface NativeCssxAnalyzer {
   /** Finds CSSX calls whose imported binding resolves to a known entry point. */
   findCssxCalls(source: string, filename: string, importSource?: string): NativeCssxCall[];
+  /** Retains CSSX call metadata in Rust until the transform needs the general compiler fallback. */
+  analyzeCssxModule?(source: string, filename: string, importSource?: string): NativeCssxModuleAnalysis;
+}
+
+/** CSSX module analysis retained by the native addon. */
+export interface NativeCssxModuleAnalysis {
+  readonly fastStaticCreate: boolean;
+  readonly styles: readonly { readonly name: string; readonly utilities: string }[];
+  readonly usedStyleNames: readonly string[];
+  readonly createLine: number;
+  readonly createColumn: number;
+  /** Rewrites all static create and props calls without returning each call across N-API. */
+  replaceCalls(replacements: readonly { readonly name: string; readonly replacement: string }[]): string;
+  /** Returns individual call records only when the utility subset needs the general compiler. */
+  getCalls(): NativeCssxCall[];
 }
 
 /** Whether the module was handled and, if so, its emitted metadata. */
@@ -93,11 +119,12 @@ export async function scanNativeStaticSxModule(
       transformedCode.slice(0, call.startUtf16) + JSON.stringify(replacement) + transformedCode.slice(call.endUtf16);
   }
 
-  return {
-    handled: true,
-    module: { id, ...metadata },
-    ...(transformedCode ? { transformedCode, cssOnlySignature: cssOnlySignature(source, ranges) } : {}),
-  };
+  const result = { handled: true as const, module: { id, ...metadata } };
+  if (!transformedCode) {
+    return result;
+  }
+  const { cssOnlySignature } = await import('@cssxio/babel-plugin');
+  return { ...result, transformedCode, cssOnlySignature: cssOnlySignature(source, ranges) };
 }
 
 /** Compiles call data from Oxc with the shared CSSX compiler and development identities. */

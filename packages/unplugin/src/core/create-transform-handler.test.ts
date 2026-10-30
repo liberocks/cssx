@@ -66,6 +66,51 @@ it('keeps production per-module CSS compilation enabled', async () => {
   );
 });
 
+it('retains native arbitrary CSS in module metadata', async () => {
+  const handler = createTransformHandler({
+    framework: 'webpack',
+    options: { mode: 'production', sourceMap: false },
+    classNameAllocator: createClassNameAllocator(),
+    rollupDataById: new Map(),
+    esbuildDataById: new Map(),
+    cssFileName: 'cssx.css',
+    getEsbuildWorkingDirectory: () => '/project',
+    notifyViteStyles: vi.fn(),
+  });
+  const result = await handler.call(
+    {},
+    "import { create, props } from '@cssxio/cssx'; const styles = create({ root: '[color:#fff]' }); export const value = props(styles.root);",
+    '/project/app.ts',
+  );
+
+  expect(result?.meta[RULES_METADATA_KEY]).toMatchObject({
+    precompiledCss: expect.stringContaining('color:#fff'),
+  });
+});
+
+it('skips generated framework output before transforming source', async () => {
+  const rollupDataById = new Map<string, ModuleCssxData>();
+  const handler = createTransformHandler({
+    framework: 'rollup',
+    options: {},
+    classNameAllocator: createClassNameAllocator(),
+    rollupDataById,
+    esbuildDataById: new Map(),
+    cssFileName: 'cssx.css',
+    getEsbuildWorkingDirectory: () => '/project',
+    notifyViteStyles: vi.fn(),
+  });
+
+  await expect(
+    handler.call(
+      {},
+      "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');",
+      '/project/.open-next/page.ts',
+    ),
+  ).resolves.toBeNull();
+  expect(rollupDataById).toEqual(new Map());
+});
+
 it('shares development atomic allocations across modules and repeated utilities', async () => {
   const handler = createTransformHandler({
     framework: 'rollup',

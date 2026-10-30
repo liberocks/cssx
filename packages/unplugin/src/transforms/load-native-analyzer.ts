@@ -32,8 +32,8 @@ export function loadNativeAnalyzer(
   }
   const nativeTarget = resolve(process.cwd(), 'packages/compiler/native/target');
   const modulePaths = [
-    packagedBinding,
     process.env.CSSX_NATIVE_COMPILER_PATH,
+    packagedBinding,
     resolve(nativeTarget, 'release/libcssx_compiler_node.dylib'),
     resolve(nativeTarget, 'debug/libcssx_compiler_node.dylib'),
     resolve(nativeTarget, 'release/libcssx_compiler_node.so'),

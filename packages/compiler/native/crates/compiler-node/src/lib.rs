@@ -1,8 +1,12 @@
 //! Node.js binding for the shared Rust CSSX compiler.
 
+use std::collections::{HashMap, HashSet};
+
 use cssx_compiler_core::{
-    CssxCall, SourceModule, find_cssx_calls as analyze_cssx_calls,
+    CssxCall, CssxStyleEntry, SourceModule, find_cssx_calls as analyze_cssx_calls,
     find_cssx_calls_in_modules as analyze_cssx_modules,
+    find_cssx_calls_without_positions as analyze_cssx_calls_without_positions,
+    populate_cssx_call_locations,
 };
 use napi::{Error, Result};
 use napi_derive::napi;
@@ -26,8 +30,161 @@ pub struct JsCssxCall {
     pub column: u32,
     /// Whether every argument can be folded without runtime expressions.
     pub static_sx: bool,
+    /// Whether `create()` contains a static object of string utility values.
+    pub static_create: bool,
+    /// Whether every `props()` argument resolves to a known static style key.
+    pub static_props: bool,
+    /// Whether the module has one static map whose references are all static `props()` calls.
+    pub fast_transform_safe: bool,
     /// Static utility strings found by the `sx()` grammar.
     pub utilities: Vec<String>,
+    /// Literal style map entries returned for a static `create()` call.
+    pub styles: Vec<JsCssxStyleEntry>,
+    /// Style keys referenced by a static `props()` call.
+    pub style_names: Vec<String>,
+}
+
+/// Literal style entry returned by the analyzer.
+#[napi(object)]
+pub struct JsCssxStyleEntry {
+    /// Style key in the source object.
+    pub name: String,
+    /// Utility string assigned to the style key.
+    pub utilities: String,
+}
+
+/// CSSX call metadata retained natively until the JavaScript transform needs its fallback form.
+#[napi]
+pub struct JsCssxModuleAnalysis {
+    source: String,
+    calls: Vec<CssxCall>,
+    create_call: Option<CssxCall>,
+    styles: Vec<CssxStyleEntry>,
+    used_style_names: Vec<String>,
+    fast_static_create: bool,
+}
+
+/// One style name and its already serialized JavaScript replacement.
+#[napi(object)]
+pub struct JsStaticCreateReplacement {
+    /// Style key in the `create()` map.
+    pub name: String,
+    /// Complete JavaScript object literal used to replace its `props()` call.
+    pub replacement: String,
+}
+
+#[napi]
+impl JsCssxModuleAnalysis {
+    /// Whether this module contains one safe static `create()` map and only static `props()` calls.
+    #[napi(getter, js_name = "fastStaticCreate")]
+    pub fn fast_static_create(&self) -> bool {
+        self.fast_static_create
+    }
+
+    /// Static style entries extracted from the source map.
+    #[napi(getter)]
+    pub fn styles(&self) -> Vec<JsCssxStyleEntry> {
+        self.styles
+            .iter()
+            .cloned()
+            .map(JsCssxStyleEntry::from)
+            .collect()
+    }
+
+    /// Unique style names referenced by static `props()` calls.
+    #[napi(getter, js_name = "usedStyleNames")]
+    pub fn used_style_names(&self) -> Vec<String> {
+        self.used_style_names.clone()
+    }
+
+    /// One-based source line containing the `create()` call.
+    #[napi(getter, js_name = "createLine")]
+    pub fn create_line(&self) -> u32 {
+        self.create_call
+            .as_ref()
+            .map(|call| call.line)
+            .unwrap_or_default()
+    }
+
+    /// Zero-based UTF-16 column containing the `create()` call.
+    #[napi(getter, js_name = "createColumn")]
+    pub fn create_column(&self) -> u32 {
+        self.create_call
+            .as_ref()
+            .map(|call| call.column)
+            .unwrap_or_default()
+    }
+
+    /// Converts all CSSX calls to replacement JavaScript without crossing the N-API boundary per call.
+    #[napi(js_name = "replaceCalls")]
+    pub fn replace_calls(&self, replacements: Vec<JsStaticCreateReplacement>) -> Result<String> {
+        if !self.fast_static_create {
+            return Err(Error::from_reason(
+                "CSSX native static create analysis is not safe for direct replacement.",
+            ));
+        }
+        if self.create_call.is_none() {
+            return Err(Error::from_reason(
+                "CSSX native static create analysis has no create call.",
+            ));
+        }
+        let replacement_by_name = replacements
+            .into_iter()
+            .map(|replacement| (replacement.name, replacement.replacement))
+            .collect::<HashMap<_, _>>();
+        let mut output = String::with_capacity(self.source.len());
+        let mut cursor = 0usize;
+        for call in &self.calls {
+            let replacement = match call.entry_point {
+                cssx_compiler_core::EntryPoint::Create => "{}",
+                cssx_compiler_core::EntryPoint::Props => match call.style_names.first() {
+                    Some(style_name) => replacement_by_name
+                        .get(style_name.as_ref())
+                        .map(String::as_str)
+                        .ok_or_else(|| {
+                            Error::from_reason(format!(
+                                "CSSX native static create analysis has no replacement for style \"{style_name}\"."
+                            ))
+                        })?,
+                    None => r#"{"className":""}"#,
+                },
+                _ => {
+                    return Err(Error::from_reason(
+                        "CSSX native static create analysis found an unsupported call.",
+                    ));
+                }
+            };
+            let start = call.start as usize;
+            let end = call.end as usize;
+            if start < cursor || end > self.source.len() {
+                return Err(Error::from_reason(
+                    "CSSX native static create analysis found overlapping or invalid call ranges.",
+                ));
+            }
+            output.push_str(&self.source[cursor..start]);
+            output.push_str(replacement);
+            cursor = end;
+        }
+        output.push_str(&self.source[cursor..]);
+        Ok(output)
+    }
+
+    /// Returns complete call records only when the fast static transform cannot handle the styles.
+    #[napi(js_name = "getCalls")]
+    pub fn get_calls(&self) -> Result<Vec<JsCssxCall>> {
+        let mut calls = self.calls.clone();
+        populate_cssx_call_locations(&self.source, &mut calls);
+        Ok(calls.into_iter().map(JsCssxCall::from).collect())
+    }
+}
+
+impl From<CssxStyleEntry> for JsCssxStyleEntry {
+    fn from(style: CssxStyleEntry) -> Self {
+        Self {
+            name: style.name,
+            utilities: style.utilities,
+        }
+    }
 }
 
 /// Source module passed to the bounded project analyzer.
@@ -55,7 +212,20 @@ impl From<CssxCall> for JsCssxCall {
             line: call.line,
             column: call.column,
             static_sx: call.static_sx,
+            static_create: call.static_create,
+            static_props: call.static_props,
+            fast_transform_safe: call.fast_transform_safe,
             utilities: call.utilities,
+            styles: call
+                .styles
+                .into_iter()
+                .map(JsCssxStyleEntry::from)
+                .collect(),
+            style_names: call
+                .style_names
+                .into_iter()
+                .map(|name| name.to_string())
+                .collect(),
         }
     }
 }
@@ -74,6 +244,65 @@ pub fn find_cssx_calls(
     )
     .map(|calls| calls.into_iter().map(JsCssxCall::from).collect())
     .map_err(Error::from_reason)
+}
+
+/// Analyzes CSSX calls while keeping potentially large per-call metadata in Rust.
+#[napi(js_name = "analyzeCssxModule")]
+pub fn analyze_cssx_module(
+    source: String,
+    filename: String,
+    import_source: Option<String>,
+) -> Result<JsCssxModuleAnalysis> {
+    let calls = analyze_cssx_calls_without_positions(
+        &source,
+        &filename,
+        import_source.as_deref().unwrap_or("@cssxio/cssx"),
+    )
+    .map_err(Error::from_reason)?;
+    let mut create_calls = calls
+        .iter()
+        .filter(|call| call.entry_point == cssx_compiler_core::EntryPoint::Create);
+    let create_call = create_calls.next().cloned();
+    let unique_create_call = create_calls.next().is_none();
+    let props_calls = calls
+        .iter()
+        .filter(|call| call.entry_point == cssx_compiler_core::EntryPoint::Props)
+        .collect::<Vec<_>>();
+    let fast_static_create = !calls.is_empty()
+        && calls.iter().all(|call| call.fast_transform_safe)
+        && unique_create_call
+        && create_call
+            .as_ref()
+            .is_some_and(|call| call.static_create && !call.styles.is_empty())
+        && !props_calls.is_empty()
+        && props_calls.iter().all(|call| call.style_names.len() <= 1);
+
+    let mut used_style_names = Vec::new();
+    let mut unique_style_names = HashSet::new();
+    if fast_static_create {
+        for name in props_calls.iter().flat_map(|call| call.style_names.iter()) {
+            if unique_style_names.insert(name.clone()) {
+                used_style_names.push(name.to_string());
+            }
+        }
+    }
+
+    let styles = if fast_static_create {
+        create_call
+            .as_ref()
+            .map(|call| call.styles.clone())
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    Ok(JsCssxModuleAnalysis {
+        source,
+        calls,
+        create_call: fast_static_create.then_some(create_call).flatten(),
+        styles,
+        used_style_names,
+        fast_static_create,
+    })
 }
 
 /// Analyzes several modules in bounded batches while preserving input order.

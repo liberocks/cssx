@@ -22,6 +22,21 @@ describe('loadNativeAnalyzer', () => {
     expect(dlopen).toHaveBeenCalledTimes(1);
   });
 
+  it('prefers the configured binary over the packaged addon', async () => {
+    const { loadNativeAnalyzer } = await importFreshLoader();
+    vi.stubEnv('CSSX_NATIVE_COMPILER_PATH', '/custom/cssx-native.node');
+    const requirePackage = { resolve: vi.fn(() => '/optional/compiler-native.node') };
+    const dlopen = vi.fn((module: NodeJS.Module & { exports: NativeCssxAnalyzer }, path: string) => {
+      if (path !== '/custom/cssx-native.node') {
+        throw new Error('configured addon was not preferred');
+      }
+      module.exports = nativeAnalyzer;
+    });
+
+    expect(loadNativeAnalyzer(requirePackage, dlopen)).toBe(nativeAnalyzer);
+    expect(dlopen).toHaveBeenCalledTimes(1);
+  });
+
   it('loads the configured binary when the optional package is absent', async () => {
     const { loadNativeAnalyzer } = await importFreshLoader();
     vi.stubEnv('CSSX_NATIVE_COMPILER_PATH', '/custom/cssx-native.node');

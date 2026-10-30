@@ -4,23 +4,28 @@ import { compileCssxStylesheet } from './compile-cssx-stylesheet';
 
 describe('compileCssxStylesheet', () => {
   it('merges source modules deterministically and creates origin mappings', async () => {
-    const stylesheet = await compileCssxStylesheet([
-      {
-        id: '/z.ts',
-        candidates: { 'p-4': 'padding', 'text-red-500': 'color' },
-        origins: { 'p-4': { line: 1, column: 4 } },
-      },
-      {
-        id: '/a.ts',
-        candidates: { 'p-4': 'ignored', 'bg-blue-500': 'background' },
-        origins: { 'p-4': { line: 9, column: 9 }, 'bg-blue-500': { line: 3, column: 2 } },
-        composites: { composite: ['padding', 'color'] },
-      },
-    ]);
+    const stylesheet = await compileCssxStylesheet(
+      [
+        {
+          id: '/z.ts',
+          candidates: { 'p-4': 'padding', 'text-red-500': 'color' },
+          origins: { 'p-4': { line: 1, column: 4 } },
+        },
+        {
+          id: '/a.ts',
+          candidates: { 'p-4': 'ignored', 'bg-blue-500': 'background' },
+          origins: { 'p-4': { line: 9, column: 9 }, 'bg-blue-500': { line: 3, column: 2 } },
+          composites: { composite: ['padding', 'color'] },
+        },
+      ],
+      undefined,
+      'app',
+    );
 
     expect(stylesheet.css).toContain('.ignored{');
     expect(stylesheet.css).toContain('.color,.composite{');
     expect(stylesheet.css).toContain('.background{');
+    expect(stylesheet.css).toMatch(/^@layer app\{/);
     expect(stylesheet.map?.sources).toEqual(['/a.ts', '/z.ts']);
     expect(stylesheet.map?.mappings).not.toBe('');
   });
@@ -49,6 +54,27 @@ describe('compileCssxStylesheet', () => {
     expect(missingOrigin.map).toBeUndefined();
   });
 
+  it('aggregates proven precompiled modules without invoking the utility compiler', async () => {
+    const stylesheet = await compileCssxStylesheet(
+      [
+        {
+          id: '/page.tsx',
+          candidates: { '[display:flex]': 's0x' },
+          composites: {},
+          precompiledCss: '.s0x{display:flex;}',
+        },
+      ],
+      undefined,
+      'app',
+      false,
+    );
+
+    expect(stylesheet.css).toMatch(/^@layer app\{/);
+    expect(stylesheet.css).toContain('.s0x{display:flex;}');
+    expect(stylesheet.css.match(/@layer app\{/g)).toHaveLength(1);
+    expect(stylesheet.map).toBeUndefined();
+  });
+
   it('rejects conflicting composite aliases', async () => {
     await expect(
       compileCssxStylesheet([
@@ -56,5 +82,44 @@ describe('compileCssxStylesheet', () => {
         { id: 'two.ts', candidates: {}, composites: { shared: ['two'] } },
       ]),
     ).rejects.toThrow('CSSX composite class collision');
+  });
+
+  it('keeps composite-only modules out of the precompiled empty path', async () => {
+    const stylesheet = await compileCssxStylesheet(
+      [{ id: '/composite.ts', candidates: {}, composites: { alias: ['s0x'] }, atomicClasses: ['s0x'] }],
+      undefined,
+      undefined,
+      false,
+      undefined,
+      false,
+    );
+
+    expect(stylesheet.css).toBe('');
+  });
+
+  it('uses the precompiled path for a single empty source module', async () => {
+    const stylesheet = await compileCssxStylesheet(
+      [{ id: '/empty.ts', candidates: {} }],
+      undefined,
+      undefined,
+      false,
+      undefined,
+      false,
+    );
+
+    expect(stylesheet.css).toBe('');
+  });
+
+  it('uses provided atomic class metadata during stylesheet compilation', async () => {
+    const stylesheet = await compileCssxStylesheet(
+      [{ id: '/atomic.ts', candidates: { 'p-4': 's0x' }, atomicClasses: ['s0x'] }],
+      undefined,
+      undefined,
+      false,
+      undefined,
+      false,
+    );
+
+    expect(stylesheet.css).toContain('.s0x{');
   });
 });

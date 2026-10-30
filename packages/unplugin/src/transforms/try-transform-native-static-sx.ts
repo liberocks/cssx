@@ -1,8 +1,8 @@
-import { createClassNameAllocator } from '@cssxio/compiler';
 import type { ClassNameAllocator } from '@cssxio/compiler';
 
 import type { CssxPluginOptions } from '../core/options';
 import type { IncomingSourceMap } from '../source-map/source-map-from-context';
+import { createClassNameAllocator } from './class-name-allocator';
 import { scanNativeStaticSxModule } from './native-static-sx';
 import type { TransformExecutionOptions, TransformResult } from './transform-cssx-module';
 
