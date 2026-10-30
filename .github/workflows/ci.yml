@@ -276,4 +276,9 @@ jobs:
       - run: pnpm --dir examples/astro install --frozen-lockfile
       - run: pnpm test:release
       - run: pnpm benchmark:dev-hmr
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - run: cargo +1.99.1 build --locked --manifest-path packages/compiler/native/Cargo.toml --release --jobs 2 -p cssx-compiler-node
+      - run: |
+          mkdir -p packages/compiler-native/native
+          cp packages/compiler/native/target/release/libcssx_compiler_node.so packages/compiler-native/native/cssx_compiler_node.linux-x64.node
       - run: pnpm benchmark
