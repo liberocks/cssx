@@ -15,7 +15,7 @@ use oxc_ast::ast::{
 use oxc_ast_visit::{Visit, walk};
 use oxc_parser::Parser;
 use oxc_semantic::{Scoping, SemanticBuilder};
-use oxc_span::SourceType;
+use oxc_span::{SourceType, Span};
 use oxc_syntax::symbol::SymbolId;
 
 /// The CSSX entry point associated with one imported binding.
@@ -82,6 +82,17 @@ pub struct CssxStyleEntry {
     pub utilities: String,
 }
 
+/// One static string literal in an imported CSSX style call.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CssxFormattingLiteral {
+    /// UTF-16 code-unit offset of the complete literal's start.
+    pub start_utf16: u32,
+    /// UTF-16 code-unit offset of the complete literal's end.
+    pub end_utf16: u32,
+    /// Decoded JavaScript string value.
+    pub value: String,
+}
+
 /// Source range of an import whose bindings are only used by calls that a static transform removes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CssxImportRange {
@@ -102,6 +113,8 @@ pub struct CssxModuleAnalysis {
     pub calls: Vec<CssxCall>,
     /// Imports safe to remove when all returned calls are replaced.
     pub removable_imports: Vec<CssxImportRange>,
+    /// Static utility string literals that the source formatter may safely rewrite.
+    pub formatting_literals: Vec<CssxFormattingLiteral>,
 }
 
 /// One in-memory source module passed to the bounded project analyzer.
@@ -123,7 +136,7 @@ pub fn find_cssx_calls(
     filename: &str,
     import_source: &str,
 ) -> Result<Vec<CssxCall>, String> {
-    analyze_cssx_module_with_import_tracking(source, filename, import_source, true, false)
+    analyze_cssx_module_with_import_tracking(source, filename, import_source, true, false, false)
         .map(|analysis| analysis.calls)
 }
 
@@ -133,8 +146,18 @@ pub fn find_cssx_calls_without_positions(
     filename: &str,
     import_source: &str,
 ) -> Result<Vec<CssxCall>, String> {
-    analyze_cssx_module_with_import_tracking(source, filename, import_source, false, false)
+    analyze_cssx_module_with_import_tracking(source, filename, import_source, false, false, false)
         .map(|analysis| analysis.calls)
+}
+
+/// Finds formatter-safe string literals in imported CSSX calls using Oxc's native parser.
+pub fn find_cssx_formatting_literals(
+    source: &str,
+    filename: &str,
+    import_source: &str,
+) -> Result<Vec<CssxFormattingLiteral>, String> {
+    analyze_cssx_module_with_import_tracking(source, filename, import_source, false, false, true)
+        .map(|analysis| analysis.formatting_literals)
 }
 
 /// Analyzes CSSX calls and records imports that become unused when those calls are rewritten.
@@ -150,6 +173,7 @@ pub fn analyze_cssx_module(
         import_source,
         include_call_positions,
         true,
+        false,
     )
 }
 
@@ -159,6 +183,7 @@ fn analyze_cssx_module_with_import_tracking(
     import_source: &str,
     include_call_positions: bool,
     track_imports: bool,
+    formatting_only: bool,
 ) -> Result<CssxModuleAnalysis, String> {
     let allocator = Allocator::default();
     let parse_path = Path::new(filename.split('?').next().unwrap_or(filename));
@@ -187,6 +212,7 @@ fn analyze_cssx_module_with_import_tracking(
         source_offsets,
         include_call_positions,
         track_imports,
+        formatting_only,
         scoping: &scoping,
         named_bindings: HashMap::new(),
         namespace_bindings: HashMap::new(),
@@ -196,8 +222,16 @@ fn analyze_cssx_module_with_import_tracking(
         cssx_import_symbols: HashSet::new(),
         cssx_import_references: Vec::new(),
         calls: Vec::new(),
+        formatting_literals: Vec::new(),
     };
     visitor.visit_program(&program);
+    if formatting_only {
+        return Ok(CssxModuleAnalysis {
+            calls: Vec::new(),
+            removable_imports: Vec::new(),
+            formatting_literals: visitor.formatting_literals,
+        });
+    }
     let safe_style_map = visitor.style_maps.len() == 1
         && visitor.style_maps.iter().all(|(symbol, map)| {
             !visitor.exported_symbols.contains(symbol)
@@ -249,6 +283,7 @@ fn analyze_cssx_module_with_import_tracking(
     Ok(CssxModuleAnalysis {
         calls: visitor.calls,
         removable_imports,
+        formatting_literals: visitor.formatting_literals,
     })
 }
 
@@ -290,6 +325,7 @@ struct CssxCallCollector<'a> {
     source_offsets: SourceOffsetIndex,
     include_call_positions: bool,
     track_imports: bool,
+    formatting_only: bool,
     scoping: &'a Scoping,
     named_bindings: HashMap<SymbolId, EntryPoint>,
     namespace_bindings: HashMap<SymbolId, ()>,
@@ -299,6 +335,7 @@ struct CssxCallCollector<'a> {
     cssx_import_symbols: HashSet<SymbolId>,
     cssx_import_references: Vec<CssxImportReference>,
     calls: Vec<CssxCall>,
+    formatting_literals: Vec<CssxFormattingLiteral>,
 }
 
 struct CssxImport {
@@ -408,6 +445,44 @@ impl<'a> CssxCallCollector<'a> {
 
     fn source_location(&self, offset: u32) -> (u32, u32, u32) {
         self.source_offsets.source_location(self.source, offset)
+    }
+
+    fn collect_formatting_literals(&mut self, entry_point: EntryPoint, call: &CallExpression<'_>) {
+        if entry_point == EntryPoint::Create {
+            if call.arguments.len() != 1 {
+                return;
+            }
+            let Some(Expression::ObjectExpression(object)) =
+                call.arguments.first().and_then(Argument::as_expression)
+            else {
+                return;
+            };
+            for property in &object.properties {
+                let ObjectPropertyKind::ObjectProperty(property) = property else {
+                    continue;
+                };
+                if property.kind == PropertyKind::Init {
+                    collect_literal_value(
+                        &property.value,
+                        self.source,
+                        &self.source_offsets,
+                        &mut self.formatting_literals,
+                    );
+                }
+            }
+            return;
+        }
+
+        for argument in &call.arguments {
+            if let Some(expression) = argument.as_expression() {
+                collect_literal_expression(
+                    expression,
+                    self.source,
+                    &self.source_offsets,
+                    &mut self.formatting_literals,
+                );
+            }
+        }
     }
 
     fn style_names(&mut self, call: &CallExpression<'_>) -> Option<Vec<Arc<str>>> {
@@ -554,6 +629,10 @@ impl<'a> Visit<'a> for CssxCallCollector<'_> {
     }
 
     fn visit_variable_declarator(&mut self, declarator: &VariableDeclarator<'a>) {
+        if self.formatting_only {
+            walk::walk_variable_declarator(self, declarator);
+            return;
+        }
         if let (Some(binding), Some(Expression::CallExpression(call))) = (
             declarator.id.get_binding_identifier(),
             declarator.init.as_ref(),
@@ -582,6 +661,11 @@ impl<'a> Visit<'a> for CssxCallCollector<'_> {
 
     fn visit_call_expression(&mut self, call: &CallExpression<'a>) {
         if let Some(entry_point) = self.entry_point(call) {
+            self.collect_formatting_literals(entry_point, call);
+            if self.formatting_only {
+                walk::walk_call_expression(self, call);
+                return;
+            }
             let mut utilities = Vec::new();
             let static_sx = entry_point == EntryPoint::Sx
                 && call.arguments.iter().all(|argument| match argument {
@@ -649,6 +733,105 @@ impl<'a> Visit<'a> for CssxCallCollector<'_> {
         }
         walk::walk_call_expression(self, call);
     }
+}
+
+fn collect_literal_expression(
+    expression: &Expression<'_>,
+    source: &str,
+    source_offsets: &SourceOffsetIndex,
+    literals: &mut Vec<CssxFormattingLiteral>,
+) {
+    match expression {
+        Expression::StringLiteral(_) | Expression::TemplateLiteral(_) => {
+            collect_literal_value(expression, source, source_offsets, literals);
+        }
+        Expression::ArrayExpression(array) => {
+            for element in &array.elements {
+                if !matches!(
+                    element,
+                    oxc_ast::ast::ArrayExpressionElement::SpreadElement(_)
+                        | oxc_ast::ast::ArrayExpressionElement::Elision(_)
+                ) {
+                    collect_literal_expression(
+                        element.to_expression(),
+                        source,
+                        source_offsets,
+                        literals,
+                    );
+                }
+            }
+        }
+        Expression::ConditionalExpression(conditional) => {
+            collect_literal_expression(&conditional.consequent, source, source_offsets, literals);
+            collect_literal_expression(&conditional.alternate, source, source_offsets, literals);
+        }
+        Expression::LogicalExpression(logical) => {
+            collect_literal_expression(&logical.left, source, source_offsets, literals);
+            collect_literal_expression(&logical.right, source, source_offsets, literals);
+        }
+        Expression::ParenthesizedExpression(parenthesized) => {
+            collect_literal_expression(&parenthesized.expression, source, source_offsets, literals);
+        }
+        Expression::TSAsExpression(assertion) => {
+            collect_literal_expression(&assertion.expression, source, source_offsets, literals);
+        }
+        Expression::TSSatisfiesExpression(satisfies) => {
+            collect_literal_expression(&satisfies.expression, source, source_offsets, literals);
+        }
+        _ => {}
+    }
+}
+
+fn collect_literal_value(
+    expression: &Expression<'_>,
+    source: &str,
+    source_offsets: &SourceOffsetIndex,
+    literals: &mut Vec<CssxFormattingLiteral>,
+) {
+    match expression {
+        Expression::StringLiteral(literal) => {
+            if let Some(value) = literal.value.as_str() {
+                push_formatting_literal(
+                    literal.span,
+                    value.to_owned(),
+                    source,
+                    source_offsets,
+                    literals,
+                );
+            }
+        }
+        Expression::TemplateLiteral(literal) if literal.expressions.is_empty() => {
+            if let Some(value) = literal
+                .quasis
+                .first()
+                .and_then(|quasi| quasi.value.cooked.as_ref())
+                .and_then(|value| value.as_str())
+            {
+                push_formatting_literal(
+                    literal.span,
+                    value.to_owned(),
+                    source,
+                    source_offsets,
+                    literals,
+                );
+            }
+        }
+        _ => {}
+    }
+}
+
+fn push_formatting_literal(
+    span: Span,
+    value: String,
+    source: &str,
+    source_offsets: &SourceOffsetIndex,
+    literals: &mut Vec<CssxFormattingLiteral>,
+) {
+    literals.push(CssxFormattingLiteral {
+        start_utf16: source_offsets.utf16_offset(source, span.start as usize),
+        end_utf16: source_offsets.utf16_offset(source, span.end as usize),
+        value,
+    });
 }
 
 fn collect_static_style_map(expression: &Expression<'_>) -> Option<Vec<CssxStyleEntry>> {
@@ -732,7 +915,7 @@ mod tests {
     use super::{
         CssxStyleEntry, EntryPoint, SourceModule, analyze_cssx_module, find_cssx_calls,
         find_cssx_calls_in_modules, find_cssx_calls_without_positions,
-        populate_cssx_call_locations,
+        find_cssx_formatting_literals, populate_cssx_call_locations,
     };
 
     #[test]
@@ -776,6 +959,60 @@ mod tests {
             "sx(['p-4', flag && 'm-2', flag ? 'text-sm' : 'text-lg'])"
         );
         assert!(!calls[0].static_sx);
+    }
+
+    #[test]
+    fn finds_formatter_literals_for_imported_aliases_and_namespace_calls() {
+        let source = "import { sx as style, create as make, props as classes } from '@cssxio/cssx'; import * as cssx from '@cssxio/cssx'; style(['p-4', flag ? ('bg-white' as const) : `text-sm`, flag && `rounded-xl`]); classes('m-2'); make({ card: 'gap-2', template: `flex items-center`, shared }); cssx.sx('justify-center'); function shadowed(style: (value: string) => void) { style('should-stay'); }";
+        let literals = find_cssx_formatting_literals(source, "page.tsx", "@cssxio/cssx").unwrap();
+        assert_eq!(
+            literals
+                .iter()
+                .map(|literal| literal.value.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "p-4",
+                "bg-white",
+                "text-sm",
+                "rounded-xl",
+                "m-2",
+                "gap-2",
+                "flex items-center",
+                "justify-center",
+            ]
+        );
+    }
+
+    #[test]
+    fn preserves_unicode_offsets_and_skips_dynamic_templates_and_shadowed_calls() {
+        let source = "import { sx } from '@cssxio/cssx'; const label = '🙂'; sx(`p-4 bg-white`, `text-sm ${dynamic}`, ('m-2' satisfies string)); function local(sx: (value: string) => void) { sx('must-stay'); }";
+        let literals = find_cssx_formatting_literals(source, "page.tsx", "@cssxio/cssx").unwrap();
+        assert_eq!(
+            literals
+                .iter()
+                .map(|literal| literal.value.as_str())
+                .collect::<Vec<_>>(),
+            ["p-4 bg-white", "m-2"]
+        );
+        let expected_start = source.find("`p-4 bg-white`").unwrap();
+        let expected_end = expected_start + "`p-4 bg-white`".len();
+        assert_eq!(
+            literals[0].start_utf16 as usize,
+            source[..expected_start].encode_utf16().count()
+        );
+        assert_eq!(
+            literals[0].end_utf16 as usize,
+            source[..expected_end].encode_utf16().count()
+        );
+    }
+
+    #[test]
+    fn resolves_escaped_module_specifiers_and_keeps_arbitrary_value_whitespace() {
+        let source =
+            r#"import { sx } from '\x40cssxio/cssx'; sx("content-['hello  world'] bg-white");"#;
+        let literals = find_cssx_formatting_literals(source, "page.tsx", "@cssxio/cssx").unwrap();
+        assert_eq!(literals.len(), 1);
+        assert_eq!(literals[0].value, "content-['hello  world'] bg-white");
     }
 
     #[test]
