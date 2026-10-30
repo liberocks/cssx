@@ -61,6 +61,8 @@ it('uses the native production create/props path when the addon is available', a
     },
   ];
   vi.resetModules();
+  vi.unstubAllEnvs();
+  vi.stubEnv('CSSX_NATIVE_COMPILER_PATH', '/mock/cssx-native.node');
   const dlopen = vi.spyOn(process, 'dlopen').mockImplementation((module) => {
     (module as { exports: unknown }).exports = { findCssxCalls: () => calls };
   });
@@ -76,5 +78,6 @@ it('uses the native production create/props path when the addon is available', a
     expect(dlopen).toHaveBeenCalledOnce();
   } finally {
     dlopen.mockRestore();
+    vi.unstubAllEnvs();
   }
 });

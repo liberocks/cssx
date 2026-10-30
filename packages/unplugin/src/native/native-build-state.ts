@@ -2,7 +2,7 @@ import type { ClassNameAllocator } from '@cssxio/compiler';
 
 import type { NextDevelopmentHmrConnection } from '../adapters/next-development-server';
 import type { CssxPluginOptions } from '../core/options';
-import { developmentPluginOptions, effectiveClassNameOptions } from '../core/options';
+import { developmentPluginOptions, effectiveClassNameOptions, productionClassNameOptions } from '../core/options';
 import { createClassNameAllocator } from '../transforms/class-name-allocator';
 import type { ModuleCssxData } from '../transforms/module-cssx-data';
 import { nativeBuildStateKey } from './native-build-state-key';
@@ -38,7 +38,7 @@ export function nativeBuildState(root: string, options: CssxPluginOptions): Nati
   let state = nativeBuildStates.get(key);
   if (!state) {
     state = {
-      classNameAllocator: options.classNameAllocator ?? createClassNameAllocator(effectiveClassNameOptions(options)),
+      classNameAllocator: options.classNameAllocator ?? createClassNameAllocator(productionClassNameOptions(options)),
       developmentClassNameAllocator:
         options.classNameAllocator ??
         createClassNameAllocator(effectiveClassNameOptions(developmentPluginOptions(options))),

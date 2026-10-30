@@ -4,7 +4,12 @@ import { dirname, relative, resolve, sep } from 'node:path';
 
 import { createCssxDebugReport } from '../core/create-debug-report';
 import type { CssxPluginOptions } from '../core/options';
-import { developmentPluginOptions, effectiveClassNameOptions, loadTheme } from '../core/options';
+import {
+  developmentPluginOptions,
+  effectiveClassNameOptions,
+  productionClassNameOptions,
+  loadTheme,
+} from '../core/options';
 import { stableModuleFileName } from '../core/stable-module-file-name';
 import type { CssxSourceModule } from '../native/stylesheet';
 import { withClassNameManifest } from '../native/with-class-name-manifest';
@@ -89,7 +94,7 @@ async function runLoader(
   const stable = cssxOptions.naming === 'source' || cssxOptions.stableClassNames === true;
   const transformOptions = {
     ...cssxOptions,
-    className: effectiveClassNameOptions(cssxOptions),
+    className: settings.development ? effectiveClassNameOptions(cssxOptions) : productionClassNameOptions(cssxOptions),
     stableClassNames: stable,
     ...(stable ? { stableClassNameFileName: stableModuleFileName(root, absoluteId, settings.development) } : {}),
   };
@@ -141,6 +146,7 @@ async function runLoader(
   if (isRootLayout && !coordinatedDevelopment) {
     const scanOptions = {
       ...cssxOptions,
+      ...(!settings.development ? { className: transformOptions.className } : {}),
       ...(settings.development ? {} : { coordination: 'manifest' as const, manifestPath: settings.manifestPath }),
     };
     const modules = await scanProjectCssxSourceModules(root, {

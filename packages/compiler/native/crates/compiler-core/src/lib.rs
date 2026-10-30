@@ -8,9 +8,9 @@ use std::{
 
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{
-    Argument, CallExpression, Declaration, ExportDeclaration, Expression, ImportDeclaration,
-    ImportDeclarationSpecifier, ImportOrExportKind, ModuleExportName, ObjectPropertyKind,
-    PropertyKey, PropertyKind, VariableDeclarator,
+    Argument, CallExpression, Declaration, ExportDeclaration, Expression, IdentifierReference,
+    ImportDeclaration, ImportDeclarationSpecifier, ImportOrExportKind, ModuleExportName,
+    ObjectPropertyKind, PropertyKey, PropertyKind, VariableDeclarator,
 };
 use oxc_ast_visit::{Visit, walk};
 use oxc_parser::Parser;
@@ -82,6 +82,28 @@ pub struct CssxStyleEntry {
     pub utilities: String,
 }
 
+/// Source range of an import whose bindings are only used by calls that a static transform removes.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CssxImportRange {
+    /// UTF-8 byte offset of the import declaration start.
+    pub start: u32,
+    /// UTF-8 byte offset of the import declaration end.
+    pub end: u32,
+    /// UTF-16 code-unit offset of the import declaration start.
+    pub start_utf16: u32,
+    /// UTF-16 code-unit offset of the import declaration end.
+    pub end_utf16: u32,
+}
+
+/// CSSX calls and import declarations that become unused after a static rewrite.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CssxModuleAnalysis {
+    /// Calls found in the source module.
+    pub calls: Vec<CssxCall>,
+    /// Imports safe to remove when all returned calls are replaced.
+    pub removable_imports: Vec<CssxImportRange>,
+}
+
 /// One in-memory source module passed to the bounded project analyzer.
 #[derive(Clone, Copy, Debug)]
 pub struct SourceModule<'a> {
@@ -101,7 +123,8 @@ pub fn find_cssx_calls(
     filename: &str,
     import_source: &str,
 ) -> Result<Vec<CssxCall>, String> {
-    find_cssx_calls_with_positions(source, filename, import_source, true)
+    analyze_cssx_module_with_import_tracking(source, filename, import_source, true, false)
+        .map(|analysis| analysis.calls)
 }
 
 /// Finds CSSX calls without calculating per-call UTF-16 locations.
@@ -110,15 +133,33 @@ pub fn find_cssx_calls_without_positions(
     filename: &str,
     import_source: &str,
 ) -> Result<Vec<CssxCall>, String> {
-    find_cssx_calls_with_positions(source, filename, import_source, false)
+    analyze_cssx_module_with_import_tracking(source, filename, import_source, false, false)
+        .map(|analysis| analysis.calls)
 }
 
-fn find_cssx_calls_with_positions(
+/// Analyzes CSSX calls and records imports that become unused when those calls are rewritten.
+pub fn analyze_cssx_module(
     source: &str,
     filename: &str,
     import_source: &str,
     include_call_positions: bool,
-) -> Result<Vec<CssxCall>, String> {
+) -> Result<CssxModuleAnalysis, String> {
+    analyze_cssx_module_with_import_tracking(
+        source,
+        filename,
+        import_source,
+        include_call_positions,
+        true,
+    )
+}
+
+fn analyze_cssx_module_with_import_tracking(
+    source: &str,
+    filename: &str,
+    import_source: &str,
+    include_call_positions: bool,
+    track_imports: bool,
+) -> Result<CssxModuleAnalysis, String> {
     let allocator = Allocator::default();
     let parse_path = Path::new(filename.split('?').next().unwrap_or(filename));
     let source_type = SourceType::from_path(parse_path)
@@ -145,11 +186,15 @@ fn find_cssx_calls_with_positions(
         source,
         source_offsets,
         include_call_positions,
+        track_imports,
         scoping: &scoping,
         named_bindings: HashMap::new(),
         namespace_bindings: HashMap::new(),
         style_maps: HashMap::new(),
         exported_symbols: HashSet::new(),
+        cssx_imports: Vec::new(),
+        cssx_import_symbols: HashSet::new(),
+        cssx_import_references: Vec::new(),
         calls: Vec::new(),
     };
     visitor.visit_program(&program);
@@ -179,7 +224,32 @@ fn find_cssx_calls_with_positions(
     for call in &mut visitor.calls {
         call.fast_transform_safe = fast_transform_safe;
     }
-    Ok(visitor.calls)
+    let removable_imports = visitor
+        .cssx_imports
+        .iter()
+        .filter(|import| {
+            !import.symbols.is_empty()
+                && import.symbols.iter().all(|symbol| {
+                    let resolved_references = scoping.get_resolved_reference_ids(*symbol);
+                    let collected_references = visitor
+                        .cssx_import_references
+                        .iter()
+                        .filter(|reference| reference.symbol == *symbol)
+                        .collect::<Vec<_>>();
+                    resolved_references.len() == collected_references.len()
+                        && collected_references.iter().all(|reference| {
+                            visitor.calls.iter().any(|call| {
+                                call.start <= reference.start && reference.end <= call.end
+                            })
+                        })
+                })
+        })
+        .map(|import| import.range)
+        .collect();
+    Ok(CssxModuleAnalysis {
+        calls: visitor.calls,
+        removable_imports,
+    })
 }
 
 /// Populates source locations when a compact native analysis needs its JavaScript fallback form.
@@ -219,12 +289,27 @@ struct CssxCallCollector<'a> {
     source: &'a str,
     source_offsets: SourceOffsetIndex,
     include_call_positions: bool,
+    track_imports: bool,
     scoping: &'a Scoping,
     named_bindings: HashMap<SymbolId, EntryPoint>,
     namespace_bindings: HashMap<SymbolId, ()>,
     style_maps: HashMap<SymbolId, StaticStyleMap>,
     exported_symbols: HashSet<SymbolId>,
+    cssx_imports: Vec<CssxImport>,
+    cssx_import_symbols: HashSet<SymbolId>,
+    cssx_import_references: Vec<CssxImportReference>,
     calls: Vec<CssxCall>,
+}
+
+struct CssxImport {
+    range: CssxImportRange,
+    symbols: Vec<SymbolId>,
+}
+
+struct CssxImportReference {
+    symbol: SymbolId,
+    start: u32,
+    end: u32,
 }
 
 struct StaticStyleMap {
@@ -330,7 +415,7 @@ impl<'a> CssxCallCollector<'a> {
         for argument in &call.arguments {
             let expression = match argument {
                 Argument::SpreadElement(_) => return None,
-                _ => argument.to_expression(),
+                _ => argument.as_expression()?,
             };
             match expression {
                 Expression::BooleanLiteral(_) | Expression::NullLiteral(_) => {}
@@ -374,11 +459,18 @@ impl<'a> Visit<'a> for CssxCallCollector<'_> {
             && declaration.source.value.as_str() == Some(self.import_source)
             && let Some(specifiers) = &declaration.specifiers
         {
+            let mut symbols = Vec::new();
             for specifier in specifiers {
                 match specifier {
                     ImportDeclarationSpecifier::ImportSpecifier(specifier)
                         if specifier.import_kind != ImportOrExportKind::Type =>
                     {
+                        if let Some(symbol) = specifier.local.symbol_id.get()
+                            && self.track_imports
+                        {
+                            symbols.push(symbol);
+                            self.cssx_import_symbols.insert(symbol);
+                        }
                         let export_name = match &specifier.imported {
                             ModuleExportName::IdentifierName(identifier) => {
                                 Some(identifier.name.as_str())
@@ -396,14 +488,54 @@ impl<'a> Visit<'a> for CssxCallCollector<'_> {
                     ImportDeclarationSpecifier::ImportNamespaceSpecifier(specifier) => {
                         if let Some(symbol) = specifier.local.symbol_id.get() {
                             self.namespace_bindings.insert(symbol, ());
+                            if self.track_imports {
+                                symbols.push(symbol);
+                                self.cssx_import_symbols.insert(symbol);
+                            }
                         }
                     }
-                    ImportDeclarationSpecifier::ImportDefaultSpecifier(_) => {}
+                    ImportDeclarationSpecifier::ImportDefaultSpecifier(specifier) => {
+                        if let Some(symbol) = specifier.local.symbol_id.get()
+                            && self.track_imports
+                        {
+                            symbols.push(symbol);
+                            self.cssx_import_symbols.insert(symbol);
+                        }
+                    }
                     ImportDeclarationSpecifier::ImportSpecifier(_) => {}
                 }
             }
+            if !symbols.is_empty() {
+                self.cssx_imports.push(CssxImport {
+                    range: CssxImportRange {
+                        start: declaration.span.start,
+                        end: declaration.span.end,
+                        start_utf16: self
+                            .source_offsets
+                            .utf16_offset(self.source, declaration.span.start as usize),
+                        end_utf16: self
+                            .source_offsets
+                            .utf16_offset(self.source, declaration.span.end as usize),
+                    },
+                    symbols,
+                });
+            }
         }
         walk::walk_import_declaration(self, declaration);
+    }
+
+    fn visit_identifier_reference(&mut self, identifier: &IdentifierReference<'a>) {
+        if self.track_imports
+            && let Some(symbol) = self.imported_symbol(identifier)
+            && self.cssx_import_symbols.contains(&symbol)
+        {
+            self.cssx_import_references.push(CssxImportReference {
+                symbol,
+                start: identifier.span.start,
+                end: identifier.span.end,
+            });
+        }
+        walk::walk_identifier_reference(self, identifier);
     }
 
     fn visit_export_declaration(&mut self, declaration: &ExportDeclaration<'a>) {
@@ -427,7 +559,9 @@ impl<'a> Visit<'a> for CssxCallCollector<'_> {
             declarator.init.as_ref(),
         ) && self.entry_point(call) == Some(EntryPoint::Create)
             && call.arguments.len() == 1
-            && let Some(styles) = collect_static_style_map(call.arguments[0].to_expression())
+            && let Some(argument) = call.arguments.first()
+            && let Some(expression) = argument.as_expression()
+            && let Some(styles) = collect_static_style_map(expression)
             && let Some(symbol) = binding.symbol_id.get()
             && self.scoping.symbol_scope_id(symbol) == self.scoping.root_scope_id()
         {
@@ -452,18 +586,24 @@ impl<'a> Visit<'a> for CssxCallCollector<'_> {
             let static_sx = entry_point == EntryPoint::Sx
                 && call.arguments.iter().all(|argument| match argument {
                     Argument::SpreadElement(_) => false,
-                    _ => is_static_sx(argument.to_expression()),
+                    _ => argument.as_expression().is_some_and(is_static_sx),
                 });
             if entry_point == EntryPoint::Sx
                 && !call.arguments.iter().all(|argument| match argument {
                     Argument::SpreadElement(_) => false,
-                    _ => collect_sx_utilities(argument.to_expression(), &mut utilities),
+                    _ => argument
+                        .as_expression()
+                        .is_some_and(|expression| collect_sx_utilities(expression, &mut utilities)),
                 })
             {
                 utilities.clear();
             }
             let styles = if entry_point == EntryPoint::Create && call.arguments.len() == 1 {
-                collect_static_style_map(call.arguments[0].to_expression()).unwrap_or_default()
+                call.arguments
+                    .first()
+                    .and_then(Argument::as_expression)
+                    .and_then(collect_static_style_map)
+                    .unwrap_or_default()
             } else {
                 Vec::new()
             };
@@ -590,8 +730,9 @@ fn collect_sx_utilities(expression: &Expression<'_>, utilities: &mut Vec<String>
 #[cfg(test)]
 mod tests {
     use super::{
-        CssxStyleEntry, EntryPoint, SourceModule, find_cssx_calls, find_cssx_calls_in_modules,
-        find_cssx_calls_without_positions, populate_cssx_call_locations,
+        CssxStyleEntry, EntryPoint, SourceModule, analyze_cssx_module, find_cssx_calls,
+        find_cssx_calls_in_modules, find_cssx_calls_without_positions,
+        populate_cssx_call_locations,
     };
 
     #[test]
@@ -729,6 +870,23 @@ mod tests {
     }
 
     #[test]
+    fn only_marks_cssx_imports_removable_when_all_bindings_are_replaced() {
+        let source = "import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ root: 'p-4' }); export const value = cssx.props(styles.root);";
+        let analysis = analyze_cssx_module(source, "page.tsx", "@cssxio/cssx", false).unwrap();
+        assert_eq!(analysis.removable_imports.len(), 1);
+        assert_eq!(
+            &source[analysis.removable_imports[0].start as usize
+                ..analysis.removable_imports[0].end as usize],
+            "import * as cssx from '@cssxio/cssx';"
+        );
+
+        let source_with_other_use = "import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ root: 'p-4' }); export const value = cssx.props(styles.root); export const runtime = cssx;";
+        let analysis =
+            analyze_cssx_module(source_with_other_use, "page.tsx", "@cssxio/cssx", false).unwrap();
+        assert!(analysis.removable_imports.is_empty());
+    }
+
+    #[test]
     fn rejects_static_create_maps_with_dynamic_props_or_other_map_references() {
         let dynamic_props = find_cssx_calls(
             "import { create, props } from '@cssxio/cssx'; const styles = create({ root: 'p-4' }); props(styles[variant]);",
@@ -769,6 +927,21 @@ mod tests {
         assert!(!calls[0].static_create);
         assert!(!calls[1].static_props);
         assert!(calls.iter().all(|call| !call.fast_transform_safe));
+    }
+
+    #[test]
+    fn does_not_panic_on_spread_arguments_or_style_properties() {
+        let calls = find_cssx_calls(
+            "import { create, props, sx } from '@cssxio/cssx'; const styles = create(...styleArgs); props(styles.root); sx(...utilities); create({ ...base, root: 'p-4' });",
+            "page.tsx",
+            "@cssxio/cssx",
+        )
+        .unwrap();
+
+        assert!(!calls[0].static_create);
+        assert!(!calls[1].static_props);
+        assert!(!calls[2].static_sx);
+        assert!(!calls[3].static_create);
     }
 
     #[test]

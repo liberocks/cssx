@@ -89,7 +89,6 @@ export async function transformCssxModule(
     options.mode === 'development' &&
     options.stableClassNames === true &&
     options.stableClassNameStrategy === 'module-order' &&
-    options.sourceMap === false &&
     transformOptions.compileCss === false
   ) {
     const { tryTransformNativeStaticSxModule } = await import('./try-transform-native-static-sx');
@@ -105,7 +104,7 @@ export async function transformCssxModule(
       return nativeTransform;
     }
   }
-  if (options.mode !== 'development' && options.sourceMap === false && transformOptions.compileCss !== false) {
+  if (options.mode !== 'development' && transformOptions.compileCss !== false) {
     const { tryTransformNativeStaticCreateModule } = await import('./try-transform-native-static-create');
     const nativeStaticCreateTransform = await tryTransformNativeStaticCreateModule(
       code,

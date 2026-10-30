@@ -20,7 +20,6 @@ export async function tryTransformNativeStaticCreateModule(
     options.mode === 'development' ||
     (options.mode === undefined && transformOptions.compileCss === false) ||
     options.stableClassNames === true ||
-    options.sourceMap !== false ||
     inputSourceMap !== undefined ||
     transformOptions.compileCss === false ||
     !code.includes(options.importSource ?? '@cssxio/cssx')

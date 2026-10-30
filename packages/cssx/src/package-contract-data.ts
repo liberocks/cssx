@@ -105,6 +105,7 @@ export const approvedDependencies = new Set([
   '@cssxio/compiler-native',
   '@vue/compiler-sfc',
   'esbuild',
+  'magic-string',
   'unplugin',
 ]);
 

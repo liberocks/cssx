@@ -124,7 +124,11 @@ describe('compileStaticSxCalls', () => {
 });
 
 describe('scanNativeStaticSxModule', () => {
-  const options = { mode: 'development' as const };
+  const options = {
+    mode: 'development' as const,
+    stableClassNames: true,
+    stableClassNameStrategy: 'module-order' as const,
+  };
   const callStart = source.indexOf('sx(');
   const call = {
     entryPoint: 'sx',
@@ -236,7 +240,29 @@ describe('scanNativeStaticSxModule', () => {
       handled: true,
       module: { id: stableFileName, candidates: { 'p-4': expect.any(String) } },
       transformedCode: expect.stringContaining('className = "'),
+      map: { version: 3, sources: [stableFileName], sourcesContent: [source] },
     });
+  });
+
+  it('rejects options that do not use stable module-order selectors', async () => {
+    const native = { findCssxCalls: vi.fn(() => [call]) };
+    for (const candidateOptions of [
+      { ...options, stableClassNames: false },
+      { ...options, stableClassNameStrategy: 'source-location' as const },
+    ]) {
+      await expect(
+        scanNativeStaticSxModule(
+          source,
+          stableFileName,
+          '/project',
+          candidateOptions,
+          createClassNameAllocator(),
+          stableFileName,
+          native,
+        ),
+      ).resolves.toEqual({ handled: false });
+    }
+    expect(native.findCssxCalls).not.toHaveBeenCalled();
   });
 
   it('keeps project scan metadata when a native call lacks rewrite spans', async () => {

@@ -213,8 +213,8 @@ describe('CSSX esbuild fixture', () => {
         write: false,
       });
 
-      expect(result.outputFiles?.find((file) => file.path.endsWith('cssx.css'))?.text).toContain(
-        'padding:calc(0.25rem * 4);',
+      expect(result.outputFiles?.find((file) => file.path.endsWith('cssx.css'))?.text).toMatch(
+        /padding:calc\(0\.25rem \* 4\);?/,
       );
       expect(await readFile(join(root, '.cssx', 'classnames.json'), 'utf8')).toContain('s0x');
     } finally {

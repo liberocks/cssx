@@ -5,6 +5,7 @@ import { loadTheme } from '../core/load-theme';
 import type { CssxPluginOptions } from '../core/options';
 import { wrapCssLayer } from '../core/wrap-css-layer';
 import type { CssxCandidateOrigin } from '../native/stylesheet';
+import { applySourceEdits } from './apply-source-edits';
 import type { NativeCssxAnalyzer, NativeCssxCall, NativeCssxModuleAnalysis } from './native-static-sx';
 import type { TransformResult } from './transform-cssx-module';
 
@@ -22,28 +23,35 @@ export async function transformNativeStaticCreateModule(
   try {
     if (native.analyzeCssxModule) {
       nativeAnalysis = native.analyzeCssxModule(source, id, options.importSource ?? '@cssxio/cssx');
+      calls = nativeAnalysis.getCalls();
       if (nativeAnalysis.fastStaticCreate && !options.themeFile) {
-        const arbitraryTransform = transformArbitraryStaticCreateModule(
-          source,
-          { line: nativeAnalysis.createLine, column: nativeAnalysis.createColumn },
-          nativeAnalysis.styles,
-          [],
-          new Set(nativeAnalysis.usedStyleNames),
-          options,
-          classNameAllocator,
-          (classNamesByStyle) =>
-            nativeAnalysis!.replaceCalls([
-              ...[...classNamesByStyle].map(([name, className]) => ({
-                name,
-                replacement: JSON.stringify({ className }),
-              })),
-            ]),
-        );
-        if (arbitraryTransform) {
-          return arbitraryTransform;
+        const createCall = calls.find((call) => call.entryPoint === 'create');
+        const propsCalls = calls.filter((call) => call.entryPoint === 'props');
+        if (createCall) {
+          const arbitraryTransform = transformArbitraryStaticCreateModule(
+            source,
+            id,
+            createCall,
+            nativeAnalysis.styles,
+            propsCalls,
+            new Set(nativeAnalysis.usedStyleNames),
+            options,
+            classNameAllocator,
+            createCall,
+            nativeAnalysis.removableImports,
+            (classNamesByStyle) =>
+              nativeAnalysis!.replaceCalls(
+                [...classNamesByStyle].map(([name, className]) => ({
+                  name,
+                  replacement: JSON.stringify({ className }),
+                })),
+              ),
+          );
+          if (arbitraryTransform) {
+            return arbitraryTransform;
+          }
         }
       }
-      calls = nativeAnalysis.getCalls();
     } else {
       calls = native.findCssxCalls(source, id, options.importSource ?? '@cssxio/cssx');
     }
@@ -88,17 +96,18 @@ export async function transformNativeStaticCreateModule(
       usedStyleNames.add(name);
     }
   }
-  if (!options.themeFile && !nativeAnalysis) {
+  if (!options.themeFile) {
     const arbitraryTransform = transformArbitraryStaticCreateModule(
       source,
+      id,
       createCall,
       styleEntries,
       propsCalls,
       usedStyleNames,
       options,
       classNameAllocator,
-      undefined,
       createCall,
+      nativeAnalysis?.removableImports,
     );
     if (arbitraryTransform) {
       return arbitraryTransform;
@@ -109,6 +118,7 @@ export async function transformNativeStaticCreateModule(
   const compiler = await import('@cssxio/compiler');
   const simpleTransform = await transformSimpleStaticCreateModule(
     source,
+    id,
     createCall,
     styleEntries,
     propsCalls,
@@ -117,6 +127,7 @@ export async function transformNativeStaticCreateModule(
     classNameAllocator,
     theme,
     compiler,
+    nativeAnalysis?.removableImports,
   );
   if (simpleTransform) {
     return simpleTransform;
@@ -192,8 +203,17 @@ export async function transformNativeStaticCreateModule(
       ).css
     : '';
 
+  const rewritten = replaceStaticCreateCalls(
+    source,
+    id,
+    createCall,
+    propsCalls,
+    classNamesByCall,
+    nativeAnalysis?.removableImports,
+  );
   return {
-    code: replaceStaticCreateCalls(source, createCall, propsCalls, classNamesByCall),
+    code: rewritten.code,
+    map: rewritten.map,
     rules: utilityCss ? [compiledCssRule(wrapCssLayer(utilityCss, options.layer))] : [],
     candidates,
     composites,
@@ -206,6 +226,7 @@ export async function transformNativeStaticCreateModule(
 /** Emits the fast production form when each referenced style can remain atomic. */
 async function transformSimpleStaticCreateModule(
   source: string,
+  sourceId: string,
   createCall: NativeCssxCall,
   styleEntries: NonNullable<NativeCssxCall['styles']>,
   propsCalls: readonly NativeCssxCall[],
@@ -214,6 +235,7 @@ async function transformSimpleStaticCreateModule(
   classNameAllocator: ClassNameAllocator,
   theme: string | undefined,
   compiler: typeof import('@cssxio/compiler'),
+  removableImports: readonly { readonly start: number; readonly end: number }[] = [],
 ): Promise<TransformResult | null> {
   if (propsCalls.some((call) => (call.styleNames?.length ?? 0) > 1)) {
     return null;
@@ -282,8 +304,17 @@ async function transformSimpleStaticCreateModule(
         )
       ).css
     : '';
+  const rewritten = replaceStaticCreateCalls(
+    source,
+    sourceId,
+    createCall,
+    propsCalls,
+    classNamesByCall,
+    removableImports,
+  );
   return {
-    code: replaceStaticCreateCalls(source, createCall, propsCalls, classNamesByCall),
+    code: rewritten.code,
+    map: rewritten.map,
     rules: utilityCss ? [compiledCssRule(wrapCssLayer(utilityCss, options.layer))] : [],
     candidates,
     composites: {},
@@ -303,14 +334,16 @@ interface ArbitraryDeclaration {
 /** Compiles the common plain arbitrary-property map without loading the utility registry. */
 function transformArbitraryStaticCreateModule(
   source: string,
+  sourceId: string,
   createCall: Pick<NativeCssxCall, 'line' | 'column'>,
   styleEntries: readonly { readonly name: string; readonly utilities: string }[],
   propsCalls: readonly NativeCssxCall[],
   usedStyleNames: ReadonlySet<string>,
   options: CssxPluginOptions,
   classNameAllocator: ClassNameAllocator,
+  createCallForRewrite: NativeCssxCall,
+  removableImports: readonly { readonly start: number; readonly end: number }[] = [],
   replaceCalls?: (classNamesByStyle: ReadonlyMap<string, string>) => string,
-  createCallForRewrite?: NativeCssxCall,
 ): TransformResult | null {
   if (
     propsCalls.some((call) => (call.styleNames?.length ?? 0) > 1) ||
@@ -361,7 +394,7 @@ function transformArbitraryStaticCreateModule(
     candidateClasses[candidate] = className;
     origins[candidate] = { line: createCall.line - 1, column: createCall.column };
     atomicClasses.add(className);
-    cssRules.push(`.${className}{${declaration.property}:${declaration.value};}`);
+    cssRules.push(`.${className}{${declaration.property}:${declaration.value}}`);
   }
   const classNamesByStyle = new Map<string, string>();
   for (const name of usedStyleNames) {
@@ -370,19 +403,24 @@ function transformArbitraryStaticCreateModule(
       (candidatesByStyle.get(name) ?? []).map((candidate) => classNames.get(candidate)!).join(' '),
     );
   }
-  const classNamesByCall = replaceCalls
-    ? undefined
-    : new Map(
-        propsCalls.map((call) => {
-          const name = call.styleNames?.[0];
-          return [call, name === undefined ? '' : classNamesByStyle.get(name)!] as const;
-        }),
-      );
+  const classNamesByCall = new Map(
+    propsCalls.map((call) => {
+      const name = call.styleNames?.[0];
+      return [call, name === undefined ? '' : classNamesByStyle.get(name)!] as const;
+    }),
+  );
   const utilityCss = cssRules.join('');
+  const rewritten = replaceStaticCreateCalls(
+    source,
+    sourceId,
+    createCallForRewrite,
+    propsCalls,
+    classNamesByCall,
+    removableImports,
+  );
   return {
-    code: replaceCalls
-      ? replaceCalls(classNamesByStyle)
-      : replaceStaticCreateCalls(source, createCallForRewrite!, propsCalls, classNamesByCall!),
+    code: replaceCalls ? replaceCalls(classNamesByStyle) : rewritten.code,
+    map: rewritten.map,
     rules: utilityCss ? [compiledCssRule(wrapCssLayer(utilityCss, options.layer))] : [],
     candidates: candidateClasses,
     composites: {},
@@ -493,54 +531,19 @@ function balancedParentheses(value: string): boolean {
 /** Replaces the static map and its statically resolved props calls in source order. */
 function replaceStaticCreateCalls(
   source: string,
+  sourceId: string,
   createCall: NativeCssxCall,
   propsCalls: readonly NativeCssxCall[],
   classNamesByCall: ReadonlyMap<NativeCssxCall, string>,
-): string {
-  const segments: string[] = [];
-  let cursor = 0;
-  const append = (call: NativeCssxCall, replacement: string): boolean => {
-    const start = call.startUtf16!;
-    const end = call.endUtf16!;
-    if (start < cursor) {
-      return false;
-    }
-    segments.push(source.slice(cursor, start), replacement);
-    cursor = end;
-    return true;
-  };
-  append(createCall, '{}');
-  for (const call of propsCalls) {
-    if (!append(call, JSON.stringify({ className: classNamesByCall.get(call)! }))) {
-      return replaceStaticCreateCallsSorted(source, createCall, propsCalls, classNamesByCall);
-    }
-  }
-  segments.push(source.slice(cursor));
-  return segments.join('');
-}
-
-/** Preserves support for source with CSSX calls visited out of source order. */
-function replaceStaticCreateCallsSorted(
-  source: string,
-  createCall: NativeCssxCall,
-  propsCalls: readonly NativeCssxCall[],
-  classNamesByCall: ReadonlyMap<NativeCssxCall, string>,
-): string {
-  const edits = [
-    { call: createCall, replacement: '{}' },
+  removableImports: readonly { readonly start: number; readonly end: number }[] = [],
+): { readonly code: string; readonly map: NonNullable<import('./transform-cssx-module').TransformResult['map']> } {
+  return applySourceEdits(source, sourceId, [
+    { start: createCall.startUtf16!, end: createCall.endUtf16!, content: '{}' },
+    ...removableImports.map(({ start, end }) => ({ start, end, content: '' })),
     ...propsCalls.map((call) => ({
-      call,
-      replacement: JSON.stringify({ className: classNamesByCall.get(call)! }),
+      start: call.startUtf16!,
+      end: call.endUtf16!,
+      content: JSON.stringify({ className: classNamesByCall.get(call)! }),
     })),
-  ].sort((left, right) => left.call.startUtf16! - right.call.startUtf16!);
-  const segments: string[] = [];
-  let cursor = 0;
-  for (const { call, replacement } of edits) {
-    const start = call.startUtf16!;
-    const end = call.endUtf16!;
-    segments.push(source.slice(cursor, start), replacement);
-    cursor = end;
-  }
-  segments.push(source.slice(cursor));
-  return segments.join('');
+  ]);
 }

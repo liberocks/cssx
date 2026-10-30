@@ -25,7 +25,6 @@ export async function tryTransformNativeStaticSxModule(
     options.mode !== 'development' ||
     options.stableClassNames !== true ||
     options.stableClassNameStrategy !== 'module-order' ||
-    options.sourceMap !== false ||
     inputSourceMap !== undefined ||
     transformOptions.compileCss !== false
   ) {
@@ -51,5 +50,6 @@ export async function tryTransformNativeStaticSxModule(
     atomicClasses: metadata.atomicClasses ?? [],
     origins: metadata.origins ?? {},
     cssOnlySignature: nativeScan.cssOnlySignature ?? '',
+    ...(nativeScan.map ? { map: nativeScan.map } : {}),
   };
 }

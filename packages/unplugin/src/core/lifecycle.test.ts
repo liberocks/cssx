@@ -206,7 +206,7 @@ describe('unplugin lifecycle edges', () => {
   });
 
   it('suppresses CSS-only Vite SSR updates without invalidating evaluated modules', async () => {
-    const plugin = pluginFor('vite');
+    const plugin = pluginFor('vite', { mode: 'development' });
     await plugin.transform.handler(staticSource, '/project/styles.ts');
     const module = { id: '/project/styles.ts', url: '/styles.ts' };
     const invalidated: unknown[] = [];

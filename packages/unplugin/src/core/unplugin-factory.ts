@@ -17,6 +17,7 @@ import {
   isDevelopmentMode,
   loadTheme,
   moduleId,
+  productionClassNameOptions,
   type CssxPluginOptions,
 } from './options';
 
@@ -51,7 +52,8 @@ export const unpluginFactory: UnpluginFactory<CssxPluginOptions | undefined> = (
   /** Transformed module data retained for Rollup-compatible output generation. */
   const rollupDataById = new Map<string, ModuleCssxData>();
   /** Serial namespace shared by every module transformed by this adapter instance. */
-  const classNameAllocator = options.classNameAllocator ?? createClassNameAllocator(effectiveClassNameOptions(options));
+  const classNameAllocator =
+    options.classNameAllocator ?? createClassNameAllocator(productionClassNameOptions(options));
   /** Deterministic utility selectors shared by development transforms. */
   const developmentClassNameAllocator =
     options.classNameAllocator ??

@@ -21,6 +21,20 @@ export function effectiveClassNameOptions(options: CssxPluginOptions): ClassName
   return { ...options.className, ...(variant ? { variant } : {}) };
 }
 
+/** Shortens default production serial names while preserving configured and persisted names. */
+export function productionClassNameOptions(options: CssxPluginOptions): ClassNameOptions {
+  const effective = effectiveClassNameOptions(options);
+  if (
+    options.className !== undefined ||
+    options.naming !== undefined ||
+    options.coordination === 'manifest' ||
+    options.stableClassNames === true
+  ) {
+    return effective;
+  }
+  return { ...effective, suffix: '' };
+}
+
 /** Selects the unoptimized settings used for warm development transforms. */
 export function developmentPluginOptions(
   options: CssxPluginOptions,

@@ -3,10 +3,9 @@
 use std::collections::{HashMap, HashSet};
 
 use cssx_compiler_core::{
-    CssxCall, CssxStyleEntry, SourceModule, find_cssx_calls as analyze_cssx_calls,
-    find_cssx_calls_in_modules as analyze_cssx_modules,
-    find_cssx_calls_without_positions as analyze_cssx_calls_without_positions,
-    populate_cssx_call_locations,
+    CssxCall, CssxImportRange, CssxStyleEntry, SourceModule,
+    analyze_cssx_module as analyze_cssx_module_core, find_cssx_calls as analyze_cssx_calls,
+    find_cssx_calls_in_modules as analyze_cssx_modules, populate_cssx_call_locations,
 };
 use napi::{Error, Result};
 use napi_derive::napi;
@@ -61,6 +60,7 @@ pub struct JsCssxModuleAnalysis {
     create_call: Option<CssxCall>,
     styles: Vec<CssxStyleEntry>,
     used_style_names: Vec<String>,
+    removable_imports: Vec<CssxImportRange>,
     fast_static_create: bool,
 }
 
@@ -71,6 +71,15 @@ pub struct JsStaticCreateReplacement {
     pub name: String,
     /// Complete JavaScript object literal used to replace its `props()` call.
     pub replacement: String,
+}
+
+/// One JavaScript source range.
+#[napi(object)]
+pub struct JsCssxSourceRange {
+    /// UTF-16 code-unit offset of the range start.
+    pub start: u32,
+    /// UTF-16 code-unit offset of the range end.
+    pub end: u32,
 }
 
 #[napi]
@@ -115,6 +124,18 @@ impl JsCssxModuleAnalysis {
             .unwrap_or_default()
     }
 
+    /// CSSX import declarations that can be removed after static calls are rewritten.
+    #[napi(getter, js_name = "removableImports")]
+    pub fn removable_imports(&self) -> Vec<JsCssxSourceRange> {
+        self.removable_imports
+            .iter()
+            .map(|range| JsCssxSourceRange {
+                start: range.start_utf16,
+                end: range.end_utf16,
+            })
+            .collect()
+    }
+
     /// Converts all CSSX calls to replacement JavaScript without crossing the N-API boundary per call.
     #[napi(js_name = "replaceCalls")]
     pub fn replace_calls(&self, replacements: Vec<JsStaticCreateReplacement>) -> Result<String> {
@@ -132,8 +153,7 @@ impl JsCssxModuleAnalysis {
             .into_iter()
             .map(|replacement| (replacement.name, replacement.replacement))
             .collect::<HashMap<_, _>>();
-        let mut output = String::with_capacity(self.source.len());
-        let mut cursor = 0usize;
+        let mut edits = Vec::with_capacity(self.calls.len() + self.removable_imports.len());
         for call in &self.calls {
             let replacement = match call.entry_point {
                 cssx_compiler_core::EntryPoint::Create => "{}",
@@ -154,15 +174,28 @@ impl JsCssxModuleAnalysis {
                     ));
                 }
             };
-            let start = call.start as usize;
-            let end = call.end as usize;
+            edits.push((
+                call.start as usize,
+                call.end as usize,
+                replacement.to_owned(),
+            ));
+        }
+        edits.extend(
+            self.removable_imports
+                .iter()
+                .map(|import| (import.start as usize, import.end as usize, String::new())),
+        );
+        edits.sort_by_key(|(start, _, _)| *start);
+        let mut output = String::with_capacity(self.source.len());
+        let mut cursor = 0usize;
+        for (start, end, replacement) in edits {
             if start < cursor || end > self.source.len() {
                 return Err(Error::from_reason(
-                    "CSSX native static create analysis found overlapping or invalid call ranges.",
+                    "CSSX native static create analysis found overlapping or invalid source ranges.",
                 ));
             }
             output.push_str(&self.source[cursor..start]);
-            output.push_str(replacement);
+            output.push_str(&replacement);
             cursor = end;
         }
         output.push_str(&self.source[cursor..]);
@@ -253,12 +286,14 @@ pub fn analyze_cssx_module(
     filename: String,
     import_source: Option<String>,
 ) -> Result<JsCssxModuleAnalysis> {
-    let calls = analyze_cssx_calls_without_positions(
+    let analysis = analyze_cssx_module_core(
         &source,
         &filename,
         import_source.as_deref().unwrap_or("@cssxio/cssx"),
+        false,
     )
     .map_err(Error::from_reason)?;
+    let calls = analysis.calls;
     let mut create_calls = calls
         .iter()
         .filter(|call| call.entry_point == cssx_compiler_core::EntryPoint::Create);
@@ -301,6 +336,7 @@ pub fn analyze_cssx_module(
         create_call: fast_static_create.then_some(create_call).flatten(),
         styles,
         used_style_names,
+        removable_imports: analysis.removable_imports,
         fast_static_create,
     })
 }

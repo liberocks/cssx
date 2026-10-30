@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { compileCssxStylesheet } from './compile-cssx-stylesheet';
+import { loadNativeAnalyzer } from './load-native-analyzer';
+
+vi.mock('./load-native-analyzer', () => ({ loadNativeAnalyzer: vi.fn() }));
 
 describe('compileCssxStylesheet', () => {
+  beforeEach(() => {
+    vi.mocked(loadNativeAnalyzer).mockReturnValue(undefined);
+  });
+
   it('merges source modules deterministically and creates origin mappings', async () => {
     const stylesheet = await compileCssxStylesheet(
       [
@@ -54,6 +61,24 @@ describe('compileCssxStylesheet', () => {
     expect(missingOrigin.map).toBeUndefined();
   });
 
+  it('removes terminal utility semicolons only when the native analyzer is available without maps', async () => {
+    vi.mocked(loadNativeAnalyzer).mockReturnValue({ findCssxCalls: () => [] });
+    const compact = await compileCssxStylesheet(
+      [{ id: '/compact.ts', candidates: { 'p-4': 's0' } }],
+      undefined,
+      undefined,
+      false,
+      undefined,
+      false,
+    );
+    const mapped = await compileCssxStylesheet([{ id: '/mapped.ts', candidates: { 'p-4': 's0' } }]);
+
+    expect(compact.css).toContain('.s0{padding:calc(0.25rem * 4)}');
+    expect(compact.css).not.toContain('.s0{padding:calc(0.25rem * 4);}');
+    expect(mapped.css).toContain('.s0{padding:calc(0.25rem * 4);}');
+    expect(mapped.map?.mappings).not.toBe('');
+  });
+
   it('aggregates proven precompiled modules without invoking the utility compiler', async () => {
     const stylesheet = await compileCssxStylesheet(
       [
@@ -101,7 +126,7 @@ describe('compileCssxStylesheet', () => {
     const stylesheet = await compileCssxStylesheet(
       [{ id: '/empty.ts', candidates: {} }],
       undefined,
-      undefined,
+      'app',
       false,
       undefined,
       false,

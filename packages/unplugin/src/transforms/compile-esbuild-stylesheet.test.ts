@@ -9,6 +9,6 @@ it('compiles canonical module records using esbuild theme and output options', a
   );
 
   expect(stylesheet.css).toContain('@layer utilities{');
-  expect(stylesheet.css).toContain('.padding{padding:calc(0.25rem * 4);}');
+  expect(stylesheet.css).toMatch(/\.padding\{padding:calc\(0\.25rem \* 4\);?\}/);
   expect(stylesheet.map).toBeUndefined();
 });

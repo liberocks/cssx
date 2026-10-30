@@ -76,7 +76,7 @@ export function configureNativeCompiler({
         );
       });
       sharedNativeState.notifyDevelopmentStylesheet = async () => {
-        await coordinatorStartup;
+        await coordinatorStartup?.catch(() => undefined);
         if (!developmentHmr || compilationRuns <= 1 || sharedNativeState.developmentHmr !== developmentHmr) {
           return;
         }

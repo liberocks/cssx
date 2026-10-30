@@ -111,7 +111,7 @@ describe('transformNativeStaticCreateModule', () => {
         .sort();
     expect(result?.candidates).toHaveProperty('[display:inline-flex]');
     expect(result?.candidates).toHaveProperty('[box-shadow:0 1px 2px rgb(0 0 0 / 0.1)]');
-    expect(result?.precompiledCss).toContain('display:inline-flex;');
+    expect(result?.precompiledCss).toContain('display:inline-flex}');
     expect(result?.code).toContain('className');
     expect(declarations(result?.rules ?? [])).toEqual(declarations(babelResult.rules));
   });
@@ -129,9 +129,9 @@ describe('transformNativeStaticCreateModule', () => {
     );
 
     expect(Object.keys(result?.candidates ?? {}).sort()).toEqual(['[color:#fff]', '[margin:2px]', '[padding:1rem]']);
-    expect(result?.precompiledCss).toContain('color:#fff;');
-    expect(result?.precompiledCss).toContain('padding:1rem;');
-    expect(result?.precompiledCss).toContain('margin:2px;');
+    expect(result?.precompiledCss).toContain('color:#fff}');
+    expect(result?.precompiledCss).toContain('padding:1rem}');
+    expect(result?.precompiledCss).toContain('margin:2px}');
   });
 
   it('accepts every JavaScript whitespace separator', async () => {
@@ -188,7 +188,7 @@ describe('transformNativeStaticCreateModule', () => {
     );
 
     expect(Object.keys(result?.candidates ?? {}).sort()).toEqual(['[Color:#fff]', '[color:#fff]']);
-    expect(result?.precompiledCss?.match(/color:#fff;/g)).toHaveLength(1);
+    expect(result?.precompiledCss?.match(/color:#fff}/g)).toHaveLength(1);
   });
 
   it('replaces empty arbitrary props calls and sorts out-of-order source spans', async () => {
@@ -222,7 +222,7 @@ describe('transformNativeStaticCreateModule', () => {
     expect(reorderedResult?.code).toContain('className');
   });
 
-  it('handles a missing style name from a malformed native fast analysis', async () => {
+  it('falls back when native analysis has a missing style name', async () => {
     const input =
       "import { create, props } from '@cssxio/cssx'; const styles = create({ root: '[color:#fff]' }); export const value = props(styles.root);";
     const result = await transformNativeStaticCreateModule(
@@ -245,7 +245,7 @@ describe('transformNativeStaticCreateModule', () => {
       },
     );
 
-    expect(result?.candidates).toEqual({});
+    expect(result).toBeNull();
   });
 
   it('keeps supported static create call records in the native addon', async () => {
@@ -255,9 +255,7 @@ describe('transformNativeStaticCreateModule', () => {
     const replaceCalls = vi.fn(() =>
       input.replace("create({ root: '[color:#fff]' })", '{}').replace('props(styles.root)', replacement),
     );
-    const getCalls = vi.fn(() => {
-      throw new Error('the native fast path should not materialize every call');
-    });
+    const getCalls = vi.fn(() => staticCalls(input, ['root'], [{ name: 'root', utilities: '[color:#fff]' }]));
     const findCssxCalls = vi.fn(() => {
       throw new Error('the native analysis should replace the legacy call list');
     });
@@ -287,7 +285,7 @@ describe('transformNativeStaticCreateModule', () => {
     expect(result?.candidates).toHaveProperty('[color:#fff]');
     expect(replaceCalls).toHaveBeenCalledWith([{ name: 'root', replacement }]);
     expect(findCssxCalls).not.toHaveBeenCalled();
-    expect(getCalls).not.toHaveBeenCalled();
+    expect(getCalls).toHaveBeenCalledTimes(1);
   });
 
   it('uses deferred native call records when the Rust analysis declines the static fast path', async () => {
@@ -317,6 +315,38 @@ describe('transformNativeStaticCreateModule', () => {
 
     expect(getCalls).toHaveBeenCalledOnce();
     expect(result?.candidates).toHaveProperty('p-4');
+  });
+
+  it('removes a CSSX runtime import made unused by a static rewrite', async () => {
+    const input =
+      "import { create, props } from '@cssxio/cssx'; const styles = create({ root: 'p-4' }); export const value = props(styles.root);";
+    const calls = staticCalls(input, ['root'], [{ name: 'root', utilities: 'p-4' }]);
+    const importStart = input.indexOf('import');
+    const importEnd = input.indexOf(';') + 1;
+    const result = await transformNativeStaticCreateModule(
+      input,
+      '/project/page.tsx',
+      '/project',
+      { mode: 'production', sourceMap: false },
+      createClassNameAllocator(),
+      {
+        findCssxCalls: () => [],
+        analyzeCssxModule: () => ({
+          fastStaticCreate: false,
+          styles: [],
+          usedStyleNames: [],
+          createLine: 1,
+          createColumn: 0,
+          removableImports: [{ start: importStart, end: importEnd }],
+          replaceCalls: () => input,
+          getCalls: () => calls,
+        }),
+      },
+    );
+
+    expect(result?.code).not.toContain("from '@cssxio/cssx'");
+    expect(result?.code).toContain('className');
+    expect(result?.map?.sources).toEqual(['/project/page.tsx']);
   });
 
   it('returns to the Babel fallback when Oxc analysis fails', async () => {

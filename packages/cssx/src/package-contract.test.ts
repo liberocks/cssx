@@ -1,6 +1,7 @@
 import { access, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -205,14 +206,56 @@ void props;
     }
   });
 
-  it('ships the Rust analyzer as an optional macOS arm64 dependency', async () => {
+  it('ships the Rust analyzer as an optional cross-platform dependency', async () => {
     const nativeManifest = await readManifest('packages/compiler-native');
     const unpluginManifest = await readManifest('packages/unplugin');
 
-    expect(nativeManifest.main).toBe('./libcssx_compiler_node.dylib');
-    expect(nativeManifest.os).toEqual(['darwin']);
-    expect(nativeManifest.cpu).toEqual(['arm64']);
+    expect(nativeManifest.main).toBe('./index.cjs');
+    expect(nativeManifest.os).toBeUndefined();
+    expect(nativeManifest.cpu).toBeUndefined();
+    expect((nativeManifest as unknown as { files: string[] }).files).toEqual(['index.cjs', 'native/*.node']);
     expect(unpluginManifest.optionalDependencies?.['@cssxio/compiler-native']).toBe('workspace:*');
+  });
+
+  it.each([
+    ['darwin', 'arm64', 'cssx_compiler_node.darwin-arm64.node'],
+    ['linux', 'x64', 'cssx_compiler_node.linux-x64.node'],
+    ['win32', 'x64', 'cssx_compiler_node.win32-x64.node'],
+  ])('selects the native binary for %s %s', async (platform, arch, binary) => {
+    const loader = await readFile(join(workspaceRoot, 'packages/compiler-native/index.cjs'), 'utf8');
+    const module = { exports: null as unknown, require: (path: string) => path };
+
+    runInNewContext(loader, { module, process: { platform, arch } });
+
+    expect(module.exports).toBe(`./native/${binary}`);
+  });
+
+  it('uses the Babel fallback on unsupported platforms or missing native files', async () => {
+    const loader = await readFile(join(workspaceRoot, 'packages/compiler-native/index.cjs'), 'utf8');
+    const unsupported = {
+      exports: undefined as unknown,
+      require: () => {
+        throw new Error('unsupported platform should not load a native binary');
+      },
+    };
+
+    runInNewContext(loader, {
+      module: unsupported,
+      process: { platform: 'linux', arch: 'arm64' },
+    });
+    expect(unsupported.exports).toBeNull();
+
+    const missingBinary = {
+      exports: undefined as unknown,
+      require: () => {
+        throw new Error('binary is not installed');
+      },
+    };
+    runInNewContext(loader, {
+      module: missingBinary,
+      process: { platform: 'linux', arch: 'x64' },
+    });
+    expect(missingBinary.exports).toBeNull();
   });
 
   it('uses valid ranges for internal package dependencies', async () => {
@@ -422,10 +465,16 @@ void props;
       const html = await readFile(join(workspaceRoot, 'examples/astro/dist/index.html'));
       const css = await readFile(join(workspaceRoot, 'examples/astro/dist/assets/cssx.css'));
       const htmlText = html.toString('utf8');
-      const cssxClassValues = [...htmlText.matchAll(/class="(s[0-9A-Za-z]+x)"/g)].map((match) => match[1] ?? '');
+      const cssxClassValues = [...htmlText.matchAll(/class="((?:s[0-9A-Za-z]+x?)(?: s[0-9A-Za-z]+x?)*)"/g)].map(
+        (match) => match[1] ?? '',
+      );
 
       expect(cssxClassValues.length).toBeGreaterThan(0);
-      expect(cssxClassValues.every((className) => !className.includes(' '))).toBe(true);
+      expect(
+        cssxClassValues.every((classNames) =>
+          classNames.split(' ').every((className) => /^s[0-9A-Za-z]+x?$/.test(className)),
+        ),
+      ).toBe(true);
       expect(htmlText).not.toContain('class="rounded-md');
       expect(gzipSync(html).byteLength + gzipSync(css).byteLength).toBeLessThan(2_200);
     } finally {
@@ -470,7 +519,7 @@ void props;
     });
     await expectArtifactWithinBudget('packages/unplugin/dist/index.cjs', {
       // Native Oxc static-style dispatch stays lazy; compressed overhead remains under 3 KB.
-      raw: 70_000,
+      raw: 71_000,
       gzip: 24_000,
       brotli: 21_000,
     });

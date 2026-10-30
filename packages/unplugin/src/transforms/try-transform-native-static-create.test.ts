@@ -49,7 +49,7 @@ const transformOptions = {};
 afterEach(() => vi.clearAllMocks());
 
 describe('tryTransformNativeStaticCreateModule', () => {
-  it('uses the production native transform when addon and source-map settings allow it', async () => {
+  it('uses the production native transform and generates JavaScript source maps', async () => {
     const allocator = createClassNameAllocator();
     const result = await tryTransformNativeStaticCreateModule(
       source,
@@ -62,7 +62,22 @@ describe('tryTransformNativeStaticCreateModule', () => {
     );
 
     expect(result?.code).toContain('className');
+    expect(result?.map).toMatchObject({ version: 3, sources: ['/project/page.tsx'] });
     expect(native.findCssxCalls).toHaveBeenCalledWith(source, '/project/page.tsx', '@cssxio/cssx');
+  });
+
+  it('keeps JavaScript source maps independent from CSS source-map settings', async () => {
+    const result = await tryTransformNativeStaticCreateModule(
+      source,
+      '/project/page.tsx',
+      '/project/page.tsx',
+      { ...baseOptions, sourceMap: true },
+      undefined,
+      transformOptions,
+      native,
+    );
+
+    expect(result?.map).toMatchObject({ version: 3, sources: ['/project/page.tsx'] });
   });
 
   it('uses its own allocator when no shared allocator was supplied', async () => {
@@ -99,7 +114,6 @@ describe('tryTransformNativeStaticCreateModule', () => {
     const cases = [
       [{ mode: 'development' as const, sourceMap: false }, undefined, transformOptions],
       [{ ...baseOptions, stableClassNames: true }, undefined, transformOptions],
-      [{ mode: 'production' as const, sourceMap: true }, undefined, transformOptions],
       [baseOptions, inputMap, transformOptions],
       [baseOptions, undefined, { compileCss: false }],
       [baseOptions, undefined, transformOptions, 'export const value = true;'],

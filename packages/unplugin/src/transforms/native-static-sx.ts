@@ -4,6 +4,7 @@ import type { ClassNameAllocator } from '@cssxio/compiler';
 import { loadTheme } from '../core/load-theme';
 import type { CssxPluginOptions } from '../core/options';
 import type { CssxSourceModule } from '../native/stylesheet-types';
+import { applySourceEdits } from './apply-source-edits';
 import { loadNativeAnalyzer } from './load-native-analyzer';
 
 /** Static CSSX call data returned by the native Oxc analyzer. */
@@ -42,6 +43,8 @@ export interface NativeCssxModuleAnalysis {
   readonly fastStaticCreate: boolean;
   readonly styles: readonly { readonly name: string; readonly utilities: string }[];
   readonly usedStyleNames: readonly string[];
+  /** UTF-16 ranges of runtime imports that become unused after static calls are rewritten. */
+  readonly removableImports?: readonly { readonly start: number; readonly end: number }[];
   readonly createLine: number;
   readonly createColumn: number;
   /** Rewrites all static create and props calls without returning each call across N-API. */
@@ -56,6 +59,7 @@ type NativeScanResult =
       readonly handled: true;
       readonly module?: CssxSourceModule;
       readonly transformedCode?: string;
+      readonly map?: NonNullable<import('./transform-cssx-module').TransformResult['map']>;
       readonly cssOnlySignature?: string;
     }
   | { readonly handled: false };
@@ -70,7 +74,12 @@ export async function scanNativeStaticSxModule(
   stableClassNameFileName: string,
   nativeOverride?: NativeCssxAnalyzer | null,
 ): Promise<NativeScanResult> {
-  if (options.mode !== 'development' || !source.includes(options.importSource ?? '@cssxio/cssx')) {
+  if (
+    options.mode !== 'development' ||
+    options.stableClassNames !== true ||
+    options.stableClassNameStrategy !== 'module-order' ||
+    !source.includes(options.importSource ?? '@cssxio/cssx')
+  ) {
     return { handled: false };
   }
   const native = nativeOverride === undefined ? loadNativeAnalyzer() : (nativeOverride ?? undefined);
@@ -97,34 +106,37 @@ export async function scanNativeStaticSxModule(
     return { handled: false };
   }
 
-  let transformedCode = source;
+  const result = { handled: true as const, module: { id, ...metadata } };
+  const edits: { readonly start: number; readonly end: number; readonly content: string }[] = [];
   const ranges: { readonly start: number; readonly end: number }[] = [];
-  for (let ordinal = calls.length - 1; ordinal >= 0; ordinal--) {
+  for (let ordinal = 0; ordinal < calls.length; ordinal++) {
     const call = calls[ordinal]!;
     const utilitySource = call.utilities.filter((utility) => utility.trim().length > 0).join(' ');
     if (call.startUtf16 === undefined || call.endUtf16 === undefined) {
-      transformedCode = '';
-      break;
+      return result;
     }
     ranges.push({ start: call.startUtf16, end: call.endUtf16 });
-    let replacement: string;
     if (!utilitySource) {
-      replacement = '';
+      edits.push({ start: call.startUtf16, end: call.endUtf16, content: JSON.stringify('') });
     } else if (isGeneratedClassNames(utilitySource)) {
       continue;
     } else {
-      replacement = stableCompositeName(stableClassNameFileName, undefined, `sx:${ordinal}:segment:0`);
+      edits.push({
+        start: call.startUtf16,
+        end: call.endUtf16,
+        content: JSON.stringify(stableCompositeName(stableClassNameFileName, undefined, `sx:${ordinal}:segment:0`)),
+      });
     }
-    transformedCode =
-      transformedCode.slice(0, call.startUtf16) + JSON.stringify(replacement) + transformedCode.slice(call.endUtf16);
   }
 
-  const result = { handled: true as const, module: { id, ...metadata } };
-  if (!transformedCode) {
-    return result;
-  }
+  const rewritten = applySourceEdits(source, id, edits);
   const { cssOnlySignature } = await import('@cssxio/babel-plugin');
-  return { ...result, transformedCode, cssOnlySignature: cssOnlySignature(source, ranges) };
+  return {
+    ...result,
+    transformedCode: rewritten.code,
+    map: rewritten.map,
+    cssOnlySignature: cssOnlySignature(source, ranges),
+  };
 }
 
 /** Compiles call data from Oxc with the shared CSSX compiler and development identities. */

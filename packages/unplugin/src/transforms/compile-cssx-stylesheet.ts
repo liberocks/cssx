@@ -3,6 +3,7 @@ import type { DarkMode } from '@cssxio/compiler';
 import { CSSX_PREFLIGHT } from '../core/preflight';
 import type { CssxSourceModule, CssxSourceOrigin, CssxStylesheet } from '../native/stylesheet-types';
 import { createCssSourceMap } from '../source-map/create-css-source-map';
+import { loadNativeAnalyzer } from './load-native-analyzer';
 
 /**
  * Builds one stylesheet from source module data.
@@ -27,8 +28,12 @@ export async function compileCssxStylesheet(
   if (precompiled) {
     const rules = [...new Set(data.map((module) => module.precompiledCss).filter(isString))].sort().join('');
     const preflightCss = preflight ? CSSX_PREFLIGHT : '';
+    const content = `${preflightCss}${rules}`;
+    if (!content) {
+      return { css: '' };
+    }
     const layerPrefix = layer ? `@layer ${layer}{` : '';
-    return { css: `${layerPrefix}${preflightCss}${rules}${layerPrefix ? '}' : ''}` };
+    return { css: `${layerPrefix}${content}${layerPrefix ? '}' : ''}` };
   }
 
   const candidates: Record<string, string> = Object.create(null) as Record<string, string>;
@@ -66,7 +71,7 @@ export async function compileCssxStylesheet(
     const css = preflightCss && layer ? `@layer ${layer}{${preflightCss}}` : preflightCss;
     return { css };
   }
-  const { compileUtilities, createSelectorAliases } = await import('@cssxio/compiler');
+  const { compileUtilities, createSelectorAliases, serializeCss } = await import('@cssxio/compiler');
   const compiled = await compileUtilities(
     names,
     (candidate) => candidates[candidate]!,
@@ -75,8 +80,10 @@ export async function compileCssxStylesheet(
     hasAtomicClassMetadata ? atomicClasses : undefined,
     { darkMode },
   );
+  const utilityCss =
+    !sourceMap && loadNativeAnalyzer() ? serializeCss([{ className: '', css: compiled.css }]) : compiled.css;
   const layerPrefix = layer ? `@layer ${layer}{` : '';
-  const css = `${layerPrefix}${preflightCss}${compiled.css}${layerPrefix ? '}' : ''}`;
+  const css = `${layerPrefix}${preflightCss}${utilityCss}${layerPrefix ? '}' : ''}`;
   const map = sourceMap
     ? createCssSourceMap(`${layerPrefix}${preflightCss}${compiled.prefixCss}`, compiled.entries, origins)
     : undefined;

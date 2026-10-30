@@ -8,7 +8,7 @@ import type { CssxPluginOptions } from '..';
 import { assertPluginOptions } from '../core/assert-plugin-options';
 import { canonicalPath } from '../core/canonical-path';
 import { loadTheme, resolveCssFileName, resolveEsbuildAssetPath } from '../core/options';
-import { developmentPluginOptions, effectiveClassNameOptions } from '../core/options';
+import { developmentPluginOptions, productionClassNameOptions } from '../core/options';
 import { sourceSignature } from '../core/source-signature';
 import { stableModuleFileName } from '../core/stable-module-file-name';
 import type { CssxSourceModule } from '../native/stylesheet';
@@ -51,7 +51,7 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
   const classNameAllocator =
     options.classNameAllocator ??
     createClassNameAllocator(
-      development ? { ...options.className, variant: 'random' } : effectiveClassNameOptions(options),
+      development ? { ...options.className, variant: 'random' } : productionClassNameOptions(options),
     );
   /** CSS asset written by the previous build, used to remove stale output. */
   let emittedAsset: string | undefined;
@@ -408,7 +408,7 @@ async function transformEsbuildSource(
   const transformOptions = {
     ...(developmentOptions ?? options),
     stableClassNames: stable,
-    className: developmentOptions ? developmentOptions.className : effectiveClassNameOptions(options),
+    className: developmentOptions ? developmentOptions.className : productionClassNameOptions(options),
     ...(stable ? { stableClassNameFileName: stableModuleFileName(workingDirectory, path, development) } : {}),
     classNameAllocator,
   };

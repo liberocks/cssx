@@ -107,7 +107,6 @@ describe('tryTransformNativeStaticSxModule', () => {
       [{ ...options, mode: 'production' as const }, undefined, transformOptions],
       [{ ...options, stableClassNames: false }, undefined, transformOptions],
       [{ ...options, stableClassNameStrategy: 'source-location' as const }, undefined, transformOptions],
-      [{ ...options, sourceMap: true }, undefined, transformOptions],
       [options, inputSourceMap, transformOptions],
       [options, undefined, {}],
     ] as const;
@@ -125,6 +124,27 @@ describe('tryTransformNativeStaticSxModule', () => {
       ).resolves.toBeNull();
     }
     expect(mocks.scanNative).not.toHaveBeenCalled();
+  });
+
+  it('keeps JavaScript source maps independent from CSS source-map settings', async () => {
+    const map = { version: 3 as const, sources: [module.id], names: [], mappings: 'AAAA' };
+    mocks.scanNative.mockResolvedValueOnce({
+      handled: true,
+      module,
+      transformedCode: 'export const value = "d1x";',
+      map,
+    });
+
+    await expect(
+      tryTransformNativeStaticSxModule(
+        source,
+        module.id,
+        module.id,
+        { ...options, sourceMap: true },
+        undefined,
+        transformOptions,
+      ),
+    ).resolves.toMatchObject({ map });
   });
 
   it('falls back when the native scanner cannot fully transform the module', async () => {
