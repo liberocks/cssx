@@ -115,6 +115,48 @@ describe('release plan', () => {
     ]);
   });
 
+  it('bumps the formatter and adapter packages when a native API moves to a new minor', () => {
+    const packages = [
+      { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [] },
+      {
+        name: '@cssxio/formatter',
+        directory: 'packages/formatter',
+        dependencies: ['@cssxio/compiler', '@cssxio/compiler-native'],
+      },
+      {
+        name: '@cssxio/compiler-native',
+        directory: 'packages/compiler-native',
+        dependencies: [],
+      },
+      {
+        name: '@cssxio/unplugin',
+        directory: 'packages/unplugin',
+        dependencies: ['@cssxio/compiler-native'],
+      },
+    ];
+    const manifests = new Map<string, ReleaseManifest>([
+      ['@cssxio/compiler', { version: '0.13.0' }],
+      [
+        '@cssxio/formatter',
+        {
+          version: '0.1.0',
+          dependencies: { '@cssxio/compiler': '^0.13.0' },
+          optionalDependencies: { '@cssxio/compiler-native': '^0.2.0' },
+        },
+      ],
+      ['@cssxio/compiler-native', { version: '0.2.0' }],
+      ['@cssxio/unplugin', { version: '0.12.3', optionalDependencies: { '@cssxio/compiler-native': '^0.2.0' } }],
+    ]);
+
+    expect(
+      createAutoReleasePlan(packages, manifests, new Set(['@cssxio/formatter', '@cssxio/compiler-native']), 'minor'),
+    ).toEqual([
+      expect.objectContaining({ name: '@cssxio/formatter', bump: 'minor', nextVersion: '0.2.0' }),
+      expect.objectContaining({ name: '@cssxio/compiler-native', bump: 'minor', nextVersion: '0.3.0' }),
+      expect.objectContaining({ name: '@cssxio/unplugin', bump: 'patch', nextVersion: '0.12.4' }),
+    ]);
+  });
+
   it('retries the current versions of every changed package without incrementing them', () => {
     const packages = [
       { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [] },

@@ -9,7 +9,12 @@ const execFileAsync = promisify(execFile);
 
 export const releasePackages = [
   { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [], registry: 'npm' },
-  { name: '@cssxio/formatter', directory: 'packages/formatter', dependencies: ['@cssxio/compiler'], registry: 'npm' },
+  {
+    name: '@cssxio/formatter',
+    directory: 'packages/formatter',
+    dependencies: ['@cssxio/compiler', '@cssxio/compiler-native'],
+    registry: 'npm',
+  },
   {
     name: '@cssxio/compiler-native',
     directory: 'packages/compiler-native',
