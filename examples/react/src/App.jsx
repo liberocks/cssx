@@ -3,10 +3,10 @@ import * as cssx from '@cssxio/cssx';
 import { useState } from 'react';
 
 const styles = cssx.create({
-  page: 'flex min-h-[100vh] items-center justify-center bg-slate-950 p-8 font-[var(--font-display)]',
-  card: 'flex max-w-lg flex-col items-start gap-6 rounded-2xl bg-slate-900 p-8 text-slate-100 shadow-2xl',
+  page: 'flex justify-center items-center min-h-[100vh] p-8 font-[var(--font-display)] bg-slate-950',
+  card: 'flex items-start flex-col max-w-lg gap-6 p-8 text-slate-100 rounded-2xl bg-slate-900 shadow-2xl',
   eyebrow: 'text-sm font-medium text-brand',
-  title: 'text-[2.5rem] leading-[1.1] font-semibold',
+  title: 'leading-[1.1] text-[2.5rem] font-semibold',
   copy: 'text-slate-300',
   hint: 'text-sm text-slate-400',
 });
@@ -25,7 +25,7 @@ export default function App() {
         <button
           data-cssx-probe="sx"
           className={sx(
-            'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-cyan-700',
+            'px-4 py-2 font-medium text-white rounded-md bg-brand hover:bg-cyan-700',
             count > 0 && 'scale-105',
           )}
           onClick={() => setCount((value) => value + 1)}

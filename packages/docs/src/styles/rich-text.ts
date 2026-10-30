@@ -2,7 +2,7 @@ import * as cssx from '@cssxio/cssx';
 
 const styles = cssx.create({
   mono: 'font-mono',
-  link: 'text-brand underline underline-offset-2',
+  link: 'underline-offset-2 text-brand underline',
 });
 
 export const richTextClasses = {

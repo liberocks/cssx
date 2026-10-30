@@ -5,10 +5,10 @@ import * as React from 'react';
 import '../index.css';
 
 const styles = cssx.create({
-  page: 'flex min-h-[100vh] items-center justify-center bg-purple-50 p-8 font-[var(--font-display)]',
-  card: 'flex max-w-lg flex-col items-start gap-6 rounded-2xl bg-white p-8 text-slate-900 shadow-xl',
+  page: 'flex justify-center items-center min-h-[100vh] p-8 font-[var(--font-display)] bg-purple-50',
+  card: 'flex items-start flex-col max-w-lg gap-6 p-8 text-slate-900 rounded-2xl bg-white shadow-xl',
   eyebrow: 'text-sm font-medium text-brand',
-  title: 'text-[2.5rem] leading-[1.1] font-semibold',
+  title: 'leading-[1.1] text-[2.5rem] font-semibold',
   copy: 'text-slate-600',
   hint: 'text-sm text-slate-500',
 });
@@ -25,7 +25,7 @@ export default function IndexPage() {
         <button
           data-cssx-probe="sx"
           className={sx(
-            'rounded-md bg-brand px-4 py-2 font-medium text-white hover:bg-purple-800',
+            'px-4 py-2 font-medium text-white rounded-md bg-brand hover:bg-purple-800',
             count > 0 && 'scale-105',
           )}
           onClick={() => setCount((value) => value + 1)}

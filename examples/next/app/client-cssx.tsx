@@ -10,7 +10,7 @@ export function ClientCssx() {
   const [active, setActive] = useState(false);
   return (
     <section>
-      <span data-cssx-client className={sx('inline-block rounded-md bg-brand p-3 text-white')}>
+      <span data-cssx-client className={sx('inline-block p-3 text-white rounded-md bg-brand')}>
         Client style
       </span>
       <button
