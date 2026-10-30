@@ -465,8 +465,10 @@ void props;
       const html = await readFile(join(workspaceRoot, 'examples/astro/dist/index.html'));
       const css = await readFile(join(workspaceRoot, 'examples/astro/dist/assets/cssx.css'));
       const htmlText = html.toString('utf8');
-      const cssxClassValues = [...htmlText.matchAll(/class="((?:s[0-9A-Za-z]+x?)(?: s[0-9A-Za-z]+x?)*)"/g)].map(
-        (match) => match[1] ?? '',
+      const classValues = [...htmlText.matchAll(/class="([^"]*)"/g)].map((match) => match[1] ?? '');
+      const cssxClassValues = classValues.filter(
+        (classNames) =>
+          classNames.length > 0 && classNames.split(' ').every((className) => /^s[0-9A-Za-z]+x?$/.test(className)),
       );
 
       expect(cssxClassValues.length).toBeGreaterThan(0);
