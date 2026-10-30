@@ -59,7 +59,12 @@ export function launchCli(
   } catch {
     return undefined;
   }
-  return runCli(arguments_).then(setExitCode);
+  return runCli(arguments_)
+    .then(setExitCode)
+    .catch((error: unknown) => {
+      console.error(error);
+      setExitCode(2);
+    });
 }
 
 /** Runs the CSSX formatter CLI and returns its process exit code. */
@@ -188,12 +193,20 @@ async function resolveFiles(
   }
   const matches = await glob(patterns, { cwd, absolute: true, onlyFiles: true, dot: true, ignore: [...ignored] });
   const files = new Set([...directFiles, ...matches.map((path) => resolve(path))]);
-  return [...files].filter((path) => !isIgnored(path, cwd, ignored)).sort();
+  const ignorePatterns = ignored.map(globPattern);
+  return [...files].filter((path) => !isIgnored(path, cwd, ignorePatterns)).sort();
 }
 
-function isIgnored(filename: string, cwd: string, patterns: readonly string[]): boolean {
+function isIgnored(filename: string, cwd: string, patterns: readonly RegExp[]): boolean {
   const relativePath = relative(cwd, filename).split('\\').join('/');
-  return patterns.some((pattern) => globPattern(pattern).test(relativePath));
+  let ancestor = '';
+  for (const segment of relativePath.split('/')) {
+    ancestor = ancestor ? `${ancestor}/${segment}` : segment;
+    if (patterns.some((pattern) => pattern.test(ancestor))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function globPattern(pattern: string): RegExp {

@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { cliInternals, launchCli, runCli } from '../../src/cli';
 
@@ -93,8 +93,19 @@ describe('cssx-format CLI', () => {
 
   it('accepts a custom ignore file and leaves parser errors unchanged', async () => {
     const cwd = await makeProject();
-    await writeFile(join(cwd, 'custom.ignore'), 'page.tsx\n');
+    await writeFile(join(cwd, 'custom.ignore'), 'page.tsx\ngenerated\n');
     expect(await runCli(['--check', '--ignore-path', 'custom.ignore', '.'], { cwd, log: () => undefined })).toBe(0);
+    await mkdir(join(cwd, 'generated', 'nested'), { recursive: true });
+    await writeFile(
+      join(cwd, 'generated', 'nested', 'ignored.tsx'),
+      `import { sx } from '@cssxio/cssx'; sx("bg-white   p-4");`,
+    );
+    expect(
+      await runCli(['--check', '--ignore-path', 'custom.ignore', 'generated/nested/ignored.tsx'], {
+        cwd,
+        log: () => undefined,
+      }),
+    ).toBe(0);
     await writeFile(join(cwd, 'broken.tsx'), `import { sx } from '@cssxio/cssx'; sx("bg-white   p-4";`);
     expect(await runCli(['--write', 'broken.tsx'], { cwd, log: () => undefined })).toBe(2);
     expect(await readFile(join(cwd, 'broken.tsx'), 'utf8')).toContain('bg-white   p-4');
@@ -142,6 +153,16 @@ describe('cssx-format CLI', () => {
       exitCode = code;
     });
     expect(exitCode).toBe(0);
+    const ignoreDirectory = join(project, 'ignore-directory');
+    await mkdir(ignoreDirectory, { recursive: true });
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    exitCode = -1;
+    await launchCli(moduleUrl, scriptPath, ['--ignore-path', ignoreDirectory], (code) => {
+      exitCode = code;
+    });
+    expect(exitCode).toBe(2);
+    expect(consoleError).toHaveBeenCalledOnce();
+    consoleError.mockRestore();
     if (process.platform !== 'win32') {
       const linkedPath = join(project, 'cli-link.js');
       await symlink(scriptPath, linkedPath);
