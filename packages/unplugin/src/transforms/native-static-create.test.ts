@@ -387,7 +387,9 @@ describe('transformNativeStaticCreateModule', () => {
 
     for (const utilities of invalidUtilities) {
       const input = `import { create, props } from '@cssxio/cssx'; const styles = create({ root: ${JSON.stringify(utilities)} }); export const value = props(styles.root);`;
-      const getCalls = vi.fn(() => []);
+      const calls = staticCalls(input, ['root'], [{ name: 'root', utilities }]);
+      calls[1] = { ...calls[1]!, endUtf16: undefined };
+      const getCalls = vi.fn(() => calls);
       const result = await transformNativeStaticCreateModule(
         input,
         '/project/page.tsx',
