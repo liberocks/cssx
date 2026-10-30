@@ -150,6 +150,19 @@ afterward for JavaScript/TypeScript layout and import ordering. The complete
 CSSX utility reference and supported class families are listed in
 [Utility Support](#utility-support).
 
+The formatter uses the optional Rust/Oxc analyzer from
+`@cssxio/compiler-native` when a compatible platform binary is installed. It
+only parses source and finds literal ranges; utility ordering still comes from
+the CSSX TypeScript compiler metadata and sorter. Other platforms and older
+native packages fall back to the existing Oxc JavaScript parser. To measure a
+cold CSSX-only workspace check, run
+`/usr/bin/time -p pnpm exec cssx-format --check .`. The reference target is
+under one second on the roughly 674-file Overmost workspace; Oxfmt and Prettier
+are measured separately. The CLI uses one sequential worker to keep memory and
+CPU use bounded. On the local macOS arm64 machine, new-process checks measured
+0.96 s and 1.21 s with the native analyzer, versus 9.38 s with the JavaScript
+parser fallback. Filesystem cache state and machine load affect these results.
+
 ## Compiler Setup
 
 ```js
