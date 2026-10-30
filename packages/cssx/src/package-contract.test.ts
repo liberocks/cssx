@@ -388,7 +388,11 @@ void props;
   });
 
   it('pins all GitHub Actions workflow dependencies to immutable commit revisions', async () => {
-    for (const workflow of ['.github/workflows/ci.yml', '.github/workflows/release-packages.yml']) {
+    for (const workflow of [
+      '.github/workflows/ci.yml',
+      '.github/workflows/prepare-package-versions.yml',
+      '.github/workflows/release-packages.yml',
+    ]) {
       const content = await readFile(join(workspaceRoot, workflow), 'utf8');
       const actions = [...content.matchAll(/^\s*- uses:\s+[^@\s]+@([^\s#]+)/gm)].map((match) => match[1]);
       expect(actions.length, `${workflow} has no actions`).toBeGreaterThan(0);
@@ -396,23 +400,41 @@ void props;
     }
   });
 
-  it('defaults package releases to the changed-package selector', async () => {
+  it('runs CI for pull requests without triggering another run on main pushes', async () => {
+    const workflow = await readFile(join(workspaceRoot, '.github/workflows/ci.yml'), 'utf8');
+    expect(workflow).toContain('  pull_request:');
+    expect(workflow).toContain('  workflow_dispatch:');
+    expect(workflow).not.toContain('\n  push:');
+  });
+
+  it('publishes prepared package versions without changing versions', async () => {
     const workflow = await readFile(join(workspaceRoot, '.github/workflows/release-packages.yml'), 'utf8');
     expect(workflow).toContain('name: Release packages');
     expect(workflow).toContain('package:');
     expect(workflow).toContain('default: auto');
     expect(workflow).toContain('- auto');
+    expect(workflow).toContain('release_sha:');
+    expect(workflow).toContain('registry.npmjs.org/$package_path');
+    expect(workflow).toContain('if [ "$status" = 404 ]; then return 1; fi');
+    expect(workflow).toContain('if [ "$status" != 200 ]; then');
+    expect(workflow).toContain('git merge-base --is-ancestor');
+    expect(workflow).toContain('needs.validate.outputs.release-sha');
+    expect(workflow).toContain('run: git checkout --detach "$RELEASE_SHA"');
+    expect(workflow).not.toContain('ref: ${{ needs.validate.outputs.release-sha }}');
+    expect(workflow).toContain('pnpm test:release');
+    expect(workflow).toContain('pnpm benchmark');
+    expect(workflow).not.toContain('gh run list --workflow ci.yml');
     expect(workflow).toContain('--package "$PACKAGE"');
-    expect(workflow).toContain('--retry-existing-version "$RETRY_EXISTING_VERSION"');
-    expect(workflow).toContain('retry_existing_version:');
-    expect(workflow).toContain('requires-version-bump');
+    expect(workflow).toContain('--retry-existing-version true');
+    expect(workflow).not.toContain('inputs.bump');
+    expect(workflow).not.toContain('retry_existing_version:');
+    expect(workflow).not.toContain('requires-version-bump');
     expect(workflow).toContain('node-version: 24');
     expect(workflow).toContain('retry will create its missing package tag and update its commit release');
     expect(workflow).toContain('Skipping already-published');
     expect(workflow).toContain('Skipping existing tag');
     expect(workflow).toContain('Create or update GitHub Release');
     expect(workflow).toContain('gh release list --limit 1000 --json tagName');
-    expect(workflow).toContain('candidate_sha="$(git rev-list -n 1 "refs/tags/$candidate_tag"');
     expect(workflow).toContain('gh release edit "$existing_release_tag"');
     expect(workflow).toContain('release_tag="release-$release_sha"');
     expect(workflow).toContain('--tag "$release_tag"');
@@ -422,11 +444,36 @@ void props;
     expect(workflow).toContain('map(.name + "@" + .version)');
     expect(workflow).toContain('Changes since');
     expect(workflow).toContain('git log --first-parent');
-    expect(workflow).toContain('merge_release_pr()');
+    expect(workflow).not.toContain('release-plan.mjs apply');
+    expect(workflow).not.toContain('gh pr create');
+    expect(workflow).not.toContain('gh pr merge');
     expect(workflow).toContain('persist-credentials: false');
     expect(workflow).not.toContain('dry_run');
     expect(workflow).not.toContain('wait_for_ci');
     expect(workflow).toContain('queue: max');
+  });
+
+  it('prepares changed package versions in a regular PR', async () => {
+    const workflow = await readFile(join(workspaceRoot, '.github/workflows/prepare-package-versions.yml'), 'utf8');
+    expect(workflow).toContain('name: Prepare package versions');
+    expect(workflow).toContain('workflow_dispatch:');
+    expect(workflow).toContain('bump:');
+    expect(workflow).toContain('default: patch');
+    expect(workflow).toContain('--package auto --bump "$BUMP"');
+    expect(workflow).toContain('Check planned versions are unpublished');
+    expect(workflow).toContain('git ls-remote --tags origin');
+    expect(workflow).toContain('Could not query npm version metadata');
+    expect(workflow).toContain('registry.npmjs.org/$package_path');
+    expect(workflow).toContain('if [ "$status" = 404 ]; then return 1; fi');
+    expect(workflow).toContain('if [ "$status" != 200 ]; then');
+    expect(workflow).toContain('Could not query remote tags');
+    expect(workflow).toContain('permission-contents: write');
+    expect(workflow).toContain('permission-pull-requests: write');
+    expect(workflow).toContain('release-plan.mjs apply');
+    expect(workflow).toContain('gh pr create');
+    expect(workflow).toContain('--base main');
+    expect(workflow).not.toContain('gh pr merge');
+    expect(workflow).toContain("if: github.ref == 'refs/heads/main'");
   });
 
   it('keeps the built runtime and a fixed generated-CSS fixture within budget', async () => {

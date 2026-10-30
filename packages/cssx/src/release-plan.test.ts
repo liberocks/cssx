@@ -80,6 +80,21 @@ describe('release plan', () => {
     ]);
   });
 
+  it('bumps only changed packages when dependent ranges already accept the new version', () => {
+    const packages = [
+      { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [] },
+      { name: '@cssxio/babel-plugin', directory: 'packages/babel-plugin', dependencies: ['@cssxio/compiler'] },
+    ];
+    const manifests = new Map<string, ReleaseManifest>([
+      ['@cssxio/compiler', { version: '0.2.3' }],
+      ['@cssxio/babel-plugin', { version: '0.2.1', dependencies: { '@cssxio/compiler': '^0.2.0' } }],
+    ]);
+
+    expect(createAutoReleasePlan(packages, manifests, new Set(['@cssxio/compiler']), 'patch')).toEqual([
+      expect.objectContaining({ name: '@cssxio/compiler', version: '0.2.3', nextVersion: '0.2.4' }),
+    ]);
+  });
+
   it('includes dependents when an optional native dependency changes incompatibly', () => {
     const packages = [
       { name: '@cssxio/compiler-native', directory: 'packages/compiler-native', dependencies: [] },
