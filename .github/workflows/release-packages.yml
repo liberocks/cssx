@@ -73,7 +73,12 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ needs.validate.outputs.release-sha }}
+          ref: main
+          fetch-depth: 0
+      - name: Select validated release commit
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.release-sha }}
+        run: git checkout --detach "$RELEASE_SHA"
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
           version: 12.4.1
@@ -119,8 +124,13 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ needs.validate.outputs.release-sha }}
+          ref: main
+          fetch-depth: 0
           persist-credentials: false
+      - name: Select validated release commit
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.release-sha }}
+        run: git checkout --detach "$RELEASE_SHA"
       - name: Install Rust 1.99.1
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Build the native compiler
@@ -149,11 +159,15 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ needs.validate.outputs.release-sha }}
+          ref: main
           fetch-depth: 0
           # Release branch and tag pushes must authenticate with RELEASE_TOKEN,
           # not the read-only workflow GITHUB_TOKEN persisted by checkout.
           persist-credentials: false
+      - name: Select validated release commit
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.release-sha }}
+        run: git checkout --detach "$RELEASE_SHA"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: compiler-native-*
@@ -182,31 +196,6 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-      - name: Select the release commit
-        if: steps.plan.outputs.has-release == 'true'
-        id: release_source
-        run: |
-          printf 'release-sha=%s\n' "$RELEASE_SHA" >> "$GITHUB_OUTPUT"
-        env:
-          RELEASE_SHA: ${{ needs.validate.outputs.release-sha }}
-      - name: Verify the selected main commit
-        if: steps.plan.outputs.has-release == 'true'
-        run: |
-          release_sha="$RELEASE_SHA"
-          git fetch origin main
-          git checkout "$release_sha"
-          attempts_remaining=120
-          while [ "$attempts_remaining" -gt 0 ]; do
-            run_id="$(gh run list --workflow ci.yml --commit "$release_sha" --event push --limit 1 --json databaseId --jq '.[0].databaseId')"
-            if [ -n "$run_id" ] && [ "$run_id" != 'null' ]; then break; fi
-            sleep 5
-            attempts_remaining=$((attempts_remaining - 1))
-          done
-          [ -n "$run_id" ] && [ "$run_id" != 'null' ] || { printf 'Timed out waiting for push CI on %s\n' "$release_sha" >&2; exit 1; }
-          gh run watch "$run_id" --exit-status
-        env:
-          GH_TOKEN: ${{ steps.release_app_token.outputs.token }}
-          RELEASE_SHA: ${{ steps.release_source.outputs.release-sha }}
       - name: Install release dependencies
         if: steps.plan.outputs.has-release == 'true'
         run: pnpm install --frozen-lockfile

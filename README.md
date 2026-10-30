@@ -912,21 +912,22 @@ packages changed since their latest release tags, adds patch bumps for
 dependents whose internal dependency ranges must advance, checks that each
 planned version is valid, unpublished, and untagged, updates the manifests and
 lockfile, and opens a version-preparation PR. It does not merge the PR or bypass
-branch protection. Wait for the PR's required checks, merge it, and wait for the
-resulting `main` CI run to pass.
+branch protection. CI runs on pull requests and can be dispatched manually;
+merging a PR to `main` does not trigger another CI run.
 
 Then dispatch **Release packages** with **package** set to `auto`. It publishes
-the changed packages at their prepared versions, verifies that the selected
-main commit passed CI, and creates tags and GitHub Releases. This workflow does
-not change package versions or open a PR, so publication can start after version
-validation and CI are already complete. If a partial publish fails, rerun it
-with **auto** to complete packages that are still untagged. Leave **release_sha**
+the changed packages at their prepared versions after building native artifacts
+and running `pnpm test:release` and `pnpm benchmark` on the selected main
+commit. It then creates tags and GitHub Releases. This workflow does not change
+package versions or open a PR. If a partial publish fails, rerun it with **auto**
+to complete packages that are still untagged. Leave **release_sha**
 empty when retrying from the original main commit. If `main` has moved, set
 **release_sha** to the commit SHA shown in the failed release run's summary so
 all remaining packages are built and tagged from the same commit as the ones
 already published. The workflow verifies that this commit is still in `main`
-and waits for its CI. For a package whose tag already exists but whose GitHub
-Release was not completed, select that package explicitly and pass the same
+and repeats its native build and release checks from that commit. For a package
+whose tag already exists but whose GitHub Release was not completed, select that
+package explicitly and pass the same
 **release_sha** if needed. The workflow skips already-published artifacts and
 refuses a tag that points at a different commit. GitHub repository auto-merge
 remains disabled for ordinary pull requests.

@@ -400,6 +400,13 @@ void props;
     }
   });
 
+  it('runs CI for pull requests without triggering another run on main pushes', async () => {
+    const workflow = await readFile(join(workspaceRoot, '.github/workflows/ci.yml'), 'utf8');
+    expect(workflow).toContain('  pull_request:');
+    expect(workflow).toContain('  workflow_dispatch:');
+    expect(workflow).not.toContain('\n  push:');
+  });
+
   it('publishes prepared package versions without changing versions', async () => {
     const workflow = await readFile(join(workspaceRoot, '.github/workflows/release-packages.yml'), 'utf8');
     expect(workflow).toContain('name: Release packages');
@@ -412,6 +419,11 @@ void props;
     expect(workflow).toContain('if [ "$status" != 200 ]; then');
     expect(workflow).toContain('git merge-base --is-ancestor');
     expect(workflow).toContain('needs.validate.outputs.release-sha');
+    expect(workflow).toContain('run: git checkout --detach "$RELEASE_SHA"');
+    expect(workflow).not.toContain('ref: ${{ needs.validate.outputs.release-sha }}');
+    expect(workflow).toContain('pnpm test:release');
+    expect(workflow).toContain('pnpm benchmark');
+    expect(workflow).not.toContain('gh run list --workflow ci.yml');
     expect(workflow).toContain('--package "$PACKAGE"');
     expect(workflow).toContain('--retry-existing-version true');
     expect(workflow).not.toContain('inputs.bump');
