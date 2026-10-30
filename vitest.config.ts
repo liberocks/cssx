@@ -31,7 +31,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['packages/*/src/**/*.test.{js,ts}'],
+    include: ['packages/*/src/**/*.test.{js,ts}', 'packages/formatter/tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'json-summary'],

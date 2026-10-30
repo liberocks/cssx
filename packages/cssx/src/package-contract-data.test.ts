@@ -16,5 +16,7 @@ it('keeps public package metadata internally consistent', () => {
   );
   expect(dependencyFields).toContain('peerDependencies');
   expect(approvedDependencies.has('@cssxio/compiler')).toBe(true);
+  expect(approvedDependencies.has('oxc-parser')).toBe(true);
+  expect(approvedDependencies.has('tinyglobby')).toBe(true);
   expect(workspaceRoot).toContain('cssx');
 });

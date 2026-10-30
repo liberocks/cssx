@@ -12,6 +12,7 @@ on:
         options:
           - auto
           - '@cssxio/compiler'
+          - '@cssxio/formatter'
           - '@cssxio/compiler-native'
           - '@cssxio/babel-plugin'
           - '@cssxio/cssx'
