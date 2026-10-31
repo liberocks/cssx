@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/formatter",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "CSSX-aware utility formatter.",
   "license": "MIT",
   "repository": {
@@ -32,11 +32,11 @@
     "build": "tsup && node ../../scripts/write-build-manifest.mjs"
   },
   "dependencies": {
-    "@cssxio/compiler": "^0.14.0",
+    "@cssxio/compiler": "^0.14.1",
     "oxc-parser": "^0.156.0",
     "tinyglobby": "^0.2.17"
   },
   "optionalDependencies": {
-    "@cssxio/compiler-native": "^0.3.0"
+    "@cssxio/compiler-native": "^0.3.1"
   }
 }
