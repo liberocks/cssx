@@ -3,9 +3,11 @@
 use std::collections::{HashMap, HashSet};
 
 use cssx_compiler_core::{
-    CssxCall, CssxImportRange, CssxStyleEntry, SourceModule,
+    CssxCall, CssxFormattingLiteral, CssxImportRange, CssxStyleEntry, SourceModule,
     analyze_cssx_module as analyze_cssx_module_core, find_cssx_calls as analyze_cssx_calls,
-    find_cssx_calls_in_modules as analyze_cssx_modules, populate_cssx_call_locations,
+    find_cssx_calls_in_modules as analyze_cssx_modules,
+    find_cssx_formatting_literals as analyze_cssx_formatting_literals,
+    populate_cssx_call_locations,
 };
 use napi::{Error, Result};
 use napi_derive::napi;
@@ -50,6 +52,17 @@ pub struct JsCssxStyleEntry {
     pub name: String,
     /// Utility string assigned to the style key.
     pub utilities: String,
+}
+
+/// One literal string and its source range, using JavaScript UTF-16 offsets.
+#[napi(object)]
+pub struct JsCssxFormattingLiteral {
+    /// UTF-16 code-unit offset of the complete literal's start.
+    pub start: u32,
+    /// UTF-16 code-unit offset of the complete literal's end.
+    pub end: u32,
+    /// Decoded JavaScript string value.
+    pub value: String,
 }
 
 /// CSSX call metadata retained natively until the JavaScript transform needs its fallback form.
@@ -220,6 +233,16 @@ impl From<CssxStyleEntry> for JsCssxStyleEntry {
     }
 }
 
+impl From<CssxFormattingLiteral> for JsCssxFormattingLiteral {
+    fn from(literal: CssxFormattingLiteral) -> Self {
+        Self {
+            start: literal.start_utf16,
+            end: literal.end_utf16,
+            value: literal.value,
+        }
+    }
+}
+
 /// Source module passed to the bounded project analyzer.
 #[napi(object)]
 pub struct JsSourceModule {
@@ -276,6 +299,27 @@ pub fn find_cssx_calls(
         import_source.as_deref().unwrap_or("@cssxio/cssx"),
     )
     .map(|calls| calls.into_iter().map(JsCssxCall::from).collect())
+    .map_err(Error::from_reason)
+}
+
+/// Finds CSSX utility literals and their source ranges without constructing a JavaScript AST.
+#[napi(js_name = "findCssxFormattingLiterals")]
+pub fn find_cssx_formatting_literals(
+    source: String,
+    filename: String,
+    import_source: Option<String>,
+) -> Result<Vec<JsCssxFormattingLiteral>> {
+    analyze_cssx_formatting_literals(
+        &source,
+        &filename,
+        import_source.as_deref().unwrap_or("@cssxio/cssx"),
+    )
+    .map(|literals| {
+        literals
+            .into_iter()
+            .map(JsCssxFormattingLiteral::from)
+            .collect()
+    })
     .map_err(Error::from_reason)
 }
 

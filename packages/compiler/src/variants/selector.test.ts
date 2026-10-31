@@ -11,6 +11,14 @@ describe('selector AST rewriting', () => {
     expect(replaceNestingSelectors('\\&', '.x-root')).toBeNull();
   });
 
+  it('treats a compact type selector after nesting as a descendant', () => {
+    expect(replaceNestingSelectors('&p, &svg:not(.icon), & p, &.ready, &[data-state=open]', '.x-root')).toBe(
+      '.x-root p, .x-root svg:not(.icon), .x-root p, .x-root.ready, .x-root[data-state=open]',
+    );
+    expect(replaceNestingSelectors('&[data-label="&p"]', '.x-root')).toBe('.x-root[data-label="&p"]');
+    expect(replaceNestingSelectors('&', '.x-root')).toBe('.x-root');
+  });
+
   it('rejects unterminated attribute, string, and comment syntax', () => {
     expect(() => replaceNestingSelectors('&[data-label', '.x-root')).toThrow('attribute');
     expect(() => replaceNestingSelectors('&[data-label="open]', '.x-root')).toThrow('string');

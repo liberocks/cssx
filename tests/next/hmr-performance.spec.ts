@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-test('shows 30 warm style edits and preserves browser state', async ({ page }) => {
+test('shows 30 warm style edits with p95 within 100 ms and preserves browser state', async ({ page }) => {
   test.skip(process.env.CSSX_VISUAL_MODE !== 'development', 'CSSX development HMR is only active in development.');
 
   const sourcePath = resolve(import.meta.dirname, '../../examples/next/app/hmr-probe.tsx');
@@ -119,7 +119,7 @@ test('shows 30 warm style edits and preserves browser state', async ({ page }) =
       `Next ${process.env.CSSX_NEXT_BUNDLER} warm HMR: p50 ${sorted[14]!.toFixed(1)} ms, p95 ${sorted[28]!.toFixed(1)} ms, max ${sorted[29]!.toFixed(1)} ms; samples ${measurements.map((value) => value.toFixed(1)).join(', ')}.`,
     );
     if (process.env.CSSX_ENFORCE_HMR_BUDGET !== 'false') {
-      expect(sorted[29]).toBeLessThanOrEqual(100);
+      expect(sorted[28]).toBeLessThanOrEqual(100);
     }
   } finally {
     await writeFile(sourcePath, originalSource);

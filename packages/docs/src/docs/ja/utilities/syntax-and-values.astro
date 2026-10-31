@@ -11,7 +11,7 @@ const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
 ---
 
 <p>CSSX checks every utility while building. A bracketed value must be static and safe. An unsupported utility stops the build. The examples below use <code>@cssxio/cssx</code>.</p>
-<p>Write spaces directly in bracketed values and arbitrary selectors: <code>grid-cols-[13rem minmax(0,1fr)]</code>, <code>animate-[fade 1s ease-in]</code>, and <code>[&amp; h1]:text-lg</code>. Unescaped underscores remain a whitespace alias for compatibility; use <code>\_</code> for a literal underscore. Underscores in <code>url()</code> payloads and <code>var()</code> or <code>env()</code> names stay literal.</p>
+<p>Write spaces directly in bracketed values and arbitrary selectors: <code>grid-cols-[13rem minmax(0,1fr)]</code>, <code>animate-[fade 1s ease-in]</code>, and <code>[&amp; h1]:text-lg</code>. For a descendant type selector, compact <code>[&amp;p]:text-lg</code> is equivalent to <code>[&amp; p]:text-lg</code> and legacy <code>[&amp;_p]:text-lg</code>. This shorthand applies only when a type selector directly follows <code>&amp;</code>; write a space before descendant classes or attributes, such as <code>[&amp; .child]</code> or <code>[&amp; [data-state=open]]</code>. Compound selectors such as <code>[&amp;.is-active]</code> and <code>[&amp;[data-state=open]]</code> remain attached to the same element. Unescaped underscores remain a whitespace alias for compatibility; use <code>\_</code> for a literal underscore. Underscores in <code>url()</code> payloads and <code>var()</code> or <code>env()</code> names stay literal.</p>
 <table>
 <thead><tr>
 <th scope="col">Class</th>

@@ -1,8 +1,9 @@
 # `@cssxio/formatter`
 
 CSSX-aware utility ordering and whitespace formatting for JavaScript and
-TypeScript source files. It uses CSSX compiler metadata and Oxc parsing, so it
-preserves utility tokens and CSSX conflict order.
+TypeScript source files. The optional Rust analyzer finds formatter-safe source
+ranges. The existing CSSX compiler metadata and TypeScript sorter remain the
+single source of truth for utility order and CSSX conflict behavior.
 
 ## Install
 
@@ -67,9 +68,33 @@ becomes:
 <section className={sx('w-full max-w-sm p-7 rounded-xl bg-white')} />
 ```
 
+When `@cssxio/compiler-native` is installed with a supported platform binary,
+the formatter uses it to parse source and find CSSX call literals without
+building a JavaScript AST object for every file. If the native package or a
+matching binary is unavailable, the formatter falls back to Oxc's JavaScript
+parser. Both paths call the same TypeScript utility sorter and metadata.
+
 The formatter uses the same class registry as the compiler. See the main
 [CSSX Utility Support reference](https://github.com/liberocks/cssx#utility-support)
 for the complete list of supported utility families and exact classes.
+
+## Performance
+
+Run a cold full-project check with:
+
+```sh
+pnpm exec cssx-format --check .
+```
+
+The formatter processes files sequentially to keep memory and CPU usage
+bounded. With the native analyzer installed, the goal is to keep a cold run on
+the reference Overmost workspace (about 674 source files) under one second.
+Project size, filesystem speed, and CPU affect the result. Repeated runs can be
+measured with `/usr/bin/time -p pnpm exec cssx-format --check .`; this measures
+CSSX formatting alone, before Oxfmt or Prettier. On the local macOS arm64
+machine, new-process checks measured 0.96 s and 1.21 s with the native analyzer,
+versus 9.38 s with the JavaScript parser fallback. Filesystem cache state and
+machine load affect these results.
 
 ## API
 

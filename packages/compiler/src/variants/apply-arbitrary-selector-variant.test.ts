@@ -16,6 +16,16 @@ it('replaces nesting in arbitrary selectors and consumes selector suffixes', () 
   expect(state.selectorSuffix).toBe('');
 });
 
+it('treats compact type selectors as descendant variants', () => {
+  const legacy = createState();
+  const compact = createState();
+
+  expect(applyArbitrarySelectorVariant('[&_p]', legacy)).toBe(true);
+  expect(applyArbitrarySelectorVariant('[&p]', compact)).toBe(true);
+  expect(compact.selectors).toEqual(legacy.selectors);
+  expect(compact.selectors).toEqual(['.x p']);
+});
+
 it('leaves arbitrary condition variants for the condition resolver', () => {
   const state = createState();
 

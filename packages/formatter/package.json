@@ -35,5 +35,8 @@
     "@cssxio/compiler": "^0.13.0",
     "oxc-parser": "^0.156.0",
     "tinyglobby": "^0.2.17"
+  },
+  "optionalDependencies": {
+    "@cssxio/compiler-native": "^0.2.0"
   }
 }

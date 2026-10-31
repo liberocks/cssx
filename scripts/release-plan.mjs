@@ -8,8 +8,19 @@ const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const execFileAsync = promisify(execFile);
 
 export const releasePackages = [
-  { name: '@cssxio/compiler', directory: 'packages/compiler', dependencies: [], registry: 'npm' },
-  { name: '@cssxio/formatter', directory: 'packages/formatter', dependencies: ['@cssxio/compiler'], registry: 'npm' },
+  {
+    name: '@cssxio/compiler',
+    directory: 'packages/compiler',
+    excludedDirectories: ['packages/compiler/native'],
+    dependencies: [],
+    registry: 'npm',
+  },
+  {
+    name: '@cssxio/formatter',
+    directory: 'packages/formatter',
+    dependencies: ['@cssxio/compiler', '@cssxio/compiler-native'],
+    registry: 'npm',
+  },
   {
     name: '@cssxio/compiler-native',
     directory: 'packages/compiler-native',
@@ -215,9 +226,10 @@ async function releaseBaselineTag() {
   }
 }
 
-async function pathChangedSince(baseRef, directory) {
+async function pathChangedSince(baseRef, directory, excludedDirectories = []) {
   try {
-    await execFileAsync('git', ['diff', '--quiet', `${baseRef}..HEAD`, '--', directory], { cwd: workspaceRoot });
+    const pathspecs = [directory, ...excludedDirectories.map((excluded) => `:(exclude)${excluded}/**`)];
+    await execFileAsync('git', ['diff', '--quiet', `${baseRef}..HEAD`, '--', ...pathspecs], { cwd: workspaceRoot });
     return false;
   } catch (error) {
     if (typeof error === 'object' && error && 'code' in error && error.code === 1) return true;
@@ -228,7 +240,12 @@ async function pathChangedSince(baseRef, directory) {
 /** Checks the package directory and any source directories used to build its release artifact. */
 export async function packageChangedSince(packageInfo, baseRef, hasChangedPath = pathChangedSince) {
   for (const directory of [packageInfo.directory, ...(packageInfo.sourceDirectories ?? [])]) {
-    if (await hasChangedPath(baseRef, directory)) return true;
+    const excludedDirectories = directory === packageInfo.directory ? (packageInfo.excludedDirectories ?? []) : [];
+    const changed =
+      excludedDirectories.length > 0
+        ? await hasChangedPath(baseRef, directory, excludedDirectories)
+        : await hasChangedPath(baseRef, directory);
+    if (changed) return true;
   }
   return false;
 }

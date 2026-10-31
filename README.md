@@ -150,6 +150,19 @@ afterward for JavaScript/TypeScript layout and import ordering. The complete
 CSSX utility reference and supported class families are listed in
 [Utility Support](#utility-support).
 
+The formatter uses the optional Rust/Oxc analyzer from
+`@cssxio/compiler-native` when a compatible platform binary is installed. It
+only parses source and finds literal ranges; utility ordering still comes from
+the CSSX TypeScript compiler metadata and sorter. Other platforms and older
+native packages fall back to the existing Oxc JavaScript parser. To measure a
+cold CSSX-only workspace check, run
+`/usr/bin/time -p pnpm exec cssx-format --check .`. The reference target is
+under one second on the roughly 674-file Overmost workspace; Oxfmt and Prettier
+are measured separately. The CLI uses one sequential worker to keep memory and
+CPU use bounded. On the local macOS arm64 machine, new-process checks measured
+0.96 s and 1.21 s with the native analyzer, versus 9.38 s with the JavaScript
+parser fallback. Filesystem cache state and machine load affect these results.
+
 ## Compiler Setup
 
 ```js
@@ -171,7 +184,7 @@ Development resource use has fixed bounds: the shared project scanner opens at m
 
 When a Vite-powered SSR framework skips Vite's HTML transform hook, CSSX injects the same bridge into the rendered HTML response. To bound extra memory, it buffers at most 1 MiB per response, 4,096 chunks per response, and eight responses at once; oversized or excess responses pass through unchanged.
 
-The performance target is at most 100 ms from saving an existing static style literal to the updated computed style after the next browser animation frame, on the reference development machine with a warm server. It excludes cold startup, new components or call sites, JavaScript edits, whole-theme changes, and composition-structure changes. Run `pnpm benchmark:dev-hmr` for the warm metadata and stylesheet-emission benchmark, and `pnpm test:hmr` for the browser save-to-visible gate across esbuild, Rollup, Webpack, and Rspack. The Vite and Next.js browser gates run with the visual matrix; run `CSSX_VISUAL_FRAMEWORK=vite CSSX_VISUAL_MODE=development pnpm --dir tests exec playwright test vite/hmr-performance.spec.ts`, or set `CSSX_VISUAL_FRAMEWORK=next` and `CSSX_NEXT_BUNDLER` to `webpack` or `turbopack`. Local browser runs enforce the 100 ms maximum by default. CI enforces it on Linux and Windows; macOS framework jobs still run all 30 edits and check the visible styles and preserved UI state, while reporting timing without using the shared hosted runner as the target-machine gate. Compiler-only timings are not save-to-visible results.
+The performance target is a p95 of at most 100 ms across 30 warm saves of an existing static style literal, measured through the updated computed style after the next browser animation frame on the reference development machine. Occasional single-update outliers are acceptable. It excludes cold startup, new components or call sites, JavaScript edits, whole-theme changes, and composition-structure changes. Run `pnpm benchmark:dev-hmr` for the warm metadata and stylesheet-emission benchmark, and `pnpm test:hmr` for the browser save-to-visible gate across esbuild, Rollup, Webpack, and Rspack. The Vite and Next.js browser gates run with the visual matrix; run `CSSX_VISUAL_FRAMEWORK=vite CSSX_VISUAL_MODE=development pnpm --dir tests exec playwright test vite/hmr-performance.spec.ts`, or set `CSSX_VISUAL_FRAMEWORK=next` and `CSSX_NEXT_BUNDLER` to `webpack` or `turbopack`. Local browser runs enforce the 100 ms p95 gate by default. CI enforces that gate on Linux and Windows; macOS framework jobs still run all 30 edits and check the visible styles and preserved UI state, while reporting timing without using the shared hosted runner as the target-machine gate. Compiler-only timings are not save-to-visible results.
 
 On the reference ARM64 machine, the final run of 30 warm browser edits had maximum save-to-visible times of 43.2 ms (esbuild), 36.5 ms (Rollup), 77.6 ms (Webpack), 76.9 ms (Rspack), 64.0 ms (Vite), 79.0 ms (Next.js Turbopack), and 80.0 ms (Next.js Webpack). The browser checks confirmed computed styles updated while the page, input value, focus, and scroll position stayed in place. In the 400-module source-scan fixture, the native analyzer measured a 253 ms initial scan and warm edit transform plus stylesheet preparation of 1.5 ms median, 2.2 ms p95, and 8.7 ms maximum. The Node process used 72.6 MB heap and 148.2 MB RSS. These are local fixture results; they are not guarantees for cold builds or different hardware.
 
@@ -883,10 +896,13 @@ supports custom breakpoints from `--breakpoint-*`; defaults are `sm`, `md`,
 | `data-name:`, `data-[name=value]:`, `aria-name:`, `aria-[name=value]:`                                                                                                                                                                                                                             | Attribute condition.                                                          |
 | `dark:`, `print:`, `supports-[property:value]:`, `not-supports-[property:value]:`                                                                                                                                                                                                                  | Media or support condition.                                                   |
 | `<breakpoint>:`, `max-<breakpoint>:`, `min-[value]:`, `max-[value]:`                                                                                                                                                                                                                               | Responsive condition.                                                         |
-| `[&>svg]:`, `[&.is-active]:`, `[@supports(...)]:`, `[@media ...]:`                                                                                                                                                                                                                                 | Safe arbitrary selector or at-rule condition.                                 |
+| `[&p]:`, `[&>svg]:`, `[&.is-active]:`, `[@supports(...)]:`, `[@media ...]:`                                                                                                                                                                                                                        | Safe arbitrary selector or at-rule condition.                                 |
 
 Arbitrary selector variants must contain `&`; only static selectors and
-supported at-rules are accepted.
+supported at-rules are accepted. A compact descendant type selector such as `[&p]`
+is equivalent to `[& p]` and legacy `[&_p]`. Use an explicit space before
+descendant classes or attributes, such as `[& .child]` or `[& [data-state=open]]`;
+compound selectors such as `[&.is-active]` stay attached to the same element.
 
 Custom state names must be identifiers, for example `state-[open]:block` or
 `group-state-[expanded]:text-white`.
@@ -947,10 +963,14 @@ raw class strings or be modeled as explicit static style choices.
 Dispatch **Prepare package versions** to select a semver bump. It detects public
 packages changed since their latest release tags, adds patch bumps for
 dependents whose internal dependency ranges must advance, checks that each
-planned version is valid, unpublished, and untagged, updates the manifests and
-lockfile, and opens a version-preparation PR. It does not merge the PR or bypass
-branch protection. CI runs on pull requests and can be dispatched manually;
-merging a PR to `main` does not trigger another CI run.
+planned version is valid, unpublished, and untagged, then updates the manifests
+and lockfile. Leave **pr_id** empty to open a separate version-preparation PR.
+To avoid a second CI cycle, provide the number of an open same-repository PR
+targeting `main`; the workflow commits the version updates directly to that PR
+branch, where its normal CI checks the source and version changes together.
+Dispatch this before waiting for the source PR's first CI run to finish so the
+updated branch gets one final check run. The workflow does not merge a PR or
+bypass branch protection. Merging a PR to `main` does not trigger another CI run.
 
 Then dispatch **Release packages** with **package** set to `auto`. It publishes
 the changed packages at their prepared versions after building native artifacts
