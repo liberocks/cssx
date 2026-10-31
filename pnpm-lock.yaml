@@ -388,7 +388,7 @@ importers:
         specifier: ^7.28.0
         version: 7.29.7(supports-color@10.2.2)
       '@cssxio/compiler':
-        specifier: ^0.13.0
+        specifier: ^0.14.0
         version: link:../compiler
 
   packages/compiler: {}
@@ -425,7 +425,7 @@ importers:
   packages/formatter:
     dependencies:
       '@cssxio/compiler':
-        specifier: ^0.13.0
+        specifier: ^0.14.0
         version: link:../compiler
       oxc-parser:
         specifier: ^0.156.0
@@ -435,13 +435,13 @@ importers:
         version: 0.2.17
     optionalDependencies:
       '@cssxio/compiler-native':
-        specifier: ^0.2.0
+        specifier: ^0.3.0
         version: link:../compiler-native
 
   packages/html:
     dependencies:
       '@cssxio/compiler':
-        specifier: ^0.13.0
+        specifier: ^0.14.0
         version: link:../compiler
 
   packages/intellisense: {}
@@ -452,7 +452,7 @@ importers:
         specifier: ^7.28.0
         version: 7.29.7(supports-color@10.2.2)
       '@cssxio/compiler':
-        specifier: ^0.13.0
+        specifier: ^0.14.0
         version: link:../compiler
 
   packages/unplugin:
@@ -461,10 +461,10 @@ importers:
         specifier: ^7.29.7
         version: 7.29.7(supports-color@10.2.2)
       '@cssxio/babel-plugin':
-        specifier: ^0.11.1
+        specifier: ^0.11.2
         version: link:../babel-plugin
       '@cssxio/compiler':
-        specifier: ^0.13.0
+        specifier: ^0.14.0
         version: link:../compiler
       '@vue/compiler-sfc':
         specifier: ^3.5.0
@@ -480,7 +480,7 @@ importers:
         version: 3.4.0(@rspack/core@2.2.9)(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.65.0)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(webpack@5.112.1(csso@5.0.5)(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.31)(sharp@0.35.5(@types/node@22.20.5))(svgo@4.1.0))
     optionalDependencies:
       '@cssxio/compiler-native':
-        specifier: ^0.2.0
+        specifier: ^0.3.0
         version: link:../compiler-native
 
   tests:
