@@ -963,10 +963,14 @@ raw class strings or be modeled as explicit static style choices.
 Dispatch **Prepare package versions** to select a semver bump. It detects public
 packages changed since their latest release tags, adds patch bumps for
 dependents whose internal dependency ranges must advance, checks that each
-planned version is valid, unpublished, and untagged, updates the manifests and
-lockfile, and opens a version-preparation PR. It does not merge the PR or bypass
-branch protection. CI runs on pull requests and can be dispatched manually;
-merging a PR to `main` does not trigger another CI run.
+planned version is valid, unpublished, and untagged, then updates the manifests
+and lockfile. Leave **pr_id** empty to open a separate version-preparation PR.
+To avoid a second CI cycle, provide the number of an open same-repository PR
+targeting `main`; the workflow commits the version updates directly to that PR
+branch, where its normal CI checks the source and version changes together.
+Dispatch this before waiting for the source PR's first CI run to finish so the
+updated branch gets one final check run. The workflow does not merge a PR or
+bypass branch protection. Merging a PR to `main` does not trigger another CI run.
 
 Then dispatch **Release packages** with **package** set to `auto`. It publishes
 the changed packages at their prepared versions after building native artifacts
