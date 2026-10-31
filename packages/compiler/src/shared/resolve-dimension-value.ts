@@ -1,5 +1,6 @@
 import type { CssxTheme } from '../theme/theme';
 import { resolveSpacingValue } from '../utilities/spacing/resolve-spacing-value';
+import { resolveArbitraryCssValue } from './resolve-arbitrary-css-value';
 
 /**
  * Resolves named, fractional, viewport, and spacing dimension values.
@@ -46,6 +47,9 @@ export function resolveDimensionValue(
     };
     const value = values[raw]!;
     return value && negative ? `-${value}` : value;
+  }
+  if (!negative && /^\(--[a-z0-9_-]+\)$/i.test(raw)) {
+    return resolveArbitraryCssValue(raw);
   }
   const fraction = /^(\d+)\/(\d+)$/.exec(raw);
   if (fraction) {

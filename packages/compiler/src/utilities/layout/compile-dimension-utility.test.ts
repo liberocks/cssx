@@ -38,4 +38,16 @@ describe('compileDimensionUtility', () => {
     expect(compileDimensionUtility('height-4', false, theme)).toBeNull();
     expect(compileDimensionUtility('w-invalid', false, theme)).toBeNull();
   });
+
+  it('supports custom property shorthand for dimensions', () => {
+    expect(compileDimensionUtility('max-h-(--available-height)', false, theme)).toEqual({
+      property: 'max-height',
+      value: 'var(--available-height)',
+    });
+    expect(compileDimensionUtility('h-(--content_size)', false, theme)).toEqual({
+      property: 'height',
+      value: 'var(--content_size)',
+    });
+    expect(compileDimensionUtility('w-(--bad.value)', false, theme)).toBeNull();
+  });
 });
