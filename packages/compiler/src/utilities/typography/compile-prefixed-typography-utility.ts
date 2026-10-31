@@ -20,14 +20,9 @@ export function compilePrefixedTypographyUtility(
   if (opacity) {
     return { property: 'opacity', value: String(Number(opacity[1]) / 100) };
   }
-  const zIndex = /^z-(\d+|auto|\[[+-]?\d+\])$/.exec(utility);
+  const zIndex = /^z-(?:(\d+|auto)|\[([+-]?\d+)\])$/.exec(utility);
   if (zIndex) {
-    const rawValue = zIndex[1]!;
-    const value = rawValue.startsWith('[') ? rawValue.slice(1, -1) : rawValue;
-    return {
-      property: 'z-index',
-      value: value === 'auto' ? value : String(negative ? -Number(value) : Number(value)),
-    };
+    return { property: 'z-index', value: zIndex[1] ?? zIndex[2]! };
   }
   const leading = /^leading-(none|tight|snug|normal|relaxed|loose|\d+(?:\.\d+)?|\[[^\]]+\])$/.exec(utility);
   if (leading) {

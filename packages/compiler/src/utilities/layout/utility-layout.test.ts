@@ -153,7 +153,7 @@ describe('CSSX utility compiler', () => {
 
     expect(result.css).toContain('max-height:var(--available-height)');
     expect(result.css).toContain('z-index:-1');
-    expect(result.css).toContain('z-index:1');
+    expect(result.css).toContain('z-index:+1');
   });
 
   it('compiles declared layout, fit, interaction, and logical position utility families', async () => {

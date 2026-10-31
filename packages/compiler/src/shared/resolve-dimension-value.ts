@@ -48,9 +48,8 @@ export function resolveDimensionValue(
     const value = values[raw]!;
     return value && negative ? `-${value}` : value;
   }
-  if (/^\(--[a-z0-9_-]+\)$/i.test(raw)) {
-    const value = resolveArbitraryCssValue(raw);
-    return negative ? `calc(-1 * ${value})` : value;
+  if (!negative && /^\(--[a-z0-9_-]+\)$/i.test(raw)) {
+    return resolveArbitraryCssValue(raw);
   }
   const fraction = /^(\d+)\/(\d+)$/.exec(raw);
   if (fraction) {
