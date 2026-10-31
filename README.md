@@ -896,10 +896,13 @@ supports custom breakpoints from `--breakpoint-*`; defaults are `sm`, `md`,
 | `data-name:`, `data-[name=value]:`, `aria-name:`, `aria-[name=value]:`                                                                                                                                                                                                                             | Attribute condition.                                                          |
 | `dark:`, `print:`, `supports-[property:value]:`, `not-supports-[property:value]:`                                                                                                                                                                                                                  | Media or support condition.                                                   |
 | `<breakpoint>:`, `max-<breakpoint>:`, `min-[value]:`, `max-[value]:`                                                                                                                                                                                                                               | Responsive condition.                                                         |
-| `[&>svg]:`, `[&.is-active]:`, `[@supports(...)]:`, `[@media ...]:`                                                                                                                                                                                                                                 | Safe arbitrary selector or at-rule condition.                                 |
+| `[&p]:`, `[&>svg]:`, `[&.is-active]:`, `[@supports(...)]:`, `[@media ...]:`                                                                                                                                                                                                                        | Safe arbitrary selector or at-rule condition.                                 |
 
 Arbitrary selector variants must contain `&`; only static selectors and
-supported at-rules are accepted.
+supported at-rules are accepted. A compact descendant type selector such as `[&p]`
+is equivalent to `[& p]` and legacy `[&_p]`. Use an explicit space before
+descendant classes or attributes, such as `[& .child]` or `[& [data-state=open]]`;
+compound selectors such as `[&.is-active]` stay attached to the same element.
 
 Custom state names must be identifiers, for example `state-[open]:block` or
 `group-state-[expanded]:text-white`.

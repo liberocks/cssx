@@ -12,5 +12,14 @@ export function replaceNestingSelectors(selector: string, replacement: string): 
   if (!ast.hasNesting) {
     return null;
   }
-  return ast.nodes.map((node) => (node.type === 'nesting' ? replacement : node.value)).join('');
+  return ast.nodes
+    .map((node, index) => {
+      if (node.type !== 'nesting') {
+        return node.value;
+      }
+      const next = ast.nodes[index + 1];
+      const descendantType = next?.type === 'text' && /^[a-z]/i.test(next.value);
+      return descendantType ? `${replacement} ` : replacement;
+    })
+    .join('');
 }
