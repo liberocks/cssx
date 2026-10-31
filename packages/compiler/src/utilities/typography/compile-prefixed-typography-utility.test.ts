@@ -9,6 +9,11 @@ describe('compilePrefixedTypographyUtility', () => {
   it('compiles opacity, z-index, line-height, and text-indent values', () => {
     expect(compilePrefixedTypographyUtility('opacity-50', false, theme)).toEqual({ property: 'opacity', value: '0.5' });
     expect(compilePrefixedTypographyUtility('z-auto', false, theme)).toEqual({ property: 'z-index', value: 'auto' });
+    expect(compilePrefixedTypographyUtility('z-[-1]', false, theme)).toEqual({ property: 'z-index', value: '-1' });
+    expect(compilePrefixedTypographyUtility('z-[+1]', false, theme)).toEqual({ property: 'z-index', value: '1' });
+    expect(compilePrefixedTypographyUtility('z-[10]', false, theme)).toEqual({ property: 'z-index', value: '10' });
+    expect(compilePrefixedTypographyUtility('z-10', true, theme)).toEqual({ property: 'z-index', value: '-10' });
+    expect(compilePrefixedTypographyUtility('z-[1.5]', false, theme)).toBeNull();
     expect(compilePrefixedTypographyUtility('leading-6', false, theme)).toEqual({
       property: 'line-height',
       value: 'calc(0.25rem * 6)',

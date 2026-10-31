@@ -145,6 +145,17 @@ describe('CSSX utility compiler', () => {
     expect(result.css).toContain('grid-template-rows:var(--dashboard-rows)');
   });
 
+  it('compiles dimension custom-property shorthand and negative z-index values', async () => {
+    const result = await compileUtilities(
+      ['max-h-(--available-height)', 'z-[-1]', 'z-[+1]'],
+      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+    );
+
+    expect(result.css).toContain('max-height:var(--available-height)');
+    expect(result.css).toContain('z-index:-1');
+    expect(result.css).toContain('z-index:1');
+  });
+
   it('compiles declared layout, fit, interaction, and logical position utility families', async () => {
     const result = await compileUtilities(
       [
