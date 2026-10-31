@@ -904,6 +904,11 @@ a space alias, but a literal space makes descendant scope clear.
 Custom state names must be identifiers, for example `state-[open]:block` or
 `group-state-[expanded]:text-white`.
 
+`group` and `peer` are structural markers. Include them in utility strings passed
+to `sx()` or `create()`. When styles are combined with `props()`, CSSX preserves
+these literal classes without emitting declarations, so `group-*` and `peer-*`
+variants can target them.
+
 #### Example
 
 ```tsx

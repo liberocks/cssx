@@ -239,7 +239,12 @@ describe('CSSX semantic conflict classifier', () => {
   });
 
   it('handles empty and malformed external compiled records safely', () => {
-    expect(composeCompiledStyles([])).toEqual({ className: '', atomicClasses: [] });
+    expect(composeCompiledStyles([])).toEqual({
+      className: '',
+      compositeClassName: '',
+      atomicClasses: [],
+      structuralClasses: [],
+    });
     expect(mergeCompiledStyles([{ $$css: 2, c: '', _: [undefined, ['', '', 'group', undefined]] as never }])).toBe('');
   });
 

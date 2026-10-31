@@ -12,6 +12,7 @@ it('returns unique non-null atomic classes in record order', () => {
       ['atom-one', 'base', 'padding'],
       [null, 'base', 'margin'],
       ['atom-two', 'base', 'color'],
+      ['group', 'base', 'structural-group', 'structural-group'],
     ],
   };
   expect(atomicClassesForStyle(style)).toEqual(['atom-one', 'atom-two']);

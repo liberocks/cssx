@@ -20,6 +20,25 @@ describe('classifyParsedCandidate', () => {
     });
   });
 
+  it('classifies unmodified group and peer markers without declarations', () => {
+    expect(classifyParsedCandidate(parseCandidate('group'))).toEqual({
+      scope: '',
+      group: 'structural-group',
+      conflicts: ['structural-group'],
+    });
+    expect(classifyParsedCandidate(parseCandidate('peer'))).toEqual({
+      scope: '',
+      group: 'structural-peer',
+      conflicts: ['structural-peer'],
+    });
+  });
+
+  it('rejects variants, importance, and negation on structural markers', () => {
+    expect(classifyParsedCandidate(parseCandidate('sm:group'))).toBeNull();
+    expect(classifyParsedCandidate(parseCandidate('!group'))).toBeNull();
+    expect(classifyParsedCandidate(parseCandidate('-group'))).toBeNull();
+  });
+
   it('returns null when neither a group nor fallback recipe exists', () => {
     expect(classifyParsedCandidate(parseCandidate('not-a-utility'))).toBeNull();
   });

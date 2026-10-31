@@ -1,6 +1,7 @@
 import { classifyUtilityGroup } from '../utilities/registry/classify-utility-group';
 import { utilityFallback } from '../utilities/registry/fallback';
 import { DIRECTIONAL_CONFLICTS } from '../utilities/registry/semantics-directional-conflicts';
+import { STRUCTURAL_UTILITY_GROUPS } from '../utilities/registry/structural-utilities';
 import type { UtilitySemantics } from '../utilities/registry/utility-semantics';
 import { candidateScope } from './candidate';
 import type { parseCandidate } from './candidate';
@@ -13,6 +14,12 @@ import type { parseCandidate } from './candidate';
  */
 export function classifyParsedCandidate(candidate: ReturnType<typeof parseCandidate>): UtilitySemantics | null {
   const utility = candidate.utility;
+  if (
+    STRUCTURAL_UTILITY_GROUPS[utility as keyof typeof STRUCTURAL_UTILITY_GROUPS] &&
+    (candidate.variants.length > 0 || candidate.important || candidate.negative)
+  ) {
+    return null;
+  }
   const group = classifyUtilityGroup(utility);
   const fallback = group ? undefined : utilityFallback(candidate.raw);
   if (!group && !fallback) {

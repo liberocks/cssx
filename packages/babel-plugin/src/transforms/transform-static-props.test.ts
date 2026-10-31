@@ -12,7 +12,7 @@ import { transformStaticProps } from './transform-static-props';
 /** Creates module state containing two compiled style records for direct props-transform tests. */
 function createState(): FileState {
   const classNameAllocator = createClassNameAllocator();
-  const records = compileStyleRecords({ root: 'p-4', accent: 'bg-red-500' }, { classNameAllocator });
+  const records = compileStyleRecords({ root: 'p-4', accent: 'bg-red-500', marker: 'group' }, { classNameAllocator });
 
   return {
     classNameAllocator,
@@ -79,6 +79,14 @@ it('composes known styles, ignores nullish flags, and tracks the generated compo
   expect(foldedProps).toHaveLength(1);
   expect(state.liveCandidates).toEqual(new Set(['p-4', 'bg-red-500']));
   expect(state.liveComposites.size).toBe(1);
+});
+
+it('preserves marker-only compositions without registering a CSS selector', () => {
+  const { result, state } = transformProps('cssx.props(styles.marker, styles.marker)');
+
+  expect(result?.code).toContain('className: "group"');
+  expect(state.composites.has('')).toBe(false);
+  expect(state.liveComposites.size).toBe(0);
 });
 
 it('leaves props calls containing dynamic or spread arguments for runtime evaluation', () => {
