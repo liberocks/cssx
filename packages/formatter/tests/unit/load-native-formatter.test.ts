@@ -30,6 +30,12 @@ describe('loadNativeFormatter', () => {
     expect(requirePackage).not.toHaveBeenCalled();
   });
 
+  it('uses the default package resolvers when none are configured', () => {
+    const formatter = loadNativeFormatter();
+
+    expect(formatter === undefined || nativeFormatterInternals.isNativeCssxFormatter(formatter)).toBe(true);
+  });
+
   it('loads a configured native binary before resolving the optional package', () => {
     vi.stubEnv('CSSX_NATIVE_COMPILER_PATH', '/tmp/cssx-compiler.node');
     const requirePackage = vi.fn();

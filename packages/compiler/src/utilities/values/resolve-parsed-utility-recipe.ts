@@ -6,6 +6,7 @@ import type { CssxTheme } from '../../theme/theme';
 import { utilityFallback } from '../registry/fallback';
 import { fallbackRecipe } from '../registry/fallback-recipe';
 import type { UtilitySemantics } from '../registry/semantics';
+import { STRUCTURAL_UTILITY_NAMES } from '../registry/structural-utilities';
 import type { ResolvedUtilityRecipe } from '../registry/utility-recipe-types';
 import type { UtilityDeclaration } from '../registry/utility-types';
 import { atomizeDeclarations } from './utility-values';
@@ -25,6 +26,18 @@ export function resolveParsedUtilityRecipe(
   semantics: UtilitySemantics,
   theme: CssxTheme,
 ): ResolvedUtilityRecipe {
+  if (semantics && STRUCTURAL_UTILITY_NAMES[semantics.group as keyof typeof STRUCTURAL_UTILITY_NAMES]) {
+    return {
+      recipe: {
+        candidate: candidateSource,
+        atoms: [],
+        resources: { keyframes: [], properties: [] },
+        writes: [],
+      },
+      parsedCandidate: candidate,
+      semantics,
+    };
+  }
   const fallback = utilityFallback(candidateSource);
   let declarations: UtilityDeclaration[];
   try {

@@ -23,5 +23,9 @@ it('creates independent conflict records and packed atoms for each style entry',
 });
 
 it('returns empty record maps when there are no style maps', () => {
-  expect(createStyleMapCompositionRecords({}, new Map(), {})).toEqual({ recordsByMap: {}, compositionAtomsByMap: {} });
+  expect(createStyleMapCompositionRecords({}, new Map(), {})).toEqual({
+    recordsByMap: {},
+    compositionAtomsByMap: {},
+    styleAtomClassesByMap: {},
+  });
 });

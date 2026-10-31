@@ -4,6 +4,7 @@ import type { ReusabilityBudget } from '@cssxio/compiler';
 import { atomicClassesForStyle } from '../classes/atomic-classes-for-style';
 import { markEmittedClassNames } from '../classes/mark-emitted-class-names';
 import { stableCompositeName } from '../classes/stable-composite-name';
+import { structuralClassesForStyle } from '../classes/structural-classes-for-style';
 import type { FileState } from '../state/plugin-types';
 import { recordCandidateOrigin } from '../state/record-candidate-origin';
 
@@ -59,7 +60,7 @@ export function compileSxString(
     const message = error instanceof Error ? error.message : 'Unable to compile CSSX sx() utilities.';
     throw new Error(message);
   }
-  const className = context.stableClassNames
+  const compositeClassName = context.stableClassNames
     ? context.stableClassNameIdentity
       ? stableCompositeName(
           context.fileName,
@@ -68,6 +69,9 @@ export function compileSxString(
         )
       : stableCompositeName(context.fileName, location, 'sx')
     : result.classNames.inline!;
+  const className = context.stableClassNames
+    ? [compositeClassName, ...structuralClassesForStyle(result.styles.inline!)].filter(Boolean).join(' ')
+    : compositeClassName;
   for (const [candidate, candidateClassName] of Object.entries(result.classes)) {
     context.state.classes.set(candidate, candidateClassName);
     context.state.liveCandidates.add(candidate);
@@ -77,7 +81,7 @@ export function compileSxString(
     context.state.composites.set(compositeClassName, atomicClasses);
   }
   if (context.stableClassNames) {
-    context.state.composites.set(className, atomicClassesForStyle(result.styles.inline!));
+    context.state.composites.set(compositeClassName, atomicClassesForStyle(result.styles.inline!));
   }
   markEmittedClassNames(className, context.state);
   return className!;

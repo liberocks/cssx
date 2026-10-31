@@ -59,8 +59,8 @@ export function transformStaticProps({
   }
   const singleStyle = styles.length === 1 ? styles[0] : undefined;
   const composition = singleStyle ? undefined : composeCompiledStyles(styles, state.classNameAllocator);
-  const className = singleStyle
-    ? singleStyle.c
+  const compositeClassName = singleStyle
+    ? undefined
     : options.stableClassNames
       ? stableCompositeName(
           fileName,
@@ -70,9 +70,12 @@ export function transformStaticProps({
             .sort()
             .join('\u0000')}`,
         )
-      : composition!.className;
-  if (composition) {
-    state.composites.set(className, composition.atomicClasses);
+      : composition!.compositeClassName;
+  const className = singleStyle
+    ? singleStyle.c
+    : [compositeClassName, ...composition!.structuralClasses].filter(Boolean).join(' ');
+  if (composition && compositeClassName) {
+    state.composites.set(compositeClassName, composition.atomicClasses);
   }
   markEmittedClassNames(className, state);
   foldedProps.push({ path, className });

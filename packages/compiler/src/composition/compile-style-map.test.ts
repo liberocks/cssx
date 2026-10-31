@@ -38,6 +38,29 @@ describe('compileStyleMap', () => {
     expect(css).toContain('padding:calc(0.25rem * 5)');
   });
 
+  it('preserves group markers while compiling group variants and label layout utilities', async () => {
+    const result = await compileStyleMap({
+      label: 'group flex flex-nowrap items-center gap-2 py-0.5 whitespace-nowrap text-sm text-gray-700 sm:text-base',
+      icon: 'group-hover:text-emerald-500',
+      peer: 'peer',
+    });
+    const labelStyle = result.styles.label!;
+    const className = result.classNames.label ?? '';
+    const css = serializeCss(result.rules);
+
+    expect(result.classes.group).toBe('group');
+    expect(result.classes.peer).toBe('peer');
+    expect(className.split(' ')).toContain('group');
+    expect(mergeCompiledStyles([labelStyle]).split(' ')).toContain('group');
+    expect(result.classNames.peer).toBe('peer');
+    expect(css).toContain('.group:hover');
+    expect(css).not.toContain('.group{');
+    expect(css).toContain('display:flex');
+    expect(css).toContain('flex-wrap:nowrap');
+    expect(css).toContain('align-items:center');
+    expect(css).toContain('white-space:nowrap');
+  });
+
   it('continues serial names through lower- and uppercase letters before base-62 rollover', async () => {
     const result = await compileStyleMap(
       Object.fromEntries(Array.from({ length: 63 }, (_, index) => [`style${index}`, `p-[${index + 1}px]`])),

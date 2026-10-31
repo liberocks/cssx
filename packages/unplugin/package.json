@@ -1,6 +1,6 @@
 {
   "name": "@cssxio/unplugin",
-  "version": "0.12.4",
+  "version": "0.12.5",
   "description": "Universal bundler plugin for CSSX.",
   "license": "MIT",
   "repository": {
@@ -73,14 +73,14 @@
   },
   "dependencies": {
     "@babel/core": "^7.29.7",
-    "@cssxio/babel-plugin": "^0.11.2",
-    "@cssxio/compiler": "^0.14.0",
+    "@cssxio/babel-plugin": "^0.11.3",
+    "@cssxio/compiler": "^0.14.1",
     "@vue/compiler-sfc": "^3.5.0",
     "magic-string": "^0.30.21",
     "unplugin": "^3.3.0"
   },
   "optionalDependencies": {
-    "@cssxio/compiler-native": "^0.3.0"
+    "@cssxio/compiler-native": "^0.3.1"
   },
   "peerDependencies": {
     "esbuild": ">=0.27.0"

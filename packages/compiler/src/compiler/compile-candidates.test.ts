@@ -22,6 +22,14 @@ it('exposes classification, atoms, and per-atom semantics', () => {
   expect(record.atomSemantics).toHaveLength(record.atoms.length);
 });
 
+it('resolves structural markers without creating declaration atoms', () => {
+  const compiled = compileCandidates(['group'], theme).get('group')!;
+
+  expect(compiled.classification.group).toBe('structural-group');
+  expect(compiled.atoms).toEqual([]);
+  expect(compiled.atomSemantics).toEqual([]);
+});
+
 it('rejects candidates that cannot be classified', () => {
   expect(() => compileCandidates(['not-a-cssx-utility'], theme)).toThrow('CSSX cannot classify utility');
 });

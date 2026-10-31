@@ -296,6 +296,16 @@ describe('CSSX Babel plugin', () => {
     expect(className.split(' ')).toHaveLength(1);
   });
 
+  it('retains structural markers when folding static props compositions', () => {
+    const result = transformSync(
+      `import * as cssx from '@cssxio/cssx'; const styles = cssx.create({ group: 'group flex items-center', spacing: 'gap-2' }); export const props = cssx.props(styles.group, styles.spacing);`,
+      { babelrc: false, configFile: false, plugins: [cssxBabelPlugin] },
+    );
+    const className = (result?.code ?? '').match(/className: "([^"]+)"/)?.[1] ?? '';
+
+    expect(className.split(' ')).toContain('group');
+  });
+
   it('extracts inline sx utility strings while preserving dynamic conditions', () => {
     const result = transformSync(
       `import { sx } from '@cssxio/cssx'; export const staticClass = sx('p-4', ['bg-red-500']); export const dynamicClass = sx('inline-flex', disabled && 'opacity-50');`,
@@ -310,6 +320,49 @@ describe('CSSX Babel plugin', () => {
     expect(result?.code).toContain('sx("');
     expect(result?.code).toContain('disabled && "');
     expect(Object.keys(metadata.candidates).sort()).toEqual(['bg-red-500', 'inline-flex', 'opacity-50', 'p-4']);
+  });
+
+  it('keeps a group marker in an sx call with ordinary and conditional utilities', () => {
+    const result = transform(
+      `import { sx } from '@cssxio/cssx'; export const className = sx('group flex flex-nowrap items-center gap-2 whitespace-nowrap', mode === 'REVIEW' ? 'cursor-default' : 'cursor-pointer');`,
+    );
+    const metadata = (result?.metadata as unknown as { readonly cssx: { readonly candidates: Record<string, string> } })
+      .cssx;
+
+    expect(result?.code).toContain('group');
+    expect(metadata.candidates.group).toBe('group');
+    expect(Object.keys(metadata.candidates).sort()).toEqual([
+      'cursor-default',
+      'cursor-pointer',
+      'flex',
+      'flex-nowrap',
+      'gap-2',
+      'group',
+      'items-center',
+      'whitespace-nowrap',
+    ]);
+  });
+
+  it('keeps structural markers outside stable composite selector aliases', () => {
+    const result = transform(
+      `import { sx, create, props } from '@cssxio/cssx'; export const inline = sx('group flex p-4'); const styles = create({ root: 'group flex p-4' }); export const applied = props(styles.root);`,
+      { stableClassNames: true },
+    );
+    const metadata = (
+      result?.metadata as unknown as {
+        readonly cssx: { readonly composites: Readonly<Record<string, readonly string[]>> };
+      }
+    ).cssx;
+    const code = result?.code ?? '';
+    const classNames = [code.match(/inline = "([^"]+)"/)?.[1], code.match(/className: "([^"]+)"/)?.[1]].filter(
+      (className): className is string => !!className,
+    );
+
+    expect(classNames).toHaveLength(2);
+    expect(classNames.every((className) => className.split(' ').includes('group'))).toBe(true);
+    expect(Object.keys(metadata.composites)).toHaveLength(2);
+    expect(Object.keys(metadata.composites).every((className) => !className.includes(' '))).toBe(true);
+    expect(Object.values(metadata.composites).every((classes) => !classes.includes('group'))).toBe(true);
   });
 
   it('does not recompile generated sx class names when Babel transforms a module twice', () => {

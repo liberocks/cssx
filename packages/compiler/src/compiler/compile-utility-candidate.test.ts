@@ -28,6 +28,24 @@ it('does not allocate a class for a utility with no CSS atoms', () => {
   });
 });
 
+it('preserves structural markers without emitting CSS or allocating a class', () => {
+  const className = vi.fn(() => 'unused');
+  const result = compileUtilityCandidate({
+    ...sharedOptions,
+    candidate: 'group',
+    className,
+    escapeSourceSelectors: false,
+  });
+
+  expect(className).not.toHaveBeenCalled();
+  expect(result).toEqual({
+    className: 'group',
+    compiled: [],
+    requiredKeyframes: new Set(),
+    requiredProperties: new Set(),
+  });
+});
+
 it('compiles source selectors and collects the recipe resources', () => {
   const result = compileUtilityCandidate({
     ...sharedOptions,

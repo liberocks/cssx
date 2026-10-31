@@ -5,6 +5,7 @@ import { compileCandidates } from '../compiler/compile-candidates';
 import type { StyleCompilerOptions } from '../compiler/style-compiler';
 import type { CompiledStyle } from '../shared/compiled-style';
 import { parseTheme } from '../theme/theme';
+import { STRUCTURAL_UTILITY_NAMES } from '../utilities/registry/structural-utilities';
 import { collectStyleMapCandidates } from './collect-style-map-candidates';
 import { createStyleMapCompositionRecords } from './create-style-map-composition-records';
 import { planReusability } from './plan-reusability';
@@ -58,15 +59,23 @@ export function compileStyleRecordMaps(
     atomIdentities.symbols,
   );
   const plannedCompositions = planReusability(
-    Object.values(compositionRecords.compositionAtomsByMap).flatMap((atomsByStyle) => Object.values(atomsByStyle)),
+    Object.values(compositionRecords.styleAtomClassesByMap).flatMap((atomsByStyle) => Object.values(atomsByStyle)),
     options.reusabilityBudget,
     allocator,
   );
-  const { allocatedAtomClasses, classes } = allocateStyleMapClassNames(
+  const { allocatedAtomClasses, classes: allocatedClasses } = allocateStyleMapClassNames(
     atomIdentities.symbols,
     atomIdentities.allocationIdentities,
     allocator,
   );
+  const classes: Record<string, string> = { ...allocatedClasses };
+  for (const [candidate, compiledCandidate] of compiledCandidates) {
+    const structuralClassName =
+      STRUCTURAL_UTILITY_NAMES[compiledCandidate.classification.group as keyof typeof STRUCTURAL_UTILITY_NAMES];
+    if (structuralClassName) {
+      classes[candidate] = structuralClassName;
+    }
+  }
 
   const projection = projectStyleRecordMaps({
     candidatesByMap,

@@ -1,10 +1,14 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { NativeCssxAnalyzer } from './native-static-sx';
 
 const nativeAnalyzer: NativeCssxAnalyzer = { findCssxCalls: () => [] };
 
 describe('loadNativeAnalyzer', () => {
+  beforeEach(() => {
+    vi.stubEnv('CSSX_DISABLE_NATIVE_COMPILER', '');
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
   });

@@ -1,5 +1,6 @@
 import type { CompiledUtility } from '../atoms/compiled-utility';
 import type { CompiledStyle } from '../shared/compiled-style';
+import { STRUCTURAL_UTILITY_NAMES } from '../utilities/registry/structural-utilities';
 import { compositeIdentity } from './composite-identity';
 import type { ReusabilityPlan } from './reusability';
 
@@ -34,15 +35,34 @@ export function createCompiledStyleRecordMap(options: CreateCompiledStyleRecordM
 
   for (const name of Object.keys(candidates)) {
     const atomicIdentities = compositionAtomsByStyle[name]!;
-    const identity = compositeIdentity(atomicIdentities);
+    const structuralClasses = [
+      ...new Set(
+        recordsByStyle[name]!.filter(
+          ([, , group]) => STRUCTURAL_UTILITY_NAMES[group as keyof typeof STRUCTURAL_UTILITY_NAMES] !== undefined,
+        )
+          .map(([className]) => className)
+          .filter((className): className is string => className !== null),
+      ),
+    ];
+    const structuralClassSet = new Set(structuralClasses);
+    const styleAtomIdentities = atomicIdentities.filter((className) => !structuralClassSet.has(className));
+    const identity = compositeIdentity(styleAtomIdentities);
     const plannedClassName = plannedCompositions.classNames.get(identity) ?? '';
-    const className = plannedClassName
+    const styleClassName = plannedClassName
       .split(' ')
       .map((value) => allocatedAtomClasses.get(value) ?? value)
       .join(' ');
+    const className = [styleClassName, ...structuralClasses].filter(Boolean).join(' ');
     const records = recordsByStyle[name]!.map((record) => {
-      const [atomicIdentity, ...rest] = record;
-      return [atomicIdentity === null ? null : allocatedAtomClasses.get(atomicIdentity)!, ...rest] as CompiledUtility;
+      const [atomicIdentity, scope, group, ...conflicts] = record;
+      return [
+        atomicIdentity === null || STRUCTURAL_UTILITY_NAMES[group as keyof typeof STRUCTURAL_UTILITY_NAMES]
+          ? atomicIdentity
+          : allocatedAtomClasses.get(atomicIdentity)!,
+        scope,
+        group,
+        ...conflicts,
+      ] as CompiledUtility;
     });
     styles[name] = { $$css: 2, c: className, _: records };
     classNamesByStyle[name] = className;
