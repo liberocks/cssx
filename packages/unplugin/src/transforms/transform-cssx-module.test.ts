@@ -1,7 +1,15 @@
 import { serializeCss } from '@cssxio/compiler';
-import { expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { transformCssxModule } from './transform-cssx-module';
+
+beforeEach(() => {
+  vi.stubEnv('CSSX_DISABLE_NATIVE_COMPILER', '');
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 it('compiles CSSX source into transformed JavaScript and utility rules', async () => {
   const result = await transformCssxModule(
@@ -93,6 +101,7 @@ it('uses the native production create/props path when the addon is available', a
   ];
   vi.resetModules();
   vi.unstubAllEnvs();
+  vi.stubEnv('CSSX_DISABLE_NATIVE_COMPILER', '');
   vi.stubEnv('CSSX_NATIVE_COMPILER_PATH', '/mock/cssx-native.node');
   const dlopen = vi.spyOn(process, 'dlopen').mockImplementation((module) => {
     (module as { exports: unknown }).exports = { findCssxCalls: () => calls };
