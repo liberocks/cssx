@@ -12,6 +12,10 @@ describe('compilePrefixedTypographyUtility', () => {
     expect(compilePrefixedTypographyUtility('z-[-1]', false, theme)).toEqual({ property: 'z-index', value: '-1' });
     expect(compilePrefixedTypographyUtility('z-[+1]', false, theme)).toEqual({ property: 'z-index', value: '+1' });
     expect(compilePrefixedTypographyUtility('z-[10]', false, theme)).toEqual({ property: 'z-index', value: '10' });
+    expect(compilePrefixedTypographyUtility('z-[999999999999999999999999999999]', false, theme)).toEqual({
+      property: 'z-index',
+      value: '999999999999999999999999999999',
+    });
     expect(compilePrefixedTypographyUtility('z-[1.5]', false, theme)).toBeNull();
     expect(compilePrefixedTypographyUtility('leading-6', false, theme)).toEqual({
       property: 'line-height',

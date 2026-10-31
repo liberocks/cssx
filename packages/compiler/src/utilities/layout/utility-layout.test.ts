@@ -148,7 +148,8 @@ describe('CSSX utility compiler', () => {
   it('compiles dimension custom-property shorthand and negative z-index values', async () => {
     const result = await compileUtilities(
       ['max-h-(--available-height)', 'z-[-1]', 'z-[+1]'],
-      (candidate) => `x-${candidate.replaceAll(/[^a-z0-9]/gi, '-')}`,
+      (candidate) =>
+        `x-${candidate.replaceAll(/[+-]/g, (sign) => (sign === '+' ? 'plus' : 'minus')).replaceAll(/[^a-z0-9]/gi, '-')}`,
     );
 
     expect(result.css).toContain('max-height:var(--available-height)');
