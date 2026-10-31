@@ -95,8 +95,15 @@ jobs:
           merge-multiple: true
       - run: node scripts/assert-native-package.mjs
       - run: pnpm install --frozen-lockfile
+      - name: Test the staged native formatter
+        run: pnpm --config.verify-deps-before-run=false exec vitest run --maxWorkers=1 packages/formatter/tests/integration/format-source.integration.test.ts
+        env:
+          CSSX_TEST_NATIVE_COMPILER: '1'
       - run: pnpm --dir examples/astro install --frozen-lockfile
-      - run: pnpm test:release
+      - name: Run release checks with full parser fallback coverage
+        run: pnpm test:release
+        env:
+          CSSX_DISABLE_NATIVE_COMPILER: '1'
       - run: pnpm benchmark
 
   build-native:
