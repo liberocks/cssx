@@ -31,12 +31,18 @@ describe('classifyParsedCandidate', () => {
       group: 'structural-peer',
       conflicts: ['structural-peer'],
     });
+    expect(classifyParsedCandidate(parseCandidate('group-field-group'))).toEqual({
+      scope: '',
+      group: 'structural-group:group-field-group',
+      conflicts: ['structural-group:group-field-group'],
+    });
   });
 
   it('rejects variants, importance, and negation on structural markers', () => {
     expect(classifyParsedCandidate(parseCandidate('sm:group'))).toBeNull();
     expect(classifyParsedCandidate(parseCandidate('!group'))).toBeNull();
     expect(classifyParsedCandidate(parseCandidate('-group'))).toBeNull();
+    expect(classifyParsedCandidate(parseCandidate('hover:group-field-group'))).toBeNull();
   });
 
   it('returns null when neither a group nor fallback recipe exists', () => {

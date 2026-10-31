@@ -1,7 +1,7 @@
 import { classifyUtilityGroup } from '../utilities/registry/classify-utility-group';
 import { utilityFallback } from '../utilities/registry/fallback';
 import { DIRECTIONAL_CONFLICTS } from '../utilities/registry/semantics-directional-conflicts';
-import { STRUCTURAL_UTILITY_GROUPS } from '../utilities/registry/structural-utilities';
+import { structuralUtilityName } from '../utilities/registry/structural-utility-name';
 import type { UtilitySemantics } from '../utilities/registry/utility-semantics';
 import { candidateScope } from './candidate';
 import type { parseCandidate } from './candidate';
@@ -14,13 +14,14 @@ import type { parseCandidate } from './candidate';
  */
 export function classifyParsedCandidate(candidate: ReturnType<typeof parseCandidate>): UtilitySemantics | null {
   const utility = candidate.utility;
+  const group = classifyUtilityGroup(utility);
   if (
-    STRUCTURAL_UTILITY_GROUPS[utility as keyof typeof STRUCTURAL_UTILITY_GROUPS] &&
+    group &&
+    structuralUtilityName(group) &&
     (candidate.variants.length > 0 || candidate.important || candidate.negative)
   ) {
     return null;
   }
-  const group = classifyUtilityGroup(utility);
   const fallback = group ? undefined : utilityFallback(candidate.raw);
   if (!group && !fallback) {
     return null;
@@ -28,6 +29,10 @@ export function classifyParsedCandidate(candidate: ReturnType<typeof parseCandid
   return {
     scope: candidateScope(candidate),
     group: group ?? fallback!.group,
-    conflicts: group ? (DIRECTIONAL_CONFLICTS[group] ?? [group]) : [fallback!.group],
+    conflicts: group
+      ? structuralUtilityName(group)
+        ? [group]
+        : (DIRECTIONAL_CONFLICTS[group] ?? [group])
+      : [fallback!.group],
   };
 }

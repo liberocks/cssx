@@ -30,6 +30,16 @@ it('resolves structural markers without creating declaration atoms', () => {
   expect(compiled.atomSemantics).toEqual([]);
 });
 
+it('resolves custom group markers as independent structural classes', () => {
+  const compiled = compileCandidates(['group-field-group', 'group-field-label'], theme);
+
+  expect(compiled.get('group-field-group')).toMatchObject({
+    classification: { group: 'structural-group:group-field-group' },
+    atoms: [],
+  });
+  expect(compiled.get('group-field-label')?.classification.group).toBe('structural-group:group-field-label');
+});
+
 it('rejects candidates that cannot be classified', () => {
   expect(() => compileCandidates(['not-a-cssx-utility'], theme)).toThrow('CSSX cannot classify utility');
 });

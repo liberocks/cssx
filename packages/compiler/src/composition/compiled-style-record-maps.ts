@@ -5,7 +5,7 @@ import { compileCandidates } from '../compiler/compile-candidates';
 import type { StyleCompilerOptions } from '../compiler/style-compiler';
 import type { CompiledStyle } from '../shared/compiled-style';
 import { parseTheme } from '../theme/theme';
-import { STRUCTURAL_UTILITY_NAMES } from '../utilities/registry/structural-utilities';
+import { structuralUtilityName } from '../utilities/registry/structural-utility-name';
 import { collectStyleMapCandidates } from './collect-style-map-candidates';
 import { createStyleMapCompositionRecords } from './create-style-map-composition-records';
 import { planReusability } from './plan-reusability';
@@ -70,8 +70,7 @@ export function compileStyleRecordMaps(
   );
   const classes: Record<string, string> = { ...allocatedClasses };
   for (const [candidate, compiledCandidate] of compiledCandidates) {
-    const structuralClassName =
-      STRUCTURAL_UTILITY_NAMES[compiledCandidate.classification.group as keyof typeof STRUCTURAL_UTILITY_NAMES];
+    const structuralClassName = structuralUtilityName(compiledCandidate.classification.group);
     if (structuralClassName) {
       classes[candidate] = structuralClassName;
     }

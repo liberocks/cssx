@@ -1,7 +1,7 @@
 import type { CompiledUtility } from '../atoms/compiled-utility';
 import { packedAtomicClasses } from '../atoms/packed-atomic-classes';
 import type { CompiledCandidate } from '../compiler/compile-candidates';
-import { STRUCTURAL_UTILITY_NAMES } from '../utilities/registry/structural-utilities';
+import { structuralUtilityName } from '../utilities/registry/structural-utility-name';
 import type { StyleMapCandidates } from './collect-style-map-candidates';
 
 /** Record and atomic-composition data created for each style map. */
@@ -55,8 +55,7 @@ export function createStyleMapCompositionRecords(
       for (const candidate of styleCandidates) {
         const compiledCandidate = compiledCandidates.get(candidate)!;
         const { atoms, atomSemantics: atomWriteSets } = compiledCandidate;
-        const structuralClassName =
-          STRUCTURAL_UTILITY_NAMES[compiledCandidate.classification.group as keyof typeof STRUCTURAL_UTILITY_NAMES];
+        const structuralClassName = structuralUtilityName(compiledCandidate.classification.group);
         if (structuralClassName) {
           records.push([
             structuralClassName,
@@ -79,9 +78,7 @@ export function createStyleMapCompositionRecords(
       recordsByStyle[name] = records;
       compositionAtomsByStyle[name] = packedAtomicClasses(records);
       styleAtomClassesByStyle[name] = packedAtomicClasses(
-        records.filter(
-          ([, , group]) => STRUCTURAL_UTILITY_NAMES[group as keyof typeof STRUCTURAL_UTILITY_NAMES] === undefined,
-        ),
+        records.filter(([, , group]) => !structuralUtilityName(group)),
       );
     }
     recordsByMap[mapName] = recordsByStyle;
