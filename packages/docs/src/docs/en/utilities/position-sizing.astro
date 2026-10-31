@@ -33,11 +33,11 @@ const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
 <td>Logical inline insets.</td>
 </tr>
 <tr>
-<td><code>z-&#123;n,auto&#125;</code></td>
+<td><code>z-&#123;n,auto,[signed-integer]&#125;</code></td>
 <td><code>z-index</code>.</td>
 </tr>
 <tr>
-<td><code>w/h/min-w/max-w/min-h/max-h-&lt;value&gt;</code></td>
+<td><code>w/h/min-w/max-w/min-h/max-h-&lt;value&gt;</code>, including <code>(--custom-property)</code> shorthand</td>
 <td>Physical dimensions.</td>
 </tr>
 <tr>
@@ -66,6 +66,6 @@ const docsPath = lang === 'en' ? '/docs' : `/${lang}/docs`;
 </tr>
 </tbody>
 </table>
-<p><code>&lt;value&gt;</code> accepts supported spacing values, <code>auto</code>, <code>full</code>, <code>screen</code>, fractions, and family-specific arbitrary values. Logical and physical writes remain independently composable.</p>
+<p><code>&lt;value&gt;</code> accepts supported spacing values, <code>auto</code>, <code>full</code>, <code>screen</code>, fractions, and family-specific arbitrary values. Parenthesized custom property shorthand such as <code>max-h-(--available-height)</code> emits <code>var(--available-height)</code>. Logical and physical writes remain independently composable.</p>
 <h4 id="example">Example</h4>
 <Code code={codeBlocks[0].code} lang={codeBlocks[0].lang} />

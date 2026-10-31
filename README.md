@@ -334,6 +334,11 @@ names, value forms, and variants. A suffix such as `<spacing>`, `<color>`, or
 `<value>` follows the family-specific rules in its table and may resolve from
 the active `@theme` input or a validated arbitrary value.
 
+Dimension utilities accept parenthesized custom property shorthand, such as
+`max-h-(--available-height)`, which emits `max-height: var(--available-height)`.
+The `z-` utility accepts integers and `auto`; bracketed signed integers such as
+`z-[-1]` are also supported.
+
 <!-- cssx-utility-reference:start -->
 <details>
 <summary>Complete compiler class index: 258 value families and 145 exact classes</summary>
