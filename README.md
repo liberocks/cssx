@@ -767,6 +767,14 @@ const styles = cssx.create({
 <button {...cssx.props(styles.button)}>Save</button>;
 ```
 
+### Fluid typography
+
+`~text-<start>/<end>` interpolates the two `--text-*` theme sizes and their
+line heights with `clamp()`, between the smallest and largest rem-valued
+`--breakpoint-*` tokens. For example, `~text-3xl/4xl` scales from the default
+3xl size at the smallest breakpoint to 4xl at the largest. Keep the utility
+inside the same `sx()` or `create()` string as the other styles.
+
 ### Interaction and form controls
 
 | Class                                                                                                                                                                                                                                                                                                                              | Styles                                    |
@@ -908,6 +916,10 @@ Custom state names must be identifiers, for example `state-[open]:block` or
 to `sx()` or `create()`. When styles are combined with `props()`, CSSX preserves
 these literal classes without emitting declarations, so `group-*` and `peer-*`
 variants can target them.
+
+Named project markers such as `group-field-group` and `peer-field-label` are
+also preserved as structural classes. Keep them inside the same `sx()` or
+`create()` string as the rest of the style.
 
 #### Example
 

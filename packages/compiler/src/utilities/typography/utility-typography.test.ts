@@ -31,6 +31,15 @@ describe('compileFontSizeUtility', () => {
     ]);
   });
 
+  it('compiles fluid font-size pairs using theme size, line-height, and breakpoint tokens', () => {
+    const theme = parseTheme();
+
+    expect(compileFontSizeUtility('~text-3xl/4xl', theme)).toEqual([
+      { property: 'font-size', value: 'clamp(1.875rem, calc(1.704545rem + 0.568182vw), 2.25rem)' },
+      { property: 'line-height', value: 'clamp(2.25rem, calc(2.136364rem + 0.378788vw), 2.5rem)' },
+    ]);
+  });
+
   it('omits missing optional typography tokens and rejects unknown font-size forms', () => {
     const theme = parseTheme('@theme { --text-custom: 1.25rem; }');
 

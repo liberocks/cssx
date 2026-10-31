@@ -2,7 +2,7 @@ import type { ClassNameAllocator } from '../atoms/class-name';
 import { createClassNameAllocator } from '../atoms/class-name-allocator';
 import { packedAtomicClasses } from '../atoms/packed-atomic-classes';
 import type { CompiledStyle } from '../shared/compiled-style';
-import { STRUCTURAL_UTILITY_NAMES } from '../utilities/registry/structural-utilities';
+import { structuralUtilityName } from '../utilities/registry/structural-utility-name';
 import { compositeIdentity } from './composite-identity';
 import { compositeNameIdentity } from './composite-name-identity';
 
@@ -33,7 +33,7 @@ export function composeCompiledStyles(
   const winningClasses = packedAtomicClasses(records);
   const structuralClassSet = new Set(
     records
-      .filter(([, , group]) => STRUCTURAL_UTILITY_NAMES[group as keyof typeof STRUCTURAL_UTILITY_NAMES] !== undefined)
+      .filter(([, , group]) => structuralUtilityName(group) !== null)
       .map(([className]) => className)
       .filter((className): className is string => className !== null),
   );

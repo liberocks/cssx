@@ -15,6 +15,13 @@ export function classifyUtilityGroup(utility: string): string | null {
   if (structuralGroup) {
     return structuralGroup;
   }
+  const namedStructuralGroup = /^(group|peer)-[A-Za-z0-9_-]+$/.exec(utility);
+  if (namedStructuralGroup) {
+    return `structural-${namedStructuralGroup[1]}:${utility}`;
+  }
+  if (utility.startsWith('~text-')) {
+    return 'font-size';
+  }
   if (utility.startsWith('[') && utility.endsWith(']')) {
     return classifyArbitraryProperty(utility);
   }

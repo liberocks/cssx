@@ -2,6 +2,7 @@ import { resolveLineHeight } from '../../shared/resolve-line-height';
 import { resolveThemeToken } from '../../theme/theme';
 import type { CssxTheme } from '../../theme/theme';
 import type { UtilityDeclaration } from '../registry/utility-types';
+import { compileFluidFontSizeUtility } from './compile-fluid-font-size-utility';
 
 /**
  * Compiles font-size utilities from the active `--text-*` theme namespace.
@@ -12,6 +13,10 @@ import type { UtilityDeclaration } from '../registry/utility-types';
  * @returns Font-size declarations, or null when unsupported.
  */
 export function compileFontSizeUtility(utility: string, theme: CssxTheme): UtilityDeclaration[] | null {
+  const fluidMatch = /^~text-([^/\[\]()]+)\/([^/\[\]()]+)$/.exec(utility);
+  if (fluidMatch) {
+    return compileFluidFontSizeUtility(fluidMatch[1]!, fluidMatch[2]!, theme);
+  }
   const match = /^text-([^/\[\]()]+)(?:\/(.+))?$/.exec(utility);
   if (!match) {
     return null;

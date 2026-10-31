@@ -1,6 +1,6 @@
 import type { CompiledUtility } from '../atoms/compiled-utility';
 import type { CompiledStyle } from '../shared/compiled-style';
-import { STRUCTURAL_UTILITY_NAMES } from '../utilities/registry/structural-utilities';
+import { structuralUtilityName } from '../utilities/registry/structural-utility-name';
 import { compositeIdentity } from './composite-identity';
 import type { ReusabilityPlan } from './reusability';
 
@@ -37,9 +37,7 @@ export function createCompiledStyleRecordMap(options: CreateCompiledStyleRecordM
     const atomicIdentities = compositionAtomsByStyle[name]!;
     const structuralClasses = [
       ...new Set(
-        recordsByStyle[name]!.filter(
-          ([, , group]) => STRUCTURAL_UTILITY_NAMES[group as keyof typeof STRUCTURAL_UTILITY_NAMES] !== undefined,
-        )
+        recordsByStyle[name]!.filter(([, , group]) => structuralUtilityName(group) !== null)
           .map(([className]) => className)
           .filter((className): className is string => className !== null),
       ),
@@ -56,7 +54,7 @@ export function createCompiledStyleRecordMap(options: CreateCompiledStyleRecordM
     const records = recordsByStyle[name]!.map((record) => {
       const [atomicIdentity, scope, group, ...conflicts] = record;
       return [
-        atomicIdentity === null || STRUCTURAL_UTILITY_NAMES[group as keyof typeof STRUCTURAL_UTILITY_NAMES]
+        atomicIdentity === null || structuralUtilityName(group) !== null
           ? atomicIdentity
           : allocatedAtomClasses.get(atomicIdentity)!,
         scope,

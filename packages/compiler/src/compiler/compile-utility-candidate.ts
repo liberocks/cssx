@@ -1,7 +1,7 @@
 import { readGeneratedClassNames } from '../atoms/read-generated-class-names';
 import { selectLiveGeneratedClasses } from '../atoms/select-live-generated-classes';
 import type { CssxTheme } from '../theme/theme';
-import { STRUCTURAL_UTILITY_NAMES } from '../utilities/registry/structural-utilities';
+import { structuralUtilityName } from '../utilities/registry/structural-utility-name';
 import type { CompiledUtility } from '../utilities/registry/utility-recipe-types';
 import { resolveUtilityRecipe } from '../utilities/values/resolve-utility-recipe';
 import type { VariantOptions } from '../variants/apply-variants';
@@ -50,8 +50,7 @@ export function compileUtilityCandidate(options: CompileUtilityCandidateOptions)
   const { recipe } = resolvedRecipe;
   if (recipe.atoms.length === 0) {
     return {
-      className:
-        STRUCTURAL_UTILITY_NAMES[resolvedRecipe.semantics.group as keyof typeof STRUCTURAL_UTILITY_NAMES] ?? '',
+      className: structuralUtilityName(resolvedRecipe.semantics.group) ?? '',
       compiled: [],
       requiredKeyframes: new Set(),
       requiredProperties: new Set(),

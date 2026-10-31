@@ -61,6 +61,22 @@ describe('compileStyleMap', () => {
     expect(css).toContain('white-space:nowrap');
   });
 
+  it('preserves named structural markers and compiles fluid typography inside one style', async () => {
+    const result = await compileStyleMap({
+      root: 'group group-field-group group-field-label peer-field-label flex items-baseline ~text-3xl/4xl',
+    });
+    const className = result.classNames.root ?? '';
+    const css = serializeCss(result.rules);
+
+    expect(result.classes['group-field-group']).toBe('group-field-group');
+    expect(className.split(' ')).toContain('group-field-group');
+    expect(className.split(' ')).toContain('group-field-label');
+    expect(className.split(' ')).toContain('peer-field-label');
+    expect(className.split(' ')).toContain('group');
+    expect(css).toContain('font-size:clamp(1.875rem');
+    expect(css).toContain('line-height:clamp(2.25rem');
+  });
+
   it('continues serial names through lower- and uppercase letters before base-62 rollover', async () => {
     const result = await compileStyleMap(
       Object.fromEntries(Array.from({ length: 63 }, (_, index) => [`style${index}`, `p-[${index + 1}px]`])),
