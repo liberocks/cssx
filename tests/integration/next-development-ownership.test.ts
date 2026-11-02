@@ -350,10 +350,10 @@ function makeWorker(child: ChildProcess): Worker {
   child.stderr?.on('data', (chunk: Buffer | string) => {
     stderrOutput += chunk.toString();
   });
-  return { child, firstLine: firstLine(child), stderr: () => stderrOutput };
+  return { child, firstLine: firstLine(child, () => stderrOutput), stderr: () => stderrOutput };
 }
 
-function firstLine(child: ChildProcess): Promise<string> {
+function firstLine(child: ChildProcess, getStderr: () => string): Promise<string> {
   const lines = createInterface({ input: child.stdout! });
   return new Promise((resolveLine, rejectLine) => {
     const timer = setTimeout(
@@ -374,7 +374,7 @@ function firstLine(child: ChildProcess): Promise<string> {
       if (code !== 0) {
         clearTimeout(timer);
         lines.close();
-        rejectLine(new Error(`Worker exited with ${code}.`));
+        rejectLine(new Error(`Worker exited with ${code}.${getStderr() ? `\n${getStderr()}` : ''}`));
       }
     });
   });
