@@ -376,6 +376,7 @@ export async function watchProjectCssxSourceModules(
   options: CssxPluginOptions,
   onUpdate: (modules: readonly CssxSourceModule[]) => void | Promise<void>,
   isHandledByBundler: (path: string) => boolean = () => false,
+  includeSourceFileDirectories = false,
 ): Promise<() => void> {
   const projectRoot = canonicalPathSync(root);
   const key = projectScanKey(projectRoot, options);
@@ -427,6 +428,7 @@ export async function watchProjectCssxSourceModules(
       additionalRoots,
       [...(projectScanCache.get(key)?.modules.values() ?? [])],
       options.themeFile ? resolve(projectRoot, options.themeFile) : undefined,
+      includeSourceFileDirectories,
     );
     if (stopped) {
       return;
@@ -686,11 +688,14 @@ async function findProjectSourceDirectories(
   additionalRoots: readonly string[],
   modules: readonly CssxSourceModule[],
   themeFile?: string,
+  includeSourceFileDirectories = false,
 ): Promise<string[]> {
+  const sourceFiles = includeSourceFileDirectories ? await findProjectSourceFiles(root, additionalRoots) : [];
   const directories = new Set([
     root,
     ...additionalRoots,
     ...modules.map((module) => dirname(module.id)),
+    ...sourceFiles.map(dirname),
     ...(themeFile ? [dirname(themeFile)] : []),
   ]);
   const watched: string[] = [];

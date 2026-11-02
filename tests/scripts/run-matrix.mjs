@@ -48,7 +48,9 @@ for (const framework of frameworks) {
   for (const mode of ['development', 'production']) {
     const bundlers = framework === 'next' ? ['webpack', 'turbopack'] : [undefined];
     for (const bundler of bundlers) {
-      const arguments_ = ['exec', 'playwright', 'test', framework, '--config', 'playwright.config.ts'];
+      const testTargets = [framework];
+      if (framework === 'next' && mode === 'development') testTargets.push('e2e/next-startup.spec.ts');
+      const arguments_ = ['exec', 'playwright', 'test', ...testTargets, '--config', 'playwright.config.ts'];
       if (update) arguments_.push('--update-snapshots');
       run(arguments_, {
         CSSX_VISUAL_FRAMEWORK: framework,

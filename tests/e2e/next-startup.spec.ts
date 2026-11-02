@@ -1,0 +1,67 @@
+import { expect, test } from '@playwright/test';
+import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+test('Next starts the stylesheet automatically and applies edits without replacing page state', async ({ page }) => {
+  test.skip(process.env.CSSX_VISUAL_MODE !== 'development', 'CSSX stylesheet ownership is development-only.');
+
+  const sourcePath = resolve(import.meta.dirname, '../../examples/next/app/hmr-probe.tsx');
+  const originalSource = await readFile(sourcePath, 'utf8');
+  const source = originalSource.replaceAll('\r\n', '\n');
+  try {
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('cssx-next-document-loads') === null) {
+        sessionStorage.setItem('cssx-next-document-loads', '0');
+      }
+      window.addEventListener('DOMContentLoaded', () => {
+        sessionStorage.setItem(
+          'cssx-next-document-loads',
+          String(Number(sessionStorage.getItem('cssx-next-document-loads') ?? '0') + 1),
+        );
+      });
+    });
+    await page.goto('/');
+    const probe = page.locator('[data-cssx-hmr]');
+    await expect(probe).toBeVisible();
+    await expect(probe).toHaveCSS('padding-top', '8px');
+    await page.waitForFunction(() => {
+      const state = (window as Window & { __cssxDevelopmentStylesheetHmr?: { events?: EventSource } })
+        .__cssxDevelopmentStylesheetHmr;
+      return state?.events?.readyState === EventSource.OPEN;
+    });
+    const initialLoads = await page.evaluate(() => Number(sessionStorage.getItem('cssx-next-document-loads')));
+    await page.evaluate(() => {
+      const input = document.createElement('input');
+      input.value = 'keep this value';
+      input.dataset.cssxStartupState = '';
+      document.body.append(input);
+      const spacer = document.createElement('div');
+      spacer.style.height = '1600px';
+      document.body.append(spacer);
+      input.focus();
+      window.scrollTo(0, 700);
+    });
+
+    const updatedSource = source
+      .replace("sx('p-2 bg-blue-500')", "sx('p-4 bg-blue-500')")
+      .replace('HMR style', 'HMR style after Next.js HMR');
+    expect(updatedSource).not.toBe(source);
+    await writeFile(sourcePath, updatedSource, 'utf8');
+    await expect
+      .poll(() => probe.evaluate((node) => getComputedStyle(node).paddingTop), { timeout: 15_000 })
+      .toBe('16px');
+    await expect(probe).toHaveText('HMR style after Next.js HMR');
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame()))),
+    );
+    await expect(page.locator('[data-cssx-startup-state]')).toHaveValue('keep this value');
+    await expect(page.locator('[data-cssx-startup-state]')).toBeFocused();
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(650);
+    await expect
+      .poll(() => page.evaluate(() => Number(sessionStorage.getItem('cssx-next-document-loads'))))
+      .toBe(initialLoads);
+  } finally {
+    await writeFile(sourcePath, originalSource, 'utf8');
+  }
+});

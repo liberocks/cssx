@@ -121,7 +121,8 @@ async function runLoader(
 
   if (isRootLayout && coordinatedDevelopment) {
     developmentRuntime = await import('@cssxio/unplugin/internal/development-runtime');
-    await developmentRuntime.waitForNextDevelopmentStylesheet(settings.developmentHmr!);
+    context.addDependency(settings.styleSheetFile);
+    await developmentRuntime.ensureNextDevelopmentStylesheet(root, settings.styleSheetFile, cssxOptions);
   }
   if (isRootLayout && !coordinatedDevelopment) {
     const sourceRoots = settings.cssx.sourceRoots?.map((path) => resolve(root, path)) ?? [];

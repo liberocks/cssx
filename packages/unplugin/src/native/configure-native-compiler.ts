@@ -62,13 +62,10 @@ export function configureNativeCompiler({
       let developmentHmr: typeof sharedNativeState.developmentHmr;
       let notifyRevision = 0;
       let notifyPending: Promise<void> | undefined;
-      coordinatorStartup = Promise.all([
-        import('../adapters/development-coordinator'),
-        import('../adapters/next-development-server'),
-      ]).then(([coordinator, developmentServer]) => {
-        developmentHmr = developmentServer.startNextDevelopmentServer(compiler.context, styleSheetFile);
+      coordinatorStartup = import('@cssxio/unplugin/internal/development-runtime').then((runtime) => {
+        developmentHmr = runtime.startNextDevelopmentServer(compiler.context, styleSheetFile);
         sharedNativeState.developmentHmr = developmentHmr;
-        return coordinator.startDevelopmentCoordinator(
+        return runtime.startDevelopmentCoordinator(
           compiler.context,
           styleSheetFile,
           compilationOptions,
@@ -103,8 +100,8 @@ export function configureNativeCompiler({
                   sharedNativeState.developmentHmr === developmentHmr &&
                   sharedNativeState.developmentStylesheet !== css
                 ) {
-                  const { publishNextDevelopmentStylesheet } = await import('../adapters/next-development-server');
-                  await publishNextDevelopmentStylesheet(developmentHmr, css);
+                  const runtime = await import('@cssxio/unplugin/internal/development-runtime');
+                  await runtime.publishNextDevelopmentStylesheet(developmentHmr, css);
                   sharedNativeState.developmentStylesheet = css;
                 }
               } while (publishedRevision !== notifyRevision);
@@ -130,14 +127,14 @@ export function configureNativeCompiler({
       void coordinatorStartup?.then(
         async (stop) => {
           stop();
-          const { stopNextDevelopmentServer } = await import('../adapters/next-development-server');
-          stopNextDevelopmentServer(compiler.context);
+          const runtime = await import('@cssxio/unplugin/internal/development-runtime');
+          runtime.stopNextDevelopmentServer(compiler.context);
           sharedNativeState.developmentHmr = undefined;
           sharedNativeState.developmentStylesheet = undefined;
         },
         async () => {
-          const { stopNextDevelopmentServer } = await import('../adapters/next-development-server');
-          stopNextDevelopmentServer(compiler.context);
+          const runtime = await import('@cssxio/unplugin/internal/development-runtime');
+          runtime.stopNextDevelopmentServer(compiler.context);
           sharedNativeState.developmentHmr = undefined;
           sharedNativeState.developmentStylesheet = undefined;
         },

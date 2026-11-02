@@ -4,6 +4,7 @@ export {
 } from './adapters/configure-vite-development-server';
 export { compileCssxStylesheet, cssWithSourceMapComment } from './native/stylesheet';
 export { startDevelopmentCoordinator } from './adapters/development-coordinator';
+export { ensureNextDevelopmentStylesheet } from './adapters/next-development-runtime';
 export {
   createRollupDevelopmentNotifier,
   createRollupDevelopmentRuntime,
@@ -14,6 +15,7 @@ export {
   publishNextDevelopmentStylesheet,
   startNextDevelopmentServer,
   stopNextDevelopmentServer,
+  waitForNextDevelopmentServerBinding,
   waitForNextDevelopmentStylesheet,
 } from './adapters/next-development-server';
 export { nativeStylesheetHmr } from './native/native-stylesheet-hmr';

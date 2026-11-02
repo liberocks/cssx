@@ -73,12 +73,10 @@ export function withCSSX(
     if (developmentHmr) {
       void import('@cssxio/unplugin/internal/development-runtime')
         .then((runtime) => {
-          runtime.startNextDevelopmentServer(projectRoot, styleSheetFile);
-          return runtime.startDevelopmentCoordinator(
+          return runtime.ensureNextDevelopmentStylesheet(
             projectRoot,
             styleSheetFile,
             developmentPluginOptions(effectiveOptions),
-            developmentHmr,
           );
         })
         .catch((error: unknown) => {
