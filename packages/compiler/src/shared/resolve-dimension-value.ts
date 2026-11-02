@@ -33,6 +33,12 @@ export function resolveDimensionValue(
   if ((dimension === 'max-w' || dimension === 'max-inline') && namedMaxWidths[raw]) {
     return namedMaxWidths[raw]!;
   }
+  if (raw === 'min' || raw === 'max' || raw === 'fit') {
+    if (negative) {
+      return null;
+    }
+    return raw === 'min' ? 'min-content' : raw === 'max' ? 'max-content' : 'fit-content';
+  }
   if (raw === 'auto' || raw === 'full' || raw === 'screen') {
     const values: Readonly<Record<string, string>> = {
       auto: 'auto',
