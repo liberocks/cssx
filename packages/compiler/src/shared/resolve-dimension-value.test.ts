@@ -14,3 +14,12 @@ it('resolves named, viewport, fractional, and spacing dimensions', () => {
   expect(resolveDimensionValue('(--size)', true, theme, 'h')).toBeNull();
   expect(resolveDimensionValue('1/0', false, theme, 'w')).toBeNull();
 });
+
+it('resolves intrinsic content sizing keywords and rejects negative forms', () => {
+  const theme = parseTheme('');
+
+  expect(resolveDimensionValue('min', false, theme, 'w')).toBe('min-content');
+  expect(resolveDimensionValue('max', false, theme, 'max-h')).toBe('max-content');
+  expect(resolveDimensionValue('fit', false, theme, 'h')).toBe('fit-content');
+  expect(resolveDimensionValue('fit', true, theme, 'h')).toBeNull();
+});

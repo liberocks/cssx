@@ -24,6 +24,12 @@ it('honors composite alias and included-class filters through the list compiler'
   expect(result.css).not.toContain('display: none');
 });
 
+it('compiles intrinsic sizing values with responsive variants', async () => {
+  const result = await compileUtilities(['md:h-fit'], () => 'x');
+
+  expect(result.css).toBe('@media (width >= 48rem){.x{height:fit-content;}}');
+});
+
 it('rejects unsupported utilities', async () => {
   await expect(compileUtilities(['not-understood'], (candidate) => candidate)).rejects.toThrow(
     'cannot compile utility',
