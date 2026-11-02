@@ -42,18 +42,25 @@ test('Next starts the stylesheet automatically and applies edits without replaci
       window.scrollTo(0, 700);
     });
 
-    const updatedSource = source.replace("sx('p-2 bg-blue-500')", "sx('p-4 bg-blue-500')");
+    const updatedSource = source
+      .replace("sx('p-2 bg-blue-500')", "sx('p-4 bg-blue-500')")
+      .replace('HMR style', 'HMR style after Next.js HMR');
     expect(updatedSource).not.toBe(source);
     await writeFile(sourcePath, updatedSource, 'utf8');
     await expect
       .poll(() => probe.evaluate((node) => getComputedStyle(node).paddingTop), { timeout: 15_000 })
       .toBe('16px');
-    await expect
-      .poll(() => page.evaluate(() => Number(sessionStorage.getItem('cssx-next-document-loads'))))
-      .toBe(initialLoads);
+    await expect(probe).toHaveText('HMR style after Next.js HMR');
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame()))),
+    );
     await expect(page.locator('[data-cssx-startup-state]')).toHaveValue('keep this value');
     await expect(page.locator('[data-cssx-startup-state]')).toBeFocused();
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(650);
+    await expect
+      .poll(() => page.evaluate(() => Number(sessionStorage.getItem('cssx-next-document-loads'))))
+      .toBe(initialLoads);
   } finally {
     await writeFile(sourcePath, originalSource, 'utf8');
   }
