@@ -8,6 +8,7 @@ import {
   publishNextDevelopmentStylesheet,
   startNextDevelopmentServer,
   stopNextDevelopmentServer,
+  waitForNextDevelopmentServerBinding,
   waitForNextDevelopmentStylesheet,
 } from './next-development-server';
 
@@ -20,6 +21,7 @@ it('serves the latest sheet and pushes atomic file replacements over an event st
   try {
     const connection = startNextDevelopmentServer(root, styleSheetFile);
     expect(startNextDevelopmentServer(root, styleSheetFile)).toEqual(connection);
+    await expect(waitForNextDevelopmentServerBinding(root)).resolves.toBe('owner');
     const base = `http://127.0.0.1:${connection.port}/${connection.token}`;
     expect((await retryFetch(`${base}/ready`)).status).toBe(503);
     const events = await retryFetch(`${base}/events`);
@@ -94,6 +96,7 @@ it('keeps development stylesheet transports isolated between concurrent apps', a
   const connections = roots.map((root) => startNextDevelopmentServer(root, join(root, '.cssx', 'next.css')));
   try {
     expect(connections[0]).not.toEqual(connections[1]);
+    await Promise.all(roots.map((root) => waitForNextDevelopmentServerBinding(root)));
     await publishNextDevelopmentStylesheet(connections[0]!, '.dapp-a{color:red;}');
     await publishNextDevelopmentStylesheet(connections[1]!, '.dapp-b{color:blue;}');
     const [firstStylesheet, secondStylesheet] = await Promise.all(
@@ -118,6 +121,7 @@ it('limits simultaneous browser event streams per app', async () => {
   const eventsUrl = `http://127.0.0.1:${connection.port}/${connection.token}/events`;
   const readers: ReadableStreamDefaultReader<Uint8Array>[] = [];
   try {
+    await expect(waitForNextDevelopmentServerBinding(root)).resolves.toBe('owner');
     for (let index = 0; index < 64; index++) {
       const response = await retryFetch(eventsUrl);
       expect(response.status).toBe(200);
@@ -138,6 +142,7 @@ it('returns not-ready responses for missing files and closes event clients on sh
   const root = await mkdtemp(join(tmpdir(), 'cssx-next-hmr-not-ready-'));
   const styleSheetFile = join(root, '.cssx', 'missing.css');
   const connection = startNextDevelopmentServer(root, styleSheetFile);
+  await expect(waitForNextDevelopmentServerBinding(root)).resolves.toBe('owner');
   const base = `http://127.0.0.1:${connection.port}/${connection.token}`;
   try {
     expect((await retryFetch(`${base}/stylesheet`)).status).toBe(503);

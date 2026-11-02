@@ -14,7 +14,7 @@ import {
   scanProjectCssxSourceModules,
   watchProjectCssxSourceModules,
 } from '../transforms/project-scan';
-import { publishNextDevelopmentStylesheet } from './next-development-server';
+import { publishNextDevelopmentStylesheet, reportNextDevelopmentStartupStatus } from './next-development-server';
 import type { NextDevelopmentHmrConnection } from './next-development-server';
 
 /** Active metadata coordinator startup and cleanup by project root. */
@@ -27,6 +27,7 @@ export function startDevelopmentCoordinator(
   options: CssxPluginOptions,
   connection: NextDevelopmentHmrConnection,
   isHandledByBundler?: (path: string) => boolean,
+  recoverStartupFailure = false,
 ): Promise<() => void> {
   const projectRoot = resolve(root);
   const existing = coordinators.get(projectRoot);
@@ -37,30 +38,65 @@ export function startDevelopmentCoordinator(
   const startup = (async () => {
     retainProjectScan(projectRoot, options);
     let stopWatcher: (() => void) | undefined;
+    let latestCss: string | undefined;
+    const updateStylesheet = async (updatedModules: readonly CssxSourceModule[]) => {
+      try {
+        if (latestCss === undefined) {
+          const completeModules = await scanProjectCssxSourceModules(projectRoot, options);
+          const css = await writeNextDevelopmentStylesheet(projectRoot, styleSheetFile, options, completeModules);
+          await publishNextDevelopmentStylesheet(connection, css);
+          latestCss = css;
+          return;
+        }
+        const theme = await loadTheme(options, projectRoot);
+        const stylesheet = await compileCssxStylesheet(
+          updatedModules,
+          theme,
+          options.layer,
+          options.sourceMap,
+          options.darkMode,
+          options.preflight,
+        );
+        const css = cssWithSourceMapComment(stylesheet, 'generated.css');
+        if (css !== latestCss) {
+          await publishNextDevelopmentStylesheet(connection, css);
+          latestCss = css;
+        }
+      } catch (error) {
+        if (recoverStartupFailure && latestCss === undefined) {
+          await reportNextDevelopmentStartupStatus(connection, 'initial stylesheet compilation', error).catch(
+            () => undefined,
+          );
+        }
+        throw error;
+      }
+    };
+    let startupPhase = 'initial source scan';
     try {
+      if (recoverStartupFailure) {
+        await reportNextDevelopmentStartupStatus(connection, startupPhase).catch(() => undefined);
+      }
       const modules = await scanProjectCssxSourceModules(projectRoot, options);
-      let latestCss = await writeNextDevelopmentStylesheet(projectRoot, styleSheetFile, options, modules);
-      await publishNextDevelopmentStylesheet(connection, latestCss);
+      startupPhase = 'initial stylesheet compilation';
+      const css = await writeNextDevelopmentStylesheet(projectRoot, styleSheetFile, options, modules);
+      await publishNextDevelopmentStylesheet(connection, css);
+      latestCss = css;
+    } catch (error) {
+      if (recoverStartupFailure) {
+        await reportNextDevelopmentStartupStatus(connection, startupPhase, error).catch(() => undefined);
+      }
+      if (!recoverStartupFailure) {
+        releaseProjectScan(projectRoot, options);
+        throw error;
+      }
+    }
+    try {
       stopWatcher = await watchProjectCssxSourceModules(
         projectRoot,
         options,
-        async (updatedModules) => {
-          const theme = await loadTheme(options, projectRoot);
-          const stylesheet = await compileCssxStylesheet(
-            updatedModules,
-            theme,
-            options.layer,
-            options.sourceMap,
-            options.darkMode,
-            options.preflight,
-          );
-          const css = cssWithSourceMapComment(stylesheet, 'generated.css');
-          if (css !== latestCss) {
-            await publishNextDevelopmentStylesheet(connection, css);
-            latestCss = css;
-          }
-        },
+        updateStylesheet,
         isHandledByBundler,
+        recoverStartupFailure && latestCss === undefined,
       );
       let stopped = false;
       return () => {

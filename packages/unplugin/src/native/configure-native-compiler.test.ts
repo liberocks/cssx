@@ -31,11 +31,9 @@ vi.mock('../transforms/project-scan', () => ({
   getCachedProjectScanSourceModules: mocks.getCachedProjectScanSourceModules,
   scanProjectCssxSourceModules: mocks.scanProjectCssxSourceModules,
 }));
-vi.mock('../adapters/development-coordinator', () => ({
-  startDevelopmentCoordinator: mocks.startDevelopmentCoordinator,
-}));
-vi.mock('../adapters/next-development-server', () => ({
+vi.mock('@cssxio/unplugin/internal/development-runtime', () => ({
   publishNextDevelopmentStylesheet: mocks.publishNextDevelopmentStylesheet,
+  startDevelopmentCoordinator: mocks.startDevelopmentCoordinator,
   startNextDevelopmentServer: mocks.startNextDevelopmentServer,
   stopNextDevelopmentServer: mocks.stopNextDevelopmentServer,
 }));

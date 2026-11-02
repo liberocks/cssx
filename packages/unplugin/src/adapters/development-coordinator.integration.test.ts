@@ -14,6 +14,7 @@ const scanMocks = vi.hoisted(() => ({
   failure: undefined as unknown,
   onUpdate: undefined as ((modules: readonly CssxSourceModule[]) => Promise<void>) | undefined,
   stopWatcher: vi.fn(),
+  watchFailure: undefined as unknown,
 }));
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -36,6 +37,9 @@ vi.mock('../transforms/project-scan', async (importOriginal) => {
         ? actual.scanProjectCssxSourceModules(...args)
         : Promise.reject(scanMocks.failure),
     watchProjectCssxSourceModules: async (...args: Parameters<typeof actual.watchProjectCssxSourceModules>) => {
+      if (scanMocks.watchFailure !== undefined) {
+        throw scanMocks.watchFailure;
+      }
       scanMocks.onUpdate = args[2] as (modules: readonly CssxSourceModule[]) => Promise<void>;
       return scanMocks.stopWatcher;
     },
@@ -164,6 +168,55 @@ it('reports non-Error coordinator startup failures', async () => {
   }
 });
 
+it('keeps watching when recovery status reports cannot reach the owner', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-coordinator-status-error-'));
+  const options = developmentPluginOptions({ sourceMap: false, preflight: false });
+  scanMocks.failure = 'scan rejected with a string';
+  scanMocks.onUpdate = undefined;
+  try {
+    const stop = await startDevelopmentCoordinator(
+      root,
+      join(root, 'next.css'),
+      options,
+      { port: 45_684, token: 'unreachable-owner' },
+      undefined,
+      true,
+    );
+    await expect(notifySourceUpdate([])).rejects.toBe('scan rejected with a string');
+    stop();
+  } finally {
+    scanMocks.failure = undefined;
+    scanMocks.onUpdate = undefined;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('keeps the published sheet when a later theme compilation fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-coordinator-update-error-'));
+  const sourceFile = join(root, 'app', 'page.tsx');
+  const styleSheetFile = join(root, '.cssx', 'next.css');
+  const options = developmentPluginOptions({ theme: '@theme {}', sourceMap: false, preflight: false });
+  const connection = startNextDevelopmentServer(root, styleSheetFile);
+  let stop: (() => void) | undefined;
+  scanMocks.onUpdate = undefined;
+  try {
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(sourceFile, "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');");
+    const modules = await scanProjectCssxSourceModules(root, options);
+    stop = await startDevelopmentCoordinator(root, styleSheetFile, options, connection);
+    const previouslyPublished = await readFile(styleSheetFile, 'utf8');
+
+    (options as { theme?: string }).theme = 'invalid theme input';
+    await expect(notifySourceUpdate(modules)).rejects.toThrow('CSSX theme input only accepts @theme blocks');
+    await expect(readFile(styleSheetFile, 'utf8')).resolves.toBe(previouslyPublished);
+  } finally {
+    stop?.();
+    stopNextDevelopmentServer(root);
+    scanMocks.onUpdate = undefined;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it('stops directory watchers and releases cached metadata when startup output fails', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-next-coordinator-startup-error-'));
   const styleSheetFile = join(root, '.cssx', 'next.css');
@@ -183,6 +236,30 @@ it('stops directory watchers and releases cached metadata when startup output fa
     expect(getCachedProjectScanSourceModules(root, options)).toBeUndefined();
   } finally {
     warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('releases cached metadata when recovery watcher setup fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-coordinator-watcher-error-'));
+  const sourceFile = join(root, 'app', 'page.tsx');
+  const styleSheetFile = join(root, '.cssx', 'next.css');
+  const options = developmentPluginOptions({ sourceMap: false, preflight: false });
+  const connection = startNextDevelopmentServer(root, styleSheetFile);
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  scanMocks.watchFailure = new Error('watcher setup failed');
+  try {
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(sourceFile, "import { sx } from '@cssxio/cssx'; export const className = sx('p-4');");
+    await expect(
+      startDevelopmentCoordinator(root, styleSheetFile, options, connection, undefined, true),
+    ).rejects.toThrow('watcher setup failed');
+    await vi.waitFor(() => expect(warning).toHaveBeenCalledWith(expect.stringContaining('watcher setup failed')));
+    expect(getCachedProjectScanSourceModules(root, options)).toBeUndefined();
+  } finally {
+    scanMocks.watchFailure = undefined;
+    warning.mockRestore();
+    stopNextDevelopmentServer(root);
     await rm(root, { recursive: true, force: true });
   }
 });
