@@ -15,6 +15,7 @@ export {
   publishNextDevelopmentStylesheet,
   startNextDevelopmentServer,
   stopNextDevelopmentServer,
+  readNextDevelopmentStylesheetStatus,
   waitForNextDevelopmentServerBinding,
   waitForNextDevelopmentStylesheet,
 } from './adapters/next-development-server';

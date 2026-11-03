@@ -274,29 +274,37 @@ it('refreshes development styles from the root layout and honors inline themes',
 it('injects the development stylesheet bridge only into transformed development modules', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-next-dev-bridge-'));
   const sourceFile = join(root, 'app', 'page.tsx');
+  const styleSheetFile = join(root, '.cssx', 'next.css');
   const source = `import { sx } from '${importSource}'; export const className = sx('p-4');`;
+  let connection: ReturnType<typeof startNextDevelopmentServer> | undefined;
   const settings: CssxNextLoaderOptions = {
     projectRoot: root,
-    styleSheetFile: join(root, '.cssx', 'next.css'),
+    styleSheetFile,
     importSource,
     manifestPath: join(root, '.cssx', 'classnames.json'),
     development: true,
-    developmentHmr: { port: 45678, token: 'bridge-test' },
+    developmentHmr: (connection = startNextDevelopmentServer(root, styleSheetFile)),
     cssx: { sourceMap: false, preflight: false },
   };
   try {
     await mkdir(join(root, 'app'), { recursive: true });
     await writeFile(join(root, 'package.json'), '{}');
     await writeFile(sourceFile, source);
+    await mkdir(join(root, '.cssx'), { recursive: true });
+    await writeFile(styleSheetFile, '.dready{padding:1px;}');
+    await publishNextDevelopmentStylesheet(connection);
 
     const development = await runLoader(sourceFile, source, settings);
     const production = await runLoader(sourceFile, source, { ...settings, development: false });
 
     expect(development.code).toContain('EventSource');
-    expect(development.code).toContain('http://127.0.0.1:45678/bridge-test');
+    expect(development.code).toContain(`http://127.0.0.1:${connection.port}/${connection.token}/events?revision=1`);
     expect(production.code).not.toContain('EventSource');
     expect(production.code).not.toContain('__cssxDevelopmentStylesheetHmr');
   } finally {
+    if (connection) {
+      stopNextDevelopmentServer(root);
+    }
     await rm(root, { recursive: true, force: true });
   }
 });
@@ -306,7 +314,7 @@ it('uses the ready coordinator stylesheet without scanning or watching project r
   const layoutFile = join(root, 'app', 'layout.tsx');
   const pageFile = join(root, 'app', 'page.tsx');
   const styleSheetFile = join(root, '.cssx', 'next.css');
-  const layoutSource = 'export default function Layout({ children }) { return <html><body>{children}</body></html>; }';
+  const layoutSource = `import { sx } from '${importSource}'; export default function Layout({ children }) { return <html><body className={sx('p-4')}>{children}</body></html>; }`;
   const pageSource = `import { sx } from '${importSource}'; export const className = sx('p-4');`;
   let connection: ReturnType<typeof startNextDevelopmentServer> | undefined;
 
@@ -330,6 +338,7 @@ it('uses the ready coordinator stylesheet without scanning or watching project r
     });
 
     expect(result.code).toContain("import '../.cssx/next.css'");
+    expect(result.code).toContain(`/events?revision=1`);
     expect(result.contextDependencies).toEqual([]);
     expect(
       getCachedProjectScanSourceModules(root, developmentPluginOptions({ sourceMap: false, preflight: false })),

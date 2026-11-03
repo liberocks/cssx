@@ -17,16 +17,29 @@ test('shows 30 warm style edits with p95 within 100 ms and preserves browser sta
   await page.goto('/');
   await expect(page.locator(selector)).toBeVisible();
   await page.waitForFunction(() => {
-    const state = (window as Window & { __cssxDevelopmentStylesheetHmr?: { style?: HTMLStyleElement } })
+    const state = (window as Window & {
+      __cssxDevelopmentStylesheetHmr?: {
+        events?: EventSource;
+        receivedRevision?: number;
+        revision?: number;
+        style?: HTMLStyleElement;
+      };
+    })
       .__cssxDevelopmentStylesheetHmr;
-    return state?.style?.isConnected === true;
+    return (
+      state?.events?.readyState === EventSource.OPEN &&
+      state.revision !== undefined &&
+      state.receivedRevision === state.revision
+    );
   });
+  await expect(page.locator(selector)).toHaveCSS('padding-top', '8px');
+  expect(await page.locator('style[data-cssx-development-stylesheet]').count()).toBe(0);
   await page.evaluate(() => {
     const windowState = window as Window & {
       __cssxDevelopmentStylesheetHmr?: { style?: HTMLStyleElement };
       __cssxInitialBridgeStyle?: HTMLStyleElement;
     };
-    windowState.__cssxInitialBridgeStyle = windowState.__cssxDevelopmentStylesheetHmr?.style;
+    windowState.__cssxInitialBridgeStyle = undefined;
   });
   const initialLoads = await page.evaluate(() => Number(sessionStorage.getItem('__cssxDocumentLoads')));
   const measurements: number[] = [];
@@ -83,6 +96,15 @@ test('shows 30 warm style edits with p95 within 100 ms and preserves browser sta
         undefined,
         { timeout: 5_000 },
       );
+      if (edit === 0) {
+        await page.evaluate(() => {
+          const state = window as Window & {
+            __cssxDevelopmentStylesheetHmr?: { style?: HTMLStyleElement };
+            __cssxInitialBridgeStyle?: HTMLStyleElement;
+          };
+          state.__cssxInitialBridgeStyle = state.__cssxDevelopmentStylesheetHmr?.style;
+        });
+      }
       const result = await page.evaluate(() => {
         const state = window as Window & {
           __cssxDocumentLoads?: string;

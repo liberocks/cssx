@@ -52,6 +52,11 @@ interface CssxLoaderContext {
 
 /** Source extensions compiled through the MDX pipeline. */
 const MDX_EXTENSIONS = new Set(['.md', '.mdx']);
+/** Ready stylesheet revisions shared by every module loader in one worker. */
+const stylesheetRevisionByRoot = new Map<
+  string,
+  Promise<{ readonly revision?: number; readonly stylesheetHash?: string } | undefined>
+>();
 
 /**
  * Next.js loader shared by Webpack and Turbopack.
@@ -119,10 +124,18 @@ async function runLoader(
   let outputMap = transformed?.map ?? inputMap;
   const coordinatedDevelopment = settings.development && settings.developmentHmr !== undefined;
 
+  let initialStylesheet: { readonly revision?: number; readonly stylesheetHash?: string } | undefined;
   if (isRootLayout && coordinatedDevelopment) {
     developmentRuntime = await import('@cssxio/unplugin/internal/development-runtime');
     context.addDependency(settings.styleSheetFile);
-    await developmentRuntime.ensureNextDevelopmentStylesheet(root, settings.styleSheetFile, cssxOptions);
+    initialStylesheet = await readyStylesheetRevision(
+      root,
+      settings.styleSheetFile,
+      cssxOptions,
+      settings.developmentHmr!,
+      developmentRuntime,
+      true,
+    );
   }
   if (isRootLayout && !coordinatedDevelopment) {
     const sourceRoots = settings.cssx.sourceRoots?.map((path) => resolve(root, path)) ?? [];
@@ -165,9 +178,51 @@ async function runLoader(
   }
   if (settings.development && settings.developmentHmr && transformed) {
     developmentRuntime ??= await import('@cssxio/unplugin/internal/development-runtime');
-    output += `\n${developmentRuntime.nextDevelopmentStylesheetHmr(settings.developmentHmr, settings.styleSheetFile)}`;
+    initialStylesheet ??= await readyStylesheetRevision(
+      root,
+      settings.styleSheetFile,
+      cssxOptions,
+      settings.developmentHmr,
+      developmentRuntime,
+    );
+    output += `\n${developmentRuntime.nextDevelopmentStylesheetHmr(
+      settings.developmentHmr,
+      settings.styleSheetFile,
+      initialStylesheet?.revision,
+      initialStylesheet?.stylesheetHash,
+    )}`;
   }
   return { code: output, ...(outputMap ? { map: outputMap } : {}) };
+}
+
+/** Starts or joins the app's shared stylesheet coordinator before injecting its bridge. */
+function readyStylesheetRevision(
+  root: string,
+  styleSheetFile: string,
+  options: CssxPluginOptions,
+  connection: NextDevelopmentHmrConnection,
+  runtime: typeof import('@cssxio/unplugin/internal/development-runtime'),
+  refresh = false,
+): Promise<{ readonly revision?: number; readonly stylesheetHash?: string } | undefined> {
+  const key = resolve(root);
+  let revision = stylesheetRevisionByRoot.get(key);
+  if (refresh || !revision) {
+    revision = (async () => {
+      await runtime.ensureNextDevelopmentStylesheet(key, styleSheetFile, options);
+      const status = await runtime.readNextDevelopmentStylesheetStatus(connection);
+      return {
+        ...(status.revision === undefined ? {} : { revision: status.revision }),
+        ...(status.stylesheetHash === undefined ? {} : { stylesheetHash: status.stylesheetHash }),
+      };
+    })();
+    stylesheetRevisionByRoot.set(key, revision);
+    void revision.catch(() => {
+      if (stylesheetRevisionByRoot.get(key) === revision) {
+        stylesheetRevisionByRoot.delete(key);
+      }
+    });
+  }
+  return revision;
 }
 
 /** Compiles cached module metadata and retains the last successful sheet on errors. */

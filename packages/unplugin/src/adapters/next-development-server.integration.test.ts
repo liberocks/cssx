@@ -49,7 +49,37 @@ it('serves the latest sheet and pushes atomic file replacements over an event st
     expect(stylesheet.status).toBe(200);
     expect(stylesheet.headers.get('Access-Control-Allow-Origin')).toBe('*');
     await expect(stylesheet.text()).resolves.toBe('.dnew{padding:2px;}');
-    const emptyEvent = readUntil(reader, '"revision":2');
+    const currentEvents = await retryFetch(`${base}/events?revision=1`);
+    const currentReader = currentEvents.body!.getReader();
+    const currentEvent = new TextDecoder().decode((await currentReader.read()).value);
+    expect(JSON.parse(currentEvent.slice(6))).toEqual({ revision: 1 });
+    await currentReader.cancel();
+    const staleEvents = await retryFetch(`${base}/events?revision=0`);
+    const staleReader = staleEvents.body!.getReader();
+    const staleEvent = new TextDecoder().decode((await staleReader.read()).value);
+    expect(JSON.parse(staleEvent.slice(6))).toEqual({ revision: 1, css: '.dnew{padding:2px;}' });
+    await staleReader.cancel();
+    const stylesheetHash = '0123456789abcdef';
+    const identifiedCss = `:root{--cssx-dev-stylesheet-hash:${stylesheetHash};}.didentified{color:green;}`;
+    await publishNextDevelopmentStylesheet(connection, identifiedCss);
+    await expect(fetch(`${base}/ready`)).resolves.toMatchObject({ status: 200 });
+    await expect((await fetch(`${base}/ready`)).json()).resolves.toMatchObject({ stylesheetHash });
+    const sameStylesheetEvents = await retryFetch(`${base}/events?revision=2&stylesheetHash=${stylesheetHash}`);
+    const sameStylesheetReader = sameStylesheetEvents.body!.getReader();
+    expect(JSON.parse(new TextDecoder().decode((await sameStylesheetReader.read()).value).slice(6))).toEqual({
+      revision: 2,
+      stylesheetHash,
+    });
+    await sameStylesheetReader.cancel();
+    const staleStylesheetEvents = await retryFetch(`${base}/events?revision=2&stylesheetHash=stale`);
+    const staleStylesheetReader = staleStylesheetEvents.body!.getReader();
+    expect(JSON.parse(new TextDecoder().decode((await staleStylesheetReader.read()).value).slice(6))).toMatchObject({
+      revision: 2,
+      stylesheetHash,
+      css: identifiedCss,
+    });
+    await staleStylesheetReader.cancel();
+    const emptyEvent = readUntil(reader, '"revision":3');
     await publishNextDevelopmentStylesheet(connection, '');
     expect(await emptyEvent).toContain('"css":""');
     await expect(fetch(`${base}/stylesheet`)).resolves.toMatchObject({ status: 200 });
@@ -73,13 +103,20 @@ it('serves the latest sheet and pushes atomic file replacements over an event st
     await rm(`${styleSheetFile}.map`);
     await expect(fetch(`${base}/generated.css.map`)).resolves.toMatchObject({ status: 404 });
 
-    const generatedBridge = nextDevelopmentStylesheetHmr(connection);
+    const generatedBridge = nextDevelopmentStylesheetHmr(connection, 'next.css', 7, '0123456789abcdef');
     expect(generatedBridge).toContain('new EventSource');
+    expect(generatedBridge).toContain(
+      `http://127.0.0.1:${connection.port}/${connection.token}/events?revision=7&stylesheetHash=0123456789abcdef`,
+    );
+    expect(generatedBridge).toContain('--cssx-dev-stylesheet-hash');
     expect(generatedBridge).toContain('state.generatedSheets');
     expect(generatedBridge).toContain('ownerNode?.dataset?.cssxDevelopmentStylesheet');
     expect(generatedBridge).toContain('state.style.textContent = css');
     expect(generatedBridge).toContain('state.stylesheetLink = stylesheetLink');
     expect(generatedBridge).toContain('owner.deleteRule(index)');
+    expect(generatedBridge.indexOf('state.style.textContent = css')).toBeLessThan(
+      generatedBridge.indexOf('for (const sheet of sheetsToClean)'),
+    );
     expect(generatedBridge).not.toMatch(/setInterval|location\.reload/);
   } finally {
     stopNextDevelopmentServer(root);

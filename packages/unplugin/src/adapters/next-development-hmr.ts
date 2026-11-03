@@ -6,18 +6,25 @@ import type { NextDevelopmentHmrConnection } from './next-development-server';
 export function nextDevelopmentStylesheetHmr(
   connection: NextDevelopmentHmrConnection,
   stylesheetName?: string,
+  initialRevision?: number,
+  initialStylesheetHash?: string,
 ): string {
   const baseUrl = JSON.stringify(`http://127.0.0.1:${connection.port}/${connection.token}`);
   const stylesheetSuffix = JSON.stringify(stylesheetName ? `/${basename(stylesheetName)}` : '');
+  const eventStreamUrl = JSON.stringify(
+    `http://127.0.0.1:${connection.port}/${connection.token}/events${initialRevision === undefined ? '' : `?revision=${initialRevision}${initialStylesheetHash === undefined ? '' : `&stylesheetHash=${encodeURIComponent(initialStylesheetHash)}`}`}`,
+  );
+  const revision = Number.isSafeInteger(initialRevision) && initialRevision! >= 0 ? initialRevision : -1;
+  const stylesheetHash = JSON.stringify(initialStylesheetHash ?? null);
   return `if (typeof document !== "undefined") {
   const key = "__cssxDevelopmentStylesheetHmr";
-  const state = globalThis[key] || (globalThis[key] = { installed: false, revision: -1, style: undefined });
+  const state = globalThis[key] || (globalThis[key] = { installed: false, revision: ${revision}, stylesheetHash: ${stylesheetHash}, style: undefined });
   if (!state.installed) {
     state.installed = true;
-    state.refresh = async (revision, pushedCss) => {
+    state.refresh = async (revision, pushedCss, pushedHash) => {
       if (state.refreshing) {
         if (!state.pendingRevision || state.pendingRevision.revision < revision) {
-          state.pendingRevision = { revision, css: pushedCss };
+          state.pendingRevision = { revision, css: pushedCss, stylesheetHash: pushedHash };
         }
         return;
       }
@@ -30,6 +37,11 @@ export function nextDevelopmentStylesheetHmr(
           css = await response.text();
         }
         if (revision < state.revision) return;
+        if (pushedHash && getComputedStyle(document.documentElement).getPropertyValue("--cssx-dev-stylesheet-hash").trim() === pushedHash) {
+          state.revision = revision;
+          state.stylesheetHash = pushedHash;
+          return;
+        }
         const removeGeneratedRules = (owner) => {
           let removed = false;
           const rules = owner.cssRules;
@@ -50,12 +62,10 @@ export function nextDevelopmentStylesheetHmr(
           stylesheetCount !== state.stylesheetCount ||
           generatedSheets.some((sheet) => sheet.ownerNode && !sheet.ownerNode.isConnected)
         );
+        const shouldScanSheets = generatedSheets === undefined || sheetsChanged;
+        const sheetsToClean = shouldScanSheets ? [...document.styleSheets] : generatedSheets;
         if (generatedSheets === undefined || sheetsChanged) {
           state.generatedSheets = [];
-          for (const sheet of document.styleSheets) {
-            if (sheet.ownerNode?.dataset?.cssxDevelopmentStylesheet !== undefined) continue;
-            try { if (removeGeneratedRules(sheet)) state.generatedSheets.push(sheet); } catch {}
-          }
           state.stylesheetCount = stylesheetCount;
         }
         if (state.style?.isConnected) {
@@ -76,21 +86,35 @@ export function nextDevelopmentStylesheetHmr(
           }
           state.style = style;
         }
+        for (const sheet of sheetsToClean) {
+          if (sheet.ownerNode?.dataset?.cssxDevelopmentStylesheet !== undefined) continue;
+          try {
+            if (removeGeneratedRules(sheet) && shouldScanSheets) state.generatedSheets.push(sheet);
+          } catch {}
+        }
         state.revision = revision;
+        state.stylesheetHash = pushedHash || null;
       } catch {}
       finally {
         state.refreshing = false;
         const pending = state.pendingRevision;
         state.pendingRevision = undefined;
-        if (pending !== undefined && pending.revision > state.revision) void state.refresh(pending.revision, pending.css);
+        if (pending !== undefined && pending.revision > state.revision) void state.refresh(pending.revision, pending.css, pending.stylesheetHash);
       }
     };
-    state.events = new EventSource(${baseUrl} + "/events");
+    state.events = new EventSource(${eventStreamUrl});
     state.events.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (Number.isSafeInteger(message.revision) && message.revision > state.revision) {
-          void state.refresh(message.revision, message.css);
+        if (Number.isSafeInteger(message.revision)) {
+          state.receivedRevision = message.revision;
+          const currentHash = getComputedStyle(document.documentElement).getPropertyValue("--cssx-dev-stylesheet-hash").trim();
+          if (message.stylesheetHash && currentHash === message.stylesheetHash) {
+            state.revision = Math.max(state.revision, message.revision);
+            state.stylesheetHash = message.stylesheetHash;
+          } else if (message.revision >= state.revision) {
+            void state.refresh(message.revision, message.css, message.stylesheetHash);
+          }
         }
       } catch {}
     };

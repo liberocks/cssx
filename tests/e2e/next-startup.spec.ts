@@ -25,10 +25,23 @@ test('Next starts the stylesheet automatically and applies edits without replaci
     await expect(probe).toBeVisible();
     await expect(probe).toHaveCSS('padding-top', '8px');
     await page.waitForFunction(() => {
-      const state = (window as Window & { __cssxDevelopmentStylesheetHmr?: { events?: EventSource } })
+      const state = (window as Window & {
+        __cssxDevelopmentStylesheetHmr?: {
+          events?: EventSource;
+          receivedRevision?: number;
+          revision?: number;
+          style?: HTMLStyleElement;
+        };
+      })
         .__cssxDevelopmentStylesheetHmr;
-      return state?.events?.readyState === EventSource.OPEN;
+      return (
+        state?.events?.readyState === EventSource.OPEN &&
+        state.revision !== undefined &&
+        state.receivedRevision === state.revision
+      );
     });
+    expect(await page.locator('style[data-cssx-development-stylesheet]').count()).toBe(0);
+    await expect(probe).toHaveCSS('padding-top', '8px');
     const initialLoads = await page.evaluate(() => Number(sessionStorage.getItem('cssx-next-document-loads')));
     await page.evaluate(() => {
       const input = document.createElement('input');
@@ -50,6 +63,11 @@ test('Next starts the stylesheet automatically and applies edits without replaci
     await expect
       .poll(() => probe.evaluate((node) => getComputedStyle(node).paddingTop), { timeout: 15_000 })
       .toBe('16px');
+    await page.waitForFunction(() => {
+      const state = (window as Window & { __cssxDevelopmentStylesheetHmr?: { style?: HTMLStyleElement } })
+        .__cssxDevelopmentStylesheetHmr;
+      return state?.style?.isConnected === true;
+    });
     await expect(probe).toHaveText('HMR style after Next.js HMR');
     await page.evaluate(
       () =>

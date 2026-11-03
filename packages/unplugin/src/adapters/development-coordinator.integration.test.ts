@@ -255,6 +255,7 @@ it('releases cached metadata when recovery watcher setup fails', async () => {
       startDevelopmentCoordinator(root, styleSheetFile, options, connection, undefined, true),
     ).rejects.toThrow('watcher setup failed');
     await vi.waitFor(() => expect(warning).toHaveBeenCalledWith(expect.stringContaining('watcher setup failed')));
+    await expect(readFile(styleSheetFile, 'utf8')).resolves.toMatch(/--cssx-dev-stylesheet-hash:[a-f\d]{16}/);
     expect(getCachedProjectScanSourceModules(root, options)).toBeUndefined();
   } finally {
     scanMocks.watchFailure = undefined;
