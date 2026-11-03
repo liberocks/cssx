@@ -26,7 +26,11 @@ export function nextDevelopmentStylesheetHmr(
     state.installed = true;
     state.refresh = async (revision, pushedCss, pushedHash) => {
       if (state.refreshing) {
-        if (!state.pendingRevision || state.pendingRevision.revision < revision) {
+        if (
+          !state.pendingRevision ||
+          state.pendingRevision.revision < revision ||
+          (pushedHash !== undefined && pushedHash !== state.pendingRevision.stylesheetHash)
+        ) {
           state.pendingRevision = { revision, css: pushedCss, stylesheetHash: pushedHash };
         }
         return;
@@ -39,7 +43,7 @@ export function nextDevelopmentStylesheetHmr(
           if (!response.ok) return;
           css = await response.text();
         }
-        if (revision < state.revision) return;
+        if (revision < state.revision && (pushedHash === undefined || pushedHash === state.stylesheetHash)) return;
         if (pushedHash && getComputedStyle(document.documentElement).getPropertyValue("--cssx-dev-stylesheet-hash").trim() === pushedHash) {
           state.revision = revision;
           state.stylesheetHash = pushedHash;
@@ -102,7 +106,13 @@ export function nextDevelopmentStylesheetHmr(
         state.refreshing = false;
         const pending = state.pendingRevision;
         state.pendingRevision = undefined;
-        if (pending !== undefined && pending.revision > state.revision) void state.refresh(pending.revision, pending.css, pending.stylesheetHash);
+        if (
+          pending !== undefined &&
+          (pending.revision > state.revision ||
+            (pending.stylesheetHash !== undefined && pending.stylesheetHash !== state.stylesheetHash))
+        ) {
+          void state.refresh(pending.revision, pending.css, pending.stylesheetHash);
+        }
       }
     };
     state.events = new EventSource(${eventStreamUrl});
@@ -113,9 +123,12 @@ export function nextDevelopmentStylesheetHmr(
           state.receivedRevision = message.revision;
           const currentHash = getComputedStyle(document.documentElement).getPropertyValue("--cssx-dev-stylesheet-hash").trim();
           if (message.stylesheetHash && currentHash === message.stylesheetHash) {
-            state.revision = Math.max(state.revision, message.revision);
+            state.revision = message.revision;
             state.stylesheetHash = message.stylesheetHash;
-          } else if (message.revision >= state.revision) {
+          } else if (
+            message.revision >= state.revision ||
+            (message.stylesheetHash !== undefined && message.stylesheetHash !== state.stylesheetHash)
+          ) {
             void state.refresh(message.revision, message.css, message.stylesheetHash);
           }
         }
