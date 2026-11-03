@@ -52,6 +52,8 @@ export interface FileState {
   readonly liveFallbackClasses: Set<string>;
   /** Ranges containing CSSX utility strings, used to identify CSS-only edits. */
   readonly cssRanges: { readonly start: number; readonly end: number }[];
+  /** Utilities accepted by sx() as plain class names because CSSX cannot compile them. */
+  readonly diagnostics: { readonly utility: string; readonly line: number; readonly column: number }[];
   /** Next stable source-module call-site identity used by development transforms. */
   stableClassNameOrdinal?: number;
 }

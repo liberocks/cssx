@@ -112,7 +112,7 @@ fallback for combinations that depend on runtime conditions.
 
 `sx` accepts static utility strings, nested arrays, and conditional strings. CSSX builds the static utilities. Dynamic calls only join strings at runtime.
 
-CSSX keeps raw strings as written. It does not check or merge the classes inside them.
+An unrecognized token in `sx()` is preserved as a class name and emits no CSS. Production builds warn with the source location so misspellings are visible. The VS Code extension also warns when a token is absent from its built-in catalog; custom theme tokens may still be valid. `create()` and `props()` composition remain strict for compiled styles. Raw strings passed through `props()` are preserved as written.
 
 ## Format CSSX utilities
 
