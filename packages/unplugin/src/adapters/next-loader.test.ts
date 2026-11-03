@@ -7,8 +7,11 @@ import { installFakeMdxCompiler } from '../../test-support/install-fake-mdx';
 import { canonicalPathSync } from '../core/canonical-path';
 import { developmentPluginOptions } from '../core/options';
 import { getCachedProjectScanSourceModules } from '../transforms/project-scan';
+import { startDevelopmentCoordinator } from './development-coordinator';
+import { nextDevelopmentHmrConnection } from './next-development-connection';
 import {
   publishNextDevelopmentStylesheet,
+  readNextDevelopmentStylesheetStatus,
   startNextDevelopmentServer,
   stopNextDevelopmentServer,
 } from './next-development-server';
@@ -17,6 +20,10 @@ import cssxNextLoader, { type CssxNextLoaderOptions } from './next-loader';
 const nextExampleRoot = resolve(import.meta.dirname, '../../../../examples/next');
 const importSource = '@cssxio/cssx';
 const fsMocks = vi.hoisted(() => ({ failRename: false, failUnlink: false }));
+const developmentRuntimeMocks = vi.hoisted(() => ({
+  ensure: undefined as (() => Promise<void>) | undefined,
+  readStatus: undefined as (() => Promise<unknown>) | undefined,
+}));
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
@@ -26,6 +33,21 @@ vi.mock('node:fs/promises', async (importOriginal) => {
       fsMocks.failRename ? Promise.reject(new Error('atomic replace failed')) : actual.rename(...args),
     unlink: (...args: Parameters<typeof actual.unlink>) =>
       fsMocks.failUnlink ? Promise.reject(new Error('temporary cleanup failed')) : actual.unlink(...args),
+  };
+});
+
+vi.mock('@cssxio/unplugin/internal/development-runtime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@cssxio/unplugin/internal/development-runtime')>();
+  return {
+    ...actual,
+    ensureNextDevelopmentStylesheet: (...args: Parameters<typeof actual.ensureNextDevelopmentStylesheet>) =>
+      developmentRuntimeMocks.ensure
+        ? developmentRuntimeMocks.ensure()
+        : actual.ensureNextDevelopmentStylesheet(...args),
+    readNextDevelopmentStylesheetStatus: (...args: Parameters<typeof actual.readNextDevelopmentStylesheetStatus>) =>
+      developmentRuntimeMocks.readStatus
+        ? (developmentRuntimeMocks.readStatus() as ReturnType<typeof actual.readNextDevelopmentStylesheetStatus>)
+        : actual.readNextDevelopmentStylesheetStatus(...args),
   };
 });
 
@@ -347,6 +369,102 @@ it('uses the ready coordinator stylesheet without scanning or watching project r
     if (connection) {
       stopNextDevelopmentServer(root);
     }
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('clears a failed stylesheet baseline so the root layout can retry after startup recovery', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-recovery-'));
+  const layoutFile = join(root, 'app', 'layout.tsx');
+  const pageFile = join(root, 'app', 'page.tsx');
+  const styleSheetFile = join(root, '.cssx', 'next.css');
+  const layoutSource = `import { sx } from '${importSource}'; export default function Layout({ children }) { return <html><body className={sx('p-4')}>{children}</body></html>; }`;
+  const connection = nextDevelopmentHmrConnection(root, styleSheetFile);
+  const cssxOptions = developmentPluginOptions({ sourceMap: false, preflight: false });
+  const settings: CssxNextLoaderOptions = {
+    projectRoot: root,
+    styleSheetFile,
+    importSource,
+    manifestPath: join(root, '.cssx', 'classnames.json'),
+    development: true,
+    developmentHmr: connection,
+    cssx: { sourceMap: false, preflight: false },
+  };
+  let stopCoordinator: (() => void) | undefined;
+
+  try {
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(join(root, 'package.json'), '{}');
+    await writeFile(layoutFile, layoutSource);
+    await writeFile(pageFile, `import { sx } from '${importSource}'; export const className = sx('not-a-utility');`);
+
+    await expect(runLoader(layoutFile, layoutSource, settings)).rejects.toThrow(
+      'CSSX Next.js stylesheet startup failed during initial source scan',
+    );
+
+    await writeFile(pageFile, `import { sx } from '${importSource}'; export const className = sx('p-4');`);
+    await vi.waitFor(async () => {
+      await expect(readNextDevelopmentStylesheetStatus(connection)).resolves.toMatchObject({ state: 'ready' });
+    });
+
+    const retriedLayout = await runLoader(layoutFile, layoutSource, settings);
+    expect(retriedLayout.code).toContain('/events?revision=');
+    stopCoordinator = await startDevelopmentCoordinator(root, styleSheetFile, cssxOptions, connection, undefined, true);
+  } finally {
+    stopCoordinator?.();
+    stopNextDevelopmentServer(root);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('keeps a replacement stylesheet baseline when an older concurrent request fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-baseline-race-'));
+  const layoutFile = join(root, 'app', 'layout.tsx');
+  const pageFile = join(root, 'app', 'page.tsx');
+  const styleSheetFile = join(root, '.cssx', 'next.css');
+  const layoutSource = `import { sx } from '${importSource}'; export default function Layout({ children }) { return <html><body className={sx('p-4')}>{children}</body></html>; }`;
+  const pageSource = `import { sx } from '${importSource}'; export const className = sx('p-4');`;
+  const settings: CssxNextLoaderOptions = {
+    projectRoot: root,
+    styleSheetFile,
+    importSource,
+    manifestPath: join(root, '.cssx', 'classnames.json'),
+    development: true,
+    developmentHmr: nextDevelopmentHmrConnection(root, styleSheetFile),
+    cssx: { sourceMap: false, preflight: false },
+  };
+  let rejectInitialBaseline: ((error: Error) => void) | undefined;
+  let ensureCalls = 0;
+
+  try {
+    await mkdir(join(root, 'app'), { recursive: true });
+    await writeFile(layoutFile, layoutSource);
+    await writeFile(pageFile, pageSource);
+    developmentRuntimeMocks.ensure = () => {
+      ensureCalls += 1;
+      if (ensureCalls === 1) {
+        return new Promise<void>((_resolve, reject) => {
+          rejectInitialBaseline = reject;
+        });
+      }
+      return Promise.resolve();
+    };
+    developmentRuntimeMocks.readStatus = async () => ({});
+
+    const initialPage = runLoader(pageFile, pageSource, settings);
+    await vi.waitFor(() => expect(rejectInitialBaseline).toBeTypeOf('function'));
+    const refreshedLayout = await runLoader(layoutFile, layoutSource, settings);
+    expect(refreshedLayout.code).toContain('EventSource');
+
+    rejectInitialBaseline?.(new Error('stale baseline request failed'));
+    await expect(initialPage).rejects.toThrow('stale baseline request failed');
+
+    const laterPage = await runLoader(pageFile, pageSource, settings);
+    expect(laterPage.code).toContain('EventSource');
+    expect(ensureCalls).toBe(2);
+  } finally {
+    developmentRuntimeMocks.ensure = undefined;
+    developmentRuntimeMocks.readStatus = undefined;
     await rm(root, { recursive: true, force: true });
   }
 });

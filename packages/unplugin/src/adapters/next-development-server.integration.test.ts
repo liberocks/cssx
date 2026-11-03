@@ -6,6 +6,7 @@ import { expect, it, vi } from 'vitest';
 import { nextDevelopmentStylesheetHmr } from './next-development-hmr';
 import {
   publishNextDevelopmentStylesheet,
+  readNextDevelopmentStylesheetStatus,
   startNextDevelopmentServer,
   stopNextDevelopmentServer,
   waitForNextDevelopmentServerBinding,
@@ -64,6 +65,10 @@ it('serves the latest sheet and pushes atomic file replacements over an event st
     await publishNextDevelopmentStylesheet(connection, identifiedCss);
     await expect(fetch(`${base}/ready`)).resolves.toMatchObject({ status: 200 });
     await expect((await fetch(`${base}/ready`)).json()).resolves.toMatchObject({ stylesheetHash });
+    await expect(readNextDevelopmentStylesheetStatus(connection)).resolves.toMatchObject({
+      state: 'ready',
+      stylesheetHash,
+    });
     const sameStylesheetEvents = await retryFetch(`${base}/events?revision=2&stylesheetHash=${stylesheetHash}`);
     const sameStylesheetReader = sameStylesheetEvents.body!.getReader();
     expect(JSON.parse(new TextDecoder().decode((await sameStylesheetReader.read()).value).slice(6))).toEqual({
@@ -104,11 +109,18 @@ it('serves the latest sheet and pushes atomic file replacements over an event st
     await expect(fetch(`${base}/generated.css.map`)).resolves.toMatchObject({ status: 404 });
 
     const generatedBridge = nextDevelopmentStylesheetHmr(connection, 'next.css', 7, '0123456789abcdef');
+    const bridgeWithoutRevision = nextDevelopmentStylesheetHmr(connection);
+    const bridgeWithoutHash = nextDevelopmentStylesheetHmr(connection, undefined, 7);
+    const bridgeWithInvalidRevision = nextDevelopmentStylesheetHmr(connection, undefined, -1);
     expect(generatedBridge).toContain('new EventSource');
     expect(generatedBridge).toContain(
       `http://127.0.0.1:${connection.port}/${connection.token}/events?revision=7&stylesheetHash=0123456789abcdef`,
     );
     expect(generatedBridge).toContain('--cssx-dev-stylesheet-hash');
+    expect(bridgeWithoutRevision).toContain(`/${connection.token}" + "/events`);
+    expect(bridgeWithoutHash).toContain(`/events?revision=7`);
+    expect(bridgeWithoutHash).not.toContain('stylesheetHash=');
+    expect(bridgeWithInvalidRevision).toContain('revision: -1');
     expect(generatedBridge).toContain('state.generatedSheets');
     expect(generatedBridge).toContain('ownerNode?.dataset?.cssxDevelopmentStylesheet');
     expect(generatedBridge).toContain('state.style.textContent = css');
