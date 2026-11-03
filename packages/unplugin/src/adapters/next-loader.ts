@@ -46,6 +46,7 @@ interface CssxLoaderContext {
   readonly rootContext?: string;
   async(): (error: Error | null, source?: string, map?: IncomingSourceMap) => void;
   getOptions(): CssxNextLoaderOptions;
+  emitWarning?(warning: Error): void;
   addDependency(fileName: string): void;
   addContextDependency(directory: string): void;
 }
@@ -111,6 +112,14 @@ async function runLoader(
   const transformed = settings.development
     ? await transform(getProjectScanClassNameAllocator(root, cssxOptions))
     : await withClassNameManifest(settings.manifestPath, transformOptions.className, transform);
+  const productionDiagnostics = settings.development ? [] : (transformed?.diagnostics ?? []);
+  for (const diagnostic of productionDiagnostics) {
+    context.emitWarning?.(
+      new Error(
+        `${absoluteId}:${diagnostic.line + 1}:${diagnostic.column + 1}: CSSX: sx() utility "${diagnostic.utility}" is not recognized and was preserved as a class name without CSS.`,
+      ),
+    );
+  }
   if (settings.development && !isRootLayout && !settings.developmentHmr) {
     const cachedModules = getCachedProjectScanSourceModules(root, cssxOptions);
     const updated = await updateProjectScanModule(root, absoluteId, cssxOptions, transformed, source);

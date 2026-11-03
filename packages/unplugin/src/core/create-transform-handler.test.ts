@@ -67,6 +67,35 @@ it('keeps production per-module CSS compilation enabled', async () => {
   );
 });
 
+it('warns during production builds when sx() preserves an unknown utility', async () => {
+  const warn = vi.fn();
+  const handler = createTransformHandler({
+    framework: 'rollup',
+    options: { mode: 'production' },
+    classNameAllocator: createClassNameAllocator(),
+    rollupDataById: new Map(),
+    esbuildDataById: new Map(),
+    cssFileName: 'cssx.css',
+    getEsbuildWorkingDirectory: () => '/project',
+    notifyViteStyles: vi.fn(),
+  });
+
+  const result = await handler.call(
+    { warn },
+    `import { sx } from '@cssxio/cssx'; export const className = sx('p-4 text-copy-body');`,
+    '/project/app.ts',
+  );
+
+  expect(result?.code).toContain('text-copy-body');
+  expect(warn).toHaveBeenCalledWith(
+    expect.objectContaining({
+      message: expect.stringContaining('text-copy-body'),
+      id: '/project/app.ts',
+      loc: { line: 1, column: expect.any(Number) },
+    }),
+  );
+});
+
 it('retains arbitrary CSS in module metadata', async () => {
   const handler = createTransformHandler({
     framework: 'webpack',

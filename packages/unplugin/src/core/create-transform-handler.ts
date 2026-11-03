@@ -25,6 +25,12 @@ export interface TransformContextLike {
   readonly skipViteStylesheetPush?: boolean;
   /** Avoids publishing a stylesheet during an eager Rollup-side transform. */
   readonly skipRollupStylesheetPush?: boolean;
+  /** Reports compiler diagnostics through the active bundler. */
+  warn?(warning: {
+    readonly message: string;
+    readonly id?: string;
+    readonly loc?: { readonly line: number; readonly column: number };
+  }): void;
 }
 
 /** Captured adapter state required to transform a source module. */
@@ -145,6 +151,15 @@ export function createTransformHandler(configuration: TransformHandlerOptions) {
             sourceMapFromContext(this, id),
             development ? { compileCss: false } : {},
           );
+    if (!development) {
+      for (const diagnostic of transformed?.diagnostics ?? []) {
+        this.warn?.({
+          message: `CSSX: sx() utility "${diagnostic.utility}" is not recognized and was preserved as a class name without CSS.`,
+          id,
+          loc: { line: diagnostic.line + 1, column: diagnostic.column },
+        });
+      }
+    }
     const data: ModuleCssxData = {
       id: moduleId(id),
       rules: transformed?.rules ?? [],

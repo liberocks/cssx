@@ -110,6 +110,65 @@ it('prepares a root layout stylesheet, dependencies, maps, themes, and diagnosti
   }
 });
 
+it('emits a production warning for an sx utility preserved without CSS', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-warning-'));
+  const source = `import { sx } from '${importSource}'; export const className = sx('text-copy-body');`;
+  const resourcePath = join(root, 'app.tsx');
+  try {
+    const result = await runLoader(resourcePath, source, {
+      projectRoot: root,
+      styleSheetFile: join(root, '.cssx', 'next.css'),
+      importSource,
+      manifestPath: join(root, '.cssx', 'classnames.json'),
+      development: false,
+      cssx: {},
+    });
+
+    expect(result.code).toContain('text-copy-body');
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining(`${resourcePath}:1:`),
+      }),
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it('writes the development stylesheet when an uncoordinated source module initializes the project scan', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-scan-'));
+  const sourceFile = join(root, 'src', 'component.tsx');
+  const styleSheetFile = join(root, '.cssx', 'next.css');
+  const source = `import { sx } from '${importSource}'; export const className = sx('p-4');`;
+  try {
+    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(sourceFile, source);
+    const result = await runLoader(sourceFile, source, {
+      projectRoot: root,
+      styleSheetFile,
+      importSource,
+      manifestPath: join(root, '.cssx', 'classnames.json'),
+      development: true,
+      cssx: { preflight: false },
+    });
+
+    expect(result.code).not.toContain("sx('p-4')");
+    const updatedSource = `import { sx } from '${importSource}'; export const className = sx('p-8');`;
+    await writeFile(sourceFile, updatedSource);
+    await runLoader(sourceFile, updatedSource, {
+      projectRoot: root,
+      styleSheetFile,
+      importSource,
+      manifestPath: join(root, '.cssx', 'classnames.json'),
+      development: true,
+      cssx: { preflight: false },
+    });
+    expect(await readFile(styleSheetFile, 'utf8')).toContain('padding:calc(0.25rem * 8)');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it('returns ignored generated files before transforming them', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-next-loader-ignored-'));
   const source = 'export const generated = true;';
@@ -396,7 +455,7 @@ it('clears a failed stylesheet baseline so the root layout can retry after start
     await mkdir(join(root, 'app'), { recursive: true });
     await writeFile(join(root, 'package.json'), '{}');
     await writeFile(layoutFile, layoutSource);
-    await writeFile(pageFile, `import { sx } from '${importSource}'; export const className = sx('not-a-utility');`);
+    await writeFile(pageFile, `import { sx } from '${importSource}'; export const className = sx('p-[');`);
 
     await expect(runLoader(layoutFile, layoutSource, settings)).rejects.toThrow(
       'CSSX Next.js stylesheet startup failed during initial source scan',
@@ -609,28 +668,34 @@ function runLoader(
 ) {
   const dependencies: string[] = [];
   const contextDependencies: string[] = [];
-  return new Promise<{ code: string; map?: unknown; dependencies: string[]; contextDependencies: string[] }>(
-    (resolvePromise, rejectPromise) => {
-      const context = {
-        resourcePath,
-        rootContext,
-        async: () => (error: Error | null, code?: string, map?: unknown) => {
-          if (error) {
-            rejectPromise(error);
-          } else {
-            resolvePromise({ code: code ?? '', map, dependencies, contextDependencies });
-          }
-        },
-        getOptions: () => {
-          if (!settings) {
-            throw 'options unavailable';
-          }
-          return settings;
-        },
-        addDependency: (path: string) => dependencies.push(path),
-        addContextDependency: (path: string) => contextDependencies.push(path),
-      };
-      cssxNextLoader.call(context as never, source, inputMap as never);
-    },
-  );
+  const warnings: Error[] = [];
+  return new Promise<{
+    code: string;
+    map?: unknown;
+    dependencies: string[];
+    contextDependencies: string[];
+    warnings: Error[];
+  }>((resolvePromise, rejectPromise) => {
+    const context = {
+      resourcePath,
+      rootContext,
+      async: () => (error: Error | null, code?: string, map?: unknown) => {
+        if (error) {
+          rejectPromise(error);
+        } else {
+          resolvePromise({ code: code ?? '', map, dependencies, contextDependencies, warnings });
+        }
+      },
+      getOptions: () => {
+        if (!settings) {
+          throw 'options unavailable';
+        }
+        return settings;
+      },
+      addDependency: (path: string) => dependencies.push(path),
+      addContextDependency: (path: string) => contextDependencies.push(path),
+      emitWarning: (warning: Error) => warnings.push(warning),
+    };
+    cssxNextLoader.call(context as never, source, inputMap as never);
+  });
 }

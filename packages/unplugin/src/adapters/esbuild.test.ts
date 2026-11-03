@@ -101,6 +101,28 @@ it('rejects allocator combinations whose naming options would be ignored', () =>
   ).toThrow('classNameAllocator owns naming');
 });
 
+it('returns production warnings for unknown sx utilities', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cssx-esbuild-warning-'));
+  const source = join(root, 'app.tsx');
+  let onLoad: ((args: { path: string }) => Promise<{ warnings?: readonly { text: string }[] } | undefined>) | undefined;
+  const build: any = {
+    initialOptions: { absWorkingDir: root, write: false },
+    onLoad(_options: unknown, callback: typeof onLoad) {
+      onLoad = callback;
+    },
+    onEnd() {},
+  };
+  try {
+    await writeFile(source, "import { sx } from '@cssxio/cssx'; export const className = sx('text-copy-body');");
+    cssxEsbuild({ mode: 'production' }).setup!(build);
+    const result = await onLoad?.({ path: source });
+
+    expect(result?.warnings).toEqual([expect.objectContaining({ text: expect.stringContaining('text-copy-body') })]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it('handles development transforms, ignored roots, transport failure, and disposal', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cssx-esbuild-adapter-dev-'));
   const shared = join(root, 'shared');
