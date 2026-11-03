@@ -461,7 +461,7 @@ importers:
         specifier: ^7.29.7
         version: 7.29.7(supports-color@10.2.2)
       '@cssxio/babel-plugin':
-        specifier: ^0.11.5
+        specifier: ^0.11.6
         version: link:../babel-plugin
       '@cssxio/compiler':
         specifier: ^0.16.0
