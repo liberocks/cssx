@@ -25,15 +25,16 @@ test('Next starts the stylesheet automatically and applies edits without replaci
     await expect(probe).toBeVisible();
     await expect(probe).toHaveCSS('padding-top', '8px');
     await page.waitForFunction(() => {
-      const state = (window as Window & {
-        __cssxDevelopmentStylesheetHmr?: {
-          events?: EventSource;
-          receivedRevision?: number;
-          revision?: number;
-          style?: HTMLStyleElement;
-        };
-      })
-        .__cssxDevelopmentStylesheetHmr;
+      const state = (
+        window as Window & {
+          __cssxDevelopmentStylesheetHmr?: {
+            events?: EventSource;
+            receivedRevision?: number;
+            revision?: number;
+            style?: HTMLStyleElement;
+          };
+        }
+      ).__cssxDevelopmentStylesheetHmr;
       return (
         state?.events?.readyState === EventSource.OPEN &&
         state.revision !== undefined &&

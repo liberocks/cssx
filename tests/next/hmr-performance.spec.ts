@@ -17,15 +17,16 @@ test('shows 30 warm style edits with p95 within 100 ms and preserves browser sta
   await page.goto('/');
   await expect(page.locator(selector)).toBeVisible();
   await page.waitForFunction(() => {
-    const state = (window as Window & {
-      __cssxDevelopmentStylesheetHmr?: {
-        events?: EventSource;
-        receivedRevision?: number;
-        revision?: number;
-        style?: HTMLStyleElement;
-      };
-    })
-      .__cssxDevelopmentStylesheetHmr;
+    const state = (
+      window as Window & {
+        __cssxDevelopmentStylesheetHmr?: {
+          events?: EventSource;
+          receivedRevision?: number;
+          revision?: number;
+          style?: HTMLStyleElement;
+        };
+      }
+    ).__cssxDevelopmentStylesheetHmr;
     return (
       state?.events?.readyState === EventSource.OPEN &&
       state.revision !== undefined &&
