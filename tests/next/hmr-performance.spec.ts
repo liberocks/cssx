@@ -65,8 +65,7 @@ test('shows 30 warm style edits with p95 within 100 ms and preserves browser sta
       source = source.replace(`sx('p-2 ${from}')`, `sx('p-2 ${to}')`);
       await page.evaluate(
         ({ targetSelector, utility }) => {
-          const element = document.querySelector(targetSelector);
-          if (!element) throw new Error(`Missing HMR target: ${targetSelector}`);
+          if (!document.querySelector(targetSelector)) throw new Error(`Missing HMR target: ${targetSelector}`);
           const color = document.createElement('span');
           color.style.backgroundColor = `var(--color-${utility.slice(3)})`;
           document.body.append(color);
@@ -75,19 +74,35 @@ test('shows 30 warm style edits with p95 within 100 ms and preserves browser sta
           if (expectedBackground === 'rgba(0, 0, 0, 0)') {
             throw new Error(`Missing theme color for ${utility}`);
           }
-          const state = window as Window & { __cssxHmrElapsed?: number; __cssxHmrStart?: number };
+          const state = window as Window & {
+            __cssxHmrElapsed?: number;
+            __cssxHmrStart?: number;
+          };
           state.__cssxHmrElapsed = undefined;
           state.__cssxHmrStart = performance.now();
-          const check = () => {
-            if (getComputedStyle(element).backgroundColor !== expectedBackground) return;
-            observer.disconnect();
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          if (!context) throw new Error('Canvas 2D context is unavailable.');
+          const normalizeColor = (value: string) => {
+            context.fillStyle = value;
+            context.fillRect(0, 0, 1, 1);
+            return Array.from(context.getImageData(0, 0, 1, 1).data).join(',');
+          };
+          const normalizedExpectedBackground = normalizeColor(expectedBackground);
+          const checkOnFrame = () => {
+            const currentElement = document.querySelector(targetSelector);
+            if (
+              !currentElement ||
+              normalizeColor(getComputedStyle(currentElement).backgroundColor) !== normalizedExpectedBackground
+            ) {
+              requestAnimationFrame(checkOnFrame);
+              return;
+            }
             requestAnimationFrame(() => {
               state.__cssxHmrElapsed = performance.now() - state.__cssxHmrStart!;
             });
           };
-          const observer = new MutationObserver(check);
-          observer.observe(document.head, { childList: true, subtree: true });
-          check();
+          requestAnimationFrame(checkOnFrame);
         },
         { targetSelector: selector, utility: to.split(' ').find((value) => value.startsWith('bg-'))! },
       );
