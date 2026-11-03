@@ -11,9 +11,12 @@ export function nextDevelopmentStylesheetHmr(
 ): string {
   const baseUrl = JSON.stringify(`http://127.0.0.1:${connection.port}/${connection.token}`);
   const stylesheetSuffix = JSON.stringify(stylesheetName ? `/${basename(stylesheetName)}` : '');
-  const eventStreamUrl = JSON.stringify(
-    `http://127.0.0.1:${connection.port}/${connection.token}/events${initialRevision === undefined ? '' : `?revision=${initialRevision}${initialStylesheetHash === undefined ? '' : `&stylesheetHash=${encodeURIComponent(initialStylesheetHash)}`}`}`,
-  );
+  const eventStreamUrl =
+    initialRevision === undefined
+      ? `${baseUrl} + "/events"`
+      : JSON.stringify(
+          `http://127.0.0.1:${connection.port}/${connection.token}/events?revision=${initialRevision}${initialStylesheetHash === undefined ? '' : `&stylesheetHash=${encodeURIComponent(initialStylesheetHash)}`}`,
+        );
   const revision = Number.isSafeInteger(initialRevision) && initialRevision! >= 0 ? initialRevision : -1;
   const stylesheetHash = JSON.stringify(initialStylesheetHash ?? null);
   return `if (typeof document !== "undefined") {
