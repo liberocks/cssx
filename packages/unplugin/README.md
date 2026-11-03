@@ -10,7 +10,7 @@ import cssxVite from '@cssxio/unplugin/vite';
 import cssxWebpack from '@cssxio/unplugin/webpack';
 ```
 
-For Next.js, use the supported integration. It prepares one complete stylesheet, coordinates compiler workers, handles App Router inclusion and development updates, and sends CSS through Next's normal stylesheet pipeline.
+For Next.js, use the supported integration. It prepares one complete stylesheet, coordinates compiler workers, handles App Router inclusion and development updates, and sends CSS through Next's normal stylesheet pipeline. The browser bridge checks the stylesheet identity already included in the page, avoiding a redundant initial replacement even when transformed JavaScript is stale; later CSS-only edits are applied atomically without waiting for JavaScript HMR.
 
 The integration requires `app/layout.js`, `app/layout.jsx`, `app/layout.ts`, `app/layout.tsx`, or the equivalent under `src/app`. It reports a configuration error for projects without an App Router root layout.
 

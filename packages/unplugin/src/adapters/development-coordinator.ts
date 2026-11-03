@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
@@ -43,7 +43,13 @@ export function startDevelopmentCoordinator(
       try {
         if (latestCss === undefined) {
           const completeModules = await scanProjectCssxSourceModules(projectRoot, options);
-          const css = await writeNextDevelopmentStylesheet(projectRoot, styleSheetFile, options, completeModules);
+          const css = await writeNextDevelopmentStylesheet(
+            projectRoot,
+            styleSheetFile,
+            options,
+            completeModules,
+            recoverStartupFailure,
+          );
           await publishNextDevelopmentStylesheet(connection, css);
           latestCss = css;
           return;
@@ -57,7 +63,7 @@ export function startDevelopmentCoordinator(
           options.darkMode,
           options.preflight,
         );
-        const css = cssWithSourceMapComment(stylesheet, 'generated.css');
+        const css = developmentStylesheetCss(stylesheet, recoverStartupFailure);
         if (css !== latestCss) {
           await publishNextDevelopmentStylesheet(connection, css);
           latestCss = css;
@@ -78,7 +84,13 @@ export function startDevelopmentCoordinator(
       }
       const modules = await scanProjectCssxSourceModules(projectRoot, options);
       startupPhase = 'initial stylesheet compilation';
-      const css = await writeNextDevelopmentStylesheet(projectRoot, styleSheetFile, options, modules);
+      const css = await writeNextDevelopmentStylesheet(
+        projectRoot,
+        styleSheetFile,
+        options,
+        modules,
+        recoverStartupFailure,
+      );
       await publishNextDevelopmentStylesheet(connection, css);
       latestCss = css;
     } catch (error) {
@@ -130,6 +142,7 @@ export async function writeNextDevelopmentStylesheet(
   styleSheetFile: string,
   options: CssxPluginOptions,
   modules: readonly CssxSourceModule[],
+  includeStylesheetHash = false,
 ): Promise<string> {
   const theme = await loadTheme(options, root);
   const stylesheet = await compileCssxStylesheet(
@@ -141,12 +154,27 @@ export async function writeNextDevelopmentStylesheet(
     options.preflight,
   );
   await mkdir(dirname(styleSheetFile), { recursive: true });
-  const css = cssWithSourceMapComment(stylesheet, 'generated.css');
+  const css = developmentStylesheetCss(stylesheet, includeStylesheetHash);
   await writeAtomicallyIfChanged(styleSheetFile, css);
   if (stylesheet.map) {
     await writeAtomicallyIfChanged(`${styleSheetFile}.map`, cssSourceMap(stylesheet.map, 'generated.css'));
   }
   return css;
+}
+
+/** Adds a stable marker to Next development output so the browser can detect already loaded CSS. */
+function developmentStylesheetCss(
+  stylesheet: Awaited<ReturnType<typeof compileCssxStylesheet>>,
+  includeStylesheetHash: boolean,
+): string {
+  if (!includeStylesheetHash) {
+    return cssWithSourceMapComment(stylesheet, 'generated.css');
+  }
+  const hash = createHash('sha256').update(stylesheet.css).digest('hex').slice(0, 16);
+  return cssWithSourceMapComment(
+    { ...stylesheet, css: `${stylesheet.css}\n:root{--cssx-dev-stylesheet-hash:${hash};}` },
+    'generated.css',
+  );
 }
 
 /** Atomically replaces one generated file only when its contents change. */

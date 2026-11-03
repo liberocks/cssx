@@ -40,7 +40,7 @@ function cssxTokenAt(document, position, editor = loadEditorApi()) {
     if (cursor < segment.start || cursor > segment.end) {
       continue;
     }
-    if (!isCssxContext(segment, configured, aliases)) {
+    if (!isCssxContext(segment, configured, aliases.all)) {
       continue;
     }
     const decoded = decodeSegment(source, segment);
@@ -80,7 +80,7 @@ function cssxTokens(document, editor = loadEditorApi()) {
   const tokens = [];
 
   for (const segment of stringSegments(source)) {
-    if (!isCssxContext(segment, configured, aliases)) {
+    if (!isCssxContext(segment, configured, aliases.all)) {
       continue;
     }
     const decoded = decodeSegment(source, segment);
@@ -96,10 +96,24 @@ function cssxTokens(document, editor = loadEditorApi()) {
         logicalStart: range.start,
         logicalEnd: range.end,
         sourceOffsets: decoded.sourceOffsets,
+        isSxCall: isSxContext(segment, configured, aliases.sx),
       });
     }
   }
   return tokens;
+}
+
+/** Determines whether a string belongs to an sx() call rather than a composed style map. */
+function isSxContext(segment, configured, sxAliases) {
+  if (segment.attributeContext || !segment.contextCall) {
+    return false;
+  }
+  return (
+    segment.contextCall === 'sx' ||
+    segment.contextCall === 'cssx.sx' ||
+    configured.includes(segment.contextCall) ||
+    sxAliases.has(segment.contextCall)
+  );
 }
 
 /** Determines whether a string belongs to a CSSX call or class attribute. */
@@ -118,6 +132,7 @@ function isCssxContext(segment, configured, aliases) {
 /** Collects local aliases imported from the CSSX package. */
 function importedFunctions(source) {
   const aliases = new Set();
+  const sxAliases = new Set();
   const imports = /\bimport\s+([\s\S]*?)\s+from\s*['"]@cssxio\/cssx['"]/g;
   for (const match of source.matchAll(imports)) {
     const clause = match[1];
@@ -126,10 +141,12 @@ function importedFunctions(source) {
     if (namespace) {
       aliases.add(`${namespace}.create`);
       aliases.add(`${namespace}.sx`);
+      sxAliases.add(`${namespace}.sx`);
     }
     if (defaultImport) {
       aliases.add(`${defaultImport}.create`);
       aliases.add(`${defaultImport}.sx`);
+      sxAliases.add(`${defaultImport}.sx`);
     }
     const named = /\{([^}]*)\}/.exec(clause)?.[1];
     if (named) {
@@ -139,11 +156,14 @@ function importedFunctions(source) {
         const local = parts[1] ?? imported;
         if (imported === 'sx' || imported === 'create') {
           aliases.add(local);
+          if (imported === 'sx') {
+            sxAliases.add(local);
+          }
         }
       }
     }
   }
-  return aliases;
+  return { all: aliases, sx: sxAliases };
 }
 
 /** Lexes static string segments while skipping comments and interpolation code. */

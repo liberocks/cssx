@@ -13,6 +13,7 @@ const modules = [
   ['is-cssx-string', 'is-cssx-string'],
   ['provide-color', 'provide-color'],
   ['provide-completion-items', 'provide-completion-items'],
+  ['provide-diagnostics', 'provide-diagnostics'],
 ];
 
 for (const [moduleName, testName] of modules) {

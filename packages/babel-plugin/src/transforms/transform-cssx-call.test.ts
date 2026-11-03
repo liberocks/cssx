@@ -37,6 +37,7 @@ function transformCalls(source: string, options: CssxPluginOptions = {}) {
                 liveComposites: new Set(),
                 liveFallbackClasses: new Set(),
                 cssRanges: [],
+                diagnostics: [],
               };
               foldedProps = [];
             },

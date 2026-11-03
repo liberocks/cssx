@@ -75,6 +75,7 @@ export function finalizePluginFile({
     ),
     composites: Object.fromEntries([...state.composites].filter(([className]) => state.liveComposites.has(className))),
     atomicClasses: [...state.liveFallbackClasses].sort(),
+    diagnostics: state.diagnostics,
     cssOnlySignature: cssOnlySignature(babelState.file.code, state.cssRanges),
   };
 }

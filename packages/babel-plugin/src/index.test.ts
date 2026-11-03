@@ -592,7 +592,12 @@ describe('CSSX Babel plugin', () => {
     expect(() =>
       transform(`import { sx } from '@cssxio/cssx'; sx('p-4');`, { classNameAllocator: throwingAllocator }),
     ).toThrow('Unable to compile CSSX sx() utilities.');
-    expect(() => transform(`import { sx } from '@cssxio/cssx'; sx('nope-value');`)).toThrow('cannot classify utility');
+    const unknownSx = transform(`import { sx } from '@cssxio/cssx'; sx('nope-value');`);
+    expect(unknownSx?.code).toContain('nope-value');
+    expect(
+      (unknownSx?.metadata as unknown as { readonly cssx: { readonly diagnostics: readonly unknown[] } }).cssx
+        .diagnostics,
+    ).toHaveLength(1);
 
     for (const source of [
       `import { create } from '@cssxio/cssx'; create();`,

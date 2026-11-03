@@ -27,6 +27,20 @@ it('returns transformed modules without stylesheet rules when no utilities are c
   expect(result.rules).toEqual([]);
 });
 
+it('preserves unknown sx utilities and returns production build diagnostics', async () => {
+  const result = await transformBabelCssxModule(
+    `import { sx } from '@cssxio/cssx'; export const className = sx('p-4 text-copy-body');`,
+    '/project/styles.ts',
+    {},
+  );
+
+  expect(result.code).toContain('text-copy-body');
+  expect(result.diagnostics).toEqual([{ utility: 'text-copy-body', line: 0, column: expect.any(Number) }]);
+  expect(serializeCss(result.rules)).toContain('padding:calc(0.25rem * 4)');
+  expect(result.candidates).toHaveProperty('p-4');
+  expect(result.candidates).not.toHaveProperty('text-copy-body');
+});
+
 it('collects development metadata without compiling per-module CSS and keeps style aliases stable', async () => {
   const options = {
     stableClassNames: true,

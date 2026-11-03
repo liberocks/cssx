@@ -286,6 +286,18 @@ export default function cssxEsbuild(options: CssxPluginOptions = {}): Plugin {
         return {
           contents,
           loader: loaderFor(path),
+          ...(!development && transformed.diagnostics?.length
+            ? {
+                warnings: transformed.diagnostics.map((diagnostic) => ({
+                  text: `CSSX: sx() utility "${diagnostic.utility}" is not recognized and was preserved as a class name without CSS.`,
+                  location: {
+                    file: path,
+                    line: diagnostic.line + 1,
+                    column: diagnostic.column,
+                  },
+                })),
+              }
+            : {}),
           ...(options.themeFile ? { watchFiles: [resolve(workingDirectory, options.themeFile)] } : {}),
         };
       });

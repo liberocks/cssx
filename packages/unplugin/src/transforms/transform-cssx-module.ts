@@ -21,6 +21,8 @@ export interface TransformResult {
   readonly origins: Readonly<Record<string, CssxCandidateOrigin>>;
   /** Source with CSSX utility literals removed, used to identify CSS-only edits. */
   readonly cssOnlySignature: string;
+  /** Utilities in sx() strings that were preserved as class names without emitted CSS. */
+  readonly diagnostics?: readonly { readonly utility: string; readonly line: number; readonly column: number }[];
   /** Complete CSS for a module handled by the restricted arbitrary-property compiler. */
   readonly precompiledCss?: string;
   /** Source map that continues a map supplied by an earlier transform. */

@@ -60,6 +60,18 @@ it('recognizes named and namespace import aliases', () => {
   }
 });
 
+it('marks only sx() strings as diagnostic targets', () => {
+  const text = [
+    "import { create as styles, sx as utility } from '@cssxio/cssx';",
+    "styles({ root: 'external-class' });",
+    "utility('external-class');",
+    '<div className={"external-class"} />',
+  ].join('\n');
+  const tokens = cssxTokens(createDocument(text), createEditor());
+
+  expect(tokens.map(({ isSxCall }: { isSxCall: boolean }) => isSxCall)).toEqual([false, true, false]);
+});
+
 it('recognizes static template portions and excludes interpolation expressions', () => {
   const text = "import { sx as utility } from '@cssxio/cssx';\nutility(`text-sm ${value} text-lg`);";
   const document = createDocument(text);

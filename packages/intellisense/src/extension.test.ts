@@ -10,6 +10,7 @@ function createEditor(options: { suggestions?: boolean; colorDecorators?: boolea
     provideDocumentColors: (...args: any[]) => any;
     provideColorPresentations: (...args: any[]) => any;
   }[] = [];
+  const diagnosticCollections: { set: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }[] = [];
   class Range {
     constructor(
       readonly start: unknown,
@@ -69,6 +70,7 @@ function createEditor(options: { suggestions?: boolean; colorDecorators?: boolea
     completionProviders,
     hoverProviders,
     colorProviders,
+    diagnosticCollections,
     languages: {
       registerCompletionItemProvider: vi.fn((_, provider) => {
         completionProviders.push(provider);
@@ -81,6 +83,11 @@ function createEditor(options: { suggestions?: boolean; colorDecorators?: boolea
       registerColorProvider: vi.fn((_, provider) => {
         colorProviders.push(provider);
         return { dispose() {} };
+      }),
+      createDiagnosticCollection: vi.fn(() => {
+        const collection = { set: vi.fn(), delete: vi.fn(), dispose() {} };
+        diagnosticCollections.push(collection);
+        return collection;
       }),
     },
     workspace: {
@@ -135,13 +142,13 @@ describe('IntelliSense extension', () => {
     expect(loadEditorApi((name: string) => (name === 'vscode' ? editor : undefined))).toBe(editor);
   });
 
-  it('registers completion, hover, and color providers', () => {
+  it('registers completion, hover, color, and diagnostic providers', () => {
     const editor = createEditor();
     const subscriptions: unknown[] = [];
 
     activate({ subscriptions }, editor);
 
-    expect(subscriptions).toHaveLength(3);
+    expect(subscriptions).toHaveLength(4);
     expect(editor.languages.registerCompletionItemProvider).toHaveBeenCalledWith(
       expect.arrayContaining(['typescriptreact', 'astro']),
       expect.objectContaining({ provideCompletionItems: expect.any(Function) }),
@@ -158,6 +165,8 @@ describe('IntelliSense extension', () => {
       expect.arrayContaining(['typescriptreact', 'astro']),
       expect.objectContaining({ provideDocumentColors: expect.any(Function) }),
     );
+    expect(editor.languages.createDiagnosticCollection).toHaveBeenCalledWith('cssx');
+    expect(subscriptions).toContain(editor.diagnosticCollections[0]);
   });
 
   it('completes configured functions and preserves their variant prefixes', () => {

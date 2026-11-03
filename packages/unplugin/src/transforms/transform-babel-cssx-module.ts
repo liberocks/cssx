@@ -22,6 +22,8 @@ interface CssxMetadata {
   readonly atomicClasses: readonly string[];
   /** Source with CSSX utility literals removed. */
   readonly cssOnlySignature: string;
+  /** Utilities in sx() strings preserved without emitted CSS. */
+  readonly diagnostics?: readonly { readonly utility: string; readonly line: number; readonly column: number }[];
 }
 
 /**
@@ -70,7 +72,7 @@ export async function transformBabelCssxModule(
     ...(inputSourceMap ? { inputSourceMap } : {}),
   }))!;
   const metadata = transformed.metadata as unknown as { readonly cssx: CssxMetadata };
-  const { candidates, origins, composites, atomicClasses, cssOnlySignature } = metadata.cssx;
+  const { candidates, origins, composites, atomicClasses, cssOnlySignature, diagnostics } = metadata.cssx;
   const candidateNames = Object.keys(candidates);
   const utilityCss =
     transformOptions.compileCss === false || candidateNames.length === 0
@@ -94,6 +96,7 @@ export async function transformBabelCssxModule(
     atomicClasses,
     origins,
     cssOnlySignature,
+    diagnostics,
     map: transformed.map!,
   };
 }

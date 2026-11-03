@@ -34,6 +34,7 @@ interface DevelopmentServerState {
   startupPhase: string;
   startupError?: string;
   latestCss?: string;
+  stylesheetHash?: string;
 }
 
 /** Current remote-visible status of the initial stylesheet startup. */
@@ -43,6 +44,8 @@ export interface NextDevelopmentStylesheetStatus {
   readonly stylesheetFile: string;
   readonly state: 'starting' | 'ready' | 'failed';
   readonly phase: string;
+  readonly revision?: number;
+  readonly stylesheetHash?: string;
   readonly error?: string;
 }
 
@@ -90,7 +93,8 @@ export function startNextDevelopmentServer(root: string, styleSheetFile: string)
   };
   const server = createServer((request, response) => {
     /* v8 ignore next -- Node's HTTP parser always supplies a URL for parsed requests. */
-    const pathname = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
+    const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
+    const pathname = requestUrl.pathname;
     const basePath = `/${connection.token}`;
     if (request.method === 'OPTIONS') {
       response.writeHead(204, corsHeaders());
@@ -154,7 +158,17 @@ export function startNextDevelopmentServer(root: string, styleSheetFile: string)
         Connection: 'keep-alive',
       });
       clients.add(response);
-      writeLatestEvent(state, response);
+      const revisionParameter = requestUrl.searchParams.get('revision');
+      const requestedRevision = revisionParameter === null ? undefined : Number(revisionParameter);
+      const requestedStylesheetHash = requestUrl.searchParams.get('stylesheetHash') ?? undefined;
+      writeLatestEvent(
+        state,
+        response,
+        requestedRevision !== undefined && Number.isSafeInteger(requestedRevision) && requestedRevision >= 0
+          ? requestedRevision
+          : undefined,
+        requestedStylesheetHash,
+      );
       request.on('close', () => {
         clients.delete(response);
         state.blockedClients.delete(response);
@@ -407,7 +421,8 @@ function publishStylesheet(state: DevelopmentServerState, css: string): void {
   state.startupPhase = 'ready';
   state.startupError = undefined;
   state.latestCss = css;
-  const event = `data: ${JSON.stringify({ revision: state.revision, css })}\n\n`;
+  state.stylesheetHash = stylesheetHashFromCss(css);
+  const event = `data: ${JSON.stringify({ revision: state.revision, stylesheetHash: state.stylesheetHash, css })}\n\n`;
   for (const client of state.clients) {
     writeNextDevelopmentEvent(state, client, event);
   }
@@ -421,6 +436,8 @@ function statusForState(state: DevelopmentServerState): NextDevelopmentStyleshee
     stylesheetFile: state.stylesheetFile,
     state: state.ready ? 'ready' : state.startupError ? 'failed' : 'starting',
     phase: state.startupPhase,
+    revision: state.revision,
+    ...(state.stylesheetHash ? { stylesheetHash: state.stylesheetHash } : {}),
     ...(state.startupError ? { error: state.startupError } : {}),
   };
 }
@@ -500,17 +517,29 @@ function isStylesheetStatus(value: unknown): value is NextDevelopmentStylesheetS
     typeof status.stylesheetFile === 'string' &&
     (status.state === 'starting' || status.state === 'ready' || status.state === 'failed') &&
     typeof status.phase === 'string' &&
+    (status.revision === undefined || (Number.isSafeInteger(status.revision) && status.revision >= 0)) &&
+    (status.stylesheetHash === undefined || typeof status.stylesheetHash === 'string') &&
     (status.error === undefined || typeof status.error === 'string')
   );
 }
 
 /** Writes the current revision to a newly connected or resumed client. */
-function writeLatestEvent(state: DevelopmentServerState, client: import('node:http').ServerResponse): void {
-  writeNextDevelopmentEvent(
-    state,
-    client,
-    `data: ${JSON.stringify({ revision: state.revision, css: state.latestCss })}\n\n`,
-  );
+function writeLatestEvent(
+  state: DevelopmentServerState,
+  client: import('node:http').ServerResponse,
+  requestedRevision?: number,
+  requestedStylesheetHash?: string,
+): void {
+  const event =
+    requestedRevision === state.revision && requestedStylesheetHash === state.stylesheetHash
+      ? `data: ${JSON.stringify({ revision: state.revision, stylesheetHash: state.stylesheetHash })}\n\n`
+      : `data: ${JSON.stringify({ revision: state.revision, stylesheetHash: state.stylesheetHash, css: state.latestCss })}\n\n`;
+  writeNextDevelopmentEvent(state, client, event);
+}
+
+/** Reads the marker emitted only in coordinated Next development stylesheets. */
+function stylesheetHashFromCss(css: string): string | undefined {
+  return /--cssx-dev-stylesheet-hash:([a-f\d]{16})\b/.exec(css)?.[1];
 }
 
 /** Keeps at most one newest event pending while a browser's response stream is backpressured. */

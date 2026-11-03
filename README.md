@@ -112,7 +112,7 @@ fallback for combinations that depend on runtime conditions.
 
 `sx` accepts static utility strings, nested arrays, and conditional strings. CSSX builds the static utilities. Dynamic calls only join strings at runtime.
 
-CSSX keeps raw strings as written. It does not check or merge the classes inside them.
+An unrecognized token in `sx()` is preserved as a class name and emits no CSS. Production builds warn with the source location so misspellings are visible. The VS Code extension also warns when a token is absent from its built-in catalog; custom theme tokens may still be valid. `create()` and `props()` composition remain strict for compiled styles. Raw strings passed through `props()` are preserved as written.
 
 ## Format CSSX utilities
 
@@ -186,7 +186,7 @@ export default {
 
 ### Development hot reload
 
-In development, CSSX keeps selectors stable, skips production class-name compression and fragment planning, and pushes CSS-only updates without reloading the page or losing UI state. Vite, Next.js, Webpack, Rspack, Rollup, and esbuild are supported; adapters infer development mode where possible, otherwise set it explicitly (for esbuild, `cssxEsbuild({ mode: 'development' })`).
+In development, CSSX keeps selectors stable, skips production class-name compression and fragment planning, and pushes CSS-only updates without reloading the page or losing UI state. Next.js checks the stylesheet identity already rendered in the page, so it avoids replacing styles already loaded, including when transformed JavaScript is stale. Vite, Next.js, Webpack, Rspack, Rollup, and esbuild are supported; adapters infer development mode where possible, otherwise set it explicitly (for esbuild, `cssxEsbuild({ mode: 'development' })`).
 
 Warm edits to existing static styles target p95 ≤100 ms from save to computed style after the next frame; occasional outliers are acceptable. Check browser save-to-visible timing with `pnpm test:hmr`; `pnpm benchmark:dev-hmr` measures cached Node-side edits only. Startup, new call sites, JavaScript, theme, and composition changes are outside this target. Production omits the development transport and watchers. Next.js workers verify a shared loopback owner so one process performs the initial scan and watches the app; a loader can take ownership if that process exits. Startup failures report their phase and original error, keep recovery watching active, and identify the project root and port when another service occupies the endpoint.
 

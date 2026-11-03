@@ -1,4 +1,4 @@
-import { compileStyleRecords } from '@cssxio/compiler';
+import { compileStyleRecords, parseTheme, splitCandidateList, validateUtilityCandidate } from '@cssxio/compiler';
 import type { ReusabilityBudget } from '@cssxio/compiler';
 
 import { atomicClassesForStyle } from '../classes/atomic-classes-for-style';
@@ -46,19 +46,49 @@ export function compileSxString(
   if (!source.trim()) {
     return '';
   }
+  const compilerOptions = {
+    theme: context.theme,
+    classNameAllocator: context.state.classNameAllocator,
+    reusabilityBudget: context.reusabilityBudget,
+  };
+  let candidates = source;
+  let unknown: readonly string[] = [];
   let result;
   try {
-    result = compileStyleRecords(
-      { inline: source },
-      {
-        theme: context.theme,
-        classNameAllocator: context.state.classNameAllocator,
-        reusabilityBudget: context.reusabilityBudget,
-      },
-    );
+    result = compileStyleRecords({ inline: source }, compilerOptions);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to compile CSSX sx() utilities.';
-    throw new Error(message);
+    if (!isUnknownUtilityError(error)) {
+      const message = error instanceof Error ? error.message : 'Unable to compile CSSX sx() utilities.';
+      throw new Error(message);
+    }
+    const tokens = splitCandidateList(source);
+    const recognized: string[] = [];
+    const unexpected: string[] = [];
+    const theme = parseTheme(context.theme);
+    for (const token of tokens) {
+      try {
+        validateUtilityCandidate(token, theme);
+        recognized.push(token);
+      } catch {
+        unexpected.push(token);
+      }
+    }
+    if (unexpected.length === 0) {
+      throw new Error(error.message);
+    }
+    candidates = recognized.join(' ');
+    unknown = unexpected;
+    result = recognized.length > 0 ? compileStyleRecords({ inline: candidates }, compilerOptions) : undefined;
+    for (const utility of unknown) {
+      context.state.diagnostics.push({
+        utility,
+        line: location ? location.line - 1 : 0,
+        column: location ? location.column + 1 : 0,
+      });
+    }
+  }
+  if (!result) {
+    return unknown.join(' ');
   }
   const compositeClassName = context.stableClassNames
     ? context.stableClassNameIdentity
@@ -70,8 +100,8 @@ export function compileSxString(
       : stableCompositeName(context.fileName, location, 'sx')
     : result.classNames.inline!;
   const className = context.stableClassNames
-    ? [compositeClassName, ...structuralClassesForStyle(result.styles.inline!)].filter(Boolean).join(' ')
-    : compositeClassName;
+    ? [compositeClassName, ...structuralClassesForStyle(result.styles.inline!), ...unknown].filter(Boolean).join(' ')
+    : [compositeClassName, ...unknown].filter(Boolean).join(' ');
   for (const [candidate, candidateClassName] of Object.entries(result.classes)) {
     context.state.classes.set(candidate, candidateClassName);
     context.state.liveCandidates.add(candidate);
@@ -84,5 +114,13 @@ export function compileSxString(
     context.state.composites.set(compositeClassName, atomicClassesForStyle(result.styles.inline!));
   }
   markEmittedClassNames(className, context.state);
-  return className!;
+  return className;
+}
+
+/** Whether a failure means an individual sx token cannot produce CSS. */
+function isUnknownUtilityError(error: unknown): error is Error {
+  return (
+    error instanceof Error &&
+    /cannot (?:classify|compile) utility|does not support variant|Invalid utility/.test(error.message)
+  );
 }

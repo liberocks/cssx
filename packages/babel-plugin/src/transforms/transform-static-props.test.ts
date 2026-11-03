@@ -26,6 +26,7 @@ function createState(): FileState {
     liveComposites: new Set(),
     liveFallbackClasses: new Set(),
     cssRanges: [],
+    diagnostics: [],
   };
 }
 
