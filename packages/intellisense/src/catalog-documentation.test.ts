@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 // @ts-expect-error The editor extension ships CommonJS without declaration files.
-import { documentation, stripVariants } from '../src/catalog-documentation.js';
+import { documentation, isKnownUtilityForDiagnostics, stripVariants } from '../src/catalog-documentation.js';
 
 describe('catalog documentation', () => {
   it('documents exact utilities and value families after stripping variants and modifiers', () => {
@@ -19,5 +19,12 @@ describe('catalog documentation', () => {
     expect(stripVariants('text-]')).toBe('text-]');
     expect(stripVariants('[&[data-label="["] h1]:text-red-500')).toBe('text-red-500');
     expect(stripVariants('animation-duration-(--duration, 1s):text-red-500')).toBe('text-red-500');
+  });
+
+  it('distinguishes built-in utilities, arbitrary values, and unknown catalog entries', () => {
+    expect(isKnownUtilityForDiagnostics('hover:!flex')).toBe(true);
+    expect(isKnownUtilityForDiagnostics('w-[calc(100vw - 2rem)]')).toBe(true);
+    expect(isKnownUtilityForDiagnostics('unknown-[value]')).toBe(false);
+    expect(isKnownUtilityForDiagnostics('text-copy-body')).toBe(false);
   });
 });

@@ -21,6 +21,10 @@ attributes. Palette colors include completion swatches, source decorations,
 and color-picker support. Disable source swatches with
 `cssxIntelliSense.colorDecorators`.
 
+The extension shows a warning on `sx()` tokens absent from its built-in
+catalog. Custom theme utilities can still be valid; production compilation
+checks against the active theme and warns when a token has no CSSX recipe.
+
 Arbitrary values can contain literal spaces. For example, use
 `grid-cols-[13rem minmax(0,1fr)]` or `w-[calc(100vw - 2rem)]` directly; the
 extension keeps each full value together while you type, including before its

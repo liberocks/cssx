@@ -9,6 +9,8 @@ const { provideHover } = require('./provide-hover');
 const { provideColorPresentations, provideDocumentColors } = require('./provide-color');
 /** Editor API loader. */
 const { loadEditorApi } = require('./load-editor-api');
+/** Source diagnostics for unexpected sx() utilities. */
+const { provideDiagnostics } = require('./provide-diagnostics');
 
 /** Lists source languages that can contain CSSX utility strings. */
 const LANGUAGE_SELECTOR = [
@@ -49,7 +51,15 @@ function activate(context, editor = loadEditorApi()) {
     provideDocumentColors: provideDocumentColors.bind(null, editor),
     provideColorPresentations: provideColorPresentations.bind(null, editor),
   });
-  context.subscriptions.push(provider, hover, color);
+  const diagnostics = editor.languages.createDiagnosticCollection('cssx');
+  const updateDiagnostics = (document) => diagnostics.set(document.uri, provideDiagnostics(editor, document));
+  for (const document of editor.workspace?.textDocuments ?? []) {
+    updateDiagnostics(document);
+  }
+  const opened = editor.workspace?.onDidOpenTextDocument?.(updateDiagnostics);
+  const changed = editor.workspace?.onDidChangeTextDocument?.(({ document }) => updateDiagnostics(document));
+  const closed = editor.workspace?.onDidCloseTextDocument?.((document) => diagnostics.delete(document.uri));
+  context.subscriptions.push(...[provider, hover, color, diagnostics, opened, changed, closed].filter(Boolean));
 }
 
 module.exports = { activate };

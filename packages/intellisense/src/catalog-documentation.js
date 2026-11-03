@@ -39,4 +39,16 @@ function stripVariants(candidate) {
   return candidate.slice(separator + 1);
 }
 
-module.exports = { documentation, stripVariants };
+/** Whether a token is present in the built-in catalog or uses a documented arbitrary-value family. */
+function isKnownUtilityForDiagnostics(candidate) {
+  const utility = stripVariants(candidate).replace(/^!/, '').replace(/^-/, '');
+  if (ENTRY_BY_LABEL.has(utility)) {
+    return true;
+  }
+  if (!/\[[\s\S]*\]$/.test(utility)) {
+    return false;
+  }
+  return RECIPES.some(([prefix]) => utility.startsWith(prefix));
+}
+
+module.exports = { documentation, isKnownUtilityForDiagnostics, stripVariants };
